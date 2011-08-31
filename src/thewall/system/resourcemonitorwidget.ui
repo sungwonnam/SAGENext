@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ResourceMonitorWidget</class>
+ <widget class="QWidget" name="ResourceMonitorWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>937</width>
+    <height>565</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>SAGE Next ResourceMonitor</string>
+  </property>
+  <layout class="QHBoxLayout" name="rootHLayout" stretch="1,2">
+   <item>
+    <layout class="QVBoxLayout" name="vLayoutOnTheLeft" stretch="0,1,2">
+     <item>
+      <layout class="QVBoxLayout" name="vlayout_schedparam" stretch="1,8">
+       <item>
+        <widget class="QLabel" name="label_schedparam_header">
+         <property name="text">
+          <string>Scheduler Parameters</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QGridLayout" name="gLayout_schedparam" columnstretch="1,2">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_schedparam_freq_header">
+           <property name="text">
+            <string>Frequency</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_schedparam_freq">
+           <property name="text">
+            <string>TextLabel</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Sensitivity</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="label_schedparam_sens">
+           <property name="text">
+            <string>TextLabel</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Greediness</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLabel" name="label_schedparam_greed">
+           <property name="text">
+            <string>TextLabel</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Aggression</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QLabel" name="label_schedparam_aggr">
+           <property name="text">
+            <string>TextLabel</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="vLayout_percpu"/>
+     </item>
+     <item>
+      <widget class="QTableWidget" name="perfPerPriorityRankTable"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="tablePlotVLayoutOnTheRight">
+     <item>
+      <widget class="QTableWidget" name="perAppPerfTable"/>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

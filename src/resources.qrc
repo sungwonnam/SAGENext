@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resources/close_shape.gif</file>
+        <file>resources/maximize_shape.gif</file>
+        <file>resources/minimize_shape.gif</file>
+        <file>resources/cursor-nw-resize.gif</file>
+        <file>resources/image_down.png</file>
+        <file>resources/image.png</file>
+        <file>resources/video_down.png</file>
+        <file>resources/video.png</file>
+        <file>resources/dir.png</file>
+        <file>resources/close_over.png</file>
+        <file>resources/arrow.png</file>
+        <file>resources/webkit_128x128.png</file>
+        <file>resources/plugin_200x200.png</file>
+    </qresource>
+</RCC>
