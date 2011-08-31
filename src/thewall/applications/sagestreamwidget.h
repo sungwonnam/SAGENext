@@ -59,7 +59,7 @@ private:
 	  * QImage is for I/O. So this is used for receiving pixels from sAIL
 	  */
 	QImage *image;
-//	QImage *image2;
+//	QImage image2;
 
 //	QSemaphore *convertedToPixmap;
 

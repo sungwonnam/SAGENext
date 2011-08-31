@@ -278,6 +278,9 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 	if(!_pixmap.isNull())
 		painter->drawPixmap(0, 0, _pixmap); // the best so far
 
+//	if (! image2.isNull() )
+//		painter->drawImage(0, 0, image2);
+
 
 	if ( showInfo  &&  !infoTextItem->isVisible() ) {
 #if defined(Q_OS_LINUX)
@@ -432,6 +435,12 @@ void SageStreamWidget::scheduleUpdate() {
 			// converts to QPixmap if you're gonna paint same QImage more than twice.
 			if (! _pixmap.convertFromImage(*imgPtr, Qt::AutoColor | Qt::ThresholdDither) )
 				qDebug("SageStreamWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
+
+//			image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
+//			if ( image2.isNull() )  {
+//				qDebug("Sibal");
+//			}
+
 			else {
 
 				setScheduled(false); // reset scheduling flag
@@ -531,7 +540,7 @@ int SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
 	switch(pixfmt) {
 	case PIXFMT_888 : { // GL_RGB
 			doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
-			//		image = new QImage(resX, resY, QImage::Format_RGB32); // x0FFRRGGBB
+			//		image = new QImage(resX, resY, QImage::Format_RGB32); // x0ffRRGGBB
 			break;
 		}
 	case PIXFMT_888_INV : { // GL_BGR

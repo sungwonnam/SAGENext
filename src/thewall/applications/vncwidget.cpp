@@ -73,6 +73,11 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
 		_perfMon->getDrawTimer().start();
 	}
 
+//	painter->setRenderHint(QPainter::Antialiasing);
+//	painter->setRenderHint(QPainter::HighQualityAntialiasing);
+	painter->setRenderHint(QPainter::SmoothPixmapTransform); // important -> this will make text smoother
+
+
 	if (isSelected()) {
 		// setBrush hurts performance badly !!
 //		painter->setBrush( QBrush(Qt::lightGray, Qt::Dense2Pattern) ); // very bad
@@ -90,8 +95,10 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
 
 
 
-	if (!pixmap.isNull())
-		//painter->drawPixmap(0, 0, pixmap); // Drawing QPixmap is much faster than QImage
+//	if (!pixmap.isNull())
+//		painter->drawPixmap(0, 0, pixmap); // Drawing QPixmap is much faster than QImage
+
+
 
 	if (_image && !_image->isNull()) {
 		painter->drawImage(0, 0, *_image);
@@ -115,8 +122,8 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
 }
 
 void VNCClientWidget::scheduleUpdate() {
-
-	if (! pixmap.convertFromImage(*_image, Qt::AutoColor | Qt::DiffuseDither) ) {
+/*
+	if (! pixmap.convertFromImage(*_image, Qt::AutoColor | Qt::OrderedDither) ) {
 		qDebug("VNCClientWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
 	}
 	else {
@@ -124,6 +131,8 @@ void VNCClientWidget::scheduleUpdate() {
 		// QGraphicsView will process the event
 		update();
 	}
+	*/
+	update();
 }
 
 void VNCClientWidget::receivingThread() {
@@ -159,16 +168,20 @@ void VNCClientWidget::receivingThread() {
 		unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
 		unsigned char * buffer = _image->bits();
 
-		Q_ASSERT( vncpixels && buffer);
+
+//		_image->loadFromData(vncpixels, vncclient->width * vncclient->height);
+
+		Q_ASSERT(vncpixels && buffer);
 
 		// QImage::Format_RGB32 format : 0xffRRGGBB
 		for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
-			buffer[4*k + 1] = vncpixels[ 4*k + 0];
-			buffer[4*k + 2] = vncpixels[ 4*k + 1];
-			buffer[4*k + 3] = vncpixels[ 4*k + 2];
+			buffer[4*k + 2] = vncpixels[ 4*k + 0];
+			buffer[4*k + 1] = vncpixels[ 4*k + 1];
+			buffer[4*k + 0] = vncpixels[ 4*k + 2];
 		}
 
 		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
+		// why I can't invoke update() ???
 	}
 
 	qDebug() << "LibVNCClient receiving thread finished";

@@ -25,7 +25,13 @@ int main(int argc, char *argv[])
 {
 //	qt_x11_set_global_double_buffer(false);
 
+	/***
+	  When using raster backend, For optimal performance only use the format types QImage::Format_ARGB32_Premultiplied, QImage::Format_RGB32 or QImage::Format_RGB16
+
+	  And use QImage as a paintdevice
+	  ***/
 	QApplication::setGraphicsSystem("raster");
+
 	QApplication a(argc, argv);
 
 	qsrand(QDateTime::currentDateTime().toTime_t());
@@ -224,7 +230,7 @@ int main(int argc, char *argv[])
 		}
 
 		char *val = 0;
-		if (val=getenv("EXP_DATA_FILE")) {
+		if ( val = getenv("EXP_DATA_FILE") ) {
 			qDebug("EXP_DATA_FILE is defined");
 			resourceMonitor->setPrintDataFlag(true);
 			resourceMonitor->printPrelimDataHeader();
@@ -272,7 +278,9 @@ int main(int argc, char *argv[])
 	  create viewport widget (This is a QWidget)
 	  */
 	qDebug() << "Creating SAGENext Viewport";
+
 	SAGENextViewport *gvm = new SAGENextViewport;
+
 	gvm->setLauncher(launcher);
 
 	if ( s.value("system/openglviewport").toBool() ) {
@@ -299,9 +307,11 @@ int main(int argc, char *argv[])
 	//	gvm->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
 
+	gvm->setRenderHint(QPainter::SmoothPixmapTransform);
+//	gvm->setRenderHint(QPainter::HighQualityAntialiasing);
 	gvm->setAttribute(Qt::WA_DeleteOnClose);
 	gvm->setWindowFlags(Qt::FramelessWindowHint);
-	//	gvm->setWindowState(Qt::WindowFullScreen);
+	gvm->setWindowState(Qt::WindowFullScreen);
 	gvm->setDragMode(QGraphicsView::RubberBandDrag);
 	gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, true);
 
@@ -313,7 +323,7 @@ int main(int argc, char *argv[])
 	gvm->show();
 
 
-	launcher->launch("evl123", 0, "127.0.0.1");
+//	launcher->launch("evl123", 0, "131.193.77.191", 24);
 
 
 	// starts event loop

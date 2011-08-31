@@ -9,7 +9,7 @@ TEMPLATE = app
 
 
 #LibVNCServer
-linux-g++ {
+linux-g++|linux-g++-64 {
 	LIBVNCSERVER = /home/evl/snam5/LibVNCServer-0.9.7
 	message("Linking with LibVNC lib")
 	INCLUDEPATH += $$LIBVNCSERVER/include
@@ -28,7 +28,7 @@ macx {
 #INCLUDEPATH += $${QWT_HOME}/src
 #LIBS += -L$${QWT_HOME}/lib -lqwt
 
-linux-g++ {
+linux-g++|linux-g++-64 {
 	message("Linking with Linux libnuma library")
 	LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
 }
@@ -72,7 +72,6 @@ SOURCES += \
 	common/imagedoublebuffer.cpp \
 	uiserver/uiserver.cpp \
 	uiserver/uimsgthread.cpp \
-	uiserver/launcher.cpp \
 	system/resourcemonitor.cpp \
 	system/sagenextscheduler.cpp \
 	system/resourcemonitorwidget.cpp \
@@ -103,7 +102,6 @@ HEADERS += \
 	common/thumbnailthread.h \
 	uiserver/uiserver.h \
 	uiserver/uimsgthread.h \
-	uiserver/launcher.h \
 	system/resourcemonitor.h \
 	system/resourcemonitorwidget.h \
 	system/sagenextscheduler.h \

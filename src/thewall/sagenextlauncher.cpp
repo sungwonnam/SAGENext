@@ -77,6 +77,8 @@ void SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
 		fsmThread->setSageWidget(sw);
 		sw->setFsmMsgThread(fsmThread);
 		// now fsmThread has been started !
+
+		QObject::connect(sw, SIGNAL(destroyed()), fsmThread, SLOT(sendSailShutdownMsg()));
 	}
 
 
@@ -94,7 +96,6 @@ void SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
 		/*******
 		 This is used to send affinity info to sender (sail) so that sender can set proper affinity based on receivers affinity setting. This should be connected only when mplayer is run localy
 		 *********/
-		Q_ASSERT(_fsm);
 		QObject::connect(sw->affInfo(), SIGNAL(streamerAffInfoChanged(AffinityInfo*, quint64)), fsmThread, SLOT(sendSailSetRailMsg(AffinityInfo*,quint64)));
 
 		// assign most underloaded processor

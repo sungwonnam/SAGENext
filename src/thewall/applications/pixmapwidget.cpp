@@ -134,6 +134,9 @@ void PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, Q
 		if (_perfMon)
 			_perfMon->getDrawTimer().start();
 
+		painter->setRenderHint(QPainter::SmoothPixmapTransform);
+
+
 		if (isSelected()) {
 //			painter->setBrush( QBrush(Qt::lightGray, Qt::Dense6Pattern) );
 //			painter->drawRect( windowFrameRect() );
