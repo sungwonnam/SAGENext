@@ -311,7 +311,8 @@ void PixmapCloseButtonOnScene::mousePressEvent(QGraphicsSceneMouseEvent *event) 
 
 void PixmapCloseButtonOnScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 	if (flag && boundingRect().contains(event->pos())) {
-		SAGENextScene *s = qobject_cast<SAGENextScene *>(scene());
+//		SAGENextScene *s = qobject_cast<SAGENextScene *>(scene());
+		QGraphicsScene *s = scene();
 		s->deleteLater();
 	}
 }
