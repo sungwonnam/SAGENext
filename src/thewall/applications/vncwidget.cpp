@@ -88,8 +88,17 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
 //		shadow->setEnabled(false);
 	}
 
-	if(!pixmap.isNull())
-		painter->drawPixmap(0, 0, pixmap); // Drawing QPixmap is much faster than QImage
+
+
+	if (!pixmap.isNull())
+		//painter->drawPixmap(0, 0, pixmap); // Drawing QPixmap is much faster than QImage
+
+	if (_image && !_image->isNull()) {
+		painter->drawImage(0, 0, *_image);
+	}
+
+
+
 
 
 	if ( showInfo  &&  !infoTextItem->isVisible() ) {
