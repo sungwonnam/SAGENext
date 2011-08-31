@@ -9,17 +9,17 @@ TEMPLATE = app
 
 
 #LibVNCServer
-unix {
-LIBVNCSERVER = /home/evl/snam5/LibVNCServer-0.9.7
-message("Linking with LibVNC lib")
-INCLUDEPATH += $$LIBVNCSERVER/include
-LIBS += -L$$LIBVNCSERVER/lib -lvncclient
+linux-g++ {
+	LIBVNCSERVER = /home/evl/snam5/LibVNCServer-0.9.7
+	message("Linking with LibVNC lib")
+	INCLUDEPATH += $$LIBVNCSERVER/include
+	LIBS += -L$$LIBVNCSERVER/lib -lvncclient
 }
 macx {
-LIBVNCSERVER = ${HOME}/Downloads/LibVNCServer
-message("Linking with LibVNC lib $$LIBVNCSERVER")
-INCLUDEPATH += $$LIBVNCSERVER/include
-LIBS += -L$$LIBVNCSERVER/lib -lvncclient
+	LIBVNCSERVER = ${HOME}/Downloads/LibVNCServer
+	message("Linking with LibVNC lib $$LIBVNCSERVER")
+	INCLUDEPATH += $$LIBVNCSERVER/include
+	LIBS += -L$$LIBVNCSERVER/lib -lvncclient
 }
 
 
@@ -28,13 +28,13 @@ LIBS += -L$$LIBVNCSERVER/lib -lvncclient
 #INCLUDEPATH += $${QWT_HOME}/src
 #LIBS += -L$${QWT_HOME}/lib -lqwt
 
-unix {
+linux-g++ {
 	message("Linking with Linux libnuma library")
 	LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
 }
 macx {
-message("Excluding -lnuma -lm -lpthread")
-LIBS -= -lnuma -lm -lpthread
+	message("Excluding -lnuma -lm -lpthread")
+	LIBS -= -lnuma -lm -lpthread
 }
 
 #CONFIG += thread
