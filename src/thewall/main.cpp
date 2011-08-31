@@ -5,6 +5,7 @@
 #include "sagenextscene.h"
 #include "sagenextviewport.h"
 #include "sagenextlauncher.h"
+
 #include "uiserver/uiserver.h"
 
 #include "applications/base/affinityinfo.h"
@@ -311,6 +312,8 @@ int main(int argc, char *argv[])
 
 	gvm->show();
 
+
+	launcher->launch("evl123", 0, "127.0.0.1");
 
 
 	// starts event loop

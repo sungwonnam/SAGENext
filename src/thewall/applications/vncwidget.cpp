@@ -52,7 +52,7 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 	if (vncclient->serverPort == -1 )
 		vncclient->vncRec->doNotSleep = true;
 
-	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
+	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
 //	qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
 	// starting thread.
@@ -161,10 +161,11 @@ void VNCClientWidget::receivingThread() {
 
 		Q_ASSERT( vncpixels && buffer);
 
+		// QImage::Format_RGB32 format : 0xffRRGGBB
 		for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
-			buffer[3*k + 0] = vncpixels[ 4*k + 0];
-			buffer[3*k + 1] = vncpixels[ 4*k + 1];
-			buffer[3*k + 2] = vncpixels[ 4*k + 2];
+			buffer[4*k + 1] = vncpixels[ 4*k + 0];
+			buffer[4*k + 2] = vncpixels[ 4*k + 1];
+			buffer[4*k + 3] = vncpixels[ 4*k + 2];
 		}
 
 		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
