@@ -27,6 +27,8 @@ public:
 	~SAGENextLauncher();
 
 
+
+
 private:
 	const QSettings *_settings;
 
@@ -62,6 +64,14 @@ private:
 	ResourceMonitor *_rMonitor;
 
 	SchedulerControl *_schedCtrl;
+
+	/**
+	  When a user drag and drop media file on the sagenextpointer, the launcher receives the file and fire corresponding widget.
+	  The file is stored at $HOME/.sagenext/<image|video>
+	  This function runs in separate thread.
+	  */
+	void fileReceivingFunction(int mediatype, QString filename, qint64 filesize, QString senderIP, QString recvIP, quint16 recvPort);
+
 
 
 

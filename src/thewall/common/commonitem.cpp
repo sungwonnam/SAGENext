@@ -5,6 +5,25 @@
 //#include <typeinfo>
 
 
+WidgetRemoveButton::WidgetRemoveButton(QGraphicsItem *parent) :
+	QGraphicsPixmapItem(parent)
+{
+	setAcceptDrops(true);
+}
+
+void WidgetRemoveButton::dragEnterEvent(QGraphicsSceneDragDropEvent *event) {
+	Q_UNUSED(event);
+
+	//just highlight the button
+}
+
+void WidgetRemoveButton::dropEvent(QGraphicsSceneDragDropEvent *event) {
+	Q_UNUSED(event);
+
+	// find out the widget dragged to here and close it
+}
+
+
 PolygonArrow::PolygonArrow(const quint64 uicid, const QSettings *s, const QColor c, QGraphicsItem *parent)
 	: QGraphicsPolygonItem(parent), uiclientid(uicid), settings(s)
 
@@ -105,47 +124,47 @@ void PolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton btn, 
 }
 */
 
-void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
+//void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
 
-//	setAppUnderPointer(scenePos);
+////	setAppUnderPointer(scenePos);
 
-	if (!app) {
-		qDebug("PolygonArrow::%s() : There's no app widget under this pointer", __FUNCTION__);
-		return;
-	}
-	/**
-	if (!gview) {
-		qDebug("PolygonArrow::%s() : gview is null, can't postEvent to the view", __FUNCTION__);
-		return;
-	}
+//	if (!app) {
+//		qDebug("PolygonArrow::%s() : There's no app widget under this pointer", __FUNCTION__);
+//		return;
+//	}
+//	/**
+//	if (!gview) {
+//		qDebug("PolygonArrow::%s() : gview is null, can't postEvent to the view", __FUNCTION__);
+//		return;
+//	}
 
-	// let's just generate mouseDoubleClickEvent !
-	// event object is going to be deleted by eventHandler.
-	QMouseEvent *e = new QMouseEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+//	// let's just generate mouseDoubleClickEvent !
+//	// event object is going to be deleted by eventHandler.
+//	QMouseEvent *e = new QMouseEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
 
-	app->grabMouse(); // make sure app is BaseGraphicsWidget type. not child item
-	QApplication::postEvent(gview->viewport(), e); // VIEWPORT() !!! f*ck
-	app->ungrabMouse();
-//	QApplication::sendPostedEvents(gview->viewport(), e->type());
-	**/
+//	app->grabMouse(); // make sure app is BaseGraphicsWidget type. not child item
+//	QApplication::postEvent(gview->viewport(), e); // VIEWPORT() !!! f*ck
+//	app->ungrabMouse();
+////	QApplication::sendPostedEvents(gview->viewport(), e->type());
+//	**/
 
 
-	// Or directly control the widget
-	app->maximize();
-}
+//	// Or directly control the widget
+//	app->maximize();
+//}
 
-void PolygonArrow::pointerWheel(const QPointF &scenePos, int delta /*=120*/) {
-	// delta is usually multiple of 120 (==15 * 8)
-	foreach (QGraphicsView *gview, scene()->views()) {
+//void PolygonArrow::pointerWheel(const QPointF &scenePos, int delta /*=120*/) {
+//	// delta is usually multiple of 120 (==15 * 8)
+//	foreach (QGraphicsView *gview, scene()->views()) {
 
-		if ( ! QApplication::sendEvent(gview->viewport(), &QWheelEvent(gview->mapFromScene(scenePos), gview->mapToGlobal(scenePos.toPoint()), delta, Qt::NoButton, Qt::NoModifier)) ) {
-			qDebug("PolygonArrow::%s() : send wheelEvent failed", __FUNCTION__);
-		}
-		else {
-//			qDebug() << "PolygonArrow wheel" << gview->mapFromScene(scenePos);
-		}
-	}
-}
+//		if ( ! QApplication::sendEvent(gview->viewport(), &QWheelEvent(gview->mapFromScene(scenePos), gview->mapToGlobal(scenePos.toPoint()), delta, Qt::NoButton, Qt::NoModifier)) ) {
+//			qDebug("PolygonArrow::%s() : send wheelEvent failed", __FUNCTION__);
+//		}
+//		else {
+////			qDebug() << "PolygonArrow wheel" << gview->mapFromScene(scenePos);
+//		}
+//	}
+//}
 
 void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
 	// should be sent to interactive item like gwebview
@@ -164,7 +183,7 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
 	Q_UNUSED(btnFlags);
 //	setAppUnderPointer(scenePos);
 	if (app) {
-		app->setTopmost();
+
 
 		/**
 		  * PixmapWidget, SageStreamWidget don't reimplement this function
@@ -175,10 +194,7 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
 }
 
 PolygonArrow::~PolygonArrow() {
-	foreach (QGraphicsView *gview, scene()->views()) {
-		Q_ASSERT(gview);
-		gview->scene()->removeItem(this);
-	}
+	scene()->removeItem(this);
 }
 
 void PolygonArrow::setPointerName(const QString &text) {
@@ -201,6 +217,7 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
 
 		if ( item->type() == UserType + 2) {
 			app = static_cast<BaseWidget *>(item);
+//			app->setTopmost();
 //			qDebug("PolygonArrow::%s() : uiclientid %llu, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
 			return true;
 		}

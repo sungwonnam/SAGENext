@@ -28,7 +28,7 @@ public:
 
 
 	/*!
-	  Reimplement QRunnable::run()
+	  single-shot pixel receiving thread.
 	  */
 	bool readImage();
 

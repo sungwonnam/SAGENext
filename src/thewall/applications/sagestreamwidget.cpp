@@ -2,7 +2,6 @@
 #include "sagepixelreceiver.h"
 
 #include "../sage/fsmanagermsgthread.h"
-
 #include "../sage/sagecommondefinitions.h"
 
 #include "../common/commonitem.h"
@@ -19,8 +18,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#include <sys/time.h>
-#include <sys/resource.h>
+//#include <sys/time.h>
+//#include <sys/resource.h>
 
 
 //SageStreamWidget::SageStreamWidget(quint64 sageAppId, QString appName, int protocol, int port, const QRect initRect, const quint64 globalAppId, const QSettings *s, ResourceMonitor *rm, QGraphicsItem *parent/*0*/, Qt::WindowFlags wFlags/*0*/) :
@@ -235,9 +234,6 @@ void SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
 
 void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 
-//	struct timeval s,e;
-//	gettimeofday(&s, 0);
-
 	if (_perfMon) {
 		_perfMon->getDrawTimer().start();
 //		perfMon->startPaintEvent();
@@ -274,12 +270,59 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 //	painter->drawPixmap(0, 0, QPixmap::fromImage(*_image));
 
 
-//	Q_ASSERT(pixmap && !pixmap->isNull());
+	Q_ASSERT(_pixmap);
 	if(!_pixmap.isNull())
 		painter->drawPixmap(0, 0, _pixmap); // the best so far
 
 //	if (! image2.isNull() )
 //		painter->drawImage(0, 0, image2);
+
+
+/***
+	if ( ! image2.isNull() ) {
+		painter->beginNativePainting();
+
+		glEnable(GL_TEXTURE_2D);
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		//	glOrtho(0, 1600, 1200, 0, 0, 100);
+		glMatrixMode(GL_MODELVIEW);
+
+		glGenTextures(1, &texhandle);
+		glBindTexture(GL_TEXTURE_2D, texhandle);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, image2.width(), image2.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image2.bits());
+
+
+		glClearColor(1, 1, 1, 1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glBegin(GL_QUADS);
+		// top left
+		glTexCoord2f(0, 0);
+		glVertex2f(0, 0);
+
+		// top right (0,0)
+		glTexCoord2f(0, image2.width());
+		glVertex2f(0, image2.width());
+
+		// bottom right
+		glTexCoord2f(image2.height(), image2.width());
+		glVertex2f(image2.height(), image2.width());
+
+		// bottom left
+		glTexCoord2f(image2.height(), 0);
+		glVertex2f(image2.height(), 0);
+
+		glEnd();
+		glFinish();
+		//	glDisable(GL_TEXTURE_2D);
+
+		painter->endNativePainting();
+	}
+	****/
+
+
 
 
 	if ( showInfo  &&  !infoTextItem->isVisible() ) {
@@ -293,50 +336,9 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 	}
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
-
-//	gettimeofday(&e, 0);
-//	qreal el = ((double)e.tv_sec + (double)e.tv_usec * 0.000001) - ((double)s.tv_sec+(double)s.tv_usec*0.000001);
-//	qDebug() << "drawing : " << el * 1000.0 << " msec";
-
-/**
-	struct timeval s,e;
-	gettimeofday(&s, 0);
-
-	glEnable(GL_TEXTURE_2D);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-//	glOrtho(0, 1600, 1200, 0, 0, 100);
-	glMatrixMode(GL_MODELVIEW);
-
-	glBindTexture(GL_TEXTURE_2D, texhandle);
-
-	glBegin(GL_QUADS);
-	// top left
-	glTexCoord2f(0, 0);
-	glVertex3f(0, 0, -1);
-
-	// top right (0,0)
-	glTexCoord2f(0, 1);
-	glVertex3f(0, image->height(), -1);
-
-	// bottom right
-	glTexCoord2f(1, 1);
-	glVertex3f(image->width(), image->height(), -1);
-
-	// bottom left
-	glTexCoord2f(1, 0);
-	glVertex3f(image->width(), 0, -1);
-
-	glEnd();
-	glFlush();
-	glDisable(GL_TEXTURE_2D);
-
-	gettimeofday(&e, 0);
-	qreal el = ((double)e.tv_sec + (double)e.tv_usec * 0.000001) - ((double)s.tv_sec+(double)s.tv_usec*0.000001);
-	qDebug() << "darwing : " << el * 1000.0 << " msec";
-	**/
 }
+
+
 
 //void SageStreamWidget::resizeEvent(QGraphicsSceneResizeEvent *event) {
 //	glViewport(0, 0, event->newSize().width(), event->newSize().height());
@@ -348,61 +350,6 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 //}
 
 
-//void SageStreamWidget::scheduleUpdate() {
-//	QImage *imgPtr = 0;
-
-//	if ( !pixmap || !doubleBuffer || !receiverThread || !receiverThread->isRunning() || receiverThread->isFinished() )
-//		return;
-
-//	/*
-//	  will wait until producer produces one
-//	 */
-//	imgPtr = static_cast<QImage *>(doubleBuffer->getBackBuffer());
-
-//	//		qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget retrieved " << frameCounter + 1;
-////	qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "backbuffer received";
-
-//	if ( imgPtr && !imgPtr->isNull() ) {
-//		_perfMon->getConvTimer().start();
-
-////		qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "back buffer valid";
-
-//		// converts to QPixmap if you're gonna paint same QImage more than twice.
-//		if (! pixmap->convertFromImage(*imgPtr, Qt::AutoColor | Qt::ThresholdDither) ) {
-//			qDebug("SageStreamWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
-//		}
-//		else {
-//			//++frameCounter;
-////			qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "pixmap has converted";
-
-//			_perfMon->updateConvDelay();
-
-//			_perfMon->getEqTimer().start();
-//			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget is about to call update() for frame " << frameCounter;
-
-//			// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
-//			// QGraphicsView will process the event
-//			update(); // post paint event to myself (QEvent::MetaCall)
-
-
-//			/****
-//			  With scheduler on, below makes sagestreamwidget hangs !!!!
-//			  ****/
-//			// dispatch immediately
-////			qApp->sendPostedEvents(this, QEvent::MetaCall);
-//		}
-//	}
-//	else {
-//		qCritical("SageStreamWidget::%s() : globalAppId %llu, sageAppId %llu : imgPtr is null. Failed to retrieve back buffer from double buffer", __FUNCTION__, globalAppId(), sageAppId);
-//	}
-
-//	/*
-//	  will make doubleBuffer->swapBuffer() returns
-//	 */
-//	doubleBuffer->releaseBackBuffer();
-////	qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "back buffer released";
-//	imgPtr = 0;
-//}
 
 
 void SageStreamWidget::scheduleReceive() {
@@ -436,10 +383,15 @@ void SageStreamWidget::scheduleUpdate() {
 			if (! _pixmap.convertFromImage(*imgPtr, Qt::AutoColor | Qt::ThresholdDither) )
 				qDebug("SageStreamWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
 
+
+
 //			image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
+//			image2 = QGLWidget::convertToGLFormat(*imgPtr);
 //			if ( image2.isNull() )  {
 //				qDebug("Sibal");
 //			}
+
+
 
 			else {
 

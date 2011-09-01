@@ -21,6 +21,8 @@
 #include "sage/fsmanagermsgthread.h"
 
 
+
+
 SAGENextLauncher::SAGENextLauncher(const QSettings *s, SAGENextScene *scene,  ResourceMonitor *rm /*= 0*/, SchedulerControl *sc /* = 0*/,QObject *parent /*0*/) :
 	QObject(parent),
 	_settings(s),
@@ -130,8 +132,13 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
 	case MEDIA_TYPE_IMAGE: {
 
 		// streaming from ui client
-		if ( fsize > 0 && !recvIP.isEmpty() && recvPort > 0)
+		if ( fsize > 0 && !recvIP.isEmpty() && recvPort > 0) {
+
+			// fire file receiving function
+//			QFuture<bool> future = QtConcurrent::run(this, &SAGENextLauncher::fileReceivingFunction, type, filename, fsize, senderIP, recvIP, recvPort);
+
 			w = new PixmapWidget(fsize, senderIP, recvIP, recvPort, _globalAppId, _settings);
+		}
 
 		// from local storage
 		else if ( !filename.isEmpty() ) {
@@ -145,6 +152,10 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
 	}
 
 	case MEDIA_TYPE_VIDEO: {
+
+		// the file has to be downloaded first
+
+
 		SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, senderIP, _rMonitor);
 		w = sws;
 		_sageWidgetQueue.push_back(sws);
@@ -269,6 +280,24 @@ void SAGENextLauncher::launch(BaseWidget *w) {
 }
 
 
+
+void SAGENextLauncher::fileReceivingFunction(int mediatype, QString filename, qint64 filesize, QString senderIP, QString recvIP, quint16 recvPort) {
+
+	// download file
+
+	if ( mediatype == MEDIA_TYPE_IMAGE) {
+		QMetaObject::invokeMethod(this, "launch", Qt::QueuedConnection
+								  , Q_ARG(int, MEDIA_TYPE_IMAGE)
+								  , Q_ARG(QString, QDir::homePath().append("/image").append(filename))
+								  );
+	}
+	else if (mediatype == MEDIA_TYPE_VIDEO) {
+		QMetaObject::invokeMethod(this, "launch", Qt::QueuedConnection
+								  , Q_ARG(int, MEDIA_TYPE_LOCAL_VIDEO)
+								  , Q_ARG(QString, QDir::homePath().append("/video").append(filename))
+								  );
+	}
+}
 
 
 

@@ -32,7 +32,7 @@ public:
 	BaseWidget();
 
 	BaseWidget(quint64 globalappid, const QSettings *s, ResourceMonitor *rm, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
-        virtual ~BaseWidget();
+		virtual ~BaseWidget();
 
 	/*!
 	PolygonArrow::setAppUnderCursor will only select QGraphicsItem type of this
@@ -93,7 +93,7 @@ public:
 	  And wrap those events with grabMouse() and releaseMouse(). The widget must be mouse grabber to receive the events.
 	  Please refer to WebWidget and ImageWidgetPluginExample
 	  */
-	virtual void mouseClick(const QPointF &, Qt::MouseButton) {};
+	virtual void mouseClick(const QPointF &, Qt::MouseButton);
 
 
 	/*!
@@ -143,12 +143,12 @@ public:
 	inline QParallelAnimationGroup *animGroup() {return aGroup;}
 
 
-        /*!
-          TO manually adjust _lastTouch
-          This function shouldn't be used in normal situation
-          */
-        void setLastTouch();
-        inline qint64 lastTouch() const {return _lastTouch;}
+		/*!
+		  TO manually adjust _lastTouch
+		  This function shouldn't be used in normal situation
+		  */
+		void setLastTouch();
+		inline qint64 lastTouch() const {return _lastTouch;}
 
 protected:
 	quint64 _globalAppId; /**< Unique identifier */
@@ -202,8 +202,8 @@ protected:
 
 
 	/*!
-          When was this widget touched last time. This value is updated in mousePressEvent().
-          It is to keep track user interaction recency on this widget
+		  When was this widget touched last time. This value is updated in mousePressEvent().
+		  It is to keep track user interaction recency on this widget
 	  */
 	qint64 _lastTouch; // long long int
 

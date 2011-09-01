@@ -4,10 +4,10 @@
 #include "base/railawarewidget.h"
 //#include "common/imagedoublebuffer.h"
 
-//#if defined(Q_OS_LINUX)
+#if defined(Q_OS_LINUX)
 //#include <GL/gl.h>
 //#include <GL/glu.h>
-//#endif
+#endif
 
 class fsManagerMsgThread;
 class ImageDoubleBuffer;
@@ -15,7 +15,7 @@ class SagePixelReceiver;
 class AffinityInfo;
 
 //#include <QFutureWatcher>
-#include <QWaitCondition>
+//#include <QWaitCondition>
 
 class SageStreamWidget : public RailawareWidget
 {

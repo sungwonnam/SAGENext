@@ -4,6 +4,11 @@
 #include <QGraphicsScene>
 
 
+
+
+
+
+
 class SAGENextScene : public QGraphicsScene
 {
 	Q_OBJECT
@@ -13,6 +18,7 @@ public:
 
 
 private:
+
 
 
 signals:

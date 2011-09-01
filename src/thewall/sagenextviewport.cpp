@@ -14,7 +14,7 @@ SAGENextViewport::SAGENextViewport(int viewportId, QWidget *parent) :
 
 
 	if ( _viewportID == 0 ) {
-		_fdialog = new QFileDialog(this, "Open Files", QDir::homePath().append("/.sagenext") , "RatkoData (*.log);;Session (*.session);;Plugins (*.so *.dll *.dylib);;Images (*.tif *.tiff *.svg *.bmp *.png *.jpg *.jpeg *.gif *.xpm);;Videos (*.mov *.avi *.mpg *.mp4 *.mkv *.flv *.wmv);;Any (*)");
+		_fdialog = new QFileDialog(this, "Open Files", QDir::homePath().append("/.sagenext/image") , "Images (*.tif *.tiff *.svg *.bmp *.png *.jpg *.jpeg *.gif *.xpm);;RatkoData (*.log);;Session (*.session);;Plugins (*.so *.dll *.dylib);;Videos (*.mov *.avi *.mpg *.mp4 *.mkv *.flv *.wmv);;Any (*)");
 		_fdialog->setModal(false);
 		//	fdialog->setFileMode(QFileDialog::Directory);
 		connect(_fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(on_actionFilesSelected(QStringList)));

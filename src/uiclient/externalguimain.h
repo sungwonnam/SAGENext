@@ -4,7 +4,7 @@
 #include <QtGui>
 #include <QHostAddress>
 //#include <QAbstractSocket>
-
+#include <QSettings>
 
 #include "messagethread.h"
 #include "sendthread.h"
@@ -55,6 +55,8 @@ protected:
 
 private:
 	Ui::ExternalGUIMain *ui;
+
+	QSettings *_settings;
 
 	/*!
 	  unique ID of me used by UiServer to differentiate multiple ui clients.
@@ -117,8 +119,14 @@ private:
 	QPoint mousePressedPos;
 
 
-
 	DropFrame *mediaDropFrame;
+
+
+	QString _pointerName;
+
+	QString _myIpAddress;
+
+	QString _vncPasswd;
 
 
 //	void connectToWall(const char * ipaddr, quint16 port);
@@ -135,7 +143,10 @@ private slots:
 	  * will set mouseTracking(true) and grabMouse()
 	  */
 	void on_pointerButton_clicked();
+
 	void ungrabMouse();
+
+
 
 	/**
 	  * CMD + O
@@ -162,6 +173,7 @@ private slots:
 
 
 	QGraphicsRectItem * itemWithGlobalAppId(QGraphicsScene *scene, quint64 gaid);
+
 };
 
 
@@ -178,18 +190,47 @@ protected:
 	QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 };
 
+
+
+
+
 class ConnectionDialog : public QDialog {
 	Q_OBJECT
 public:
-	ConnectionDialog(QWidget *parent=0);
+	ConnectionDialog(QSettings *s, QWidget *parent=0);
 	~ConnectionDialog();
-	QString address() {return addr;}
-	quint16 port() {return portnum;}
+
+	inline QString address() const {return addr;}
+	inline int port() const {return portnum;}
+	inline QString myAddress() const {return myaddr;}
+	inline QString pointerName() const {return pName;}
+	inline QString vncPasswd() const {return vncpass;}
 
 private:
 	Ui::connectionDialog *ui;
+	QSettings *_settings;
+
+	/**
+	  wall address
+	  */
 	QString addr;
-	quint16 portnum; // unsigned short
+
+	/**
+	  wall port
+	  */
+	quint16 portnum;
+
+	/**
+	  my ip address
+	  */
+	QString myaddr;
+
+	QString vncpass;
+
+	/**
+	  pointer name
+	  */
+	QString pName;
 
 private slots:
 	void on_buttonBox_rejected();

@@ -272,11 +272,11 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 				pa->pointerMove(QPointF(x,y), Qt::LeftButton);
 
 
-/***********
+				/***********
 				pa->setPos(x, y); // x, y is in parent coordinate, scene coordiante in this case
 
 				// generate mouse event directly from ui server
-				QMouseEvent moveEvent(QEvent::MouseMove, gviewMain->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+				QMouseEvent moveEvent(QEvent::MouseMove, gview->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
 				pa->appUnderPointer()->grabMouse();
 				qDebug() << QPointF(x,y);
 				if ( ! QApplication::sendEvent(gviewMain->viewport(), &moveEvent) ) {
@@ -305,6 +305,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 				qDebug("UiServer::%s() : POINTER_PRESS : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
 
 				// Below will call setAppUnderPointer()
+				// followed by setTopmost()
 				pa->pointerPress(QPointF(x,y), Qt::LeftButton, Qt::NoButton | Qt::LeftButton);
 //				pa->setAppUnderPointer(QPointF(x,y));
 			}
@@ -334,8 +335,8 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 			quint64 uiclientid;
 			int x,y;
 			sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-			PolygonArrow *pa =  arrow(uiclientid) ;
-			if (pa && scene) {
+//			PolygonArrow *pa =  arrow(uiclientid) ;
+			if (scene) {
 				// direct widget manipulation
 //				pa->pointerDoubleClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
 
@@ -351,6 +352,8 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 
 				if (gview) {
 					QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+
+					qDebug() << "UiServer::Pointer_dblClick" << gview->mapFromScene(QPointF(x,y));
 
 					// sendEvent doesn't delete event object, so event should be created in stack space
 					if ( ! QApplication::sendEvent(gview->viewport(), &dblClickEvent) ) {
@@ -372,16 +375,29 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 			quint64 uiclientid;
 			int x,y,tick;
 			sscanf(msg.constData(), "%d %llu %d %d %d", &code, &uiclientid, &x, &y, &tick);
-			PolygonArrow *pa = arrow(uiclientid);
-			if (pa) {
-//				qDebug() << "UiServer:: wheel" << x << y << 120*tick;
-				pa->pointerWheel(QPointF(x,y), 120 * tick);
-			}
-//			if (pa && pa->setAppUnderPointer(QPointF(x,y))) {
-//				qDebug() << "WHEEL " << tick;
-//				Q_ASSERT(pa->appUnderPointer());
-////				pa->appUnderPointer()->reScale(tick, 0.03);
+//			PolygonArrow *pa = arrow(uiclientid);
+//			if (pa) {
+////				qDebug() << "UiServer:: wheel" << x << y << 120*tick;
+//				pa->pointerWheel(QPointF(x,y), 120 * tick);
 //			}
+
+			// Generate mouse event directly from here
+			QGraphicsView *gview = 0;
+			foreach(QGraphicsView *v, scene->views()) {
+				if ( v->rect().contains(x, y) ) {
+					gview = v;
+					break;
+				}
+			}
+			if (gview) {
+				if ( ! QApplication::sendEvent(gview->viewport(), &QWheelEvent(gview->mapFromScene(QPointF(x,y)), gview->mapToGlobal(QPoint(x,y)), 120 * tick, Qt::NoButton, Qt::NoModifier)) ) {
+					qDebug("UiServer::%s() : send wheelEvent failed", __FUNCTION__);
+				}
+				else {
+					//qDebug() << "PolygonArrow wheel" << gview->mapFromScene(scenePos);
+				}
+			}
+
 			break;
 		}
 
@@ -396,31 +412,38 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 			if (pa) {
 				qDebug("UiServer::%s() : POINTER_CLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
 
-				// Widget under the pointer should reimplement BaseWidget::mouseClick()
+				// Widget under the pointer can reimplement BaseWidget::mouseClick()
 				pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
-
-
 
 				/***
 				// Generate mouse event directly from here
-				QMouseEvent pressEvent(QEvent::MouseButtonPress, gviewMain->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-				QMouseEvent releaseEvent(QEvent::MouseButtonRelease, gviewMain->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+				QGraphicsView *gview = 0;
+				foreach(QGraphicsView *v, scene->views()) {
+					if ( v->rect().contains(x, y) ) {
+						gview = v;
+						break;
+					}
+				}
+
+				// Generate mouse event directly from here
+				QMouseEvent pressEvent(QEvent::MouseButtonPress, gview->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+				QMouseEvent releaseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
 
 				// If another item calls grabMouse() this item will lose mouse grab. this item will regain the mouse grab when the other item calls ungrabMouse()
-				//					pa->appUnderPointer()->grabMouse(); // inherited from QGraphicsItem
+				pa->appUnderPointer()->grabMouse(); // inherited from QGraphicsItem
 
 				// sendEvent doesn't delete event object, so event should be created in stack space
-				if ( ! QApplication::sendEvent(gviewMain->viewport(), &pressEvent) ) {
+				if ( ! QApplication::sendEvent(gview->viewport(), &pressEvent) ) {
 					qDebug("UiServer::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
 				}
 				else {
-					if ( ! QApplication::sendEvent(gviewMain->viewport(), &releaseEvent) ) {
+					if ( ! QApplication::sendEvent(gview->viewport(), &releaseEvent) ) {
 						qDebug("UiServer::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
 					}
 				}
 
-				//					pa->appUnderPointer()->ungrabMouse();
-				**/
+				pa->appUnderPointer()->ungrabMouse();
+				***/
 
 				/*
  // event loop will take ownership of posted event, so event must be created in heap space

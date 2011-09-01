@@ -11,13 +11,17 @@
 
 #include <QNetworkInterface>
 
+
 ExternalGUIMain::ExternalGUIMain(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::ExternalGUIMain),
+	_settings(0),
 	msgThread(0),
 	mediaDropFrame(0)
 {
 	ui->setupUi(this);
+
+	_settings = new QSettings("sagenextpointer.ini", QSettings::IniFormat, this);
 
 	datasock = 0;
 
@@ -68,9 +72,13 @@ ExternalGUIMain::~ExternalGUIMain()
 void ExternalGUIMain::on_actionNew_Connection_triggered()
 {
 	// open modal dialog to enter IP address and port
-	ConnectionDialog cd;
+	ConnectionDialog cd(_settings);
 	cd.exec();
 	if ( cd.result() == QDialog::Rejected) return;
+
+	_pointerName = cd.pointerName();
+	_myIpAddress = cd.myAddress();
+	_vncPasswd = cd.vncPasswd();
 
 	msgsock = ::socket(AF_INET, SOCK_STREAM, 0);
 	if ( msgsock == -1 ) {
@@ -289,7 +297,7 @@ void ExternalGUIMain::on_vncButton_clicked()
 	}
 
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %llu %s %d %s %d", VNC_SHARING, uiclientid, "131.193.77.191", 0, "evl123", 24);
+	sprintf(msg.data(), "%d %llu %s %d %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncPasswd), 24);
 
 	if (msgThread && msgThread->isRunning())
 		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
@@ -307,8 +315,8 @@ void ExternalGUIMain::on_pointerButton_clicked()
 	// draw cursor on the wall
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 
-	// msgtype, uiclientid, pointer name, R, G, B
-	sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, "sung", 255, 128, 0);
+	// msgtype, uiclientid, pointer name, Red, Green, Blue
+	sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, qPrintable(_pointerName), 255, 128, 0);
 
 	if (msgThread && msgThread->isRunning())
 		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
@@ -550,18 +558,28 @@ void DropFrame::dropEvent(QDropEvent *e) {
 
 
 
-ConnectionDialog::ConnectionDialog(QWidget *parent)
-	: QDialog(parent), ui(new Ui::connectionDialog)
+ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
+	:QDialog(parent)
+	,ui(new Ui::connectionDialog)
+	,_settings(s)
+	,portnum(0)
 {
 	ui->setupUi(this);
+
 	addr.clear();
-	portnum = 0;
 
 	ui->ipaddr->setInputMask("000.000.000.000;_");
+	ui->myaddrLineEdit->setInputMask("000.000.000.000;_");
 	ui->port->setInputMask("00000;_");
 
+	ui->ipaddr->setText( _settings->value("walladdr", "127.0.0.1").toString() );
+	ui->myaddrLineEdit->setText( _settings->value("myaddr", "127.0.0.1").toString() );
+	ui->port->setText( _settings->value("wallport", 30003).toString() );
+	ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
+	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
+
 //	ui->ipaddr->setText("127.0.0.1");
-	ui->port->setText("30003");
+//	ui->port->setText("30003");
 }
 
 ConnectionDialog::~ConnectionDialog() {
@@ -571,7 +589,18 @@ ConnectionDialog::~ConnectionDialog() {
 void ConnectionDialog::on_buttonBox_accepted()
 {
 	addr = ui->ipaddr->text();
-	portnum = ui->port->text().toUShort();
+	portnum = ui->port->text().toInt();
+	myaddr = ui->myaddrLineEdit->text();
+	pName = ui->pointerNameLineEdit->text();
+	vncpass = ui->vncpasswd->text();
+
+
+	_settings->setValue("walladdr", addr);
+	_settings->setValue("wallport", portnum);
+	_settings->setValue("myaddr", myaddr);
+	_settings->setValue("pointername", pName);
+	_settings->setValue("vncpasswd", vncpass);
+
 	accept();
 //	done(0);
 }
@@ -580,5 +609,6 @@ void ConnectionDialog::on_buttonBox_rejected()
 {
 	reject();
 }
+
 
 

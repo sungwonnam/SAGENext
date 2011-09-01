@@ -5,6 +5,29 @@
 
 class BaseWidget;
 
+
+/**
+  An widget will be moved to this button to be removed on the scene
+  */
+class WidgetRemoveButton : public QGraphicsPixmapItem {
+public:
+	explicit WidgetRemoveButton(QGraphicsItem *parent = 0);
+	~WidgetRemoveButton() {}
+
+protected:
+	void dragEnterEvent(QGraphicsSceneDragDropEvent *event);
+
+//	void dragLeaveEvent(QGraphicsSceneDragDropEvent *event);
+
+	void dropEvent(QGraphicsSceneDragDropEvent *event);
+};
+
+
+
+/**
+  When a user shares his pointer through ui client,
+  This class is instantiated and added to the scene
+  */
 class PolygonArrow : public QGraphicsPolygonItem {
 public:
 	PolygonArrow(const quint64 uicid, const QSettings *, const QColor c, QGraphicsItem *parent=0);
@@ -32,12 +55,17 @@ public:
 	void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
 //	void pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
-	void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
+
+	/**
+	  pointer double click is not used because
+	  uiserver directly generate doubleclick event
+	  */
+//	void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
 	/**
 	  * generates real mouse event
 	  */
-	void pointerWheel(const QPointF &scenePos, int delta = 120);
+//	void pointerWheel(const QPointF &scenePos, int delta = 120);
 
 	/**
 	  * This is not standard mouse event. simulate mouse click
@@ -49,6 +77,8 @@ private:
 	  * The unique ID of UI client to which this pointer belongs
 	  */
 	const quint64 uiclientid;
+
+
 	const QSettings *settings;
 
 	/**
@@ -86,6 +116,10 @@ private:
 };
 
 
+/**
+  The same pixmapclose button
+  But this is using scene object
+  */
 class PixmapCloseButtonOnScene : public QGraphicsPixmapItem
 {
 public:

@@ -590,8 +590,51 @@ void BaseWidget::createActions()
 
 
 
+void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn) {
 
+	QPointF itempos = mapFromScene(clickedScenePos);
 
+	/** There is only one view ? **/
+
+	QGraphicsView *gview = 0;
+	foreach (gview, scene()->views()) {
+		if ( gview->rect().contains(gview->mapFromScene(clickedScenePos)) )
+			break;
+	}
+
+	if (gview) {
+		if ( boundingRect().contains(itempos) ) {
+
+			QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+			QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+
+//			grabMouse(); // don't do this before mousePress
+			// sendEvent doesn't delete event object, so event can be created in stack (local to this function)
+			if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
+				qDebug("BaseWidget::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+			}
+
+			// this widget is now mouseGrabber because of the pressEvent
+
+			if ( ! QApplication::sendEvent(gview->viewport(), release) ) {
+				qDebug("BaseWidget::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+			}
+			ungrabMouse();
+
+			if (press) delete press;
+			if (release) delete release;
+
+			/*
+			  // event loop will take ownership of posted event, so event must be created in heap space
+			QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
+			QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
+			*/
+		}
+	}
+	else {
+		qDebug() << "BaseWidget::mouseClick() : couldn't find viewport contains scene position" << clickedScenePos;
+	}
+}
 
 
 
@@ -633,7 +676,6 @@ void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 		// refresh lastTouch
 		_lastTouch = QDateTime::currentMSecsSinceEpoch();
 
-
 		// change zvalue
 		setTopmost();
 	}
@@ -648,8 +690,12 @@ void BaseWidget::mouseMoveEvent(QGraphicsSceneMouseEvent *e) {
 }
 
 void BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
-	Q_UNUSED(event);
-	maximize();
+//	Q_UNUSED(event);
+
+	qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
+
+	if ( mapRectToScene(boundingRect()).contains(event->scenePos()) )
+		maximize();
 }
 
 //void BaseWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
