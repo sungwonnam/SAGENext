@@ -119,47 +119,47 @@
 
 SageStreamWidget::SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags) :
 
-	RailawareWidget(globalappid, s, rm, parent, wFlags),
+        RailawareWidget(globalappid, s, parent, wFlags),
 
-	_fsmMsgThread(0),
-	_sageAppId(0),
-	receiverThread(0),
-	image(0),
-	doubleBuffer(0),
-	serversocket(0),
-	streamsocket(0),
-	imageSize(0),
-	frameCounter(0)
+        _fsmMsgThread(0),
+        _sageAppId(0),
+        receiverThread(0),
+        image(0),
+        doubleBuffer(0),
+        serversocket(0),
+        streamsocket(0),
+        imageSize(0),
+        frameCounter(0)
 {
 }
 
 
 void SageStreamWidget::fadeOutClose() {
 
-	/* signal APP_QUIT throught fsmanagerMsgThread
+        /* signal APP_QUIT throught fsmanagerMsgThread
 This signal is connected in GraphicsViewMain::startSageApp() */
 //	emit destructor(_sageAppId);
 
-	disconnect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
+        disconnect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
 //	disconnect(this, SLOT(scheduleReceive()));
 
 //  connect(sageWidget->affInfo(), SIGNAL(cpuOfMineChanged(RailawareWidget *,int,int)), resourceMonitor, SLOT(updateAffInfo(RailawareWidget *,int,int)));
 //  connect(sageWidget->affInfo(), SIGNAL(streamerAffInfoChanged(AffinityInfo*, quint64)), fsm, SIGNAL(sailSendSetRailMsg(AffinityInfo*,quint64)));
-	if (_affInfo) _affInfo->disconnect();
+        if (_affInfo) _affInfo->disconnect();
 
-	if (doubleBuffer) {
-		doubleBuffer->releaseBackBuffer();
-		doubleBuffer->releaseLocks();
-	}
+        if (doubleBuffer) {
+                doubleBuffer->releaseBackBuffer();
+                doubleBuffer->releaseLocks();
+        }
 
-	if (rMonitor) {
+        if (rMonitor) {
 //		_affInfo->disconnect();
 
-		rMonitor->removeSchedulableWidget(this); // remove this from ResourceMonitor::widgetMultiMap
-		rMonitor->removeApp(this); // will emit appRemoved(int) which is connected to Scheduler::loadBalance()
+                rMonitor->removeSchedulableWidget(this); // remove this from ResourceMonitor::widgetMultiMap
+                rMonitor->removeApp(this); // will emit appRemoved(int) which is connected to Scheduler::loadBalance()
 //		qDebug() << "affInfo removed from resourceMonitor";
 
-		// don't do below
+                // don't do below
 //		if (_affInfo) {
 //			_affInfo->setWidgetPtr(0);
 //			//		qDebug() << "affInfo setWidgetPtr(0)";
@@ -167,80 +167,80 @@ This signal is connected in GraphicsViewMain::startSageApp() */
 //			_affInfo = 0;
 //			//		qDebug() << "affInfo =0 ";
 //		}
-	}
-	RailawareWidget::fadeOutClose();
-	qDebug() << "SageStreamWidget::fadeOutClose()";
+        }
+        RailawareWidget::fadeOutClose();
+        qDebug() << "SageStreamWidget::fadeOutClose()";
 }
 
 SageStreamWidget::~SageStreamWidget()
 {
 //	if (doubleBuffer) delete doubleBuffer;
 
-	if (receiverThread && receiverThread->isRunning()) {
-		receiverThread->endReceiver();
+        if (receiverThread && receiverThread->isRunning()) {
+                receiverThread->endReceiver();
 //		QMetaObject::invokeMethod(receiverThread, "endReceiver",  Qt::QueuedConnection);
 //		qApp->sendPostedEvents(static_cast<QObject *>(receiverThread), QEvent::MetaCall);
 //		receiverThread->wait();
 //		receiverThread->terminate();
 //		delete receiverThread;
-	}
+        }
 
 
 //	if (receiverThread /*&& receiverThread->isFinished()*/)
 //		delete receiverThread;
 
 
-	/***
-	if ( futureWatcher.isPaused() ) {
-		futureWatcher.resume();
-	}
+        /***
+        if ( futureWatcher.isPaused() ) {
+                futureWatcher.resume();
+        }
 //	futureWatcher.cancel(); // This isn't work for a thread run by QtConcurrent::run()
-	if ( futureWatcher.isRunning())
-		futureWatcher.waitForFinished(); // deadlock
-		***/
+        if ( futureWatcher.isRunning())
+                futureWatcher.waitForFinished(); // deadlock
+                ***/
 
-	/* terminate pixelReceiver thread */
-	/*
-	::shutdown(socket, SHUT_RDWR);
-	if ( receiverThread && receiverThread->isRunning() ) {
+        /* terminate pixelReceiver thread */
+        /*
+        ::shutdown(socket, SHUT_RDWR);
+        if ( receiverThread && receiverThread->isRunning() ) {
 //		qDebug("SageStreamWidget::%s() : %llu, %d terminating receiver thread", __FUNCTION__,globalAppId, sageAppId);
-		receiverThread->stopThread();
+                receiverThread->stopThread();
 //		receiverThread->terminate();
 //		receiverThread->wait(); // deadlock
-	}
-	receiverThread = 0;
+        }
+        receiverThread = 0;
  */
 
-	/* with scheduler on, this must be here */
-	if (doubleBuffer) {
-		doubleBuffer->releaseBackBuffer();
-		doubleBuffer->releaseLocks();
-	}
-	if (doubleBuffer) delete doubleBuffer;
+        /* with scheduler on, this must be here */
+        if (doubleBuffer) {
+                doubleBuffer->releaseBackBuffer();
+                doubleBuffer->releaseLocks();
+        }
+        if (doubleBuffer) delete doubleBuffer;
 
 //	if (image) delete image;
 
 //	delete receiverThread;
-	receiverThread->deleteLater();
+        receiverThread->deleteLater();
 
-	qDebug("SageStreamWidget::%s() ",  __FUNCTION__);
+        qDebug("SageStreamWidget::%s() ",  __FUNCTION__);
 }
 
 void SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
-	_fsmMsgThread = thread;
-	_fsmMsgThread->start();
+        _fsmMsgThread = thread;
+        _fsmMsgThread->start();
 }
 
 
 void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 
-	if (_perfMon) {
-		_perfMon->getDrawTimer().start();
+        if (_perfMon) {
+                _perfMon->getDrawTimer().start();
 //		perfMon->startPaintEvent();
-	}
+        }
 
-	if (isSelected()) {
-		// setBrush hurts performance badly
+        if (isSelected()) {
+                // setBrush hurts performance badly
 //		painter->setBrush( QBrush(Qt::lightGray, Qt::Dense2Pattern) ); // very bad
 
 //		painter->drawRect( windowFrameRect() ); // will add 0.5~1 msec when 4K
@@ -249,17 +249,17 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 //		painter->fillRect(windowFrameRect(), Qt::Dense6Pattern); // bad
 
 //		shadow->setEnabled(true);
-	}
-	else {
+        }
+        else {
 //		shadow->setEnabled(false);
-	}
+        }
 
 //	if ( currentScale != 1.0 ) painter->scale(currentScale, currentScale);
 
 //	Q_ASSERT(image && !image->isNull());
 //	painter->drawImage(0, 0, *image2); // Implicit Sharing
 
-	// slower than painter->scale()
+        // slower than painter->scale()
 //	painter->drawImage(QPointF(0, 0), _image->scaled(cs.toSize(), Qt::KeepAspectRatio));
 
 //	  This is bettern than
@@ -270,72 +270,72 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 //	painter->drawPixmap(0, 0, QPixmap::fromImage(*_image));
 
 
-	Q_ASSERT(_pixmap);
-	if(!_pixmap.isNull())
-		painter->drawPixmap(0, 0, _pixmap); // the best so far
+        Q_ASSERT(_pixmap);
+        if(!_pixmap.isNull())
+                painter->drawPixmap(0, 0, _pixmap); // the best so far
 
 //	if (! image2.isNull() )
 //		painter->drawImage(0, 0, image2);
 
 
 /***
-	if ( ! image2.isNull() ) {
-		painter->beginNativePainting();
+        if ( ! image2.isNull() ) {
+                painter->beginNativePainting();
 
-		glEnable(GL_TEXTURE_2D);
+                glEnable(GL_TEXTURE_2D);
 
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		//	glOrtho(0, 1600, 1200, 0, 0, 100);
-		glMatrixMode(GL_MODELVIEW);
+                glMatrixMode(GL_PROJECTION);
+                glLoadIdentity();
+                //	glOrtho(0, 1600, 1200, 0, 0, 100);
+                glMatrixMode(GL_MODELVIEW);
 
-		glGenTextures(1, &texhandle);
-		glBindTexture(GL_TEXTURE_2D, texhandle);
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, image2.width(), image2.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image2.bits());
-
-
-		glClearColor(1, 1, 1, 1);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glBegin(GL_QUADS);
-		// top left
-		glTexCoord2f(0, 0);
-		glVertex2f(0, 0);
-
-		// top right (0,0)
-		glTexCoord2f(0, image2.width());
-		glVertex2f(0, image2.width());
-
-		// bottom right
-		glTexCoord2f(image2.height(), image2.width());
-		glVertex2f(image2.height(), image2.width());
-
-		// bottom left
-		glTexCoord2f(image2.height(), 0);
-		glVertex2f(image2.height(), 0);
-
-		glEnd();
-		glFinish();
-		//	glDisable(GL_TEXTURE_2D);
-
-		painter->endNativePainting();
-	}
-	****/
+                glGenTextures(1, &texhandle);
+                glBindTexture(GL_TEXTURE_2D, texhandle);
+                glTexImage2D(GL_TEXTURE_2D, 0, 3, image2.width(), image2.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image2.bits());
 
 
+                glClearColor(1, 1, 1, 1);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                glBegin(GL_QUADS);
+                // top left
+                glTexCoord2f(0, 0);
+                glVertex2f(0, 0);
+
+                // top right (0,0)
+                glTexCoord2f(0, image2.width());
+                glVertex2f(0, image2.width());
+
+                // bottom right
+                glTexCoord2f(image2.height(), image2.width());
+                glVertex2f(image2.height(), image2.width());
+
+                // bottom left
+                glTexCoord2f(image2.height(), 0);
+                glVertex2f(image2.height(), 0);
+
+                glEnd();
+                glFinish();
+                //	glDisable(GL_TEXTURE_2D);
+
+                painter->endNativePainting();
+        }
+        ****/
 
 
-	if ( showInfo  &&  !infoTextItem->isVisible() ) {
+
+
+        if ( showInfo  &&  !infoTextItem->isVisible() ) {
 #if defined(Q_OS_LINUX)
-		_appInfo->setDrawingThreadCpu(sched_getcpu());
+                _appInfo->setDrawingThreadCpu(sched_getcpu());
 #endif
-		infoTextItem->show();
-	}
-	else if (!showInfo && infoTextItem->isVisible()){
-		infoTextItem->hide();
-	}
-	if (_perfMon)
-		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
+                infoTextItem->show();
+        }
+        else if (!showInfo && infoTextItem->isVisible()){
+                infoTextItem->hide();
+        }
+        if (_perfMon)
+                _perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
 
@@ -355,7 +355,7 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 void SageStreamWidget::scheduleReceive() {
 //	qDebug() << "widget wakeOne";
 //	if(wc) wc->wakeOne();
-	receiverThread->receivePixel();
+        receiverThread->receivePixel();
 }
 
 /**
@@ -364,24 +364,24 @@ void SageStreamWidget::scheduleReceive() {
 void SageStreamWidget::scheduleUpdate() {
 //	struct timeval s,e;
 //	gettimeofday(&s, 0);
-	QImage *imgPtr = 0;
+        QImage *imgPtr = 0;
 
-	if ( /*!image*/  !doubleBuffer || !receiverThread || receiverThread->isFinished() )
-		return;
+        if ( /*!image*/  !doubleBuffer || !receiverThread || receiverThread->isFinished() )
+                return;
 
-	else {
-		imgPtr = static_cast<QImage *>(doubleBuffer->getBackBuffer());
+        else {
+                imgPtr = static_cast<QImage *>(doubleBuffer->getBackBuffer());
 
 //		qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget retrieved " << frameCounter + 1;
 
 //		qDebug() << globalAppId << ", " << sageAppId << " : here";
-		if (imgPtr && !imgPtr->isNull() ) {
+                if (imgPtr && !imgPtr->isNull() ) {
 
-			_perfMon->getConvTimer().start();
+                        _perfMon->getConvTimer().start();
 
-			// converts to QPixmap if you're gonna paint same QImage more than twice.
-			if (! _pixmap.convertFromImage(*imgPtr, Qt::AutoColor | Qt::ThresholdDither) )
-				qDebug("SageStreamWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
+                        // converts to QPixmap if you're gonna paint same QImage more than twice.
+                        if (! _pixmap.convertFromImage(*imgPtr, Qt::AutoColor | Qt::ThresholdDither) )
+                                qDebug("SageStreamWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
 
 
 
@@ -393,52 +393,52 @@ void SageStreamWidget::scheduleUpdate() {
 
 
 
-			else {
+                        else {
 
-				setScheduled(false); // reset scheduling flag
+                                setScheduled(false); // reset scheduling flag
 
-				++frameCounter;
+                                ++frameCounter;
 //				qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget : " << frameCounter << " has converted";
 
-				_perfMon->updateConvDelay();
+                                _perfMon->updateConvDelay();
 
-				/*
-				 Maybe I should schedule update() and releaseBackBuffer in the scheduler
-				 */
-				doubleBuffer->releaseBackBuffer();
-				imgPtr = 0;
+                                /*
+                                 Maybe I should schedule update() and releaseBackBuffer in the scheduler
+                                 */
+                                doubleBuffer->releaseBackBuffer();
+                                imgPtr = 0;
 
 //				_perfMon->getEqTimer().start();
 //				QDateTime::currentMSecsSinceEpoch();
 //				qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget is about to call update() for frame " << frameCounter;
 
-				// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
-				// QGraphicsView will process the event
-				update(); // post paint event to myself
+                                // Schedules a redraw. This is not an immediate paint. This actually is postEvent()
+                                // QGraphicsView will process the event
+                                update(); // post paint event to myself
 //				qApp->sendPostedEvents(this, QEvent::MetaCall);
 //				qApp->flush();
 //				qApp->processEvents();
 
 //				this->scene()->views().front()->update( mapRectToScene(boundingRect()).toRect() );
-			}
-		}
-		else {
-			qCritical("SageStreamWidget::%s() : globalAppId %llu, sageAppId %llu : imgPtr is null. Failed to retrieve back buffer from double buffer", __FUNCTION__, globalAppId(), _sageAppId);
-		}
+                        }
+                }
+                else {
+                        qCritical("SageStreamWidget::%s() : globalAppId %llu, sageAppId %llu : imgPtr is null. Failed to retrieve back buffer from double buffer", __FUNCTION__, globalAppId(), _sageAppId);
+                }
 //		doubleBuffer->releaseBackBuffer();
 //		imgPtr = 0;
-	}
+        }
 
 //	pixmap->convertFromImage(image->copy());
 
-	/* resizing is handled here. This seems very slow */
+        /* resizing is handled here. This seems very slow */
 //	pixmap->convertFromImage( image->scaledToWidth(currentScale * getNativeSize().width()) );
 //	prepareGeometryChange();
 //	resize(pixmap->width(), pixmap->height());
 
 //	*image2 = image->copy();
 
-	/* resizing is handled by QGraphicsItem::setScale(). 2 msec drawing latency becomes 8 msec as soon as scale changes from 1.0 */
+        /* resizing is handled by QGraphicsItem::setScale(). 2 msec drawing latency becomes 8 msec as soon as scale changes from 1.0 */
 
 //	convertedToPixmap->release();
 //	pixmap->convertFromImage( *image2 );
@@ -462,7 +462,7 @@ void SageStreamWidget::scheduleUpdate() {
 //		qApp->postEvent(qApp, ue, ue->priority);
 //	}
 //	else {
-		// draw immediately
+                // draw immediately
 //		QGraphicsView *gv = scene()->views().first();
 //		Q_ASSERT(gv);
 //		gv->viewport()->repaint(
@@ -475,54 +475,54 @@ void SageStreamWidget::scheduleUpdate() {
 
 
 int SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
-	int bytePerPixel = getPixelSize(pixfmt);
-	int memwidth = resX * bytePerPixel; //Byte (single row of frame)
+        int bytePerPixel = getPixelSize(pixfmt);
+        int memwidth = resX * bytePerPixel; //Byte (single row of frame)
 
-	imageSize = memwidth * resY; // Byte (a frame)
+        imageSize = memwidth * resY; // Byte (a frame)
 
-	qDebug("SageStreamWidget::%s() : recved regMsg. size %d x %d, pixfmt %d, pixelSize %d, memwidth %d, imageSize %d", __FUNCTION__, resX, resY, pixfmt, bytePerPixel, memwidth, imageSize);
+        qDebug("SageStreamWidget::%s() : recved regMsg. size %d x %d, pixfmt %d, pixelSize %d, memwidth %d, imageSize %d", __FUNCTION__, resX, resY, pixfmt, bytePerPixel, memwidth, imageSize);
 
-	if (!doubleBuffer) doubleBuffer = new ImageDoubleBuffer;
+        if (!doubleBuffer) doubleBuffer = new ImageDoubleBuffer;
 
-	/*
-	 Do not draw ARGB32 images into the raster engine.
-	 ARGB32_premultiplied and RGB32 are the best ! (they are pixel wise compatible)
-	 http://labs.qt.nokia.com/2009/12/18/qt-graphics-and-performance-the-raster-engine/
-		 */
-	switch(pixfmt) {
-	case PIXFMT_888 : { // GL_RGB
-			doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
-			//		image = new QImage(resX, resY, QImage::Format_RGB32); // x0ffRRGGBB
-			break;
-		}
-	case PIXFMT_888_INV : { // GL_BGR
-			doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
-			doubleBuffer->rgbSwapped();
-			break;
-		}
-	case PIXFMT_8888 : { // GL_RGBA
-			doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB32);
-			break;
-		}
-	case PIXFMT_8888_INV : { // GL_BGRA
-			doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB32);
-			doubleBuffer->rgbSwapped();
-			break;
-		}
-	case PIXFMT_555 : { // GL_RGB, GL_UNSIGNED_SHORT_5_5_5_1
-			doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB555);
-			break;
-		}
-	default: {
-			doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
-			break;
-		}
-	}
+        /*
+         Do not draw ARGB32 images into the raster engine.
+         ARGB32_premultiplied and RGB32 are the best ! (they are pixel wise compatible)
+         http://labs.qt.nokia.com/2009/12/18/qt-graphics-and-performance-the-raster-engine/
+                 */
+        switch(pixfmt) {
+        case PIXFMT_888 : { // GL_RGB
+                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
+                        //		image = new QImage(resX, resY, QImage::Format_RGB32); // x0ffRRGGBB
+                        break;
+                }
+        case PIXFMT_888_INV : { // GL_BGR
+                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
+                        doubleBuffer->rgbSwapped();
+                        break;
+                }
+        case PIXFMT_8888 : { // GL_RGBA
+                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB32);
+                        break;
+                }
+        case PIXFMT_8888_INV : { // GL_BGRA
+                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB32);
+                        doubleBuffer->rgbSwapped();
+                        break;
+                }
+        case PIXFMT_555 : { // GL_RGB, GL_UNSIGNED_SHORT_5_5_5_1
+                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB555);
+                        break;
+                }
+        default: {
+                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
+                        break;
+                }
+        }
 
 //	if ( ! image || image->isNull() ) {
 //		return -1;
 //	}
-	image = static_cast<QImage *>(doubleBuffer->getFrontBuffer());
+        image = static_cast<QImage *>(doubleBuffer->getFrontBuffer());
 
 //	glGenTextures(1, &texhandle);
 //	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -535,178 +535,178 @@ int SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
 
 //	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->width(), image->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, image->bits());
 
-	if (image && !image->isNull())
-		return 0;
-	else
-		return -1;
+        if (image && !image->isNull())
+                return 0;
+        else
+                return -1;
 }
 
 
 
 int SageStreamWidget::initialize(quint64 sageappid, QString appname, QRect initrect, int protocol, int port) {
 
-	_sageAppId = sageappid;
+        _sageAppId = sageappid;
 
 
-	/* accept connection from sageStreamer */
-	serversocket = ::socket(AF_INET, SOCK_STREAM, 0);
-	if ( serversocket == -1 ) {
-		qCritical("SageStreamWidget::%s() : couldn't create socket", __FUNCTION__);
-		return -1;
-	}
+        /* accept connection from sageStreamer */
+        serversocket = ::socket(AF_INET, SOCK_STREAM, 0);
+        if ( serversocket == -1 ) {
+                qCritical("SageStreamWidget::%s() : couldn't create socket", __FUNCTION__);
+                return -1;
+        }
 
-	// setsockopt
-	int optval = 1;
-	if ( setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
-		qWarning("SageStreamWidget::%s() : setsockopt SO_REUSEADDR failed",  __FUNCTION__);
-	}
+        // setsockopt
+        int optval = 1;
+        if ( setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
+                qWarning("SageStreamWidget::%s() : setsockopt SO_REUSEADDR failed",  __FUNCTION__);
+        }
 
-	// bind to port
-	struct sockaddr_in localAddr, clientAddr;
-	memset(&localAddr, 0, sizeof(localAddr));
-	localAddr.sin_family = AF_INET;
-	localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	localAddr.sin_port = htons(protocol + port);
+        // bind to port
+        struct sockaddr_in localAddr, clientAddr;
+        memset(&localAddr, 0, sizeof(localAddr));
+        localAddr.sin_family = AF_INET;
+        localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        localAddr.sin_port = htons(protocol + port);
 
-	// bind
-	if( bind(serversocket, (struct sockaddr *)&localAddr, sizeof(struct sockaddr_in)) != 0) {
-		qCritical("SageStreamWidget::%s() : bind error",  __FUNCTION__);
-		return -1;
-	}
+        // bind
+        if( bind(serversocket, (struct sockaddr *)&localAddr, sizeof(struct sockaddr_in)) != 0) {
+                qCritical("SageStreamWidget::%s() : bind error",  __FUNCTION__);
+                return -1;
+        }
 
-	// put in listen mode
-	listen(serversocket, 15);
+        // put in listen mode
+        listen(serversocket, 15);
 
-	// accept
-	/** accept will BLOCK **/
+        // accept
+        /** accept will BLOCK **/
 //	qDebug("SageStreamWidget::%s() : Blocking waiting for sender to connect to TCP port %d", __FUNCTION__,protocol+port);
-	memset(&clientAddr, 0, sizeof(clientAddr));
-	int addrLen = sizeof(struct sockaddr_in);
-	if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
-		qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
-		perror("accept");
-		return -1;
-	}
+        memset(&clientAddr, 0, sizeof(clientAddr));
+        int addrLen = sizeof(struct sockaddr_in);
+        if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
+                qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
+                perror("accept");
+                return -1;
+        }
 
 //	struct hostent *he = gethostbyaddr( (void *)&clientAddr, addrLen, AF_INET);
 //	Q_ASSERT(he);
 //	qDebug("SageStreamWidget::%s() : %s", __FUNCTION__, he->h_name);
 
-	// read regMsg 1024Byte
-	/*char regMsg[REG_MSG_SIZE];
-		  sprintf(regMsg, "%d %d %d %d %d %d %d %d %d %d %d",
-				  config.streamType, // HARD_SYNC
-				  config.frameRate,
-				  winID,
-				  config.groupSize,
-				  blockSize,
-				  config.nodeNum,
-				  (int)config.pixFmt,
-				  config.blockX,
-				  config.blockY,
-				  config.totalWidth,
-				  config.totalHeight);
+        // read regMsg 1024Byte
+        /*char regMsg[REG_MSG_SIZE];
+                  sprintf(regMsg, "%d %d %d %d %d %d %d %d %d %d %d",
+                                  config.streamType, // HARD_SYNC
+                                  config.frameRate,
+                                  winID,
+                                  config.groupSize,
+                                  blockSize,
+                                  config.nodeNum,
+                                  (int)config.pixFmt,
+                                  config.blockX,
+                                  config.blockY,
+                                  config.totalWidth,
+                                  config.totalHeight);
 
 
-				   [103 60 1 131072 12416 1 5 64 64 400 400]
-		  */
+                                   [103 60 1 131072 12416 1 5 64 64 400 400]
+                  */
 
 
-	QByteArray regMsg(OldSage::REG_MSG_SIZE, '\0');
-	int read = recv(streamsocket, (void *)regMsg.data(), regMsg.size(), MSG_WAITALL);
-	if ( read == -1 ) {
-		qCritical("SageStreamWidget::%s() : error while reading regMsg. %s",__FUNCTION__, "");
-		return -1;
-	}
-	else if ( read == 0 ) {
-		qCritical("SageStreamWidget::%s() : sender disconnected, while reading 1KB regMsg",__FUNCTION__);
-		return -1;
-	}
+        QByteArray regMsg(OldSage::REG_MSG_SIZE, '\0');
+        int read = recv(streamsocket, (void *)regMsg.data(), regMsg.size(), MSG_WAITALL);
+        if ( read == -1 ) {
+                qCritical("SageStreamWidget::%s() : error while reading regMsg. %s",__FUNCTION__, "");
+                return -1;
+        }
+        else if ( read == 0 ) {
+                qCritical("SageStreamWidget::%s() : sender disconnected, while reading 1KB regMsg",__FUNCTION__);
+                return -1;
+        }
 
-	QString regMsgStr(regMsg);
-	QStringList regMsgStrList = regMsgStr.split(" ", QString::SkipEmptyParts);
-	qDebug("SageStreamWidget::%s() : recved regMsg from sageStreamer::connectToRcv() [%s]",  __FUNCTION__, regMsg.constData());
-	int framerate = regMsgStrList.at(1).toInt();
-	int groupsize = regMsgStrList.at(3).toInt(); // this is going to be the network user buffer size
-	_appInfo->setNetworkUserBufferLength(groupsize);
-	int pixfmt = regMsgStrList.at(6).toInt();
-	int resX = regMsgStrList.at(9).toInt();
-	int resY = regMsgStrList.at(10).toInt();
-	Q_ASSERT(resX > 0 && resY > 0);
+        QString regMsgStr(regMsg);
+        QStringList regMsgStrList = regMsgStr.split(" ", QString::SkipEmptyParts);
+        qDebug("SageStreamWidget::%s() : recved regMsg from sageStreamer::connectToRcv() [%s]",  __FUNCTION__, regMsg.constData());
+        int framerate = regMsgStrList.at(1).toInt();
+        int groupsize = regMsgStrList.at(3).toInt(); // this is going to be the network user buffer size
+        _appInfo->setNetworkUserBufferLength(groupsize);
+        int pixfmt = regMsgStrList.at(6).toInt();
+        int resX = regMsgStrList.at(9).toInt();
+        int resY = regMsgStrList.at(10).toInt();
+        Q_ASSERT(resX > 0 && resY > 0);
 
 //	qDebug() << "sd;fkljasdf;lkasjdf;    " << framerate << "\n";
-	_perfMon->setExpectedFps( (qreal)framerate );
-	_perfMon->setAdjustedFps( (qreal)framerate );
+        _perfMon->setExpectedFps( (qreal)framerate );
+        _perfMon->setAdjustedFps( (qreal)framerate );
 
-	resize(resX, resY);
-
-
-	/* create double buffer */
-	if ( createImageBuffer(resX, resY, (sagePixFmt)pixfmt) != 0 ) {
-		qCritical("%s::%s() : imagedoublebuffer is not valid", metaObject()->className(), __FUNCTION__);
-		::shutdown(streamsocket, SHUT_RDWR);
-		QMetaObject::invokeMethod(_fsmMsgThread, "sendSailShutdownMsg", Qt::QueuedConnection);
-		deleteLater();
-		return -1;
-	}
+        resize(resX, resY);
 
 
+        /* create double buffer */
+        if ( createImageBuffer(resX, resY, (sagePixFmt)pixfmt) != 0 ) {
+                qCritical("%s::%s() : imagedoublebuffer is not valid", metaObject()->className(), __FUNCTION__);
+                ::shutdown(streamsocket, SHUT_RDWR);
+                QMetaObject::invokeMethod(_fsmMsgThread, "sendSailShutdownMsg", Qt::QueuedConnection);
+                deleteLater();
+                return -1;
+        }
 
-	if(_affInfo)
-		_affInfo->setWidgetID(_sageAppId);
 
-	Q_ASSERT(_appInfo);
-	_appInfo->setFrameSize(image->width(), image->height(), image->depth()); // == _image->byteCount()
+
+        if(_affInfo)
+                _affInfo->setWidgetID(_sageAppId);
+
+        Q_ASSERT(_appInfo);
+        _appInfo->setFrameSize(image->width(), image->height(), image->depth()); // == _image->byteCount()
 
 //		qDebug("SageStreamWidget::%s() : sageappid %llu, groupsize %d, frameSize(SAIL) %d, frameSize(QImage) %d, expectedFps %.2f", __FUNCTION__, sageAppId, _appInfo->getNetworkUserBufferLength(), imageSize, _appInfo->getFrameBytecount(), _perfMon->getExpetctedFps());
 
-	_appInfo->setExecutableName( appname );
-	if ( appname == "imageviewer" ) {
-		_appInfo->setMediaType(MEDIA_TYPE_IMAGE);
-	}
-	else {
-		_appInfo->setMediaType(MEDIA_TYPE_VIDEO);
-	}
+        _appInfo->setExecutableName( appname );
+        if ( appname == "imageviewer" ) {
+                _appInfo->setMediaType(MEDIA_TYPE_IMAGE);
+        }
+        else {
+                _appInfo->setMediaType(MEDIA_TYPE_VIDEO);
+        }
 
 
 
-	/* starting receiving thread */
+        /* starting receiving thread */
 
-	// image->bits() will do deep copy (detach)
-	receiverThread = new SagePixelReceiver(protocol, streamsocket, /*image*/ doubleBuffer, _appInfo, _perfMon, _affInfo, /*this, mutex, wc,*/ settings);
+        // image->bits() will do deep copy (detach)
+        receiverThread = new SagePixelReceiver(protocol, streamsocket, /*image*/ doubleBuffer, _appInfo, _perfMon, _affInfo, /*this, mutex, wc,*/ settings);
 //		qDebug("SageStreamWidget::%s() : SagePixelReceiver thread has begun",  __FUNCTION__);
 
-	Q_ASSERT(receiverThread);
+        Q_ASSERT(receiverThread);
 
-	connect(receiverThread, SIGNAL(finished()), this, SLOT(fadeOutClose())); // WA_Delete_on_close is defined
+        connect(receiverThread, SIGNAL(finished()), this, SLOT(fadeOutClose())); // WA_Delete_on_close is defined
 
-	// don't do below.
+        // don't do below.
 //		connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));
 
 
 //		if (!scheduler) {
-		// This is queued connection because receiverThread reside outside of the main thread
-		if ( ! connect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
-			qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleUpdate() slot", metaObject()->className(), __FUNCTION__);
-			return -1;
-		}
-		else {
+                // This is queued connection because receiverThread reside outside of the main thread
+                if ( ! connect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
+                        qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleUpdate() slot", metaObject()->className(), __FUNCTION__);
+                        return -1;
+                }
+                else {
 //				qDebug("%s::%s() : frameReceived() -> scheduleUpdate() are connected", metaObject()->className(), __FUNCTION__);
-		}
+                }
 //		}
-	receiverThread->start();
+        receiverThread->start();
 
 
-	/*
-	QFuture<void> future = QtConcurrent::run(this, &SageStreamWidget::pixelRecvThread);
-	futureWatcher.setFuture(future);
-	connect(&futureWatcher, SIGNAL(finished()), this, SLOT(close()));
-	connect(this, SIGNAL(pauseThread()), &futureWatcher, SLOT(pause()));
-	connect(this, SIGNAL(resumeThread()), &futureWatcher, SLOT(resume()));
-	*/
-	setPos(initrect.x(), initrect.y());
+        /*
+        QFuture<void> future = QtConcurrent::run(this, &SageStreamWidget::pixelRecvThread);
+        futureWatcher.setFuture(future);
+        connect(&futureWatcher, SIGNAL(finished()), this, SLOT(close()));
+        connect(this, SIGNAL(pauseThread()), &futureWatcher, SLOT(pause()));
+        connect(this, SIGNAL(resumeThread()), &futureWatcher, SLOT(resume()));
+        */
+        setPos(initrect.x(), initrect.y());
 
-	return 0;
+        return 0;
 }
 
 
@@ -908,30 +908,30 @@ int SageStreamWidget::getPixelSize(sagePixFmt type)
 {
    int bytesPerPixel = 0;
    switch(type) {
-	  case PIXFMT_555:
-	  case PIXFMT_555_INV:
-	  case PIXFMT_565:
-	  case PIXFMT_565_INV:
-	  case PIXFMT_YUV:
-		 bytesPerPixel = 2;
-		 break;
-	  case PIXFMT_888:
-	  case PIXFMT_888_INV:
-		 bytesPerPixel = 3;
-		 break;
+          case PIXFMT_555:
+          case PIXFMT_555_INV:
+          case PIXFMT_565:
+          case PIXFMT_565_INV:
+          case PIXFMT_YUV:
+                 bytesPerPixel = 2;
+                 break;
+          case PIXFMT_888:
+          case PIXFMT_888_INV:
+                 bytesPerPixel = 3;
+                 break;
 
-	  case PIXFMT_8888:
-	  case PIXFMT_8888_INV:
-		 bytesPerPixel = 4;
-		 break;
+          case PIXFMT_8888:
+          case PIXFMT_8888_INV:
+                 bytesPerPixel = 4;
+                 break;
 
-	  case PIXFMT_DXT:
-		 bytesPerPixel = 8;
-		 break;
+          case PIXFMT_DXT:
+                 bytesPerPixel = 8;
+                 break;
 
-	  default:
-		 bytesPerPixel = 3;
-		 break;
+          default:
+                 bytesPerPixel = 3;
+                 break;
    }
    return bytesPerPixel;
 }

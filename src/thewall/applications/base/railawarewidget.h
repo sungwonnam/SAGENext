@@ -14,93 +14,93 @@ class QWaitCondition;
 
 class RailawareWidget : public BaseWidget
 {
-	Q_OBJECT
+        Q_OBJECT
 //	Q_PROPERTY(qreal priority READ priority WRITE setPriority)
 
 public:
-	/*!
-	  It is user's responsibility to create Affinity related object by calling createAffInstances() when using default constructor
-	  */
-	RailawareWidget();
+        /*!
+          It is user's responsibility to create Affinity related object by calling createAffInstances() when using default constructor
+          */
+        RailawareWidget();
 
-	/*!
-	  It is higly recommended to you this constructor instead of default one
-	  */
-	RailawareWidget(quint64 globalappid, const QSettings *s, ResourceMonitor *rm,  QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
-		virtual ~RailawareWidget();
+        /*!
+          It is higly recommended to you this constructor instead of default one
+          */
+        RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+        virtual ~RailawareWidget();
 
-	/*!
-	  Resource Monitor may want this to reschedule an app
-	  */
-	inline AffinityInfo * affInfo() {return _affInfo;}
+        /*!
+          Resource Monitor may want this to reschedule an app
+          */
+        inline AffinityInfo * affInfo() {return _affInfo;}
 
-	/*!
-	  In this function, AffinityInfo::cpuOfMineChanged() signal is connected to ResourceMonitor::updateAffInfo() slot if ResourceMonitor object exist. This connection ensures resourceMonitor to maintain up to date info on which app is affine to which processor.
+        /*!
+          In this function, AffinityInfo::cpuOfMineChanged() signal is connected to ResourceMonitor::updateAffInfo() slot if ResourceMonitor object exist. This connection ensures resourceMonitor to maintain up to date info on which app is affine to which processor.
 
-	  If scheduler also exists, Scheduler::assignProcessor() followed by AffinityInfo::setReadyBit() are called.
-	  */
-	void createAffInstances();
-
-
-	/*!
-	  This will determine delay in stream loop
-	  */
-	int setQuality(qreal newQuality);
-	qreal observedQuality();
-	qreal observedQualityAdjusted();
-
-	qreal unitValue();
+          If scheduler also exists, Scheduler::assignProcessor() followed by AffinityInfo::setReadyBit() are called.
+          */
+        void createAffInstances();
 
 
-	bool isScheduled() const {return _scheduled;}
-	void setScheduled(bool b) { _scheduled = b;}
+        /*!
+          This will determine delay in stream loop
+          */
+        int setQuality(qreal newQuality);
+        qreal observedQuality();
+        qreal observedQualityAdjusted();
+
+        qreal unitValue();
 
 
-	/*!
-	  SMART scheduler
-	  */
-	int failToSchedule;
+        bool isScheduled() const {return _scheduled;}
+        void setScheduled(bool b) { _scheduled = b;}
+
+
+        /*!
+          SMART scheduler
+          */
+        int failToSchedule;
 
 
 protected:
-	/*!
-	  AffinityInfo class. Only animation widget will instantiate this
-	  */
+        /*!
+          AffinityInfo class. Only animation widget will instantiate this
+          */
 //	AffinityInfo *affInfo;
-	AffinityControlDialog *affCtrlDialog;
+        AffinityControlDialog *affCtrlDialog;
 
-	QAction *_affCtrlAction;
+        QAction *_affCtrlAction;
 
-	SchedulerControl *scheduler;
-
-
+        SchedulerControl *scheduler;
 
 
 
-	virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
 
 
-	/*!
-	  flag for scheduler
-	  */
-	bool _scheduled;
+        virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
+
+
+        /*!
+          flag for scheduler
+          */
+        bool _scheduled;
 
 signals:
 
 public slots:
-	void showAffCtrlDialog();
+        void showAffCtrlDialog();
 
-	/*!
-	  overrides BaseWidget::fadeOutClose()
-	  */
-	virtual void fadeOutClose();
+        /*!
+          overrides BaseWidget::fadeOutClose()
+          */
+        virtual void fadeOutClose();
 
 
-	/*!
-	  */
-	virtual void scheduleUpdate() { update(); }
+        /*!
+          */
+        virtual void scheduleUpdate() { update(); }
 
-	virtual void scheduleReceive() {}
+        virtual void scheduleReceive() {}
 };
 
 #endif // ANIMATIONWIDGET_H

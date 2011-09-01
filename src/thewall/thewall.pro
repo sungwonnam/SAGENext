@@ -91,7 +91,8 @@ SOURCES += \
 	applications/base/affinitycontroldialog.cpp \
 	sagenextscene.cpp \
 	sagenextviewport.cpp \
-	sagenextlauncher.cpp
+	sagenextlauncher.cpp \
+    applications/mediabrowser.cpp
 
 HEADERS += \
 	settingdialog.h \
@@ -121,4 +122,7 @@ HEADERS += \
 	applications/base/railawarewidget.h \
 	sagenextscene.h \
 	sagenextviewport.h \
-	sagenextlauncher.h
+	sagenextlauncher.h \
+    applications/mediabrowser.h
+
+
