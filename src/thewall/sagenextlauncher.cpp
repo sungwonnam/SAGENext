@@ -208,6 +208,15 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
                 break;
         }
 
+        case MEDIA_TYPE_WEBURL: {
+            // filename is url string
+            WebWidget *ww = new WebWidget(_globalAppId, _settings, 0, Qt::Window);
+            ww->moveBy(30, 30);
+            w = ww;
+            ww->setUrl( filename );
+            break;
+        }
+
         case MEDIA_TYPE_AUDIO: {
                 break;
         }

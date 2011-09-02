@@ -250,7 +250,6 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         // find the PixmapArrow associated with this uiClientId
         QGraphicsItem *pa = arrow(uiclientid);
         if (pa) {
-            //				gviewMain->scene()->removeItem(pa);
             delete pa;
             pointers.remove(uiclientid);
         }
@@ -260,9 +259,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         break;
     }
 
-        /*
-  Nothing special happens. just the Pointer item is going to move on the scene
-  */
+    /*
+      Nothing special happens. just the Pointer item is going to move on the scene
+     */
     case POINTER_MOVING: {
         quint64 uiclientid;
         int x,y;
@@ -271,7 +270,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         // find the PolygonArrow associated with this uiClientId
         PolygonArrow *pa = arrow(uiclientid);
         if (pa) {
-            //				pa->setPos(x,y);
+            //pa->setPos(x,y);
             pa->pointerMove(QPointF(x,y), Qt::NoButton); // just move pointer graphics item
         }
         else {
@@ -280,10 +279,10 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         break;
     }
 
-        /*
-                  POINTER_PRESS is done already
-                  widget under the pointer is going to be moved by QGraphicsItem::moveBy()
-                  */
+    /*
+      An external ui client's mouseMoveEvent plus left button modifier triggers this
+      This is always followed by POINTER_PRESS
+    */
     case POINTER_DRAGGING: {
         quint64 uiclientid;
         int x,y;
@@ -293,20 +292,6 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         if (pa) {
             // direct widget manipulation instead of posting mouse event
             pa->pointerMove(QPointF(x,y), Qt::LeftButton);
-
-
-            /***********
-                                pa->setPos(x, y); // x, y is in parent coordinate, scene coordiante in this case
-
-                                // generate mouse event directly from ui server
-                                QMouseEvent moveEvent(QEvent::MouseMove, gview->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-                                pa->appUnderPointer()->grabMouse();
-                                qDebug() << QPointF(x,y);
-                                if ( ! QApplication::sendEvent(gviewMain->viewport(), &moveEvent) ) {
-                                        qDebug("UiServer::%s() : sendEvent MouseMovePress failed", __FUNCTION__);
-                                }
-                                pa->appUnderPointer()->ungrabMouse();
-                                ******************/
         }
         else {
             qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
@@ -316,21 +301,21 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
     }
 
 
-        /*
-  Pointer will have widget if there is one under it
-  */
+   /*
+    Pointer will have widget if there is one under it
+    */
     case POINTER_PRESS: {
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
         PolygonArrow *pa =  arrow(uiclientid) ;
         if (pa) {
-            qDebug("UiServer::%s() : POINTER_PRESS : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
+//            qDebug("UiServer::%s() : POINTER_PRESS : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
 
             // Below will call setAppUnderPointer()
             // followed by setTopmost()
             pa->pointerPress(QPointF(x,y), Qt::LeftButton, Qt::NoButton | Qt::LeftButton);
-            //				pa->setAppUnderPointer(QPointF(x,y));
+            //pa->setAppUnderPointer(QPointF(x,y));
         }
         else {
             qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
@@ -353,6 +338,51 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
                         break;
                 }
                 **/
+
+        /**
+         * mouseReleaseEvent from external GUI sends POINTER_CLICK message
+         */
+    case POINTER_CLICK: {
+        quint64 uiclientid;
+        int x,y; // x,y from ui clients is the scene position of the wall
+        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        PolygonArrow *pa =  arrow(uiclientid) ;
+        if (pa) {
+            qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
+
+            // Widget under the pointer can reimplement BaseWidget::mouseClick()
+            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
+        }
+        else {
+            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
+        }
+        break;
+    }
+
+
+
+    case POINTER_RIGHTCLICK: {
+        quint64 uiclientid;
+        int x,y;
+        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        PolygonArrow *pa =  arrow(uiclientid) ;
+        if (pa) {
+            qDebug("UiServer::%s() : POINTER_RIGHTCLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
+            //				if ( pa->setAppUnderPointer( QPointF(x,y)) ) {
+            //					if ( pa->appUnderPointer()->isSelected() ) {
+            //						pa->appUnderPointer()->setSelected(false);
+            //					}
+            //					else {
+            //						pa->appUnderPointer()->setSelected(true);
+            //					}
+            //				}
+        }
+        else {
+            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
+        }
+        break;
+    }
+
 
     case POINTER_DOUBLECLICK: {
         quint64 uiclientid;
@@ -423,85 +453,6 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 
         break;
     }
-
-        /**
-                  * mouseReleaseEvent from external GUI sends POINTER_CLICK message
-                  */
-    case POINTER_CLICK: {
-        quint64 uiclientid;
-        int x,y; // x,y from ui clients is the scene position of the wall
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  arrow(uiclientid) ;
-        if (pa) {
-            qDebug("UiServer::%s() : POINTER_CLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
-
-            // Widget under the pointer can reimplement BaseWidget::mouseClick()
-            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
-
-            /***
-                                // Generate mouse event directly from here
-                                QGraphicsView *gview = 0;
-                                foreach(QGraphicsView *v, scene->views()) {
-                                        if ( v->rect().contains(x, y) ) {
-                                                gview = v;
-                                                break;
-                                        }
-                                }
-
-                                // Generate mouse event directly from here
-                                QMouseEvent pressEvent(QEvent::MouseButtonPress, gview->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-                                QMouseEvent releaseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-
-                                // If another item calls grabMouse() this item will lose mouse grab. this item will regain the mouse grab when the other item calls ungrabMouse()
-                                pa->appUnderPointer()->grabMouse(); // inherited from QGraphicsItem
-
-                                // sendEvent doesn't delete event object, so event should be created in stack space
-                                if ( ! QApplication::sendEvent(gview->viewport(), &pressEvent) ) {
-                                        qDebug("UiServer::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-                                }
-                                else {
-                                        if ( ! QApplication::sendEvent(gview->viewport(), &releaseEvent) ) {
-                                                qDebug("UiServer::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-                                        }
-                                }
-
-                                pa->appUnderPointer()->ungrabMouse();
-                                ***/
-
-            /*
- // event loop will take ownership of posted event, so event must be created in heap space
- QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
- QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
- */
-            //				}
-        }
-        else {
-            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
-        }
-        break;
-    }
-    case POINTER_RIGHTCLICK: {
-        quint64 uiclientid;
-        int x,y;
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  arrow(uiclientid) ;
-        if (pa) {
-            qDebug("UiServer::%s() : POINTER_RIGHTCLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
-            //				if ( pa->setAppUnderPointer( QPointF(x,y)) ) {
-            //					if ( pa->appUnderPointer()->isSelected() ) {
-            //						pa->appUnderPointer()->setSelected(false);
-            //					}
-            //					else {
-            //						pa->appUnderPointer()->setSelected(true);
-            //					}
-            //				}
-        }
-        else {
-            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
-        }
-        break;
-    }
-
 
     } /* end of switch */
 }

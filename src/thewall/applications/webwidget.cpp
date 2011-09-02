@@ -19,11 +19,11 @@ WebWidget::WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem
           So, all the mouse/keyboard events are grabbed by the child item (because it's top most).
 
           To prevent this, you can call
-		  TheChildItem->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+                  TheChildItem->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
           and then reimplement event handlers of this item.
 
 
-		  OR just hide() the child item (QGraphicsItem::hide()). Refer BaseWidget's infoTextItem
+                  OR just hide() the child item (QGraphicsItem::hide()). Refer BaseWidget's infoTextItem
 
 
           OR
@@ -32,13 +32,14 @@ WebWidget::WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem
 
 
 
-			OR
+                        OR
 // this->setFileterChildEvents(true); // This object(WebWidget) will filter *ALL* events for all its children, so childs don't need to install event filter (installSceneEventFilter()) explicitly
          **/
         setFiltersChildEvents(true);
 
         // more top for mouse handle
-        setWindowFrameMargins(4, 25, 4, 4); // left, top, right, bottom
+        // default is 4, 25, 4, 4
+//        setWindowFrameMargins(1, 20, 1, 1); // left, top, right, bottom
 
 
 
@@ -54,9 +55,9 @@ WebWidget::WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem
         connect(urlbox, SIGNAL(returnPressed()), this, SLOT(setUrlFromLineEdit()));
 
 
-		/* Corresponding proxy widget for the URL box */
+                /* Corresponding proxy widget for the URL box */
         urlboxproxy = new QGraphicsProxyWidget(); // this is bad for graphics perfomance. But it's the only way
-		//proxyWidget->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+                //proxyWidget->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 
         // urlboxproxy takes ownership of urlbox
         urlboxproxy->setWidget(urlbox); // widget(urlbox) must be top-level widget whose parent is 0
@@ -98,6 +99,8 @@ That's why webwidget filter childs' event instead of stacking children behind th
         /* This means nothing. Because wheel event won't be handled by BaseGraphicsWidget,
            and this widget redefines resizeEvent */
 //	setNativeSize(810,650); // w/o frame
+
+
 }
 
 
@@ -133,20 +136,21 @@ bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
                         QGraphicsSceneContextMenuEvent *e = static_cast<QGraphicsSceneContextMenuEvent *>(event);
                         BaseWidget::contextMenuEvent(e);
 
-						// context menu is not going to be handled by gwebview
-						// right click should trigger context menu defined in BaseWidget
-                        return true; 
+                        // context menu is not going to be handled by gwebview
+                        // right click should trigger context menu defined in BaseWidget
+                        return true;
                 }
 
                 else if (event->type() == QEvent::GraphicsSceneMousePress) {
 //			BaseWidget::setTopmost();
+                    qDebug() << "gwebview received pressevent";
 
-						// First, deliver this event to BaseWidget to keep behaviors defined in BaseWidget can be triggered
+                        // First, deliver this event to BaseWidget to keep behaviors defined in BaseWidget can be triggered
                         BaseWidget::mousePressEvent((QGraphicsSceneMouseEvent *)event);
 
-						// press event should reach to gwebview.
-						// So, return false to forward this event can be delivered to where it's supposed to go
-                        return false; 
+                        // press event should reach to gwebview.
+                        // So, return false to forward this event can be delivered to where it's supposed to go
+                        return false;
                 }
 
 
@@ -155,7 +159,7 @@ bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
                 else if (event->type() == QEvent::GraphicsSceneWheel) {
                         return false; // don't filter so that gwebview can grab this event
                 }
-				// release event should reach gwebview to fire mouse clicking
+                                // release event should reach gwebview to fire mouse clicking
                 else if (event->type() == QEvent::GraphicsSceneMouseRelease) {
                         return false; // Don't filter this event. release event should reach to gwebview
                 }
@@ -250,44 +254,58 @@ The the pointer object calls BaseWidget::mouseClick()
 */
 void WebWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn/* = Qt::LeftButton */) {
 
-        QPointF pos = mapFromScene(clickedScenePos);
+//        QPointF pos = mapFromScene(clickedScenePos);
 
-        /** There is only one view ? **/
+//        /** There is only one view ? **/
 
-        QGraphicsView *gview = 0;
-        foreach (gview, scene()->views()) {
-                if ( gwebview->boundingRect().contains(pos) ) {
+//        QGraphicsView *gview = 0;
+//        foreach (gview, scene()->views()) {
+//                if ( gwebview->boundingRect().contains(pos) ) {
 
-                        QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-                        QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+//                        QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+//                        QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
 
-                        gwebview->grabMouse();
-                        // sendEvent doesn't delete event object, so event can be created in stack (local to this function)
-                        if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
-                                qDebug("WebWidget::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-                        }
-                        if ( ! QApplication::sendEvent(gview->viewport(), release) ) {
-                                qDebug("WebWidget::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-                        }
-                        gwebview->ungrabMouse();
+//                        gwebview->grabMouse();
+//                        // sendEvent doesn't delete event object, so event can be created in stack (local to this function)
+//                        if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
+//                                qDebug("WebWidget::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+//                        }
+//                        if ( ! QApplication::sendEvent(gview->viewport(), release) ) {
+//                                qDebug("WebWidget::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+//                        }
+//                        gwebview->ungrabMouse();
 
-                        if (press) delete press;
-                        if (release) delete release;
+//                        if (press) delete press;
+//                        if (release) delete release;
 
-                        /*
-                          // event loop will take ownership of posted event, so event must be created in heap space
-                        QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
-                        QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
-                        */
-                }
-        }
+//                        /*
+//                          // event loop will take ownership of posted event, so event must be created in heap space
+//                        QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
+//                        QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
+//                        */
+//                }
+//        }
 }
 
 void WebWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-        Q_UNUSED(option);
-        Q_UNUSED(widget);
-        painter->setBrush(QBrush(Qt::lightGray, Qt::Dense6Pattern));
-        painter->drawRect(windowFrameRect());
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
+//    qDebug() << "size" << size() << "boundingrect" << boundingRect() << "geometry" << geometry();
+
+    QLinearGradient lg;
+    lg.setFinalStop(0, 0);
+    lg.setStart(boundingRect().width(), boundingRect().height());
+    lg.setColorAt(0, QColor::fromRgbF(1, 1, 0, 1));
+    lg.setColorAt(1, QColor::fromRgbF(0, 0, 0, 0));
+    QBrush b(lg);
+
+    painter->setBrush(b);
+    painter->drawRect(windowFrameRect());
+
+
+
+//    QGraphicsWidget::paintWindowFrame(painter, option, widget);
 }
 
 

@@ -112,6 +112,7 @@ void BaseWidget::init()
         setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
         if (settings) {
+            // This will affect boundingRect() of the widget
                 setWindowFrameMargins(settings->value("general/framemarginleft", 3).toDouble(),
                                                   settings->value("general/framemargintop", 3).toDouble(),
                                                   settings->value("general/framemarginright",3).toDouble(),
@@ -168,6 +169,19 @@ void BaseWidget::init()
 //	shadow->setColor(Qt::gray);;
 //	shadow->setEnabled(false);
 //	setGraphicsEffect(shadow); // you can set only one effect
+}
+
+
+void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
+    if (isSelected()) {
+
+    }
+    else {
+
+    }
 }
 
 qreal BaseWidget::ratioToTheWall() const {
@@ -466,9 +480,12 @@ void BaseWidget::reScale(int tick, qreal factor)
         // Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees, the child's total transformation will be 180 degrees. Similarly, if the item's parent is scaled to 2x its original size, its children will also be twice as large. An item's transformation does not affect its own local geometry; all geometry functions (e.g., contains(), update(), and all the mapping functions) still operate in local coordinates.
         setScale(currentScale);
 
-
         //! optional
 //	appInfo->setRecentScale(currentScale);
+
+
+        // This function will not change widget's size !!
+//        qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
 }
 
 QRectF BaseWidget::resizeHandleSceneRect()
@@ -653,8 +670,7 @@ void BaseWidget::timerEvent(QTimerEvent *) {
         */
 }
 
-void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
-//	qDebug("BaseWidget::%s()", __FUNCTION__);
+void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
         if(_appInfo) {
 //		appInfo->setRecentBoundingRect( boundingRect() );
         }

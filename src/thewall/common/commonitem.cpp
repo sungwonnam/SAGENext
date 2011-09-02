@@ -6,121 +6,138 @@
 
 
 WidgetRemoveButton::WidgetRemoveButton(QGraphicsItem *parent) :
-	QGraphicsPixmapItem(parent)
+        QGraphicsPixmapItem(parent)
 {
-	setAcceptDrops(true);
+        setAcceptDrops(true);
 }
 
 void WidgetRemoveButton::dragEnterEvent(QGraphicsSceneDragDropEvent *event) {
-	Q_UNUSED(event);
+        Q_UNUSED(event);
 
-	//just highlight the button
+        //just highlight the button
 }
 
 void WidgetRemoveButton::dropEvent(QGraphicsSceneDragDropEvent *event) {
-	Q_UNUSED(event);
+        Q_UNUSED(event);
 
-	// find out the widget dragged to here and close it
+        // find out the widget dragged to here and close it
 }
+
+
+
+
+
+
+
+
+
 
 
 PolygonArrow::PolygonArrow(const quint64 uicid, const QSettings *s, const QColor c, QGraphicsItem *parent)
-	: QGraphicsPolygonItem(parent), uiclientid(uicid), settings(s)
+        : QGraphicsPolygonItem(parent)
+        , uiclientid(uicid)
+        , settings(s)
+        , textItem(0)
+        , app(0)
 
 {
-	QPolygonF p;
-	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
+        QPolygonF p;
+        p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
 
-	setBrush(QBrush(c));
-	setPolygon(p);
+        setBrush(QBrush(c));
+        setPolygon(p);
 
-	setFlag(QGraphicsItem::ItemIsSelectable, false);
-	setFlag(QGraphicsItem::ItemIsMovable, false);
-	setZValue(9999999); // the top most
-
-	app = 0;
-	textItem = 0;
+        setFlag(QGraphicsItem::ItemIsSelectable, false);
+        setFlag(QGraphicsItem::ItemIsMovable, false);
+        setZValue(9999999); // the top most
 }
 
 void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags) {
-	qreal deltax = _scenePos.x() - scenePos().x();
-	qreal deltay = _scenePos.y() - scenePos().y();
+    qreal deltax = _scenePos.x() - scenePos().x();
+    qreal deltay = _scenePos.y() - scenePos().y();
 
-	// move pointer itself
-	setPos(_scenePos);
+    // move pointer itself
+    // Sets the position of the item to pos, which is in parent coordinates. For items with no parent, pos is in scene coordinates.
+    setPos(_scenePos);
 
+    // if dragging
+    if ( btnFlags & Qt::LeftButton ) {
 
-	// if dragging
-	if ( btnFlags & Qt::LeftButton ) {
+        /* Because of pointerPress, appUnderPointer has already set at this point */
+        if (app) {
+            //qDebug() << app->resizeHandleSceneRect() << _scenePos << deltax << deltay;
+            if ( app->isWindow()  &&  app->resizeHandleSceneRect().contains(_scenePos)) {
 
-		/* because of pointer press, appUnderPointer has already set at this point */
+                // resize doesn't count window frame
+                qreal top, left, right, bottom;
+                app->getWindowFrameMargins(&left, &top, &right, &bottom);
 
-		if (app) {
-//			qDebug() << app->resizeHandleSceneRect() << _scenePos << deltax << deltay;
-			if ( app->isWindow()  &&  app->resizeHandleSceneRect().contains(_scenePos)) {
+                app->resize(app->boundingRect().width()-left-right + deltax, app->boundingRect().height()-top-bottom + deltay); // should have more PIXEL : not scaling
 
-				// resize doesn't count window frame
-				qreal top, left, right, bottom;
-				app->getWindowFrameMargins(&left, &top, &right, &bottom);
-
-				app->resize(app->boundingRect().width()-left-right + deltax, app->boundingRect().height()-top-bottom + deltay); // should have more PIXEL : not scaling
-
-				/*
-				 I shouldn't simulate mouse move event like this..
-				 Because event keeps recording last known mouse event position
-				 If there are multiple virtual mouses, event->lastPos keeps garbled.
-				 */
-//				foreach(QGraphicsView *gview, scene()->views()) {
-//					app->grabMouse();
-//					if ( ! QApplication::sendEvent(gview->viewport(), &QMouseEvent(QEvent::MouseMove, gview->mapFromScene(scenePos), gview->mapToGlobal(gview->mapFromScene(scenePos)), Qt::LeftButton, btnFlags, Qt::NoModifier)) ) {
-//						qDebug("PolygonArrow::%s() : sendEvent failed", __FUNCTION__);
-//					}
-//					app->ungrabMouse();
-//				}
-			}
-			else {
-				// move app widget under this pointer
-				app->moveBy(deltax, deltay);
+                /*
+                   I shouldn't simulate mouse move event like this..
+                   Because event keeps recording last known mouse event position
+                   If there are multiple virtual mouses, event->lastPos keeps garbled.
+                 */
+            }
+            else {
+                // move app widget under this pointer
+                app->moveBy(deltax, deltay);
+            }
+        }
 
 
-			}
-		}
-	}
+        // Why not just send mouse event ??
+        // Because Having multiple users simultaneously do mouse draggin will confuse the system
+        /*
+        QGraphicsView *view = 0;
+        foreach (QGraphicsView *v, scene()->views()) {
+            if ( v->rect().contains(v->mapFromScene(_scenePos)) ) {
+                view=v;
+                break;
+            }
+        }
+        QMouseEvent mouseDragging(QMouseEvent::MouseMove, view->mapFromScene(_scenePos), Qt::LeftButton, btnFlags, Qt::NoModifier);
+        if ( ! QApplication::sendEvent(view->viewport(), &mouseDragging) ) {
+            qDebug() << "failed to send mouseMove event with left button";
+        }
+        */
+    }
 }
 
 void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
-	if (setAppUnderPointer(scenePos)) {
-		/* generate mousePressEvent */
-		/* This way, I can forward this event to child items which are interactive (such as QGraphicsWebView) */
+        if (setAppUnderPointer(scenePos)) {
+                /* generate mousePressEvent */
+                /* This way, I can forward this event to child items which are interactive (such as QGraphicsWebView) */
 
-		/**
-		// ASYNCHRONOUS (postEvent return immediately)
-		QMouseEvent *e = new QMouseEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
-		QApplication::postEvent(gview->viewport(), e); // VIEWPORT() !!! f*ck
+                /**
+                // ASYNCHRONOUS (postEvent return immediately)
+                QMouseEvent *e = new QMouseEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+                QApplication::postEvent(gview->viewport(), e); // VIEWPORT() !!! f*ck
 //		QApplication::sendPostedEvents(gview->viewport(), e->type()); // Immediately dispatch the event to the receiver
-		**/
+                **/
 
-		/**
-		  // SYNCHRONOUS (sendEvent blocks)
-		app->grabMouse();
-		if ( ! QApplication::sendEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier)) ) {
-			qDebug("PolygonArrow::%s() : sendEvent failed", __FUNCTION__);
-		}
-		app->ungrabMouse();
-		**/
+                /**
+                  // SYNCHRONOUS (sendEvent blocks)
+                app->grabMouse();
+                if ( ! QApplication::sendEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier)) ) {
+                        qDebug("PolygonArrow::%s() : sendEvent failed", __FUNCTION__);
+                }
+                app->ungrabMouse();
+                **/
 
-		/* OR direct control */
+                /* OR direct control */
 //		app->setTopmost();
-	}
+        }
 }
 
 /*
 void PolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
-	app->grabMouse();
-	if ( ! QApplication::sendEvent(gview->viewport(), &QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier)) ) {
-		qDebug("PolygonArrow::%s() : sendEvent failed", __FUNCTION__);
-	}
-	app->ungrabMouse();
+        app->grabMouse();
+        if ( ! QApplication::sendEvent(gview->viewport(), &QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier)) ) {
+                qDebug("PolygonArrow::%s() : sendEvent failed", __FUNCTION__);
+        }
+        app->ungrabMouse();
 }
 */
 
@@ -167,66 +184,94 @@ void PolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton btn, 
 //}
 
 void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
-	// should be sent to interactive item like gwebview
+        // should be sent to interactive item like gwebview
 
-	/*
-	app->grabMouse();
-	if ( ! QApplication::sendEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier)) ) {
-		qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-	}
-	if ( ! QApplication::sendEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier)) ) {
-		qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-	}
-	app->ungrabMouse();
-	*/
+    QGraphicsView *view = 0;
+    foreach(QGraphicsView *v, scene()->views()) {
 
-	Q_UNUSED(btnFlags);
-//	setAppUnderPointer(scenePos);
-	if (app) {
+        // geometry of widget relative to its parent
+//        v->geometry();
+
+        // internal geometry of widget
+//        v->rect();
+
+        if ( v->rect().contains( v->mapFromScene(scenePos) ) ) {
+            // mouse click position is within this view's bounding rectangle
+            view = v;
+            break;
+        }
+
+    }
+    QPointF clickedViewPos = view->mapFromScene( scenePos );
+
+    QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
+    QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
+
+    /**
+      Pointer can't know (in here) which widget is going to receive this event
+      because it depends on how child widgets are attached to the parent widget.
+      FOr example, gwebview of WebWidget will receive mouse event and gwebview isn't pointed by app.
+      **/
+    //	app->grabMouse();
+
+    if ( ! QApplication::sendEvent(view->viewport(), & mpe) ) {
+        qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+    }
+    if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
+        qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+    }
+//    app->ungrabMouse();
 
 
-		/**
-		  * PixmapWidget, SageStreamWidget don't reimplement this function
-		  * Curretnly, only WebWidget reimplement this function
-		  */
-		app->mouseClick(scenePos, btn);
-	}
+
+
+    /**
+      Instead of generating mouse event,
+      I can let each widget implement BaseWidget::mouseClick()
+      **/
+    /*
+        Q_UNUSED(btnFlags);
+        if (app) {
+                // Reimplement this for your app's specific needs
+                app->mouseClick(scenePos, btn);
+        }
+        */
 }
 
 PolygonArrow::~PolygonArrow() {
-	scene()->removeItem(this);
+        scene()->removeItem(this);
 }
 
 void PolygonArrow::setPointerName(const QString &text) {
-	textItem = new QGraphicsSimpleTextItem(text, this);
-	textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
-	textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
-	textItem->setBrush(Qt::white);
-	textItem->moveBy(0, boundingRect().height());
+        textItem = new QGraphicsSimpleTextItem(text, this);
+        textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
+        textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
+        textItem->setBrush(Qt::white);
+        textItem->moveBy(0, boundingRect().height());
 }
 
 bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
-	QList<QGraphicsItem *> list = scene()->items(scenePos, Qt::ContainsItemBoundingRect, Qt::DescendingOrder);
+        QList<QGraphicsItem *> list = scene()->items(scenePos, Qt::ContainsItemBoundingRect, Qt::DescendingOrder);
 //	app = static_cast<BaseGraphicsWidget *>(scene()->itemAt(scenePosOfPointer, QTransform()));
 
 //	qDebug() << "\nPolygonArrow::setAppUnderPointer() :" << list.size() << " items";
-	foreach (QGraphicsItem *item, list) {
-		if ( item == this ) continue;
+        foreach (QGraphicsItem *item, list) {
+                if ( item == this ) continue;
 
 //		qDebug() << item;
 
-		if ( item->type() == UserType + 2) {
-			app = static_cast<BaseWidget *>(item);
+                if ( item->type() == UserType + 2) {
+                        app = static_cast<BaseWidget *>(item);
 //			app->setTopmost();
 //			qDebug("PolygonArrow::%s() : uiclientid %llu, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
-			return true;
-		}
+                        return true;
+                }
 
-	}
-	app = 0; // reset
+        }
+        app = 0; // reset
 
 //	qDebug("PolygonArrow::%s() : uiclientid %llu, There's BaseGraphicsWidget type under pointer", __FUNCTION__, uiclientid);
-	return false;
+        return false;
 }
 
 
@@ -238,17 +283,17 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
 
 
 SwSimpleTextItem::SwSimpleTextItem(int ps, QGraphicsItem *parent) :
-		QGraphicsSimpleTextItem(parent)
+                QGraphicsSimpleTextItem(parent)
 {
-	if ( ps > 0 ) {
-		QFont f;
-		f.setPointSize(ps);
+        if ( ps > 0 ) {
+                QFont f;
+                f.setPointSize(ps);
 //		setBrush(Qt::white);
-		//setPen(QPen(Qt::black));
-		setFont(f);
-	}
+                //setPen(QPen(Qt::black));
+                setFont(f);
+        }
 
-	setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
+        setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
 }
 
 SwSimpleTextItem::~SwSimpleTextItem() {
@@ -256,28 +301,28 @@ SwSimpleTextItem::~SwSimpleTextItem() {
 }
 
 void SwSimpleTextItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
-	int numDegrees = event->delta() / 8;
-	int numTicks = numDegrees / 15;
+        int numDegrees = event->delta() / 8;
+        int numTicks = numDegrees / 15;
 //	qDebug("SwSimpleTextItem::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
 
-	qreal s = scale();
-	if ( numTicks > 0 ) {
-		s += 0.1;
-	}
-	else {
-		s -= 0.1;
-	}
+        qreal s = scale();
+        if ( numTicks > 0 ) {
+                s += 0.1;
+        }
+        else {
+                s -= 0.1;
+        }
 //	prepareGeometryChange();
-	setScale(s);
+        setScale(s);
 
 }
 
 void SwSimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-	Q_UNUSED(option);
-	Q_UNUSED(widget);
+        Q_UNUSED(option);
+        Q_UNUSED(widget);
 
-	painter->fillRect(boundingRect(), Qt::lightGray);
-	QGraphicsSimpleTextItem::paint(painter, option, widget);
+        painter->fillRect(boundingRect(), Qt::lightGray);
+        QGraphicsSimpleTextItem::paint(painter, option, widget);
 }
 
 
@@ -290,24 +335,24 @@ void SwSimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 
 
 PixmapCloseButton::PixmapCloseButton(const QString res, QGraphicsItem *parent)
-	: QGraphicsPixmapItem(parent)
+        : QGraphicsPixmapItem(parent)
 {
-	setPixmap(QPixmap(res));
-	flag = false;
+        setPixmap(QPixmap(res));
+        flag = false;
 }
 
 
 void PixmapCloseButton::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-	Q_UNUSED(event);
-	flag = true;
+        Q_UNUSED(event);
+        flag = true;
 }
 
 void PixmapCloseButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
-	if (flag && boundingRect().contains(event->pos())) {
-		QList<QGraphicsView *> vlist = scene()->views();
-		QGraphicsView *gview = vlist.front();
-		QMetaObject::invokeMethod(gview, "close", Qt::QueuedConnection);
-	}
+        if (flag && boundingRect().contains(event->pos())) {
+                QList<QGraphicsView *> vlist = scene()->views();
+                QGraphicsView *gview = vlist.front();
+                QMetaObject::invokeMethod(gview, "close", Qt::QueuedConnection);
+        }
 }
 
 
@@ -315,23 +360,23 @@ void PixmapCloseButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 
 
 PixmapCloseButtonOnScene::PixmapCloseButtonOnScene(const QString res, QGraphicsItem *parent)
-	: QGraphicsPixmapItem(parent)
+        : QGraphicsPixmapItem(parent)
 {
-	setPixmap(QPixmap(res));
-	flag = false;
+        setPixmap(QPixmap(res));
+        flag = false;
 }
 
 void PixmapCloseButtonOnScene::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-	Q_UNUSED(event);
-	flag = true;
+        Q_UNUSED(event);
+        flag = true;
 }
 
 void PixmapCloseButtonOnScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
-	if (flag && boundingRect().contains(event->pos())) {
+        if (flag && boundingRect().contains(event->pos())) {
 //		SAGENextScene *s = qobject_cast<SAGENextScene *>(scene());
-		QGraphicsScene *s = scene();
-		s->deleteLater();
-	}
+                QGraphicsScene *s = scene();
+                s->deleteLater();
+        }
 }
 
 
@@ -339,24 +384,24 @@ void PixmapCloseButtonOnScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event
 
 
 PixmapArrow::PixmapArrow(const quint64 uicid, QGraphicsItem *parent)
-	: QGraphicsPixmapItem(parent), uiclientid(uicid)
+        : QGraphicsPixmapItem(parent), uiclientid(uicid)
 {
-	QPixmap ar(":/resources/arrow.png");
-	setPixmap(ar);
-	setRotation(120);
+        QPixmap ar(":/resources/arrow.png");
+        setPixmap(ar);
+        setRotation(120);
 
-	textItem = 0;
-	app = 0;
+        textItem = 0;
+        app = 0;
 
-	setFlag(QGraphicsItem::ItemIsSelectable, false);
-	setFlag(QGraphicsItem::ItemIsMovable, false);
+        setFlag(QGraphicsItem::ItemIsSelectable, false);
+        setFlag(QGraphicsItem::ItemIsMovable, false);
 }
 
 void PixmapArrow::setPointerName(const QString &text) {
-	textItem = new QGraphicsSimpleTextItem(text, this);
-	textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
-	textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
-	textItem->moveBy(0, boundingRect().height());
+        textItem = new QGraphicsSimpleTextItem(text, this);
+        textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
+        textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
+        textItem->moveBy(0, boundingRect().height());
 }
 
 
