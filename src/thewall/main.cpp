@@ -1,16 +1,3 @@
-/*
- *
- *
- *
- *
- *
- * this is test
- *
- *
- *
- *
- */
-
 #include <QtGui/QApplication>
 #include <QGLWidget>
 
@@ -391,3 +378,14 @@ numa_free_cpumask(mask);
 
 #endif
 **/
+
+
+
+
+
+
+
+
+
+
+// test 1
