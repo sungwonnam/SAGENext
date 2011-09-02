@@ -10,16 +10,16 @@ TEMPLATE = app
 
 #LibVNCServer
 linux-g++|linux-g++-64 {
-	LIBVNCSERVER = /home/evl/snam5/LibVNCServer-0.9.7
-	message("Linking with LibVNC lib")
-	INCLUDEPATH += $$LIBVNCSERVER/include
-	LIBS += -L$$LIBVNCSERVER/lib -lvncclient
+        LIBVNCSERVER = /home/evl/snam5/LibVNCServer-0.9.7
+        message("Linking with LibVNC lib")
+        INCLUDEPATH += $$LIBVNCSERVER/include
+        LIBS += -L$$LIBVNCSERVER/lib -lvncclient
 }
 macx {
-	LIBVNCSERVER = ${HOME}/Downloads/LibVNCServer
-	message("Linking with LibVNC lib $$LIBVNCSERVER")
-	INCLUDEPATH += $$LIBVNCSERVER/include
-	LIBS += -L$$LIBVNCSERVER/lib -lvncclient
+        LIBVNCSERVER = ${HOME}/Downloads/LibVNCServer
+        message("Linking with LibVNC lib $$LIBVNCSERVER")
+        INCLUDEPATH += $$LIBVNCSERVER/include
+        LIBS += -L$$LIBVNCSERVER/lib -lvncclient
 }
 
 
@@ -29,12 +29,12 @@ macx {
 #LIBS += -L$${QWT_HOME}/lib -lqwt
 
 linux-g++|linux-g++-64 {
-	message("Linking with Linux libnuma library")
-	LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
+        message("Linking with Linux libnuma library")
+        LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
 }
 macx {
-	message("Excluding -lnuma -lm -lpthread")
-	LIBS -= -lnuma -lm -lpthread
+        message("Excluding -lnuma -lm -lpthread")
+        LIBS -= -lnuma -lm -lpthread
 }
 
 #CONFIG += thread
@@ -42,12 +42,30 @@ macx {
 
 BUILD_DIR = BUILD
 !exists($$BUILD_DIR) {
-	#message("Creating build directory")
-	system(mkdir $${BUILD_DIR})
+        #message("Creating build directory")
+        system(mkdir $${BUILD_DIR})
 }
+
 
 MOC_DIR = MOC
 OBJECTS_DIR = $${BUILD_DIR}
+
+
+MEDIA_DIR = ${HOME}/.sagenext/media
+MEDIA_IMAGE_DIR = ${MEDIA_DIR}/image
+MEDIA_VIDEO_DIR = ${MEDIA_DIR}/video
+!exists(${MEDIA_DIR}) {
+    system(mkdir ${MEDIA_DIR})
+    system(mkdir ${MEDIA_IMAGE_DIR})
+    system(mkdir ${MEDIA_VIDEO_DIR})
+}
+!exists(${MEDIA_IMAGE_DIR) {
+    system(mkdir ${MEDIA_IMAGE_DIR})
+}
+!exists(${MEDIA_VIDEO_DIR) {
+    system(mkdir ${MEDIA_VIDEO_DIR})
+}
+
 
 # where to put TARGET file
 DESTDIR = ../../
@@ -55,74 +73,78 @@ DESTDIR = ../../
 #CONFIG(release, debug|release):DESTDIR += release
 
 FORMS += \
-	settingdialog.ui \
-	applications/base/affinitycontroldialog.ui \
-	system/resourcemonitorwidget.ui
+        settingdialog.ui \
+        applications/base/affinitycontroldialog.ui \
+        system/resourcemonitorwidget.ui
 
 
 RESOURCES += ../resources.qrc
 
 
 SOURCES += \
-	main.cpp \
-	settingdialog.cpp \
+        main.cpp \
+        settingdialog.cpp \
 #	graphicsviewmainwindow.cpp \
-	common/commonitem.cpp \
-	common/thumbnailthread.cpp \
-	common/imagedoublebuffer.cpp \
-	uiserver/uiserver.cpp \
-	uiserver/uimsgthread.cpp \
-	system/resourcemonitor.cpp \
-	system/sagenextscheduler.cpp \
-	system/resourcemonitorwidget.cpp \
-	sage/fsManager.cpp \
-	sage/fsmanagermsgthread.cpp \
-	sage/sageLegacy.cpp \
-	applications/webwidget.cpp \
-	applications/pixmapwidget.cpp \
-	applications/sagestreamwidget.cpp \
-	applications/sagepixelreceiver.cpp \
-	applications/vncwidget.cpp \
-	applications/base/perfmonitor.cpp \
-	applications/base/appinfo.cpp \
-	applications/base/basewidget.cpp \
-	applications/base/railawarewidget.cpp \
-	applications/base/affinityinfo.cpp \
-	applications/base/affinitycontroldialog.cpp \
-	sagenextscene.cpp \
-	sagenextviewport.cpp \
-	sagenextlauncher.cpp \
+        common/commonitem.cpp \
+        common/thumbnailthread.cpp \
+        common/imagedoublebuffer.cpp \
+        uiserver/uiserver.cpp \
+        uiserver/uimsgthread.cpp \
+        system/resourcemonitor.cpp \
+        system/sagenextscheduler.cpp \
+        system/resourcemonitorwidget.cpp \
+        sage/fsManager.cpp \
+        sage/fsmanagermsgthread.cpp \
+        sage/sageLegacy.cpp \
+        applications/webwidget.cpp \
+        applications/pixmapwidget.cpp \
+        applications/sagestreamwidget.cpp \
+        applications/sagepixelreceiver.cpp \
+        applications/vncwidget.cpp \
+        applications/base/perfmonitor.cpp \
+        applications/base/appinfo.cpp \
+        applications/base/basewidget.cpp \
+        applications/base/railawarewidget.cpp \
+        applications/base/affinityinfo.cpp \
+        applications/base/affinitycontroldialog.cpp \
+        sagenextscene.cpp \
+        sagenextviewport.cpp \
+        sagenextlauncher.cpp \
     applications/mediabrowser.cpp
+#    common/filereceivingrunnable.cpp
 
 HEADERS += \
-	settingdialog.h \
+        settingdialog.h \
 #	graphicsviewmainwindow.h \
-	common/commonitem.h \
-	common/commondefinitions.h \
-	common/imagedoublebuffer.h \
-	common/thumbnailthread.h \
-	uiserver/uiserver.h \
-	uiserver/uimsgthread.h \
-	system/resourcemonitor.h \
-	system/resourcemonitorwidget.h \
-	system/sagenextscheduler.h \
-	sage/fsManager.h \
-	sage/fsmanagermsgthread.h \
-	sage/sagecommondefinitions.h \
-	applications/webwidget.h \
-	applications/pixmapwidget.h \
-	applications/sagestreamwidget.h \
-	applications/sagepixelreceiver.h \
-	applications/vncwidget.h \
-	applications/base/appinfo.h \
-	applications/base/perfmonitor.h \
-	applications/base/affinityinfo.h \
-	applications/base/affinitycontroldialog.h \
-	applications/base/basewidget.h \
-	applications/base/railawarewidget.h \
-	sagenextscene.h \
-	sagenextviewport.h \
-	sagenextlauncher.h \
+        common/commonitem.h \
+        common/commondefinitions.h \
+        common/imagedoublebuffer.h \
+        common/thumbnailthread.h \
+        uiserver/uiserver.h \
+        uiserver/uimsgthread.h \
+        system/resourcemonitor.h \
+        system/resourcemonitorwidget.h \
+        system/sagenextscheduler.h \
+        sage/fsManager.h \
+        sage/fsmanagermsgthread.h \
+        sage/sagecommondefinitions.h \
+        applications/webwidget.h \
+        applications/pixmapwidget.h \
+        applications/sagestreamwidget.h \
+        applications/sagepixelreceiver.h \
+        applications/vncwidget.h \
+        applications/base/appinfo.h \
+        applications/base/perfmonitor.h \
+        applications/base/affinityinfo.h \
+        applications/base/affinitycontroldialog.h \
+        applications/base/basewidget.h \
+        applications/base/railawarewidget.h \
+        sagenextscene.h \
+        sagenextviewport.h \
+        sagenextlauncher.h \
     applications/mediabrowser.h
+#    common/filereceivingrunnable.h
+
+
 
 

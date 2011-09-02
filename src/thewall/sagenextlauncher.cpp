@@ -125,7 +125,7 @@ QGraphicsItem * SAGENextLauncher::createPointer(quint64 uiclientid, QColor c, QS
   * UiServer triggers this slot
   */
 void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
-        qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
+//        qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
 
         BaseWidget *w = 0;
         switch(type) {
@@ -142,7 +142,7 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
 
                 // from local storage
                 else if ( !filename.isEmpty() ) {
-                        qDebug() << "\n\n\n" << filename << _globalAppId;
+                    qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
                         w = new PixmapWidget(filename, _globalAppId, _settings);
                 }
                 else
@@ -176,8 +176,11 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
 
 
         case MEDIA_TYPE_LOCAL_VIDEO: {
+            qDebug("%s::%s() : MEDIA_TYPE_LOCAL_VIDEO %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 
                 if ( ! filename.isEmpty() ) {
+
+
                         /**
                           create sageWidget
                           */
@@ -278,30 +281,6 @@ void SAGENextLauncher::launch(BaseWidget *w) {
                 qCritical("%s::%s() : Couldn't create an widget", metaObject()->className(), __FUNCTION__);
         }
 }
-
-
-
-void SAGENextLauncher::fileReceivingFunction(int mediatype, QString filename, qint64 filesize, QString senderIP, QString recvIP, quint16 recvPort) {
-
-        // download file
-
-        if ( mediatype == MEDIA_TYPE_IMAGE) {
-                QMetaObject::invokeMethod(this, "launch", Qt::QueuedConnection
-                                                                  , Q_ARG(int, MEDIA_TYPE_IMAGE)
-                                                                  , Q_ARG(QString, QDir::homePath().append("/image").append(filename))
-                                                                  );
-        }
-        else if (mediatype == MEDIA_TYPE_VIDEO) {
-                QMetaObject::invokeMethod(this, "launch", Qt::QueuedConnection
-                                                                  , Q_ARG(int, MEDIA_TYPE_LOCAL_VIDEO)
-                                                                  , Q_ARG(QString, QDir::homePath().append("/video").append(filename))
-                                                                  );
-        }
-}
-
-
-
-
 
 
 

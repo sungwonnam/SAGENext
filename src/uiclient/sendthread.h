@@ -9,26 +9,29 @@
 
 class SendThread : public QThread
 {
-	Q_OBJECT
+        Q_OBJECT
 public:
-	explicit SendThread(QObject *parent = 0);
-	~SendThread();
+        explicit SendThread(const QString &recvAddr, int recvPort, QObject *parent = 0);
+        ~SendThread();
+
+    inline void setReceiverAddr(QString addr) {receiverAddr.setAddress(addr);}
+    inline void setReceiverPort(int p) {receiverPort = p;}
 
 protected:
-	void run();
+        void run();
 
 private:
-	bool end;
-	QMutex mutex;
-	QWaitCondition fileReady;
-	QQueue<QString> fileQueue;
-	QHostAddress receiverAddr;
-	int receiverPort;
+        bool end;
+        QMutex mutex;
+        QWaitCondition fileReady;
+        QQueue<QString> fileQueue;
+        QHostAddress receiverAddr;
+        int receiverPort;
 
 signals:
 
 public slots:
-	void sendFile(const QHostAddress &addr, int port, const QString &filename);
+        void sendFile( const QString &filename);
 
 };
 
