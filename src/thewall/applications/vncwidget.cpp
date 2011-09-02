@@ -59,6 +59,11 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
         future = QtConcurrent::run(this, &VNCClientWidget::receivingThread);
 
         resize(_image->size());
+
+        /**
+          set transform origin point to widget's center
+          **/
+        setTransformOriginPoint( _image->width() / 2.0 , _image->height() / 2.0 );
 }
 
 VNCClientWidget::~VNCClientWidget() {

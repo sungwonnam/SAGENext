@@ -97,6 +97,7 @@ void BaseWidget::init()
 {
         setAcceptHoverEvents(true);
 
+
         // Indicates that the widget paints all its pixels when it receives a paint event
         // Thus, it is not required for operations like updating, resizing, scrolling and focus changes
         // to erase the widget before generating paint events.

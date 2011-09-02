@@ -10,7 +10,7 @@ TEMPLATE = app
 
 #LibVNCServer
 linux-g++|linux-g++-64 {
-        LIBVNCSERVER = /home/evl/snam5/LibVNCServer-0.9.7
+        LIBVNCSERVER = ${HOME}/LibVNCServer
         message("Linking with LibVNC lib")
         INCLUDEPATH += $$LIBVNCSERVER/include
         LIBS += -L$$LIBVNCSERVER/lib -lvncclient
@@ -30,7 +30,8 @@ macx {
 
 linux-g++|linux-g++-64 {
         message("Linking with Linux libnuma library")
-        LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
+        #LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
+        LIBS += -lnuma
 }
 macx {
         message("Excluding -lnuma -lm -lpthread")

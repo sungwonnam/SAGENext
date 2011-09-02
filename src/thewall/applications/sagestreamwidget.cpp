@@ -640,6 +640,11 @@ int SageStreamWidget::initialize(quint64 sageappid, QString appname, QRect initr
 
         resize(resX, resY);
 
+        /**
+          set transform origin point to widget's center
+          **/
+        setTransformOriginPoint( resX / 2.0 , resY / 2.0 );
+
 
         /* create double buffer */
         if ( createImageBuffer(resX, resY, (sagePixFmt)pixfmt) != 0 ) {
