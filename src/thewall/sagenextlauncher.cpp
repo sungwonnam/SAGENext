@@ -111,15 +111,6 @@ void SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
         launch(sw);
 }
 
-QGraphicsItem * SAGENextLauncher::createPointer(quint64 uiclientid, QColor c, QString pointername) {
-        PolygonArrow *pa = new PolygonArrow(uiclientid, _settings, c);
-
-        if ( !pointername.isNull() && !pointername.isEmpty())
-                pa->setPointerName(pointername);
-
-        _scene->addItem(pa);
-        return pa;
-}
 
 /**
   * UiServer triggers this slot

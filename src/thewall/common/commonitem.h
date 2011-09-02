@@ -56,26 +56,24 @@ public:
         virtual void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags);
 
         /**
-          * There's no change in pointer. setAppUnderPointer() is called
-          * If app is present, change its zValue so that it can be top most item among app widgets
+          * setAppUnderPointer() is called
           */
         virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
 //	void pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
         /**
-          pointer double click is not used because
-          uiserver directly generate doubleclick event
+           sends real doubleclick event
           */
-//	void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
+        virtual void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
         /**
-          * generates real mouse event
+          * sends real mouse wheel event
           */
-//	void pointerWheel(const QPointF &scenePos, int delta = 120);
+        virtual void pointerWheel(const QPointF &scenePos, int delta = 120);
 
         /**
-          * This is not standard mouse event. simulate mouse click
+          * simulate mouse click by sending mousePressEvent followed by mouseReleaseEvent
           */
         virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
@@ -87,11 +85,6 @@ private:
 
 
         const QSettings *settings;
-
-        /**
-          * The current viewport
-          */
-//	QGraphicsView *gview;
 
         /**
           * The pointer name

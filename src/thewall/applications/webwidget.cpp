@@ -39,7 +39,8 @@ WebWidget::WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem
 
         // more top for mouse handle
         // default is 4, 25, 4, 4
-//        setWindowFrameMargins(1, 20, 1, 1); // left, top, right, bottom
+        // I have to do this because BaseWidget sets this
+        setWindowFrameMargins(4, 25, 4, 4); // left, top, right, bottom
 
 
 
@@ -302,9 +303,6 @@ void WebWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsIt
 
     painter->setBrush(b);
     painter->drawRect(windowFrameRect());
-
-
-
 //    QGraphicsWidget::paintWindowFrame(painter, option, widget);
 }
 

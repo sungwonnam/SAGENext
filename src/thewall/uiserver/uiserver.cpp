@@ -213,24 +213,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         QByteArray pname(64, '\0');
         sscanf(msg.constData(), "%d %llu %s %d %d %d", &code, &uiclientid, pname.data(), &r, &g, &b);
 
-        //			qDebug("UiServer::%s() : POINTER_SHARE from uiclient %llu, (%s, %d %d %d)",__FUNCTION__, uiclientid, pname.constData(), r,g,b);
-
-
-        /*
-                        PolygonArrow *pa = new PolygonArrow(uiclientid, settings, c);
-
-                        if ( !pointername.isNull() && !pointername.isEmpty())
-                                pa->setPointerName(pointername);
-
-                        gscene->addItem(pa);
-                        */
-
-        //			QGraphicsItem *pointerItem = 0;
-        //			QMetaObject::invokeMethod(launcher, "createPointer", Qt::QueuedConnection,
-        //									  Q_RETURN_ARG(QGraphicsItem *, pointerItem),
-        //									  Q_ARG(quint64, uiclientid),
-        //									  Q_ARG(QColor, QColor(r,g,b)),
-        //									  Q_ARG(QString, QString(pname)));
+        //qDebug("UiServer::%s() : POINTER_SHARE from uiclient %llu, (%s, %d %d %d)",__FUNCTION__, uiclientid, pname.constData(), r,g,b);
 
         PolygonArrow *pointerItem = 0;
         pointerItem = new PolygonArrow(uiclientid, settings, QColor(r,g,b));
@@ -238,6 +221,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         if (!pname.isNull() && !pname.isEmpty()) {
             pointerItem->setPointerName(QString(pname));
         }
+        Q_ASSERT(scene);
         scene->addItem(pointerItem);
 
         pointers.insert(uiclientid, pointerItem);
@@ -361,21 +345,17 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 
 
 
+        /**
+          In response to external UI's right release
+          */
     case POINTER_RIGHTCLICK: {
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
         PolygonArrow *pa =  arrow(uiclientid) ;
         if (pa) {
-            qDebug("UiServer::%s() : POINTER_RIGHTCLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
-            //				if ( pa->setAppUnderPointer( QPointF(x,y)) ) {
-            //					if ( pa->appUnderPointer()->isSelected() ) {
-            //						pa->appUnderPointer()->setSelected(false);
-            //					}
-            //					else {
-            //						pa->appUnderPointer()->setSelected(true);
-            //					}
-            //				}
+//            qDebug("UiServer::%s() : POINTER_RIGHTCLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
+            pa->pointerClick(QPointF(x,y), Qt::RightButton, Qt::RightButton);
         }
         else {
             qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
@@ -388,38 +368,12 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        //			PolygonArrow *pa =  arrow(uiclientid) ;
-        if (scene) {
-            // direct widget manipulation
-            //				pa->pointerDoubleClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
-
-
-            // Generate mouse event directly from here
-            QGraphicsView *gview = 0;
-            foreach(QGraphicsView *v, scene->views()) {
-                if ( v->rect().contains(x, y) ) {
-                    gview = v;
-                    break;
-                }
-            }
-
-            if (gview) {
-                QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(QPointF(x,y)), Qt::LeftButton, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-
-                qDebug() << "UiServer::Pointer_dblClick" << gview->mapFromScene(QPointF(x,y));
-
-                // sendEvent doesn't delete event object, so event should be created in stack space
-                if ( ! QApplication::sendEvent(gview->viewport(), &dblClickEvent) ) {
-                    qDebug("UiServer::%s() : sendEvent MouseMuttonDblClick on %d,%d failed", __FUNCTION__,x,y);
-                }
-            }
-            else {
-                qDebug("%s::%s() : there is no viewport on %d, %d", metaObject()->className(), __FUNCTION__, x, y);
-            }
+        PolygonArrow *pa =  arrow(uiclientid) ;
+        if (pa) {
+            //qDebug() << "UiServer:: wheel" << x << y << 120*tick;
+            pa->pointerDoubleClick(QPointF(x, y), Qt::LeftButton, Qt::LeftButton);
         }
-        else {
-            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
-        }
+
         break;
     }
 
@@ -428,29 +382,11 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         quint64 uiclientid;
         int x,y,tick;
         sscanf(msg.constData(), "%d %llu %d %d %d", &code, &uiclientid, &x, &y, &tick);
-        //			PolygonArrow *pa = arrow(uiclientid);
-        //			if (pa) {
-        ////				qDebug() << "UiServer:: wheel" << x << y << 120*tick;
-        //				pa->pointerWheel(QPointF(x,y), 120 * tick);
-        //			}
-
-        // Generate mouse event directly from here
-        QGraphicsView *gview = 0;
-        foreach(QGraphicsView *v, scene->views()) {
-            if ( v->rect().contains(x, y) ) {
-                gview = v;
-                break;
-            }
+        PolygonArrow *pa = arrow(uiclientid);
+        if (pa) {
+            //qDebug() << "UiServer:: wheel" << x << y << 120*tick;
+            pa->pointerWheel(QPointF(x, y), 120 * tick);
         }
-        if (gview) {
-            if ( ! QApplication::sendEvent(gview->viewport(), &QWheelEvent(gview->mapFromScene(QPointF(x,y)), gview->mapToGlobal(QPoint(x,y)), 120 * tick, Qt::NoButton, Qt::NoModifier)) ) {
-                qDebug("UiServer::%s() : send wheelEvent failed", __FUNCTION__);
-            }
-            else {
-                //qDebug() << "PolygonArrow wheel" << gview->mapFromScene(scenePos);
-            }
-        }
-
         break;
     }
 

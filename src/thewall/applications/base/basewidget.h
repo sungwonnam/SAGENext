@@ -94,11 +94,18 @@ public:
 
 
         /*!
-          If shared pointer calls mouseClick() in response to ui client's mousePress followed by mouseRelease event, then the real mouse events are not generated.
-          A user can reimplement this function to define widget's behavior in response to mouse click on the widget.
-          The default implementation provides real mouse press and release event
+          If shared pointer calls mouseClick() in response to ui client's mousePress followed by mouseRelease event, then it means theat the real mouse events are not generated.
+
+          In that case, a user can reimplement this function to define widget's behavior in response to mouse click on the widget.
+          The default implementation provides real mouse press and release event.
           */
         virtual void mouseClick(const QPointF &, Qt::MouseButton);
+
+
+        /*!
+          Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to weird behavior. So this should be implemented in child class manually.
+          */
+        virtual void mouseDrag(const QPointF &, Qt::MouseButton);
 
 
         /*!
@@ -256,7 +263,6 @@ protected:
         void timerEvent(QTimerEvent *);
 
         /*!
-          Updates appInfo->recentBoundingRect
           */
         virtual void resizeEvent(QGraphicsSceneResizeEvent *event);
 
@@ -265,7 +271,7 @@ protected:
           */
         virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
 
-        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
+//        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
 
         /*!
           * maximize window
@@ -281,6 +287,17 @@ protected:
           * calls reScale()
           */
         virtual void wheelEvent(QGraphicsSceneWheelEvent *event);
+
+
+        /**
+          child class should provide widget specific behavior.
+          If sagewidget (mplayer) then, provide video control overlay.
+
+          BaseWidget will provide resize handle on four corners
+          */
+        virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
+
+        virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
 
 
 private:
