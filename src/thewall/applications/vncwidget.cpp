@@ -58,6 +58,9 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
         // starting thread.
         future = QtConcurrent::run(this, &VNCClientWidget::receivingThread);
 
+        /**
+          This is important
+          */
         resize(_image->size());
 
         /**

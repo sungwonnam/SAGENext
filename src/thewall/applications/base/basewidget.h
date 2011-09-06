@@ -35,7 +35,7 @@ public:
         virtual ~BaseWidget();
 
         /*!
-          Only user application will have this type number
+          Only a user application will have this type number
          */
         enum { Type = QGraphicsItem::UserType + 2 };
         virtual int type() const { return Type;}
@@ -65,18 +65,23 @@ public:
         inline PerfMonitor * perfMon() const {return _perfMon;}
 
 
+
+        virtual void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
+
         /*!
           This sets the highest zValue among all app widgets on the on the scene.
-          Both mousePress and sharedPointer call this function.
+          This is triggered by mousePressEvent
           */
         void setTopmost();
 
         /*!
-          Resizing app window with this.
-          Note that this makes pixel bigger/smaller.
-          ApplicationWidget's resizing should be handled by resizeHandleSceneRect()
+          Resizing app window with this. Note that this makes pixel bigger/smaller.
+
+          Widgets with Qt::Window as the window flag should resize by resizeHandleSceneRect().
+          So, using this function in those cases is not recommended.
           */
-        void reScale(int tick, qreal factor);
+        virtual void reScale(int tick, qreal factor);
 
         /*!
           The widget type Qt::Window should have resize handle for the pointer.
@@ -89,11 +94,18 @@ public:
 
 
         /*!
-          Reimplement this function to receive real mousePressEvent followed by mouseReleaseEvent.
-          And wrap those events with grabMouse() and releaseMouse(). The widget must be mouse grabber to receive the events.
-          Please refer to WebWidget and ImageWidgetPluginExample
+          If shared pointer calls mouseClick() in response to ui client's mousePress followed by mouseRelease event, then it means theat the real mouse events are not generated.
+
+          In that case, a user can reimplement this function to define widget's behavior in response to mouse click on the widget.
+          The default implementation provides real mouse press and release event.
           */
         virtual void mouseClick(const QPointF &, Qt::MouseButton);
+
+
+        /*!
+          Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to weird behavior. So this should be implemented in child class manually.
+          */
+        virtual void mouseDrag(const QPointF &, Qt::MouseButton);
 
 
         /*!
@@ -251,7 +263,6 @@ protected:
         void timerEvent(QTimerEvent *);
 
         /*!
-          Updates appInfo->recentBoundingRect
           */
         virtual void resizeEvent(QGraphicsSceneResizeEvent *event);
 
@@ -260,7 +271,7 @@ protected:
           */
         virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
 
-        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
+//        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
 
         /*!
           * maximize window
@@ -276,6 +287,17 @@ protected:
           * calls reScale()
           */
         virtual void wheelEvent(QGraphicsSceneWheelEvent *event);
+
+
+        /**
+          child class should provide widget specific behavior.
+          If sagewidget (mplayer) then, provide video control overlay.
+
+          BaseWidget will provide resize handle on four corners
+          */
+        virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
+
+        virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
 
 
 private:

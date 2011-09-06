@@ -11,16 +11,22 @@ class BaseWidget;
   */
 class WidgetRemoveButton : public QGraphicsPixmapItem {
 public:
-	explicit WidgetRemoveButton(QGraphicsItem *parent = 0);
-	~WidgetRemoveButton() {}
+        explicit WidgetRemoveButton(QGraphicsItem *parent = 0);
+        ~WidgetRemoveButton() {}
 
 protected:
-	void dragEnterEvent(QGraphicsSceneDragDropEvent *event);
+        void dragEnterEvent(QGraphicsSceneDragDropEvent *event);
 
 //	void dragLeaveEvent(QGraphicsSceneDragDropEvent *event);
 
-	void dropEvent(QGraphicsSceneDragDropEvent *event);
+        void dropEvent(QGraphicsSceneDragDropEvent *event);
 };
+
+
+
+
+
+
 
 
 
@@ -30,72 +36,71 @@ protected:
   */
 class PolygonArrow : public QGraphicsPolygonItem {
 public:
-	PolygonArrow(const quint64 uicid, const QSettings *, const QColor c, QGraphicsItem *parent=0);
-	~PolygonArrow();
+        PolygonArrow(const quint64 uicid, const QSettings *, const QColor c, QGraphicsItem *parent=0);
+        ~PolygonArrow();
 
-	void setPointerName(const QString &text);
+        void setPointerName(const QString &text);
 
-	bool setAppUnderPointer(const QPointF scenePosOfPointer);
-	inline BaseWidget * appUnderPointer() {return app;}
+        /**
+          This is called by pointerPress()
+          It sets widget under the pointer
+          */
+        bool setAppUnderPointer(const QPointF scenePosOfPointer);
 
-//	enum { Type = UserType + 1 };
-//	int type() const { return Type; } // reimplementing this
+        inline BaseWidget * appUnderPointer() {return app;}
 
+        /**
+          * Moves pointer itself
+          * If dragging and there's app under the pointer then move the app widget too
+          */
+        virtual void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags);
 
-	/**
-	  * Moves pointer itself
-	  * If dragging and there's app under the pointer then move the app widget too
-	  */
-	void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags);
-
-	/**
-	  * There's no change in pointer. setAppUnderPointer() is called
-	  * If app is present, change its zValue so that it can be top most item among app widgets
-	  */
-	void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
+        /**
+          * setAppUnderPointer() is called
+          */
+        virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
 //	void pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
-	/**
-	  pointer double click is not used because
-	  uiserver directly generate doubleclick event
-	  */
-//	void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
+        /**
+           sends real doubleclick event
+          */
+        virtual void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
-	/**
-	  * generates real mouse event
-	  */
-//	void pointerWheel(const QPointF &scenePos, int delta = 120);
+        /**
+          * sends real mouse wheel event
+          */
+        virtual void pointerWheel(const QPointF &scenePos, int delta = 120);
 
-	/**
-	  * This is not standard mouse event. simulate mouse click
-	  */
-	void pointerClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
+        /**
+          * simulate mouse click by sending mousePressEvent followed by mouseReleaseEvent
+          */
+        virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
 private:
-	/**
-	  * The unique ID of UI client to which this pointer belongs
-	  */
-	const quint64 uiclientid;
+        /**
+          * The unique ID of UI client to which this pointer belongs
+          */
+        const quint64 uiclientid;
 
 
-	const QSettings *settings;
+        const QSettings *settings;
 
-	/**
-	  * The current viewport
-	  */
-//	QGraphicsView *gview;
+        /**
+          * The pointer name
+          */
+        QGraphicsSimpleTextItem *textItem;
 
-	/**
-	  * The pointer name
-	  */
-	QGraphicsSimpleTextItem *textItem;
-
-	/**
-	  * The app widget under this pointer
-	  */
-	BaseWidget *app;
+        /**
+          The app widget under this pointer
+          This is set when pointerPress is called
+          */
+        BaseWidget *app;
 };
+
+
+
+
 
 
 /**
@@ -104,15 +109,15 @@ private:
 class PixmapCloseButton : public QGraphicsPixmapItem
 {
 public:
-	explicit PixmapCloseButton(const QString resource, QGraphicsItem *parent = 0);
-	explicit PixmapCloseButton(const QPixmap pixmap, QGraphicsItem *parent=0) : QGraphicsPixmapItem(pixmap, parent) {}
+        explicit PixmapCloseButton(const QString resource, QGraphicsItem *parent = 0);
+        explicit PixmapCloseButton(const QPixmap pixmap, QGraphicsItem *parent=0) : QGraphicsPixmapItem(pixmap, parent) {}
 
 protected:
-	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
-	void mousePressEvent(QGraphicsSceneMouseEvent *event);
+        void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+        void mousePressEvent(QGraphicsSceneMouseEvent *event);
 
 private:
-	bool flag;
+        bool flag;
 };
 
 
@@ -123,15 +128,15 @@ private:
 class PixmapCloseButtonOnScene : public QGraphicsPixmapItem
 {
 public:
-	explicit PixmapCloseButtonOnScene(const QString resource, QGraphicsItem *parent = 0);
-	explicit PixmapCloseButtonOnScene(const QPixmap pixmap, QGraphicsItem *parent=0) : QGraphicsPixmapItem(pixmap, parent) {}
+        explicit PixmapCloseButtonOnScene(const QString resource, QGraphicsItem *parent = 0);
+        explicit PixmapCloseButtonOnScene(const QPixmap pixmap, QGraphicsItem *parent=0) : QGraphicsPixmapItem(pixmap, parent) {}
 
 protected:
-	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
-	void mousePressEvent(QGraphicsSceneMouseEvent *event);
+        void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+        void mousePressEvent(QGraphicsSceneMouseEvent *event);
 
 private:
-	bool flag;
+        bool flag;
 };
 
 
@@ -141,12 +146,12 @@ private:
 class SwSimpleTextItem : public QGraphicsSimpleTextItem
 {
 public:
-	SwSimpleTextItem(int pointSize=0, QGraphicsItem *parent=0);
-	~SwSimpleTextItem();
+        SwSimpleTextItem(int pointSize=0, QGraphicsItem *parent=0);
+        ~SwSimpleTextItem();
 
 protected:
-	void wheelEvent(QGraphicsSceneWheelEvent * event);
-	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+        void wheelEvent(QGraphicsSceneWheelEvent * event);
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 };
 
@@ -156,17 +161,17 @@ protected:
 class PixmapArrow : public QGraphicsPixmapItem
 {
 public:
-	PixmapArrow(const quint64 uicid, QGraphicsItem *parent=0);
-	void setPointerName(const QString &text);
+        PixmapArrow(const quint64 uicid, QGraphicsItem *parent=0);
+        void setPointerName(const QString &text);
 
 private:
-	QGraphicsSimpleTextItem *textItem;
-	const quint64 uiclientid;
+        QGraphicsSimpleTextItem *textItem;
+        const quint64 uiclientid;
 
-	/**
-	  * the app under this pointer
-	  */
-	BaseWidget *app;
+        /**
+          * the app under this pointer
+          */
+        BaseWidget *app;
 };
 
 

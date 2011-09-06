@@ -92,12 +92,6 @@ public slots:
           */
         void launch(BaseWidget *);
 
-
-        /*!
-          * draw pointer (QGraphicsPolygonItem) on the scene when UiServer receives POINTER_SHARE message
-          */
-        QGraphicsItem * createPointer(quint64 uiclientid, QColor pointerColor, QString pointerName);
-
 };
 
 #endif // SAGENEXTLAUNCHER_H

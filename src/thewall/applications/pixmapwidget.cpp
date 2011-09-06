@@ -101,6 +101,12 @@ void PixmapWidget::callUpdate() {
         else {
                 qCritical() << "PixmapWidget read thread finished with error";
         }
+
+        /*
+        qreal left, top, right, bottom;
+        getWindowFrameMargins(&left, &top, &right, &bottom);
+        qDebug() << "windowFrameMargin" << left << top << right << bottom;
+        */
 }
 
 void PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {

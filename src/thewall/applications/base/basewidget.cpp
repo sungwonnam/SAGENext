@@ -112,6 +112,7 @@ void BaseWidget::init()
         setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
         if (settings) {
+            // This will affect boundingRect() of the widget
                 setWindowFrameMargins(settings->value("general/framemarginleft", 3).toDouble(),
                                                   settings->value("general/framemargintop", 3).toDouble(),
                                                   settings->value("general/framemarginright",3).toDouble(),
@@ -168,6 +169,19 @@ void BaseWidget::init()
 //	shadow->setColor(Qt::gray);;
 //	shadow->setEnabled(false);
 //	setGraphicsEffect(shadow); // you can set only one effect
+}
+
+
+void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
+    if (isSelected()) {
+
+    }
+    else {
+
+    }
 }
 
 qreal BaseWidget::ratioToTheWall() const {
@@ -466,9 +480,12 @@ void BaseWidget::reScale(int tick, qreal factor)
         // Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees, the child's total transformation will be 180 degrees. Similarly, if the item's parent is scaled to 2x its original size, its children will also be twice as large. An item's transformation does not affect its own local geometry; all geometry functions (e.g., contains(), update(), and all the mapping functions) still operate in local coordinates.
         setScale(currentScale);
 
-
         //! optional
 //	appInfo->setRecentScale(currentScale);
+
+
+        // This function will not change widget's size !!
+//        qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
 }
 
 QRectF BaseWidget::resizeHandleSceneRect()
@@ -591,48 +608,48 @@ void BaseWidget::createActions()
 
 void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn) {
 
-        QPointF itempos = mapFromScene(clickedScenePos);
+    QPointF itempos = mapFromScene(clickedScenePos);
 
-        /** There is only one view ? **/
+    /** There is only one view ? **/
 
-        QGraphicsView *gview = 0;
-        foreach (gview, scene()->views()) {
-                if ( gview->rect().contains(gview->mapFromScene(clickedScenePos)) )
-                        break;
+    QGraphicsView *gview = 0;
+    foreach (gview, scene()->views()) {
+        if ( gview->rect().contains(gview->mapFromScene(clickedScenePos)) )
+            break;
+    }
+
+    if (gview) {
+
+        // be aware that scaling doesn't change size(), boundingRect(), and geometry() at all
+        if ( boundingRect().contains(itempos) ) {
+
+            QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+            QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+
+            //			grabMouse(); // don't do this before mousePress
+            // sendEvent doesn't delete event object, so event can be created in stack (local to this function)
+            if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
+                qDebug("BaseWidget::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+            }
+
+            // this widget is now mouseGrabber because of the pressEvent
+
+            if ( ! QApplication::sendEvent(gview->viewport(), release) ) {
+                qDebug("BaseWidget::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+            }
+            ungrabMouse();
+
+            if (press) delete press;
+            if (release) delete release;
         }
+    }
+    else {
+        qDebug() << "BaseWidget::mouseClick() : couldn't find viewport contains scene position" << clickedScenePos;
+    }
+}
 
-        if (gview) {
-                if ( boundingRect().contains(itempos) ) {
+void BaseWidget::mouseDrag(const QPointF &, Qt::MouseButton) {
 
-                        QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-                        QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-
-//			grabMouse(); // don't do this before mousePress
-                        // sendEvent doesn't delete event object, so event can be created in stack (local to this function)
-                        if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
-                                qDebug("BaseWidget::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-                        }
-
-                        // this widget is now mouseGrabber because of the pressEvent
-
-                        if ( ! QApplication::sendEvent(gview->viewport(), release) ) {
-                                qDebug("BaseWidget::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-                        }
-                        ungrabMouse();
-
-                        if (press) delete press;
-                        if (release) delete release;
-
-                        /*
-                          // event loop will take ownership of posted event, so event must be created in heap space
-                        QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
-                        QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
-                        */
-                }
-        }
-        else {
-                qDebug() << "BaseWidget::mouseClick() : couldn't find viewport contains scene position" << clickedScenePos;
-        }
 }
 
 
@@ -653,8 +670,7 @@ void BaseWidget::timerEvent(QTimerEvent *) {
         */
 }
 
-void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
-//	qDebug("BaseWidget::%s()", __FUNCTION__);
+void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
         if(_appInfo) {
 //		appInfo->setRecentBoundingRect( boundingRect() );
         }
@@ -662,6 +678,15 @@ void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
 
 void BaseWidget::setLastTouch() {
         _lastTouch = QDateTime::currentMSecsSinceEpoch();
+}
+
+
+void BaseWidget::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
+
+}
+
+void BaseWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
+
 }
 
 /*!
@@ -683,15 +708,15 @@ void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
         QGraphicsWidget::mousePressEvent(event);
 }
 
-void BaseWidget::mouseMoveEvent(QGraphicsSceneMouseEvent *e) {
-//	qDebug() << "BGW::mouseMoveEvent" << e->pos() << e->scenePos() << e->screenPos() << e->button() << e->buttons();
-        QGraphicsWidget::mouseMoveEvent(e);
-}
+//void BaseWidget::mouseMoveEvent(QGraphicsSceneMouseEvent *e) {
+////	qDebug() << "BGW::mouseMoveEvent" << e->pos() << e->scenePos() << e->screenPos() << e->button() << e->buttons();
+//        QGraphicsWidget::mouseMoveEvent(e);
+//}
 
 void BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 //	Q_UNUSED(event);
 
-        qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
+//        qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
 
         if ( mapRectToScene(boundingRect()).contains(event->scenePos()) )
                 maximize();
