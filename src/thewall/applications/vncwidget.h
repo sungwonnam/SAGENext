@@ -42,6 +42,7 @@ private:
         void receivingThread();
 
         bool _end;
+
         int framerate;
 
         QFuture<void> future;

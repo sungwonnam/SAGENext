@@ -14,8 +14,8 @@ RailawareWidget::RailawareWidget() :
     _widgetClosed(false),
     _scheduled(false)
 {
-        setWidgetType(BaseWidget::Widget_RealTime);
-        setCacheMode(QGraphicsItem::NoCache);
+	setWidgetType(BaseWidget::Widget_RealTime);
+	setCacheMode(QGraphicsItem::NoCache);
 }
 
 RailawareWidget::RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
@@ -24,27 +24,26 @@ RailawareWidget::RailawareWidget(quint64 globalappid, const QSettings *s, QGraph
     , _affCtrlAction(0)
     , _widgetClosed(false)
     , _scheduled(false)
-
 {
-        setWidgetType(BaseWidget::Widget_RealTime);
+	setWidgetType(BaseWidget::Widget_RealTime);
 
-        failToSchedule = 0;
+	failToSchedule = 0;
 
-        /* railaware widget is streaming widget, so turn off cache */
-//        setCacheMode(QGraphicsItem::NoCache);
-//	setCacheMode(QGraphicsItem::ItemCoordinateCache);
-//	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
-//	setBoundingRegionGranularity(0.25);
+	/* railaware widget is streaming widget, so turn off cache */
+	setCacheMode(QGraphicsItem::NoCache);
+	//	setCacheMode(QGraphicsItem::ItemCoordinateCache);
+	//	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+	//	setBoundingRegionGranularity(0.25);
 
 
-//	qDebug() << "affInfo" << affInfo;
-//	qDebug() << "gaid" << globalappid;
-//	qDebug() << "rail on?" << s->value("system/rail").toBool();
+	//	qDebug() << "affInfo" << affInfo;
+	//	qDebug() << "gaid" << globalappid;
+	//	qDebug() << "rail on?" << s->value("system/rail").toBool();
 
-        if (s && s->value("system/resourcemonitor").toBool()) {
-//		qDebug() << "RailawareWidget() : creating affinity instance";
-                createAffInstances();
-        }
+	if (s && s->value("system/resourcemonitor").toBool()) {
+		//		qDebug() << "RailawareWidget() : creating affinity instance";
+		createAffInstances();
+	}
 }
 
 
@@ -87,38 +86,38 @@ qreal RailawareWidget::observedQualityAdjusted() {
 
 void RailawareWidget::createAffInstances()
 {
-        if (!_affInfo)
-                _affInfo = new AffinityInfo(this);
+	if (!_affInfo)
+		_affInfo = new AffinityInfo(this);
 
-        if (!_affCtrlAction) {
-                _affCtrlAction = new QAction("Affinity Control", this);
-                _affCtrlAction->setEnabled(false);
-                _contextMenu->addAction(_affCtrlAction);
-                connect(_affCtrlAction, SIGNAL(triggered()), this, SLOT(showAffCtrlDialog()));
-        }
+	if (!_affCtrlAction) {
+		_affCtrlAction = new QAction("Affinity Control", this);
+		_affCtrlAction->setEnabled(false);
+		_contextMenu->addAction(_affCtrlAction);
+		connect(_affCtrlAction, SIGNAL(triggered()), this, SLOT(showAffCtrlDialog()));
+	}
 
-//	Q_ASSERT(_affInfo);
-//	if ( rMonitor ) {
-//		if ( connect(_affInfo, SIGNAL(cpuOfMineChanged(RailawareWidget *,int,int)), rMonitor, SLOT(updateAffInfo(RailawareWidget *,int,int))) ) {
-//		}
-//		else {
-//			qCritical("RailawareWidget::%s() : connecting AffinityInfo::affInfoChanged() to ResourceMonitor::updateAffInfo() failed", __FUNCTION__);
-//		}
-//	}
+	//	Q_ASSERT(_affInfo);
+	//	if ( rMonitor ) {
+	//		if ( connect(_affInfo, SIGNAL(cpuOfMineChanged(RailawareWidget *,int,int)), rMonitor, SLOT(updateAffInfo(RailawareWidget *,int,int))) ) {
+	//		}
+	//		else {
+	//			qCritical("RailawareWidget::%s() : connecting AffinityInfo::affInfoChanged() to ResourceMonitor::updateAffInfo() failed", __FUNCTION__);
+	//		}
+	//	}
 }
 
 
 void RailawareWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
-        if ( _affInfo && _affCtrlAction ) {
-                _affCtrlAction->setEnabled(true);
-        }
-//	BaseWidget::contextMenuEvent(event);
-        scene()->clearSelection();
-        setSelected(true);
+	if ( _affInfo && _affCtrlAction ) {
+		_affCtrlAction->setEnabled(true);
+	}
+	//	BaseWidget::contextMenuEvent(event);
+	scene()->clearSelection();
+	setSelected(true);
 
-//	_contextMenu->exec(event->screenPos());
-        _contextMenu->popup(event->screenPos());
+	//	_contextMenu->exec(event->screenPos());
+	_contextMenu->popup(event->screenPos());
 }
 
 

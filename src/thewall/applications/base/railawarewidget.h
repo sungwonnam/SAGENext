@@ -27,6 +27,7 @@ public:
           It is higly recommended to you this constructor instead of default one
           */
         RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+
         virtual ~RailawareWidget();
 
         /*!
@@ -46,7 +47,15 @@ public:
           This will determine delay in stream loop
           */
         int setQuality(qreal newQuality);
+
+		/**
+		  Returns *absolute* observed quality which is based on expected quality set by a user
+		  */
         qreal observedQuality();
+
+		/**
+		  Returns *relative* observed quality which is based on adjusted quality
+		  */
         qreal observedQualityAdjusted();
 
         qreal unitValue();
@@ -80,7 +89,9 @@ protected:
 
 
         /**
-          when a scheduler is running, schedulable widget should be deleted by the scheduler
+          When a scheduler is running, schedulable widget should be deleted by the scheduler.
+		  The scheduler copies widget list from the resource monitor at every scheduling event.
+          Because of this, the scheduler can still have pointer to this widget after this widget has closed.
           */
         bool _widgetClosed;
 
@@ -88,8 +99,10 @@ protected:
         virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
 
 
-        /*!
-          flag for SMART scheduler
+        /**
+          A flag for SMART scheduler.
+		  This is to prevent the widget from scheduled when previously scheduled frame hasn't displayed.
+		  Sage widget unset this flag in the scheduleUpdate()
           */
         bool _scheduled;
 
@@ -98,9 +111,11 @@ signals:
 public slots:
         void showAffCtrlDialog();
 
-
-        /*!
-          */
+		/**
+		  Railaware widget will usually have a worker thread. For sage widget it is pixel receiving thread.
+		  The worker thread signals when a frame is ready to be displayed. And this signal can be connected to
+		  scheduleUpdate() to do additional process before scheduling update()
+		  */
         virtual void scheduleUpdate() { update(); }
 
         virtual void scheduleReceive() {}

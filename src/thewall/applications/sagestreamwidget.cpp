@@ -388,7 +388,7 @@ void SageStreamWidget::scheduleUpdate() {
 
             else {
 
-                setScheduled(false); // reset scheduling flag
+                setScheduled(false); // reset scheduling flag for SMART scheduler
 
                 ++frameCounter;
                 //qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget : " << frameCounter << " has converted";

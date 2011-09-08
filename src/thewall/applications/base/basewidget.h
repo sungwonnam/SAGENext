@@ -32,6 +32,7 @@ public:
         BaseWidget();
 
         BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+
         virtual ~BaseWidget();
 
         /*!
@@ -49,6 +50,7 @@ public:
         inline Widget_Type widgetType() const {return _widgetType;}
 
         inline void setSettings(const QSettings *s) {settings = s;}
+
         inline void setRMonitor(ResourceMonitor *rm) {_rMonitor = rm;}
 
         /*!
@@ -140,14 +142,14 @@ public:
         int adjustQuality(qreal adjust) {return setQuality(_quality + adjust);}
 
         /*!
-          set new desired quality
+          This is dummy function. A schedulable widget should reimplement this
           */
         virtual int setQuality(qreal newQuality) {_quality = newQuality; return 0;}
 
         inline qreal desiredQuality() const {return _quality;}
 
         /*!
-          What is actual quality
+          This is dummy function. A schedulable widget should reimplement this
           */
         virtual qreal observedQuality() {return _quality;}
 
@@ -156,7 +158,7 @@ public:
 
 
         /*!
-          TO manually adjust _lastTouch
+          To manually adjust _lastTouch
           This function shouldn't be used in normal situation
           */
         void setLastTouch();
@@ -176,6 +178,7 @@ protected:
          * Used to display app info overlay
          */
         AppInfo *_appInfo; /**< app name, frame dimension, rect */
+
         bool showInfo; /**< flag to toggle show/hide info item */
 
 
@@ -214,8 +217,8 @@ protected:
 
 
         /*!
-                  When was this widget touched last time. This value is updated in mousePressEvent().
-                  It is to keep track user interaction recency on this widget
+          When was this widget touched last time. This value is updated in mousePressEvent().
+          It is to keep track user interaction recency on this widget
           */
         qint64 _lastTouch; // long long int
 
@@ -243,10 +246,8 @@ protected:
         QAction *_closeAction; /**< fadeOutClose() */
 
 
-
-
-
         inline void setWindowState(Window_State ws) {_windowState = ws;}
+
         void setWidgetType(Widget_Type wt);
 
         void init();

@@ -10,71 +10,69 @@
 rfbBool VNCClientWidget::got_data = FALSE;
 QString VNCClientWidget::vncpasswd = "evl123";
 
-VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString passwd, int frate, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags) :
-
-        RailawareWidget(globalappid, s, parent, wflags),
-        serverPort(5900),
-        _image(0)
+VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString passwd, int frate, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
+	: RailawareWidget(globalappid, s, parent, wflags)
+	, vncclient(0)
+	, serverPort(5900)
+	, _image(0)
+	, _end(false)
+	, framerate(frate)
 
 {
-        _end = false;
-        framerate = frate;
+	VNCClientWidget::vncpasswd = passwd;
 
-        VNCClientWidget::vncpasswd = passwd;
+	// 8 bit/sample
+	// 3 samples/pixel
+	// 4 Byte/pixel
+	vncclient = rfbGetClient(8, 3, 4);
 
-        // 8 bit/sample
-        // 3 samples/pixel
-        // 4 Byte/pixel
-        vncclient = rfbGetClient(8, 3, 4);
+	vncclient->canHandleNewFBSize = false;
+	vncclient->appData.useRemoteCursor = true;
+	vncclient->MallocFrameBuffer = VNCClientWidget::resize_func;
+	vncclient->GotFrameBufferUpdate = VNCClientWidget::update_func;
+	vncclient->HandleCursorPos = VNCClientWidget::position_func;
+	vncclient->GetPassword = VNCClientWidget::password_func;
 
-        vncclient->canHandleNewFBSize = false;
-        vncclient->appData.useRemoteCursor = true;
-        vncclient->MallocFrameBuffer = VNCClientWidget::resize_func;
-        vncclient->GotFrameBufferUpdate = VNCClientWidget::update_func;
-        vncclient->HandleCursorPos = VNCClientWidget::position_func;
-        vncclient->GetPassword = VNCClientWidget::password_func;
+	serverAddr.setAddress(senderIP);
 
-        serverAddr.setAddress(senderIP);
+	int margc = 2;
+	char *margv[2];
+	margv[0] = strdup("vnc");
+	margv[1] = (char *)malloc(256);
+	memset(margv[1], 0, 256);
+	sprintf(margv[1], "%s:%d", qPrintable(serverAddr.toString()), display);
 
+	if ( ! rfbInitClient(vncclient, &margc, margv) ) {
+		qCritical() << "rfbInitClient() error init";
+		deleteLater();
+	}
 
-        int margc = 2;
-        char *margv[2];
-        margv[0] = strdup("vnc");
-        margv[1] = (char *)malloc(256);
-        memset(margv[1], 0, 256);
-        sprintf(margv[1], "%s:%d", qPrintable(serverAddr.toString()), display);
+	if (vncclient->serverPort == -1 )
+		vncclient->vncRec->doNotSleep = true;
 
-        if ( ! rfbInitClient(vncclient, &margc, margv) ) {
-                qCritical() << "rfbInitClient() error init";
-                deleteLater();
-        }
+	//_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
+	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
+	//qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
-        if (vncclient->serverPort == -1 )
-                vncclient->vncRec->doNotSleep = true;
+	/**
+	  This is important
+     */
+	resize(_image->size());
 
-//        _image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
-        _image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
-//	qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
+	/**
+	  sets the transform origin point to widget's center
+	 */
+	setTransformOriginPoint( _image->width() / 2.0 , _image->height() / 2.0 );
 
-        // starting thread.
-        future = QtConcurrent::run(this, &VNCClientWidget::receivingThread);
-
-        /**
-          This is important
-          */
-        resize(_image->size());
-
-        /**
-          set transform origin point to widget's center
-          **/
-        setTransformOriginPoint( _image->width() / 2.0 , _image->height() / 2.0 );
+	// starting thread.
+	future = QtConcurrent::run(this, &VNCClientWidget::receivingThread);
 }
 
 VNCClientWidget::~VNCClientWidget() {
-        _end = true;
-        future.cancel();
-        future.waitForFinished();
-        if (_image) delete _image;
+	_end = true;
+	future.cancel();
+	future.waitForFinished();
+	if (_image) delete _image;
 }
 
 void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
@@ -127,88 +125,87 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
                 infoTextItem->hide();
         }
         if (_perfMon)
-                _perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
+			_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
 void VNCClientWidget::scheduleUpdate() {
-        if (! pixmap.convertFromImage(*_image, Qt::AutoColor | Qt::OrderedDither) ) {
-                qDebug("VNCClientWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
-        }
-        else {
-                // Schedules a redraw. This is not an immediate paint. This actually is postEvent()
-                // QGraphicsView will process the event
-                update();
-        }
-        update();
+	if (! pixmap.convertFromImage(*_image, Qt::AutoColor | Qt::OrderedDither) ) {
+		qDebug("VNCClientWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
+	}
+	else {
+		// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
+		// QGraphicsView will process the event
+		update();
+	}
 }
 
 void VNCClientWidget::receivingThread() {
 
-        while (!_end) {
-                // sleep to ensure desired fps
-                qint64 now = QDateTime::currentMSecsSinceEpoch();
-                while ( (QDateTime::currentMSecsSinceEpoch() - now) < (1000 / framerate)) {
+	while (!_end) {
+		// sleep to ensure desired fps
+		qint64 now = QDateTime::currentMSecsSinceEpoch();
+		while ( (QDateTime::currentMSecsSinceEpoch() - now) < (1000 / framerate)) {
 
-                        if (!vncclient) {
-                                _end = true;
-                                break;
-                        }
+			if (!vncclient) {
+				_end = true;
+				break;
+			}
 
-                        int i = WaitForMessage(vncclient, 100000);
-                        if ( i<0 ) {
-                                rfbClientLog("VNC error. quit\n");
-                                _end = true;
-                                break;
-                        }
+			int i = WaitForMessage(vncclient, 100000);
+			if ( i<0 ) {
+				rfbClientLog("VNC error. quit\n");
+				_end = true;
+				break;
+			}
 
-                        if (i) {
-                                if(!HandleRFBServerMessage(vncclient)) {
-                                        rfbClientLog("HandleRFBServerMessage quit\n");
-                                        _end = true;
-                                        break;
-                                }
-                        }
-                }
-                if (_end) break;
+			if (i) {
+				if(!HandleRFBServerMessage(vncclient)) {
+					rfbClientLog("HandleRFBServerMessage quit\n");
+					_end = true;
+					break;
+				}
+			}
+		}
+		if (_end) break;
 
-                // now copy pixels
-                unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
-                unsigned char * buffer = _image->bits();
-
-
-//		_image->loadFromData(vncpixels, vncclient->width * vncclient->height);
-
-                Q_ASSERT(vncpixels && buffer);
+		// now copy pixels
+		unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
+		unsigned char * buffer = _image->bits();
 
 
-                for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
-                    // QImage::Format_RGB32 format : 0xffRRGGBB
-                    /*
+		//		_image->loadFromData(vncpixels, vncclient->width * vncclient->height);
+
+		Q_ASSERT(vncpixels && buffer);
+
+
+		for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
+			// QImage::Format_RGB32 format : 0xffRRGGBB
+			/*
                     buffer[4*k + 3] = 0xff;
                         buffer[4*k + 2] = vncpixels[ 4*k + 0];
                         buffer[4*k + 1] = vncpixels[ 4*k + 1];
                         buffer[4*k + 0] = vncpixels[ 4*k + 2];
                         */
 
-                    // QImage::Format_RGB888
-                    buffer[3*k + 0] = vncpixels[ 4*k + 0];
-                    buffer[3*k + 1] = vncpixels[ 4*k + 1];
-                    buffer[3*k + 2] = vncpixels[ 4*k + 2];
-                }
+			// QImage::Format_RGB888
+			buffer[3*k + 0] = vncpixels[ 4*k + 0];
+			buffer[3*k + 1] = vncpixels[ 4*k + 1];
+			buffer[3*k + 2] = vncpixels[ 4*k + 2];
+		}
 
-                QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
-                // why I can't invoke update() ???
-        }
+		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
+		// why I can't invoke update() ???
+	}
 
-        qDebug() << "LibVNCClient receiving thread finished";
-        QMetaObject::invokeMethod(this, "fadeOutClose", Qt::QueuedConnection);
+	qDebug() << "LibVNCClient receiving thread finished";
+	QMetaObject::invokeMethod(this, "fadeOutClose", Qt::QueuedConnection);
 }
 
 
 
 void VNCClientWidget::signal_handler(int signal)
 {
-        rfbClientLog("Cleaning up.\n");
+	rfbClientLog("Cleaning up.\n");
 }
 
 rfbBool VNCClientWidget::resize_func(rfbClient* client)
