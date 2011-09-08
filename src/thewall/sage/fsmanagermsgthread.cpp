@@ -52,7 +52,7 @@ fsManagerMsgThread::~fsManagerMsgThread() {
         }
 
         // this is important, without this, program will finishes with an error
-        this->wait();
+        wait();
         qDebug("fsManagerMsgThread::%s() : returning",  __FUNCTION__);
 }
 
@@ -72,10 +72,10 @@ void fsManagerMsgThread::sendSailShutdownMsg(quint64 sageappid) {
         msg.setDest(sageappid);
         msg.setCode(OldSage::APP_QUIT); // send APP_QUIT to sail. sail will send SAIL_SHUTDOWN
         if ( ::send(socket, (char *)msg.getBuffer(), msg.getBufSize(), 0) <= 0 ) {
-                        qDebug("fsManagerMsgThread::%s() : failed to send APP_QUIT to sageappid %llu", __FUNCTION__, sageappid);
+            qDebug("fsManagerMsgThread::%s() : failed to send APP_QUIT to sageappid %llu", __FUNCTION__, sageappid);
         }
         else {
-//		qDebug("fsManagerMsgThread::%s() : APP_QUIT sent for sageappid %llu", __FUNCTION__, sageappid);
+            //qDebug("fsManagerMsgThread::%s() : APP_QUIT sent for sageappid %llu", __FUNCTION__, sageappid);
         }
         msg.destroy();
         _end = true;
@@ -223,7 +223,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
 
         switch(sageMsg.getCode()) {
         case OldSage::REG_APP : {
-                        qDebug("fsManagerMsgThread::%s() : REG_APP : msgData [%s] \n", __FUNCTION__, qPrintable(msgStr));
+//                        qDebug("fsManagerMsgThread::%s() : REG_APP : msgData [%s] \n", __FUNCTION__, qPrintable(msgStr));
                         char appn[128];
                         char temp[512];
                         int x, y;
@@ -333,7 +333,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                         // wait a bit so that SageStreamWidget / SagePixelReceiver can be started
                         /* If this is too short, sender could connect() before accept() is called at the sageStreamWidget */
 //			QCoreApplication::sendPostedEvents();
-//			QThread::yieldCurrentThread();
+                        QThread::yieldCurrentThread();
                         QThread::msleep(300);
 
 

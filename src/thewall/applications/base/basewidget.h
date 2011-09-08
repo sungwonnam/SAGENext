@@ -49,7 +49,7 @@ public:
         inline Widget_Type widgetType() const {return _widgetType;}
 
         inline void setSettings(const QSettings *s) {settings = s;}
-        inline void setRMonitor(ResourceMonitor *rm) {rMonitor = rm;}
+        inline void setRMonitor(ResourceMonitor *rm) {_rMonitor = rm;}
 
         /*!
           AnimationWidget will create affInfo when this function is called
@@ -220,7 +220,7 @@ protected:
         qint64 _lastTouch; // long long int
 
 
-        ResourceMonitor *rMonitor; /**< A pointer to the global resource monitor object */
+        ResourceMonitor *_rMonitor; /**< A pointer to the global resource monitor object */
 
         /*!
           0 <= quality <= 1.0

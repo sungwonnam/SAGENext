@@ -52,9 +52,12 @@ public:
         qreal unitValue();
 
 
-        bool isScheduled() const {return _scheduled;}
-        void setScheduled(bool b) { _scheduled = b;}
+        inline bool isScheduled() const {return _scheduled;}
+        inline void setScheduled(bool b) { _scheduled = b;}
 
+
+        inline bool widgetClosed() const {return _widgetClosed;}
+        inline void setWidgetClosed(bool b = true) {_widgetClosed = b;}
 
         /*!
           SMART scheduler
@@ -64,24 +67,29 @@ public:
 
 protected:
         /*!
-          AffinityInfo class. Only animation widget will instantiate this
+          AffinityInfo class. Only railaware widget will instantiate this
           */
-//	AffinityInfo *affInfo;
         AffinityControlDialog *affCtrlDialog;
 
+        /**
+          QAction that connects context menu's item to showAffCtrlDialog()
+          */
         QAction *_affCtrlAction;
 
-        SchedulerControl *scheduler;
+//        SchedulerControl *_scheduler;
 
 
-
+        /**
+          when a scheduler is running, schedulable widget should be deleted by the scheduler
+          */
+        bool _widgetClosed;
 
 
         virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
 
 
         /*!
-          flag for scheduler
+          flag for SMART scheduler
           */
         bool _scheduled;
 
@@ -89,11 +97,6 @@ signals:
 
 public slots:
         void showAffCtrlDialog();
-
-        /*!
-          overrides BaseWidget::fadeOutClose()
-          */
-        virtual void fadeOutClose();
 
 
         /*!

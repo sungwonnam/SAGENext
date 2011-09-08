@@ -670,7 +670,7 @@ void SelfAdjustingScheduler::doSchedule() {
 	}
 	QMapIterator<qreal, RailawareWidget *> it_secondary(wmap);
 	QMapIterator<qreal, RailawareWidget *> it_primary(wmap); // iterate high priority first
-	it_primary.toBack();
+        it_primary.toBack();
 
 
 	int priorityBias = 100; // to quantize

@@ -59,7 +59,7 @@ private:
 	  * QImage is for I/O. So this is used for receiving pixels from sAIL
 	  */
 	QImage *image;
-//	QImage image2;
+        QImage image2;
 
 //	QSemaphore *convertedToPixmap;
 
@@ -69,7 +69,7 @@ private:
 	/**
 	  * QPixmap is for drawing.
 	  */
-	QPixmap _pixmap;
+        QPixmap _pixmap;
 
 	/**
 	  * pixel receiver socket on which this widget will listen in initialize()
@@ -153,9 +153,6 @@ public slots:
 	  Wake waitCondition
 	  */
 	void scheduleReceive();
-
-
-	void fadeOutClose();
 };
 
 #endif // SAGESTREAMWIDGET_H

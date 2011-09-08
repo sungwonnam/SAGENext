@@ -9,19 +9,21 @@
 
 
 RailawareWidget::RailawareWidget() :
-        affCtrlDialog(0),
-        _affCtrlAction(0),
-        _scheduled(false)
+    affCtrlDialog(0),
+    _affCtrlAction(0),
+    _widgetClosed(false),
+    _scheduled(false)
 {
         setWidgetType(BaseWidget::Widget_RealTime);
         setCacheMode(QGraphicsItem::NoCache);
 }
 
-RailawareWidget::RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags) :
-        BaseWidget(globalappid, s, parent, wflags),
-        affCtrlDialog(0),
-        _affCtrlAction(0),
-        _scheduled(false)
+RailawareWidget::RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
+    : BaseWidget(globalappid, s, parent, wflags)
+    , affCtrlDialog(0)
+    , _affCtrlAction(0)
+    , _widgetClosed(false)
+    , _scheduled(false)
 
 {
         setWidgetType(BaseWidget::Widget_RealTime);
@@ -29,7 +31,7 @@ RailawareWidget::RailawareWidget(quint64 globalappid, const QSettings *s, QGraph
         failToSchedule = 0;
 
         /* railaware widget is streaming widget, so turn off cache */
-        setCacheMode(QGraphicsItem::NoCache);
+//        setCacheMode(QGraphicsItem::NoCache);
 //	setCacheMode(QGraphicsItem::ItemCoordinateCache);
 //	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 //	setBoundingRegionGranularity(0.25);
@@ -119,10 +121,6 @@ void RailawareWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         _contextMenu->popup(event->screenPos());
 }
 
-void RailawareWidget::fadeOutClose()
-{
-        BaseWidget::fadeOutClose();
-}
 
 void RailawareWidget::showAffCtrlDialog() {
         if ( affCtrlDialog ) {

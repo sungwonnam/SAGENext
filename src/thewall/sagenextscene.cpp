@@ -15,7 +15,9 @@ SAGENextScene::~SAGENextScene() {
 		if (item->type() == QGraphicsItem::UserType + 2) {
 			// this is user application
 			BaseWidget *bw = static_cast<BaseWidget *>(item);
-			bw->fadeOutClose();
+//			bw->fadeOutClose();
+                        bw->hide();
+                        bw->close();
 		}
 		else {
 			// this probably is common GUI

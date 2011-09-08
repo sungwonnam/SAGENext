@@ -20,7 +20,7 @@ BaseWidget::BaseWidget() :
         _affInfo(0),
         infoTextItem(0),
         _lastTouch(0),
-
+    _rMonitor(0),
         _quality(1.0),
 
 
@@ -41,6 +41,7 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
         _affInfo(0),
         infoTextItem(0),
         _lastTouch(0),
+    _rMonitor(0),
 
         _quality(1.0),
 
@@ -53,44 +54,44 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
 
 BaseWidget::~BaseWidget()
 {
-        if ( scene() ) {
-                scene()->removeItem(this);
-        }
+    if ( scene() ) {
+        scene()->removeItem(this);
+    }
 
-        //qDebug("BaseGraphicsWidget::%s() : deleting _contextMenu", __FUNCTION__);
-//	qDeleteAll(actions());
-        if(_contextMenu)
-                delete _contextMenu;
+    //qDebug("BaseGraphicsWidget::%s() : deleting _contextMenu", __FUNCTION__);
+    //	qDeleteAll(actions());
+    if(_contextMenu)
+        delete _contextMenu;
 
-        if ( _appInfo ) delete _appInfo;
-        if ( _perfMon ) delete _perfMon;
-//	if ( infoTextItem ) delete infoTextItem;
+    if ( _appInfo ) delete _appInfo;
+    if ( _perfMon ) delete _perfMon;
+    //	if ( infoTextItem ) delete infoTextItem;
 
-        qDebug("BaseWidget::%s() : Removed widget %llu from scene.", __FUNCTION__, _globalAppId);
+    qDebug("BaseWidget::%s() : Removed widget %llu from scene.", __FUNCTION__, _globalAppId);
 }
 
 
 void BaseWidget::setWidgetType(Widget_Type wt) {
-        _widgetType = wt;
-        if (_perfMon) {
-                _perfMon->setWidgetType(wt);
-        }
+    _widgetType = wt;
+    if (_perfMon) {
+        _perfMon->setWidgetType(wt);
+    }
 }
 
 void BaseWidget::setProxyWidget(QGraphicsProxyWidget *proxyWidget)
 {
-        if(proxyWidget) {
+    if(proxyWidget) {
 
-                QGraphicsLinearLayout *layout = new QGraphicsLinearLayout();
+        QGraphicsLinearLayout *layout = new QGraphicsLinearLayout();
 
-                proxyWidget->setParentItem(this);
-                proxyWidget->setWindowFlags(Qt::FramelessWindowHint);
-                proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, false);
-                proxyWidget->setFlag(QGraphicsItem::ItemIsSelectable, false);
+        proxyWidget->setParentItem(this);
+        proxyWidget->setWindowFlags(Qt::FramelessWindowHint);
+        proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, false);
+        proxyWidget->setFlag(QGraphicsItem::ItemIsSelectable, false);
 
-                layout->addItem( proxyWidget );
-                setLayout(layout);
-        }
+        layout->addItem( proxyWidget );
+        setLayout(layout);
+    }
 }
 
 void BaseWidget::init()
@@ -395,27 +396,27 @@ void BaseWidget::restore()
 
 void BaseWidget::fadeOutClose()
 {
-        qDebug() << "BaseWidget::fadeOutClose()";
-//	if (perfMon) {
-//		delete perfMon;
-//		perfMon = 0;
-//	}
+    qDebug() << "BaseWidget::fadeOutClose()";
+    //	if (perfMon) {
+    //		delete perfMon;
+    //		perfMon = 0;
+    //	}
 
-//	delete _contextMenu;
-//	_contextMenu = 0;
+    //	delete _contextMenu;
+    //	_contextMenu = 0;
 
-        // disable any QGraphicsEffect on this item to speed up paint()
-        if (graphicsEffect()) graphicsEffect()->setEnabled(false);
+    // disable any QGraphicsEffect on this item to speed up paint()
+    if (graphicsEffect()) graphicsEffect()->setEnabled(false);
 
-        if (pAnim_opacity) {
-                pAnim_opacity->setDuration(400);
-                pAnim_opacity->setStartValue(0.9);
-                pAnim_opacity->setEndValue(0.0);
-                pAnim_opacity->start();
-        }
-        else {
-                close();
-        }
+    if (pAnim_opacity) {
+        pAnim_opacity->setDuration(400);
+        pAnim_opacity->setStartValue(0.9);
+        pAnim_opacity->setEndValue(0.0);
+        pAnim_opacity->start();
+    }
+    else {
+        close();
+    }
 }
 
 void BaseWidget::setTopmost()
@@ -599,6 +600,7 @@ void BaseWidget::createActions()
         connect(_maximizeAction, SIGNAL(triggered()), this, SLOT(maximize()));
         connect(_restoreAction, SIGNAL(triggered()), this, SLOT(restore()));
         connect(_closeAction, SIGNAL(triggered()), this, SLOT(fadeOutClose()));
+//        connect(_closeAction, SIGNAL(triggered()), this, SLOT(close()));
 }
 
 

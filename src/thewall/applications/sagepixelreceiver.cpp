@@ -59,27 +59,29 @@ SagePixelReceiver::SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ I
 
 
 void SagePixelReceiver::endReceiver() {
-		_mutex.lock();
-		_end = true;
-		_waitCond.wakeOne();
-		_mutex.unlock();
+//    _mutex.lock();
+    _end = true;
+    ::shutdown(socket, SHUT_RDWR);
+    ::close(socket);
+//    _waitCond.wakeOne();
+//    _mutex.unlock();
 }
 
 SagePixelReceiver::~SagePixelReceiver() {
 
-	_mutex.lock();
+//	_mutex.lock();
 
 	_end = true;
 //	::shutdown(socket, SHUT_RDWR);
 	::close(socket);
 
-	_waitCond.wakeOne();
-	_mutex.unlock();
+//	_waitCond.wakeOne();
+//	_mutex.unlock();
 
-	terminate();
-	wait();
+//        terminate();
+//        wait();
 
-	qDebug("SagePixelReceiver::%s()", __FUNCTION__);
+        qDebug() << "return ~SagePixelReceiver" << QTime::currentTime().toString("hh:mm:ss.zzz");
 }
 
 void SagePixelReceiver::receivePixel() {
@@ -224,12 +226,12 @@ void SagePixelReceiver::run() {
 				read = recv(socket, bufptr, appInfo->getNetworkUserBufferLength(), MSG_WAITALL);
 			}
 			if ( read == -1 ) {
-				qCritical("SagePixelReceiver::%s() : error while reading.", __FUNCTION__);
+                                qCritical("SagePixelReceiver::run() : error while reading.");
 				_end = true;
 				break;
 			}
 			else if ( read == 0 ) {
-				qDebug("SagePixelReceiver::%s() : sender disconnected", __FUNCTION__);
+                                qDebug("SagePixelReceiver::run() : sender disconnected");
 				_end = true;
 				break;
 			}
@@ -317,16 +319,16 @@ void SagePixelReceiver::run() {
 		}
 	} /*** end of receiving loop ***/
 
-	if(doubleBuffer) {
+//	if(doubleBuffer) {
 
 //		doubleBuffer->swapBuffer(); // not a good idea
 
 //		doubleBuffer->releaseLocks();
 //		delete doubleBuffer; // do not delete doublebuffer here
-	}
+//	}
 
 	/* pixel receiving thread exit */
-	qDebug("SagePixelReceiver : thread exit");
+        qDebug("SagePixelReceiver : thread exit");
 }
 
 

@@ -52,7 +52,8 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
         if (vncclient->serverPort == -1 )
                 vncclient->vncRec->doNotSleep = true;
 
-        _image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
+//        _image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
+        _image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
 //	qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
         // starting thread.
@@ -103,14 +104,14 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
 
 
 
-//	if (!pixmap.isNull())
-//		painter->drawPixmap(0, 0, pixmap); // Drawing QPixmap is much faster than QImage
+        if (!pixmap.isNull())
+                painter->drawPixmap(0, 0, pixmap); // Drawing QPixmap is much faster than QImage
 
 
 
-        if (_image && !_image->isNull()) {
-                painter->drawImage(0, 0, *_image);
-        }
+//        if (_image && !_image->isNull()) {
+//                painter->drawImage(0, 0, *_image);
+//        }
 
 
 
@@ -130,7 +131,6 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
 }
 
 void VNCClientWidget::scheduleUpdate() {
-/*
         if (! pixmap.convertFromImage(*_image, Qt::AutoColor | Qt::OrderedDither) ) {
                 qDebug("VNCClientWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
         }
@@ -139,7 +139,6 @@ void VNCClientWidget::scheduleUpdate() {
                 // QGraphicsView will process the event
                 update();
         }
-        */
         update();
 }
 
@@ -181,11 +180,20 @@ void VNCClientWidget::receivingThread() {
 
                 Q_ASSERT(vncpixels && buffer);
 
-                // QImage::Format_RGB32 format : 0xffRRGGBB
+
                 for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
+                    // QImage::Format_RGB32 format : 0xffRRGGBB
+                    /*
+                    buffer[4*k + 3] = 0xff;
                         buffer[4*k + 2] = vncpixels[ 4*k + 0];
                         buffer[4*k + 1] = vncpixels[ 4*k + 1];
                         buffer[4*k + 0] = vncpixels[ 4*k + 2];
+                        */
+
+                    // QImage::Format_RGB888
+                    buffer[3*k + 0] = vncpixels[ 4*k + 0];
+                    buffer[3*k + 1] = vncpixels[ 4*k + 1];
+                    buffer[3*k + 2] = vncpixels[ 4*k + 2];
                 }
 
                 QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);

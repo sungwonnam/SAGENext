@@ -127,7 +127,7 @@ void fsManager::incomingConnection(int sockfd) {
 	qDebug("fsManager::%s() : Incoming Connection, sockfd %d, sageAppId %llu. Starting msgThread", __FUNCTION__, sockfd, _sageAppId);
 
 	fsManagerMsgThread *thread = new fsManagerMsgThread(_sageAppId, sockfd, settings);
-	connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+//	connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
 	connect(this, SIGNAL(destroyed()), thread, SLOT(sendSailShutdownMsg()));
 
 	//connect(thread, SIGNAL(finished()), this, SLOT(threadFinished()));
