@@ -53,18 +53,18 @@ OBJECTS_DIR = $${BUILD_DIR}
 
 
 MEDIA_DIR = ${HOME}/.sagenext/media
-MEDIA_IMAGE_DIR = ${MEDIA_DIR}/image
-MEDIA_VIDEO_DIR = ${MEDIA_DIR}/video
-!exists(${MEDIA_DIR}) {
-    system(mkdir ${MEDIA_DIR})
-    system(mkdir ${MEDIA_IMAGE_DIR})
-    system(mkdir ${MEDIA_VIDEO_DIR})
+MEDIA_IMAGE_DIR = $${MEDIA_DIR}/image
+MEDIA_VIDEO_DIR = $${MEDIA_DIR}/video
+!exists($${MEDIA_DIR}) {
+    system(mkdir $${MEDIA_DIR})
+    system(mkdir $${MEDIA_IMAGE_DIR})
+    system(mkdir $${MEDIA_VIDEO_DIR})
 }
-!exists(${MEDIA_IMAGE_DIR) {
-    system(mkdir ${MEDIA_IMAGE_DIR})
+!exists($${MEDIA_IMAGE_DIR}) {
+    system(mkdir $${MEDIA_IMAGE_DIR})
 }
-!exists(${MEDIA_VIDEO_DIR) {
-    system(mkdir ${MEDIA_VIDEO_DIR})
+!exists($${MEDIA_VIDEO_DIR}) {
+    system(mkdir $${MEDIA_VIDEO_DIR})
 }
 
 

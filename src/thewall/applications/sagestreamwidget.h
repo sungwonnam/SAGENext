@@ -94,16 +94,12 @@ private:
 		  PIXFMT_DXT, PIXFMT_YUV};
 
 
-
-
-
 	int getPixelSize(sagePixFmt pixfmt);
 
 	/**
 	  * instantiate _image based on sagePixFmt
 	  */
 	int createImageBuffer(int resx, int resy, sagePixFmt pixelFormat);
-
 
 
 //	QMutex *mutex;
@@ -153,9 +149,6 @@ public slots:
 	  Wake waitCondition
 	  */
 	void scheduleReceive();
-
-
-	void fadeOutClose();
 };
 
 #endif // SAGESTREAMWIDGET_H

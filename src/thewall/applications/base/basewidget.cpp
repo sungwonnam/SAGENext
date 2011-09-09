@@ -9,88 +9,84 @@
 
 #include <QtGui>
 
-BaseWidget::BaseWidget() :
-        QGraphicsWidget(),
-        _globalAppId(-1),
-        settings(0),
-        _windowState(BaseWidget::W_NORMAL),
-        _appInfo(new AppInfo()),
-        showInfo(false),
-        _perfMon(new PerfMonitor( this)),
-        _affInfo(0),
-        infoTextItem(0),
-        _lastTouch(0),
-
-        _quality(1.0),
-
-
-        _contextMenu(0),
-        _priority(0.5)
+BaseWidget::BaseWidget()
+	: QGraphicsWidget()
+	, _globalAppId(-1)
+	, settings(0)
+	, _windowState(BaseWidget::W_NORMAL)
+	, _appInfo(new AppInfo())
+	, showInfo(false)
+	, _perfMon(new PerfMonitor(this))
+	, _affInfo(0)
+	, infoTextItem(0)
+	, _lastTouch(0)
+	, _rMonitor(0)
+	, _quality(1.0)
+	, _contextMenu(0)
+	, _priority(0.5)
 {
-        init();
+	init();
 }
 
-BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent /*0*/, Qt::WindowFlags wflags /*0*/) :
-        QGraphicsWidget(parent, wflags),
-        _globalAppId(globalappid),
-        settings(s),
-        _windowState(BaseWidget::W_NORMAL),
-        _appInfo(new AppInfo()),
-        showInfo(false),
-        _perfMon(new PerfMonitor(this)),
-        _affInfo(0),
-        infoTextItem(0),
-        _lastTouch(0),
-
-        _quality(1.0),
-
-
-        _contextMenu(0),
-        _priority(0.5)
+BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent /*0*/, Qt::WindowFlags wflags /*0*/)
+	: QGraphicsWidget(parent, wflags)
+	, _globalAppId(globalappid)
+	, settings(s)
+	, _windowState(BaseWidget::W_NORMAL)
+	, _appInfo(new AppInfo())
+	, showInfo(false)
+	, _perfMon(new PerfMonitor(this))
+	, _affInfo(0)
+	, infoTextItem(0)
+	, _lastTouch(0)
+	, _rMonitor(0)
+	, _quality(1.0)
+	, _contextMenu(0)
+	, _priority(0.5)
 {
-        init();
+	init();
 }
 
 BaseWidget::~BaseWidget()
 {
-        if ( scene() ) {
-                scene()->removeItem(this);
-        }
+    if ( scene() ) {
+        scene()->removeItem(this);
+    }
 
-        //qDebug("BaseGraphicsWidget::%s() : deleting _contextMenu", __FUNCTION__);
-//	qDeleteAll(actions());
-        if(_contextMenu)
-                delete _contextMenu;
+    //qDebug("BaseGraphicsWidget::%s() : deleting _contextMenu", __FUNCTION__);
+    //	qDeleteAll(actions());
+    if(_contextMenu)
+        delete _contextMenu;
 
-        if ( _appInfo ) delete _appInfo;
-        if ( _perfMon ) delete _perfMon;
-//	if ( infoTextItem ) delete infoTextItem;
+    if ( _appInfo ) delete _appInfo;
+    if ( _perfMon ) delete _perfMon;
+    //	if ( infoTextItem ) delete infoTextItem;
 
-        qDebug("BaseWidget::%s() : Removed widget %llu from scene.", __FUNCTION__, _globalAppId);
+    qDebug("BaseWidget::%s() : Removed widget %llu from scene.", __FUNCTION__, _globalAppId);
 }
 
 
 void BaseWidget::setWidgetType(Widget_Type wt) {
-        _widgetType = wt;
-        if (_perfMon) {
-                _perfMon->setWidgetType(wt);
-        }
+    _widgetType = wt;
+    if (_perfMon) {
+        _perfMon->setWidgetType(wt);
+    }
 }
 
 void BaseWidget::setProxyWidget(QGraphicsProxyWidget *proxyWidget)
 {
-        if(proxyWidget) {
+    if(proxyWidget) {
 
-                QGraphicsLinearLayout *layout = new QGraphicsLinearLayout();
+        QGraphicsLinearLayout *layout = new QGraphicsLinearLayout();
 
-                proxyWidget->setParentItem(this);
-                proxyWidget->setWindowFlags(Qt::FramelessWindowHint);
-                proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, false);
-                proxyWidget->setFlag(QGraphicsItem::ItemIsSelectable, false);
+        proxyWidget->setParentItem(this);
+        proxyWidget->setWindowFlags(Qt::FramelessWindowHint);
+        proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, false);
+        proxyWidget->setFlag(QGraphicsItem::ItemIsSelectable, false);
 
-                layout->addItem( proxyWidget );
-                setLayout(layout);
-        }
+        layout->addItem( proxyWidget );
+        setLayout(layout);
+    }
 }
 
 void BaseWidget::init()
@@ -103,6 +99,7 @@ void BaseWidget::init()
         // to erase the widget before generating paint events.
         setAttribute(Qt::WA_OpaquePaintEvent, true);
 
+		// Destructor will be called by close()
         setAttribute(Qt::WA_DeleteOnClose, true);
 
         setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
@@ -329,93 +326,101 @@ void BaseWidget::minimize()
 
 void BaseWidget::maximize()
 {
-//	qDebug() << "BaseWidget::maximize()";
-        if ( _windowState == W_MAXIMIZED ) {
-                restore();
-                return;
-        }
+	//	qDebug() << "BaseWidget::maximize()";
+	if ( _windowState == W_MAXIMIZED ) {
+		restore();
+		return;
+	}
 
-        _maximizeAction->setEnabled(false);
-        _restoreAction->setEnabled(true);
+	_maximizeAction->setEnabled(false);
+	_restoreAction->setEnabled(true);
 
-        // record current position and scale
-        Q_ASSERT(_appInfo);
-        _appInfo->setRecentBoundingRect(mapRectToScene(boundingRect()));
-        _appInfo->setRecentScale( scale() );
+	// record current position and scale
+	Q_ASSERT(_appInfo);
+	_appInfo->setRecentBoundingRect(mapRectToScene(boundingRect()));
+	_appInfo->setRecentScale( scale() );
 
-        QSizeF s = size();
-        qreal scaleFactorW = scene()->width() / s.width();
-        qreal scaleFactorH = scene()->height() / s.height();
-        qreal scaleFactor = 1.0;
-        (scaleFactorW < scaleFactorH) ? scaleFactor = scaleFactorW : scaleFactor = scaleFactorH;
+	QSizeF s = size(); // current size of the widget. scaling won't change the size of the widget
+	qreal scaleFactorW = scene()->width() / s.width();
+	qreal scaleFactorH = scene()->height() / s.height();
+	qreal scaleFactor = 1.0;
+	(scaleFactorW < scaleFactorH) ? scaleFactor = scaleFactorW : scaleFactor = scaleFactorH;
 
-        _windowState = W_MAXIMIZED;
+	_windowState = W_MAXIMIZED;
 
-        if (pAnim_pos && pAnim_scale && aGroup ) {
-                pAnim_scale->setStartValue(scale());
-                pAnim_scale->setEndValue(scaleFactor);
-                pAnim_pos->setStartValue(pos());
-                pAnim_pos->setEndValue( QPointF( scene()->width() / 2  -  (s.width() * scaleFactor) / 2 , 0) );
-                aGroup->start();
-        }
+	if (pAnim_pos && pAnim_scale && aGroup ) {
+		pAnim_scale->setStartValue(scale());
+		pAnim_scale->setEndValue(scaleFactor);
+
+		pAnim_pos->setStartValue(pos());
+
+		// this is based on top left as the transformation origin
+//		pAnim_pos->setEndValue( QPointF( scene()->width() / 2  -  (s.width() * scaleFactor) / 2 , 0) );
+
+		// this is based on center as the transformation origin
+		pAnim_pos->setEndValue( QPointF(scene()->width() / 2 , scene()->height() / 2) );
+
+		aGroup->start();
+	}
 }
 
 void BaseWidget::restore()
 {
-        qDebug() << "BaseWidget::restore()";
-        if ( _windowState == W_NORMAL ) return;
+	//        qDebug() << "BaseWidget::restore()";
+	if ( _windowState == W_NORMAL ) return;
 
-        Q_ASSERT(_appInfo);
-        QRectF rect = _appInfo->getRecentBoundingRect();
-//	setPos(rect.topLeft());
-//	setScale(appInfo->getRecentScale());
+	Q_ASSERT(_appInfo);
+	QRectF rect = _appInfo->getRecentBoundingRect();
+	//	setPos(rect.topLeft());
+	//	setScale(appInfo->getRecentScale());
 
-//	prepareGeometryChange();
-//	setPos(rect.x(), rect.y());
-//	setCurrentSize(rect.size());
-        //setGeometry(rect);
+	//	prepareGeometryChange();
+	//	setPos(rect.x(), rect.y());
+	//	setCurrentSize(rect.size());
+	//setGeometry(rect);
 
-        _windowState = W_NORMAL;
+	_windowState = W_NORMAL;
 
-        /* action status */
-        _restoreAction->setDisabled(true);
-        _minimizeAction->setEnabled(true);
-        _maximizeAction->setEnabled(true);
+	/* action status */
+	_restoreAction->setDisabled(true);
+	_minimizeAction->setEnabled(true);
+	_maximizeAction->setEnabled(true);
 
-        if (pAnim_pos && pAnim_scale && aGroup ) {
-                pAnim_pos->setStartValue(pos());
-                pAnim_pos->setEndValue(rect.topLeft());
+	if (pAnim_pos && pAnim_scale && aGroup ) {
+		pAnim_pos->setStartValue(pos());
+//		pAnim_pos->setEndValue(rect.topLeft());
+		pAnim_pos->setEndValue(rect.center());
 
-                pAnim_scale->setStartValue(scale());
-                pAnim_scale->setEndValue(_appInfo->getRecentScale());
+		pAnim_scale->setStartValue(scale());
+		pAnim_scale->setEndValue(_appInfo->getRecentScale());
 
-                aGroup->start();
-        }
+		aGroup->start();
+	}
 }
 
 void BaseWidget::fadeOutClose()
 {
-        qDebug() << "BaseWidget::fadeOutClose()";
-//	if (perfMon) {
-//		delete perfMon;
-//		perfMon = 0;
-//	}
+//    qDebug() << "BaseWidget::fadeOutClose()";
+    //	if (perfMon) {
+    //		delete perfMon;
+    //		perfMon = 0;
+    //	}
 
-//	delete _contextMenu;
-//	_contextMenu = 0;
+    //	delete _contextMenu;
+    //	_contextMenu = 0;
 
-        // disable any QGraphicsEffect on this item to speed up paint()
-        if (graphicsEffect()) graphicsEffect()->setEnabled(false);
+    // disable any QGraphicsEffect on this item to speed up paint()
+    if (graphicsEffect()) graphicsEffect()->setEnabled(false);
 
-        if (pAnim_opacity) {
-                pAnim_opacity->setDuration(400);
-                pAnim_opacity->setStartValue(0.9);
-                pAnim_opacity->setEndValue(0.0);
-                pAnim_opacity->start();
-        }
-        else {
-                close();
-        }
+    if (pAnim_opacity) {
+        pAnim_opacity->setDuration(400);
+        pAnim_opacity->setStartValue(0.9);
+        pAnim_opacity->setEndValue(0.0);
+        pAnim_opacity->start(); // when finishes, close() will be called
+    }
+    else {
+        close();
+    }
 }
 
 void BaseWidget::setTopmost()
@@ -599,6 +604,7 @@ void BaseWidget::createActions()
         connect(_maximizeAction, SIGNAL(triggered()), this, SLOT(maximize()));
         connect(_restoreAction, SIGNAL(triggered()), this, SLOT(restore()));
         connect(_closeAction, SIGNAL(triggered()), this, SLOT(fadeOutClose()));
+//        connect(_closeAction, SIGNAL(triggered()), this, SLOT(close()));
 }
 
 
@@ -670,10 +676,10 @@ void BaseWidget::timerEvent(QTimerEvent *) {
         */
 }
 
-void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
-        if(_appInfo) {
+void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
+	if(_appInfo) {
 //		appInfo->setRecentBoundingRect( boundingRect() );
-        }
+	}
 }
 
 void BaseWidget::setLastTouch() {
@@ -729,13 +735,13 @@ void BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 //}
 
 void BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
-//	if ( affInfo && _affinityControlAction ) {
-//		_affinityControlAction->setEnabled(true);
-//	}
-        scene()->clearSelection();
-        setSelected(true);
-        _contextMenu->exec(event->screenPos());
-        //_contextMenu->popup(event->scenePos());
+	//	if ( affInfo && _affinityControlAction ) {
+	//		_affinityControlAction->setEnabled(true);
+	//	}
+	scene()->clearSelection();
+	setSelected(true);
+	_contextMenu->exec(event->screenPos());
+	//_contextMenu->popup(event->scenePos());
 }
 
 void BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {

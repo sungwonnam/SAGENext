@@ -160,8 +160,8 @@ void DoubleBuffer::swapBuffer() {
 
 void ImageDoubleBuffer::initBuffer(int width, int height, QImage::Format fmt) {
 	doubleBuffer = (void **)malloc(sizeof(QImage *) * 2);
-	doubleBuffer[0] = new QImage(width, height, fmt);
-	doubleBuffer[1] = new QImage(width, height, fmt);
+        doubleBuffer[0] = (void *) new QImage(width, height, fmt);
+        doubleBuffer[1] = (void *) new QImage(width, height, fmt);
 }
 
 void ImageDoubleBuffer::rgbSwapped() {

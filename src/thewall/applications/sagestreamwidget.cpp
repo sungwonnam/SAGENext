@@ -117,113 +117,102 @@
 //}
 
 
-SageStreamWidget::SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags) :
-
-        RailawareWidget(globalappid, s, parent, wFlags),
-
-        _fsmMsgThread(0),
-        _sageAppId(0),
-        receiverThread(0),
-        image(0),
-        doubleBuffer(0),
-        serversocket(0),
-        streamsocket(0),
-        imageSize(0),
-        frameCounter(0)
+SageStreamWidget::SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
+    : RailawareWidget(globalappid, s, parent, wFlags)
+    , _fsmMsgThread(0)
+    , _sageAppId(0)
+    , receiverThread(0)
+    , image(0)
+    , doubleBuffer(0)
+    //, _pixmap(0)
+    , serversocket(0)
+    , streamsocket(0)
+    , imageSize(0)
+    , frameCounter(0)
 {
+    // this is defined in BaseWidget
+    setRMonitor(rm);
 }
 
 
-void SageStreamWidget::fadeOutClose() {
-
-        /* signal APP_QUIT throught fsmanagerMsgThread
-This signal is connected in GraphicsViewMain::startSageApp() */
-//	emit destructor(_sageAppId);
-
-        disconnect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
-//	disconnect(this, SLOT(scheduleReceive()));
-
-//  connect(sageWidget->affInfo(), SIGNAL(cpuOfMineChanged(RailawareWidget *,int,int)), resourceMonitor, SLOT(updateAffInfo(RailawareWidget *,int,int)));
-//  connect(sageWidget->affInfo(), SIGNAL(streamerAffInfoChanged(AffinityInfo*, quint64)), fsm, SIGNAL(sailSendSetRailMsg(AffinityInfo*,quint64)));
-        if (_affInfo) _affInfo->disconnect();
-
-        if (doubleBuffer) {
-                doubleBuffer->releaseBackBuffer();
-                doubleBuffer->releaseLocks();
-        }
-
-        if (rMonitor) {
-//		_affInfo->disconnect();
-
-                rMonitor->removeSchedulableWidget(this); // remove this from ResourceMonitor::widgetMultiMap
-                rMonitor->removeApp(this); // will emit appRemoved(int) which is connected to Scheduler::loadBalance()
-//		qDebug() << "affInfo removed from resourceMonitor";
-
-                // don't do below
-//		if (_affInfo) {
-//			_affInfo->setWidgetPtr(0);
-//			//		qDebug() << "affInfo setWidgetPtr(0)";
-//			delete _affInfo;
-//			_affInfo = 0;
-//			//		qDebug() << "affInfo =0 ";
-//		}
-        }
-        RailawareWidget::fadeOutClose();
-        qDebug() << "SageStreamWidget::fadeOutClose()";
-}
 
 SageStreamWidget::~SageStreamWidget()
 {
-//	if (doubleBuffer) delete doubleBuffer;
+//    qDebug() << _globalAppId << "begin destructor" << QTime::currentTime().toString("hh:mm:ss.zzz");
 
-        if (receiverThread && receiverThread->isRunning()) {
-                receiverThread->endReceiver();
-//		QMetaObject::invokeMethod(receiverThread, "endReceiver",  Qt::QueuedConnection);
-//		qApp->sendPostedEvents(static_cast<QObject *>(receiverThread), QEvent::MetaCall);
-//		receiverThread->wait();
-//		receiverThread->terminate();
-//		delete receiverThread;
+    if (_affInfo)  {
+        if ( !  _affInfo->disconnect() ) {
+            qDebug() << "affInfo disconnect() failed";
         }
+    }
+
+    if (_rMonitor) {
+        //_affInfo->disconnect();
+        _rMonitor->removeSchedulableWidget(this); // remove this from ResourceMonitor::widgetMultiMap
+        _rMonitor->removeApp(this); // will emit appRemoved(int) which is connected to Scheduler::loadBalance()
+        //qDebug() << "affInfo removed from resourceMonitor";
+    }
+
+    disconnect(this);
 
 
-//	if (receiverThread /*&& receiverThread->isFinished()*/)
-//		delete receiverThread;
+    /**
+      1. close fsm message channel
+    **/
+    _fsmMsgThread->sendSailShutdownMsg();
+    _fsmMsgThread->wait();
 
 
-        /***
-        if ( futureWatcher.isPaused() ) {
-                futureWatcher.resume();
-        }
-//	futureWatcher.cancel(); // This isn't work for a thread run by QtConcurrent::run()
-        if ( futureWatcher.isRunning())
-                futureWatcher.waitForFinished(); // deadlock
-                ***/
+    if (receiverThread) {
+        disconnect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
 
-        /* terminate pixelReceiver thread */
-        /*
-        ::shutdown(socket, SHUT_RDWR);
-        if ( receiverThread && receiverThread->isRunning() ) {
-//		qDebug("SageStreamWidget::%s() : %llu, %d terminating receiver thread", __FUNCTION__,globalAppId, sageAppId);
-                receiverThread->stopThread();
-//		receiverThread->terminate();
-//		receiverThread->wait(); // deadlock
-        }
-        receiverThread = 0;
- */
+        /**
+          2. pixel receiving thread must exit from run()
+          **/
+        receiverThread->endReceiver();
+    }
 
-        /* with scheduler on, this must be here */
-        if (doubleBuffer) {
-                doubleBuffer->releaseBackBuffer();
-                doubleBuffer->releaseLocks();
-        }
-        if (doubleBuffer) delete doubleBuffer;
 
-//	if (image) delete image;
+    /**
+      3. The fsm thread can be deleted.
+      **/
+    delete _fsmMsgThread;
 
-//	delete receiverThread;
-        receiverThread->deleteLater();
 
-        qDebug("SageStreamWidget::%s() ",  __FUNCTION__);
+
+    /**
+      4. Before calling receiverThread->wait(), let's release locks first so that receiverThread can exit from run() safely
+      **/
+    if (doubleBuffer) {
+        doubleBuffer->releaseBackBuffer();
+        doubleBuffer->releaseLocks();
+    }
+
+
+    /**
+      5. make sure receiverThread finished safely
+      **/
+    receiverThread->wait();
+
+    /**
+      6. Then schedule deletion
+      **/
+    receiverThread->deleteLater();
+
+
+
+    /**
+      7. Now the double buffer can be deleted
+      **/
+    if (doubleBuffer) delete doubleBuffer;
+    doubleBuffer = 0;
+
+
+
+
+
+//    qDebug() << _globalAppId << "end destructor" << QTime::currentTime().toString("hh:mm:ss.zzz");
+    qDebug("SageStreamWidget::%s() ",  __FUNCTION__);
 }
 
 void SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
@@ -270,12 +259,12 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 //	painter->drawPixmap(0, 0, QPixmap::fromImage(*_image));
 
 
-        Q_ASSERT(_pixmap);
-        if(!_pixmap.isNull())
-                painter->drawPixmap(0, 0, _pixmap); // the best so far
+        if( !_pixmap.isNull()  &&  isVisible()  ) {
+            painter->drawPixmap(0, 0, _pixmap); // the best so far
+        }
 
-//	if (! image2.isNull() )
-//		painter->drawImage(0, 0, image2);
+//        if (!image2.isNull()  &&  isVisible())
+//            painter->drawImage(0, 0, image2);
 
 
 /***
@@ -323,19 +312,17 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
         ****/
 
 
-
-
         if ( showInfo  &&  !infoTextItem->isVisible() ) {
 #if defined(Q_OS_LINUX)
-                _appInfo->setDrawingThreadCpu(sched_getcpu());
+            _appInfo->setDrawingThreadCpu(sched_getcpu());
 #endif
-                infoTextItem->show();
+            infoTextItem->show();
         }
         else if (!showInfo && infoTextItem->isVisible()){
-                infoTextItem->hide();
+            infoTextItem->hide();
         }
         if (_perfMon)
-                _perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
+            _perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
 
@@ -362,167 +349,131 @@ void SageStreamWidget::scheduleReceive() {
   * this slot connected to the signal PixelReceiver::frameReceived()
   */
 void SageStreamWidget::scheduleUpdate() {
-//	struct timeval s,e;
-//	gettimeofday(&s, 0);
-        QImage *imgPtr = 0;
+    //	struct timeval s,e;
+    //	gettimeofday(&s, 0);
+    QImage *imgPtr = 0;
 
-        if ( /*!image*/  !doubleBuffer || !receiverThread || receiverThread->isFinished() )
-                return;
+    if ( /*!image*/  !doubleBuffer || !receiverThread || receiverThread->isFinished() || !isVisible()  )
+        return;
 
-        else {
-                imgPtr = static_cast<QImage *>(doubleBuffer->getBackBuffer());
+    else {
+        //qDebug() << _globalAppId << "scheduleUpdate" << QTime::currentTime().toString("hh:mm:ss.zzz");
 
-//		qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget retrieved " << frameCounter + 1;
+        imgPtr = static_cast<QImage *>(doubleBuffer->getBackBuffer());
 
-//		qDebug() << globalAppId << ", " << sageAppId << " : here";
-                if (imgPtr && !imgPtr->isNull() ) {
+        if (imgPtr && !imgPtr->isNull() ) {
 
-                        _perfMon->getConvTimer().start();
+            _perfMon->getConvTimer().start();
 
-                        // converts to QPixmap if you're gonna paint same QImage more than twice.
-                        if (! _pixmap.convertFromImage(*imgPtr, Qt::AutoColor | Qt::ThresholdDither) )
-                                qDebug("SageStreamWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
+//            qDebug() << _globalAppId << "scheduleUpdate" << QTime::currentTime().toString("hh:mm:ss.zzz");
+
+            // converts to QPixmap if you're gonna paint same QImage more than twice.
+//            qDebug() << _globalAppId << imgPtr->byteCount();
+            if (! _pixmap.convertFromImage(*imgPtr) ) {
+                  qDebug("SageStreamWidget::scheduleUpdate() : pixmap->convertFromImage() error");
+            }
+
+//            image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
+//            if (image2.isNull()) {
+//                qDebug() << "image2 is null";
+//            }
 
 
-
-//			image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
-//			image2 = QGLWidget::convertToGLFormat(*imgPtr);
-//			if ( image2.isNull() )  {
-//				qDebug("Sibal");
-//			}
-
+            //image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
+            //image2 = QGLWidget::convertToGLFormat(*imgPtr);
+            //if ( image2.isNull() )  {
+            //	qDebug("Sibal");
+            //}
 
 
-                        else {
+            else {
 
-                                setScheduled(false); // reset scheduling flag
+                setScheduled(false); // reset scheduling flag for SMART scheduler
 
-                                ++frameCounter;
-//				qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget : " << frameCounter << " has converted";
+                ++frameCounter;
+                //qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget : " << frameCounter << " has converted";
 
-                                _perfMon->updateConvDelay();
+                _perfMon->updateConvDelay();
 
-                                /*
-                                 Maybe I should schedule update() and releaseBackBuffer in the scheduler
-                                 */
-                                doubleBuffer->releaseBackBuffer();
-                                imgPtr = 0;
+                /*
+                  Maybe I should schedule update() and releaseBackBuffer in the scheduler
+                */
+                doubleBuffer->releaseBackBuffer();
+                imgPtr = 0;
 
-//				_perfMon->getEqTimer().start();
-//				QDateTime::currentMSecsSinceEpoch();
-//				qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget is about to call update() for frame " << frameCounter;
+                //_perfMon->getEqTimer().start();
+                //QDateTime::currentMSecsSinceEpoch();
+                //qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget is about to call update() for frame " << frameCounter;
 
-                                // Schedules a redraw. This is not an immediate paint. This actually is postEvent()
-                                // QGraphicsView will process the event
-                                update(); // post paint event to myself
-//				qApp->sendPostedEvents(this, QEvent::MetaCall);
-//				qApp->flush();
-//				qApp->processEvents();
+                // Schedules a redraw. This is not an immediate paint. This actually is postEvent()
+                // QGraphicsView will process the event
+                update(); // post paint event to myself
+                //qApp->sendPostedEvents(this, QEvent::MetaCall);
+                //qApp->flush();
+                //qApp->processEvents();
 
-//				this->scene()->views().front()->update( mapRectToScene(boundingRect()).toRect() );
-                        }
-                }
-                else {
-                        qCritical("SageStreamWidget::%s() : globalAppId %llu, sageAppId %llu : imgPtr is null. Failed to retrieve back buffer from double buffer", __FUNCTION__, globalAppId(), _sageAppId);
-                }
-//		doubleBuffer->releaseBackBuffer();
-//		imgPtr = 0;
+                //this->scene()->views().front()->update( mapRectToScene(boundingRect()).toRect() );
+            }
         }
+        else {
+            qCritical("SageStreamWidget::%s() : globalAppId %llu, sageAppId %llu : imgPtr is null. Failed to retrieve back buffer from double buffer", __FUNCTION__, globalAppId(), _sageAppId);
+        }
+        //doubleBuffer->releaseBackBuffer();
+        //imgPtr = 0;
+    }
 
-//	pixmap->convertFromImage(image->copy());
-
-        /* resizing is handled here. This seems very slow */
-//	pixmap->convertFromImage( image->scaledToWidth(currentScale * getNativeSize().width()) );
-//	prepareGeometryChange();
-//	resize(pixmap->width(), pixmap->height());
-
-//	*image2 = image->copy();
-
-        /* resizing is handled by QGraphicsItem::setScale(). 2 msec drawing latency becomes 8 msec as soon as scale changes from 1.0 */
-
-//	convertedToPixmap->release();
-//	pixmap->convertFromImage( *image2 );
-//	pixmap->loadFromData(image->constBits(), image->byteCount()); // ~33 msec for 4K
-
-
-//	glEnable(GL_TEXTURE_2D);
-//	glBindTexture(GL_TEXTURE_2D, texhandle);
-//	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width(), image->height(), GL_RGB, GL_UNSIGNED_BYTE, image->bits()); // f*cking 90 msec for 4K ???
-
-
-//	gettimeofday(&e, 0);
-//	qreal el = ((double)e.tv_sec + (double)e.tv_usec * 0.000001) - ((double)s.tv_sec+(double)s.tv_usec*0.000001);
-//	qDebug() << "converting : " << el * 1000.0 << " msec";
-
-
-//	if ( qApp->hasPendingEvents() ) {
-//		UpdateEvent *ue = new UpdateEvent(QEvent::User + 1);
-//		ue->widgetPtr = this;
-//		ue->priority = 100;
-//		qApp->postEvent(qApp, ue, ue->priority);
-//	}
-//	else {
-                // draw immediately
-//		QGraphicsView *gv = scene()->views().first();
-//		Q_ASSERT(gv);
-//		gv->viewport()->repaint(
-//				gv->mapFromScene(
-//						mapRectToScene(boundingRect())
-//						).boundingRect()
-//				);
-//	}
 }
 
 
 int SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
-        int bytePerPixel = getPixelSize(pixfmt);
-        int memwidth = resX * bytePerPixel; //Byte (single row of frame)
+    int bytePerPixel = getPixelSize(pixfmt);
+    int memwidth = resX * bytePerPixel; //Byte (single row of frame)
 
-        imageSize = memwidth * resY; // Byte (a frame)
+    imageSize = memwidth * resY; // Byte (a frame)
 
-        qDebug("SageStreamWidget::%s() : recved regMsg. size %d x %d, pixfmt %d, pixelSize %d, memwidth %d, imageSize %d", __FUNCTION__, resX, resY, pixfmt, bytePerPixel, memwidth, imageSize);
+    qDebug("SageStreamWidget::%s() : recved regMsg. size %d x %d, pixfmt %d, pixelSize %d, memwidth %d, imageSize %d", __FUNCTION__, resX, resY, pixfmt, bytePerPixel, memwidth, imageSize);
 
-        if (!doubleBuffer) doubleBuffer = new ImageDoubleBuffer;
+    if (!doubleBuffer) doubleBuffer = new ImageDoubleBuffer;
 
-        /*
+    /*
          Do not draw ARGB32 images into the raster engine.
          ARGB32_premultiplied and RGB32 are the best ! (they are pixel wise compatible)
          http://labs.qt.nokia.com/2009/12/18/qt-graphics-and-performance-the-raster-engine/
-                 */
-        switch(pixfmt) {
-        case PIXFMT_888 : { // GL_RGB
-                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
-                        //		image = new QImage(resX, resY, QImage::Format_RGB32); // x0ffRRGGBB
-                        break;
-                }
-        case PIXFMT_888_INV : { // GL_BGR
-                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
-                        doubleBuffer->rgbSwapped();
-                        break;
-                }
-        case PIXFMT_8888 : { // GL_RGBA
-                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB32);
-                        break;
-                }
-        case PIXFMT_8888_INV : { // GL_BGRA
-                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB32);
-                        doubleBuffer->rgbSwapped();
-                        break;
-                }
-        case PIXFMT_555 : { // GL_RGB, GL_UNSIGNED_SHORT_5_5_5_1
-                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB555);
-                        break;
-                }
-        default: {
-                        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
-                        break;
-                }
-        }
+      */
+    switch(pixfmt) {
+    case PIXFMT_888 : { // GL_RGB
+        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
+        //image = new QImage(resX, resY, QImage::Format_RGB32); // x0ffRRGGBB
+        break;
+    }
+    case PIXFMT_888_INV : { // GL_BGR
+        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
+        doubleBuffer->rgbSwapped();
+        break;
+    }
+    case PIXFMT_8888 : { // GL_RGBA
+        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB32);
+        break;
+    }
+    case PIXFMT_8888_INV : { // GL_BGRA
+        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB32);
+        doubleBuffer->rgbSwapped();
+        break;
+    }
+    case PIXFMT_555 : { // GL_RGB, GL_UNSIGNED_SHORT_5_5_5_1
+        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB555);
+        break;
+    }
+    default: {
+        doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
+        break;
+    }
+    }
 
-//	if ( ! image || image->isNull() ) {
-//		return -1;
-//	}
-        image = static_cast<QImage *>(doubleBuffer->getFrontBuffer());
+    //	if ( ! image || image->isNull() ) {
+    //		return -1;
+    //	}
+    image = static_cast<QImage *>(doubleBuffer->getFrontBuffer());
 
 //	glGenTextures(1, &texhandle);
 //	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -535,10 +486,14 @@ int SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
 
 //	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->width(), image->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, image->bits());
 
-        if (image && !image->isNull())
-                return 0;
-        else
-                return -1;
+    if (image && !image->isNull()) {
+        //_pixmap = new QPixmap(resX, resY);
+        //_pixmap->fill(QColor(Qt::black));
+        return 0;
+    }
+    else {
+        return -1;
+    }
 }
 
 
@@ -683,7 +638,7 @@ int SageStreamWidget::initialize(quint64 sageappid, QString appname, QRect initr
 
         Q_ASSERT(receiverThread);
 
-        connect(receiverThread, SIGNAL(finished()), this, SLOT(fadeOutClose())); // WA_Delete_on_close is defined
+        connect(receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
 
         // don't do below.
 //		connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));

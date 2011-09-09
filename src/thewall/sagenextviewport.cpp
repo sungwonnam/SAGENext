@@ -13,24 +13,24 @@ SAGENextViewport::SAGENextViewport(int viewportId, QWidget *parent) :
 {
 
 
-	if ( _viewportID == 0 ) {
-		_fdialog = new QFileDialog(this, "Open Files", QDir::homePath().append("/.sagenext/image") , "Images (*.tif *.tiff *.svg *.bmp *.png *.jpg *.jpeg *.gif *.xpm);;RatkoData (*.log);;Session (*.session);;Plugins (*.so *.dll *.dylib);;Videos (*.mov *.avi *.mpg *.mp4 *.mkv *.flv *.wmv);;Any (*)");
-		_fdialog->setModal(false);
-		//	fdialog->setFileMode(QFileDialog::Directory);
-		connect(_fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(on_actionFilesSelected(QStringList)));
+        if ( _viewportID == 0 ) {
+                _fdialog = new QFileDialog(this, "Open Files", QDir::homePath().append("/.sagenext/image") , "Images (*.tif *.tiff *.svg *.bmp *.png *.jpg *.jpeg *.gif *.xpm);;RatkoData (*.log);;Session (*.session);;Plugins (*.so *.dll *.dylib);;Videos (*.mov *.avi *.mpg *.mp4 *.mkv *.flv *.wmv);;Any (*)");
+                _fdialog->setModal(false);
+                //fdialog->setFileMode(QFileDialog::Directory);
+                connect(_fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(on_actionFilesSelected(QStringList)));
 
 
 
-		_openMediaAction = new QAction(this);
-		_openMediaAction->setShortcut( QKeySequence(Qt::CTRL + Qt::Key_O) );
-		connect(_openMediaAction, SIGNAL(triggered()), this, SLOT(on_actionOpen_Media_triggered()));
-		addAction(_openMediaAction);
+                _openMediaAction = new QAction(this);
+                _openMediaAction->setShortcut( QKeySequence(Qt::CTRL + Qt::Key_O) );
+                connect(_openMediaAction, SIGNAL(triggered()), this, SLOT(on_actionOpen_Media_triggered()));
+                addAction(_openMediaAction);
 
 
-		_closeAllAction = new QAction(this);
-		_closeAllAction->setShortcut( QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_W) );
-		connect(_closeAllAction, SIGNAL(triggered()), this, SLOT(on_actionCloseAll_triggered()));
-	}
+                _closeAllAction = new QAction(this);
+                _closeAllAction->setShortcut( QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_W) );
+                connect(_closeAllAction, SIGNAL(triggered()), this, SLOT(on_actionCloseAll_triggered()));
+        }
 }
 
 SAGENextViewport::~SAGENextViewport() {

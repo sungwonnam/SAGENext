@@ -27,6 +27,7 @@ public:
           It is higly recommended to you this constructor instead of default one
           */
         RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+
         virtual ~RailawareWidget();
 
         /*!
@@ -46,15 +47,26 @@ public:
           This will determine delay in stream loop
           */
         int setQuality(qreal newQuality);
+
+		/**
+		  Returns *absolute* observed quality which is based on expected quality set by a user
+		  */
         qreal observedQuality();
+
+		/**
+		  Returns *relative* observed quality which is based on adjusted quality
+		  */
         qreal observedQualityAdjusted();
 
         qreal unitValue();
 
 
-        bool isScheduled() const {return _scheduled;}
-        void setScheduled(bool b) { _scheduled = b;}
+        inline bool isScheduled() const {return _scheduled;}
+        inline void setScheduled(bool b) { _scheduled = b;}
 
+
+        inline bool widgetClosed() const {return _widgetClosed;}
+        inline void setWidgetClosed(bool b = true) {_widgetClosed = b;}
 
         /*!
           SMART scheduler
@@ -64,24 +76,33 @@ public:
 
 protected:
         /*!
-          AffinityInfo class. Only animation widget will instantiate this
+          AffinityInfo class. Only railaware widget will instantiate this
           */
-//	AffinityInfo *affInfo;
         AffinityControlDialog *affCtrlDialog;
 
+        /**
+          QAction that connects context menu's item to showAffCtrlDialog()
+          */
         QAction *_affCtrlAction;
 
-        SchedulerControl *scheduler;
+//        SchedulerControl *_scheduler;
 
 
-
+        /**
+          When a scheduler is running, schedulable widget should be deleted by the scheduler.
+		  The scheduler copies widget list from the resource monitor at every scheduling event.
+          Because of this, the scheduler can still have pointer to this widget after this widget has closed.
+          */
+        bool _widgetClosed;
 
 
         virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
 
 
-        /*!
-          flag for scheduler
+        /**
+          A flag for SMART scheduler.
+		  This is to prevent the widget from scheduled when previously scheduled frame hasn't displayed.
+		  Sage widget unset this flag in the scheduleUpdate()
           */
         bool _scheduled;
 
@@ -90,14 +111,11 @@ signals:
 public slots:
         void showAffCtrlDialog();
 
-        /*!
-          overrides BaseWidget::fadeOutClose()
-          */
-        virtual void fadeOutClose();
-
-
-        /*!
-          */
+		/**
+		  Railaware widget will usually have a worker thread. For sage widget it is pixel receiving thread.
+		  The worker thread signals when a frame is ready to be displayed. And this signal can be connected to
+		  scheduleUpdate() to do additional process before scheduling update()
+		  */
         virtual void scheduleUpdate() { update(); }
 
         virtual void scheduleReceive() {}
