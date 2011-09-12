@@ -638,8 +638,8 @@ void ConnectionDialog::on_buttonBox_accepted()
 		_settings->setValue("vncusername", vncusername);
         _settings->setValue("vncpasswd", vncpass);
 
-		if (vncUsername().isEmpty()) {
-			vncUsername() = "user";
+		if (vncusername.isEmpty()) {
+			vncusername = "user";
 		}
 
         accept();
