@@ -104,6 +104,7 @@ void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFla
 }
 
 void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
+	// note that this doesn't consider window frame
     if (!setAppUnderPointer(scenePos)) {
         qDebug() << "pointerPress() : setAppUnderPointer failed";
     }
@@ -118,7 +119,6 @@ void PolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton btn, 
         app->ungrabMouse();
 }
 */
-
 
 
 void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
@@ -256,9 +256,11 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
         if ( item == this ) continue;
         //qDebug() << item;
 
+
         if ( item->type() == UserType + 2) {
             app = static_cast<BaseWidget *>(item);
-            //app->setTopmost();
+
+
             //qDebug("PolygonArrow::%s() : uiclientid %llu, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
             return true;
         }

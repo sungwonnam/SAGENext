@@ -46,7 +46,7 @@ public:
         ~ExternalGUIMain();
 
 protected:
-        void resizeEvent(QResizeEvent *);
+//        void resizeEvent(QResizeEvent *);
         void mouseMoveEvent(QMouseEvent *e);
         void mousePressEvent(QMouseEvent *e);
         void mouseReleaseEvent(QMouseEvent *e);
@@ -135,7 +135,7 @@ private:
 
 private slots:
         /**
-          * CMD + N
+          * CMD + N triggers connection dialog
           */
         void on_actionNew_Connection_triggered();
 

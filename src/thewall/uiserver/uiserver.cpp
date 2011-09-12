@@ -334,8 +334,11 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         if (pa) {
             qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
 
-            // Widget under the pointer can reimplement BaseWidget::mouseClick()
-            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
+//            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
+
+			// Let each application provides mouseClick()
+			 // Widget under the pointer can reimplement BaseWidget::mouseClick()
+			if ( pa->appUnderPointer() ) pa->appUnderPointer()->mouseClick(QPointF(x, y), Qt::LeftButton);
         }
         else {
             qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);

@@ -19,13 +19,19 @@ public:
         virtual ~ExamplePlugin();
 
         /*!
-          must implement the interface (DummyPluginInterface)
+          One must implement the interface (DummyPluginInterface)
+		  Return "BaseWidget" for the plugin that inherits BaseWidget
           */
         QString name() const;
+
+		/*!
+		  QGraphicsProxyWidget *root is going to be null
+		  for the plugin that inherits BaseWdiget
+		  */
         QGraphicsProxyWidget * rootWidget();
 
         /*!
-          reimplement BaseWidget::mouseClick() to receive mouse event
+          reimplement BaseWidget::mouseClick() to redefine your own mouse click event
           */
         void mouseClick(const QPointF &, Qt::MouseButton);
 
@@ -47,6 +53,9 @@ protected:
 //	void resizeEvent(QGraphicsSceneResizeEvent *event);
 
 private:
+		/*!
+		  This is null for the plugin that inherits BaseWidget
+		  */
         QGraphicsProxyWidget *root;
 
         /*!

@@ -179,6 +179,9 @@ void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsI
     else {
 
     }
+
+	// for now, let's use default implementation
+	QGraphicsWidget::paintWindowFrame(painter, option, widget);
 }
 
 qreal BaseWidget::ratioToTheWall() const {
@@ -616,10 +619,13 @@ void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn)
 
     QPointF itempos = mapFromScene(clickedScenePos);
 
-    /** There is only one view ? **/
-
     QGraphicsView *gview = 0;
     foreach (gview, scene()->views()) {
+		// geometry of widget relative to its parent
+		//        v->geometry();
+
+		// internal geometry of widget
+		//        v->rect();
         if ( gview->rect().contains(gview->mapFromScene(clickedScenePos)) )
             break;
     }
@@ -632,7 +638,7 @@ void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn)
             QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
             QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
 
-            //			grabMouse(); // don't do this before mousePress
+            //grabMouse(); // don't do this before mousePress
             // sendEvent doesn't delete event object, so event can be created in stack (local to this function)
             if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
                 qDebug("BaseWidget::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
