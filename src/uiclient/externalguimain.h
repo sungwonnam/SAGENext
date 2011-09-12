@@ -128,6 +128,8 @@ private:
 
         QString _myIpAddress;
 
+		QString _vncUsername;
+
         QString _vncPasswd;
 
 
@@ -206,6 +208,7 @@ public:
         inline int port() const {return portnum;}
         inline QString myAddress() const {return myaddr;}
         inline QString pointerName() const {return pName;}
+		inline QString vncUsername() const {return vncusername;}
         inline QString vncPasswd() const {return vncpass;}
 
 private:
@@ -226,6 +229,8 @@ private:
           my ip address
           */
         QString myaddr;
+
+		QString vncusername;
 
         QString vncpass;
 

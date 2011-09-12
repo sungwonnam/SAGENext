@@ -78,6 +78,7 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 
 	_pointerName = cd.pointerName();
 	_myIpAddress = cd.myAddress();
+	_vncUsername = cd.vncUsername();
 	_vncPasswd = cd.vncPasswd();
 
 	// if there is existing connection, close it first
@@ -317,7 +318,7 @@ void ExternalGUIMain::on_vncButton_clicked()
 	*/
 
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %llu %s %d %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncPasswd), 24);
+	sprintf(msg.data(), "%d %llu %s %d %s %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 24);
 
 	if (msgThread && msgThread->isRunning()) {
 		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
@@ -608,6 +609,7 @@ ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
         ui->ipaddr->setText( _settings->value("walladdr", "127.0.0.1").toString() );
         ui->myaddrLineEdit->setText( _settings->value("myaddr", "127.0.0.1").toString() );
         ui->port->setText( _settings->value("wallport", 30003).toString() );
+		ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
         ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
         ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
 
@@ -625,6 +627,7 @@ void ConnectionDialog::on_buttonBox_accepted()
         portnum = ui->port->text().toInt();
         myaddr = ui->myaddrLineEdit->text();
         pName = ui->pointerNameLineEdit->text();
+		vncusername = ui->vncUsername->text();
         vncpass = ui->vncpasswd->text();
 
 
@@ -632,7 +635,12 @@ void ConnectionDialog::on_buttonBox_accepted()
         _settings->setValue("wallport", portnum);
         _settings->setValue("myaddr", myaddr);
         _settings->setValue("pointername", pName);
+		_settings->setValue("vncusername", vncusername);
         _settings->setValue("vncpasswd", vncpass);
+
+		if (vncUsername().isEmpty()) {
+			vncUsername() = "user";
+		}
 
         accept();
 //	done(0);

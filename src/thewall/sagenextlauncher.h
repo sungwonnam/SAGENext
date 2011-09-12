@@ -84,7 +84,7 @@ public slots:
         /**
           just for VNC widget
           */
-        void launch(QString vncPasswd, int display, QString vncServerIP, int framerate = 10);
+        void launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10);
 
         /**
           The widget is added to the scene in here.

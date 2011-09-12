@@ -8,9 +8,10 @@
 #include <QtGui>
 
 rfbBool VNCClientWidget::got_data = FALSE;
+QString VNCClientWidget::username = "";
 QString VNCClientWidget::vncpasswd = "evl123";
 
-VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString passwd, int frate, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
+VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int frate, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
 	: RailawareWidget(globalappid, s, parent, wflags)
 	, vncclient(0)
 	, serverPort(5900)
@@ -19,7 +20,13 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 	, framerate(frate)
 
 {
+	if ( username == "user" )
+		VNCClientWidget::username = "";
+	else
+		VNCClientWidget::username = username;
 	VNCClientWidget::vncpasswd = passwd;
+
+//	qDebug() << "vnc widget constructor " <<  username << passwd << VNCClientWidget::username << VNCClientWidget::vncpasswd;
 
 	// 8 bit/sample
 	// 3 samples/pixel
@@ -34,6 +41,20 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 	vncclient->GetPassword = VNCClientWidget::password_func;
 
 	serverAddr.setAddress(senderIP);
+
+	if (!VNCClientWidget::username.isEmpty()  &&  !VNCClientWidget::vncpasswd.isEmpty()) {
+		vncclient->GetCredential = VNCClientWidget::getCredential;
+		const uint32_t authSchemes[] = {rfbARD, rfbVncAuth, rfbNoAuth};
+		int numSchemes = 3;
+		SetClientAuthSchemes(vncclient, authSchemes, numSchemes);
+	}
+	else {
+		const uint32_t authSchemes[] = {rfbVncAuth, rfbNoAuth};
+		int numSchemes = 2;
+		SetClientAuthSchemes(vncclient, authSchemes, numSchemes);
+	}
+
+	vncclient->FinishedFrameBufferUpdate = VNCClientWidget::frame_func;
 
 	int margc = 2;
 	char *margv[2];
@@ -73,6 +94,21 @@ VNCClientWidget::~VNCClientWidget() {
 	future.cancel();
 	future.waitForFinished();
 	if (_image) delete _image;
+}
+
+rfbCredential * VNCClientWidget::getCredential(struct _rfbClient *client, int credentialType) {
+	Q_UNUSED(client);
+	Q_UNUSED(credentialType);
+	rfbCredential *res = (rfbCredential *)malloc(sizeof(rfbCredential));
+	if ( ! VNCClientWidget::username.isEmpty())
+		res->userCredential.username = strdup(qPrintable(VNCClientWidget::username));
+	else
+		res->userCredential.username = NULL;
+	if (! VNCClientWidget::vncpasswd.isEmpty())
+		res->userCredential.password = strdup(qPrintable(VNCClientWidget::vncpasswd));
+	else
+		res->userCredential.password = NULL;
+	return res;
 }
 
 void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
@@ -235,7 +271,7 @@ rfbBool VNCClientWidget::resize_func(rfbClient* client)
 
 void VNCClientWidget::frame_func(rfbClient *)
 {
-        rfbClientLog("Received a frame\n");
+//        rfbClientLog("Received a frame\n");
 }
 
 rfbBool VNCClientWidget::position_func(rfbClient *, int x, int y)
