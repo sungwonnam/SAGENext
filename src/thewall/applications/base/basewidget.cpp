@@ -358,11 +358,7 @@ void BaseWidget::maximize()
 		pAnim_scale->setEndValue(scaleFactor);
 
 		pAnim_pos->setStartValue(pos()); // == mapToParent(0,0)
-
-		qDebug() << QPointF( (scene()->width() - (s.width() * scaleFactor))/2
-		                     ,(scene()->height() - (s.height() * scaleFactor))/2);
-		pAnim_pos->setEndValue( QPointF( (scene()->width() - (s.width() * scaleFactor))/2
-		                                 ,(scene()->height() - (s.height() * scaleFactor))/2) );
+		pAnim_pos->setEndValue( QPointF((scene()->width() - s.width())/2 ,(scene()->height() - s.height())/2) );
 
 		aGroup->start();
 	}
