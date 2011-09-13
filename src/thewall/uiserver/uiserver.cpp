@@ -360,8 +360,8 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
         PolygonArrow *pa =  arrow(uiclientid) ;
         if (pa) {
-//            qDebug("UiServer::%s() : POINTER_RIGHTCLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
-            pa->pointerClick(QPointF(x,y), Qt::RightButton, Qt::RightButton);
+            qDebug("UiServer::%s() : POINTER_RIGHTCLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
+//            pa->pointerClick(QPointF(x,y), Qt::RightButton, Qt::RightButton);
         }
         else {
             qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);

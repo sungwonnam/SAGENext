@@ -67,18 +67,18 @@ public:
 	inline QStringList getCmdArgs() const {return cmdArgs;}
 
 	/**
-	  * saved when minimized
+	  * saved when maximized/minimized for restore later
 	  */
-	inline void setRecentBoundingRect(const QRectF &r) {recentBoundingRect = r;}
-	inline void setRecentScale(qreal s) {recentScale = s;}
+	inline void setRecentPos(const QPointF &p) {_recentPos = p;}
+	inline QPointF recentPos() const {return _recentPos;}
 
-	/**
-	  * used when restored
-	  */
-	inline QRectF getRecentBoundingRect() const { return recentBoundingRect; }
+	inline void setRecentScale(qreal s) {recentScale = s;}
 	inline qreal getRecentScale() const {return recentScale;}
 
-	quint16 ratioToTheScene(qreal sceneSize) const;
+	inline void setRecentSize(const QSizeF &s) {_recentSize = s;}
+	inline QSizeF recentSize() const {return _recentSize;}
+
+
 
 private:
 	MEDIA_TYPE mtype;
@@ -114,10 +114,9 @@ private:
 	  */
 	quint32 frameSize;
 
-	/**
-	  * pos and size relative to the SCENE before minimized
-	  */
-	QRectF recentBoundingRect;
+	QPointF _recentPos;
+
+	QSizeF _recentSize;
 
 	/**
 	  * scale before minimized

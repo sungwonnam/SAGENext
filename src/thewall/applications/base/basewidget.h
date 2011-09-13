@@ -154,7 +154,7 @@ public:
         virtual qreal observedQuality() {return _quality;}
 
 
-        inline QParallelAnimationGroup *animGroup() {return aGroup;}
+        inline QParallelAnimationGroup *animGroup() {return _parallelAnimGroup;}
 
 
         /*!
@@ -309,7 +309,8 @@ protected:
 private:
         QPropertyAnimation *pAnim_pos; /**< Animation on an item's position */
         QPropertyAnimation *pAnim_scale; /**< Animation on an item's scale */
-        QParallelAnimationGroup *aGroup; /**< It contains pAnim_pos and pAnim_scale and used to execute both in parallel for max/minimize, restore visual effect */
+		QPropertyAnimation *pAnim_size; /**< Animation on widget's size */
+        QParallelAnimationGroup *_parallelAnimGroup; /**< It contains pAnim_pos, pAnim_size, and pAnim_scale and used to execute both in parallel for max/minimize, restore visual effect */
 
         /*!
           * Animation on opacity property

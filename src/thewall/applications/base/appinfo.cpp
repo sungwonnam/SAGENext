@@ -9,7 +9,6 @@ AppInfo::AppInfo() :
 		srcaddr(QHostAddress(QHostAddress::Null)),
 		bitPerPixel(0),
 		frameSize(0),
-		recentBoundingRect(QRectF()),
 		recentScale(1),
 		drawingThreadCpu(-1),
 		networkUserBufferLength(65535) /* 64 kB */
@@ -25,7 +24,6 @@ AppInfo::AppInfo(int width, int height, int bpp) :
 		srcaddr(QHostAddress(QHostAddress::Null)),
 		bitPerPixel(bpp),
 		frameSize(width * height * bpp),
-		recentBoundingRect(QRectF()),
 		recentScale(1),
 		drawingThreadCpu(-1),
 		networkUserBufferLength(65535) /* 64 kB */
@@ -40,7 +38,6 @@ AppInfo::AppInfo(int width, int height, int bpp, QString file, QString srcip) :
 		srcaddr(QHostAddress(srcip)),
 		bitPerPixel(bpp),
 		frameSize(width * height * bpp),
-		recentBoundingRect(QRectF()),
 		recentScale(1),
 		drawingThreadCpu(-1),
 		networkUserBufferLength(65535) /* 64 kB */
@@ -70,12 +67,6 @@ void AppInfo::setWebUrl(const QString &url) {
 	webUrl.setUrl(url);
 }
 
-quint16 AppInfo::ratioToTheScene(qreal sceneSize) const
-{
-	qreal ratio = (recentBoundingRect.width() * recentBoundingRect.height()) / sceneSize;
-//	qreal ratio = (recentBoundingRect.width() * recentScale * recentBoundingRect.height() * recentScale) / (qreal)sceneSize;
-	return (quint16)(ratio * 100.0);
-}
 
 //void AppInfo::setPosAndSize(const QPointF &pos, const QSizeF &size) {
 //	recentPosAndSize.setTopLeft(pos);

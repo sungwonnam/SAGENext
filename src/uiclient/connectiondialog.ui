@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>243</width>
-    <height>197</height>
+    <width>288</width>
+    <height>281</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -121,6 +121,15 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>ipaddr</tabstop>
+  <tabstop>port</tabstop>
+  <tabstop>myaddrLineEdit</tabstop>
+  <tabstop>vncUsername</tabstop>
+  <tabstop>vncpasswd</tabstop>
+  <tabstop>pointerNameLineEdit</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

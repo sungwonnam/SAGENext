@@ -124,22 +124,11 @@ void PolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton btn, 
 void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
         // should be sent to interactive item like gwebview
 
-    QGraphicsView *view = 0;
-    foreach(QGraphicsView *v, scene()->views()) {
-
-        // geometry of widget relative to its parent
-//        v->geometry();
-
-        // internal geometry of widget
-//        v->rect();
-
-        if ( v->rect().contains( v->mapFromScene(scenePos) ) ) {
-            // mouse click position is within this view's bounding rectangle
-            view = v;
-            break;
-        }
-
-    }
+    QGraphicsView *view = eventReceivingViewport(scenePos);
+	if ( !view ) {
+		qDebug() << "pointerClick: no view is available";
+		return;
+	}
     QPointF clickedViewPos = view->mapFromScene( scenePos );
 
     QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
@@ -184,30 +173,19 @@ void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton b
         return;
     }
 
-    // Or directly control the widget
-//    app->maximize();
-
-
     // Generate mouse event directly from here
-    QGraphicsView *gview = 0;
-    Q_ASSERT(scene());
-    foreach(QGraphicsView *v, scene()->views()) {
-        if ( v->rect().contains(v->mapFromScene(scenePos)) ) {
-            gview = v;
-            break;
-        }
-    }
+    QGraphicsView *gview = eventReceivingViewport(scenePos);
 
     if (gview) {
         QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier);
 
         // sendEvent doesn't delete event object, so event should be created in stack space
         if ( ! QApplication::sendEvent(gview->viewport(), &dblClickEvent) ) {
-            qDebug("PolygonArrow::%s() : sendEvent MouseMuttonDblClick on %d,%d failed", __FUNCTION__, scenePos.x(), scenePos.y());
+            qDebug("PolygonArrow::%s() : sendEvent MouseMuttonDblClick on %.1f,%.1f failed", __FUNCTION__, scenePos.x(), scenePos.y());
         }
     }
     else {
-        qDebug("PolygonArrow::%s() : there is no viewport on %d, %d", __FUNCTION__, scenePos.x(), scenePos.y());
+        qDebug("PolygonArrow::%s() : there is no viewport on %.1f, %.1f", __FUNCTION__, scenePos.x(), scenePos.y());
     }
 }
 
@@ -215,14 +193,8 @@ void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton b
 
 void PolygonArrow::pointerWheel(const QPointF &scenePos, int delta) {
     // Generate mouse event directly from here
-    QGraphicsView *gview = 0;
-    Q_ASSERT(scene());
-    foreach(QGraphicsView *v, scene()->views()) {
-        if ( v->rect().contains( v->mapFromScene(scenePos)) ) {
-            gview = v;
-            break;
-        }
-    }
+    QGraphicsView *gview = eventReceivingViewport(scenePos);
+
     if (gview) {
         if ( ! QApplication::sendEvent(gview->viewport(), & QWheelEvent(gview->mapFromScene(scenePos), gview->mapToGlobal(scenePos.toPoint()), delta, Qt::NoButton, Qt::NoModifier)) ) {
             qDebug("PolygonArrow::%s() : send wheelEvent failed", __FUNCTION__);
@@ -271,7 +243,24 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
     return false;
 }
 
+QGraphicsView * PolygonArrow::eventReceivingViewport(const QPointF scenePos) {
+	Q_ASSERT(scene());
+    foreach(QGraphicsView *v, scene()->views()) {
+		if (!v) continue;
 
+        // geometry of widget relative to its parent
+//        v->geometry();
+
+        // internal geometry of widget
+//        v->rect();
+
+        if ( v->rect().contains( v->mapFromScene(scenePos) ) ) {
+            // mouse click position is within this view's bounding rectangle
+			return v;
+        }
+
+    }
+}
 
 
 

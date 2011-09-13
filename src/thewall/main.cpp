@@ -276,32 +276,35 @@ int main(int argc, char *argv[])
 
         gvm->setLauncher(launcher);
 
-        if ( s.value("system/openglviewport").toBool() ) {
-                gvm->setViewport(new QGLWidget());
-                qDebug() << "[ using QGLWidget as the viewport ]";
-        }
+		if ( s.value("system/openglviewport").toBool() ) {
+			/**
+			  in linux, youtube isn't working with OpenGL viewport
+			  **/
+			gvm->setViewport(new QGLWidget());
+			qDebug() << "[ using QGLWidget as the viewport ]";
+		}
 
-        if ( QString::compare(s.value("system/viewportupdatemode").toString(), "full", Qt::CaseInsensitive) == 0 ) {
-                gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
-        }
-        else if ( QString::compare(s.value("system/viewportupdatemode").toString(), "minimal", Qt::CaseInsensitive) == 0 ) {
-                gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
-        }
-        else if ( QString::compare(s.value("system/viewportupdatemode").toString(), "smart", Qt::CaseInsensitive) == 0 ) {
-                gvm->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
-        }
-        else if ( QString::compare(s.value("system/viewportupdatemode").toString(), "no update", Qt::CaseInsensitive) == 0 ) {
-                gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
-        }
-        else {
-                gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
-        }
+		if ( QString::compare(s.value("system/viewportupdatemode").toString(), "full", Qt::CaseInsensitive) == 0 ) {
+			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+		}
+		else if ( QString::compare(s.value("system/viewportupdatemode").toString(), "minimal", Qt::CaseInsensitive) == 0 ) {
+			gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
+		}
+		else if ( QString::compare(s.value("system/viewportupdatemode").toString(), "smart", Qt::CaseInsensitive) == 0 ) {
+			gvm->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+		}
+		else if ( QString::compare(s.value("system/viewportupdatemode").toString(), "no update", Qt::CaseInsensitive) == 0 ) {
+			gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
+		}
+		else {
+			gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
+		}
         /* DON'T DO THIS ! poor performance and not correct. I don't know why. It's worth look into this */
         //	gvm->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
 
         gvm->setRenderHint(QPainter::SmoothPixmapTransform);
-//	gvm->setRenderHint(QPainter::HighQualityAntialiasing);
+		//	gvm->setRenderHint(QPainter::HighQualityAntialiasing);
         gvm->setAttribute(Qt::WA_DeleteOnClose);
         gvm->setWindowFlags(Qt::FramelessWindowHint);
         gvm->setWindowState(Qt::WindowFullScreen);
@@ -316,16 +319,8 @@ int main(int argc, char *argv[])
         gvm->show();
 
 
-//	launcher->launch("evl123", 0, "131.193.77.191", 24);
-
-
-        /**
-          system-wide media cache
-          key : "HOST:PATH/FILENAME"
-          value : QPixmap object (this shouldn't be too big)
-          **/
-        QHash<QString, QPixmap> mediaHash;
-        QReadWriteLock mediaHashRWLock;
+		//launcher->launch("", "evl123", 0, "131.193.77.191", 24);
+//		launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
 
 
         // starts event loop
@@ -333,18 +328,16 @@ int main(int argc, char *argv[])
 
 
 
-
-
-        if (uiserver) delete uiserver;
-//	if (launcher) delete launcher; // launcher is a child of scene. So laucher will be delete when scene is deleted automatically
-        if (resourceMonitor) {
-                resourceMonitor->killTimer(rMonitorTimerId);
-                if (schedcontrol) {
-                        delete schedcontrol;
-                }
-                delete resourceMonitor;
-        }
-        return ret;
+		if (uiserver) delete uiserver;
+		//	if (launcher) delete launcher; // launcher is a child of scene. So laucher will be delete when scene is deleted automatically
+		if (resourceMonitor) {
+			resourceMonitor->killTimer(rMonitorTimerId);
+			if (schedcontrol) {
+				delete schedcontrol;
+			}
+			delete resourceMonitor;
+		}
+		return ret;
 }
 
 

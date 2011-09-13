@@ -150,9 +150,17 @@ void BaseWidget::init()
         pAnim_scale->setDuration(300);
         pAnim_scale->setEasingCurve(QEasingCurve::OutCubic);
 
-        aGroup = new QParallelAnimationGroup();
-        aGroup->addAnimation(pAnim_pos);
-        aGroup->addAnimation(pAnim_scale);
+		pAnim_size = new QPropertyAnimation(this, "size", this);
+		pAnim_size->setDuration(250);
+		pAnim_size->setEasingCurve(QEasingCurve::OutCubic);
+
+        _parallelAnimGroup = new QParallelAnimationGroup(this);
+        _parallelAnimGroup->addAnimation(pAnim_pos);
+		if (isWindow())
+			_parallelAnimGroup->addAnimation(pAnim_size);
+		else
+			_parallelAnimGroup->addAnimation(pAnim_scale);
+
 
         pAnim_opacity = new QPropertyAnimation(this, "opacity", this);
         pAnim_opacity->setEasingCurve(QEasingCurve::OutCubic);
@@ -268,65 +276,87 @@ qreal BaseWidget::priority(qint64 ctepoch /* 0 */) {
 
 void BaseWidget::drawInfo()
 {
-        if (!showInfo) {
-                showInfo = true;
-                _showInfoAction->setDisabled(true);
-                _hideInfoAction->setEnabled(true);
-//		update();
+	if (!showInfo) {
+		showInfo = true;
+		_showInfoAction->setDisabled(true);
+		_hideInfoAction->setEnabled(true);
+		//		update();
 
-                /* starts timer */
-                timerID = startTimer(1000); // timerEvent every 1000 msec
-        }
+		/* starts timer */
+		timerID = startTimer(1000); // timerEvent every 1000 msec
+	}
 }
 
 void BaseWidget::hideInfo()
 {
-        if (showInfo) {
-                killTimer(timerID);
-                showInfo = false;
-                _hideInfoAction->setDisabled(true);
-                _showInfoAction->setEnabled(true);
-                update();
-        }
+	if (showInfo) {
+		killTimer(timerID);
+		showInfo = false;
+		_hideInfoAction->setDisabled(true);
+		_showInfoAction->setEnabled(true);
+		update();
+	}
 }
 
 void BaseWidget::minimize()
 {
-        if ( !_appInfo  ||  _windowState == W_MINIMIZED ) return;
-        // icon size must be defined somewhere based on scene rectangle
-        // QSetting pref dialog would be good point to start
+	if ( !_appInfo  ||  _windowState == W_MINIMIZED ) return;
+	// icon size must be defined somewhere based on scene rectangle
+	// QSetting pref dialog would be good point to start
 
-        // based on this, I could use QGraphicsLayoutItem::setMinimumWidth/Height
+	// based on this, I could use QGraphicsLayoutItem::setMinimumWidth/Height
 
-        // before minimizing, widget's bounding rectangle must be saved.
-        _appInfo->setRecentBoundingRect(mapRectToScene(boundingRect()));
-        _appInfo->setRecentScale( scale() );
-//	QPointF pos = mapToScene(boundingRect().topLeft());
-//	qDebug("BaseGraphicsWidget::%s() : Pos (%.1f, %.1f) on the scene", __FUNCTION__, pos.x(), pos.y());
+	// before minimizing, widget's bounding rectangle must be saved.
+	_appInfo->setRecentPos(pos());
+	_appInfo->setRecentSize(size());
+	_appInfo->setRecentScale(scale());
+	//	QPointF pos = mapToScene(boundingRect().topLeft());
+	//	qDebug("BaseGraphicsWidget::%s() : Pos (%.1f, %.1f) on the scene", __FUNCTION__, pos.x(), pos.y());
 
-        /* minimize. No aspect ratio conserverd */
-//	prepareGeometryChange();
-//	resize(64, 64);
+	/* minimize. No aspect ratio conserverd */
+	//	prepareGeometryChange();
+	//	resize(64, 64);
 
-//	setScale( 128 / boundingRect().width() );
-
-        _windowState = W_MINIMIZED;
-
-        /* action status */
-        _restoreAction->setEnabled(true);
-        _minimizeAction->setDisabled(true);
+	//	setScale( 128 / boundingRect().width() );
 
 
-        /* animation */
-        if (pAnim_pos && pAnim_scale && aGroup ) {
-                pAnim_pos->setStartValue(pos());
-                pAnim_pos->setEndValue(QPointF(20,20));
+	/* action status */
+	_restoreAction->setEnabled(true);
+	_minimizeAction->setDisabled(true);
 
-                pAnim_scale->setStartValue(scale());
-                pAnim_scale->setEndValue(0.2);
 
-                aGroup->start();
-        }
+	/* animation */
+	if (isWindow()) {
+		if (pAnim_pos && pAnim_scale && _parallelAnimGroup ) {
+			pAnim_pos->setStartValue(pos());
+			pAnim_pos->setEndValue(QPointF(20,20));
+
+			pAnim_size->setStartValue(size());
+			pAnim_size->setEndValue(QSizeF(100,100));
+
+			_parallelAnimGroup->start();
+		}
+		else {
+			setPos(QPointF(20, 20)); // bottom of the scene. what if there are other widgets already minimized ???
+			resize(100, 100);
+		}
+	}
+	else {
+		if (pAnim_pos && pAnim_scale && _parallelAnimGroup ) {
+			pAnim_pos->setStartValue(pos());
+			pAnim_pos->setEndValue(QPointF(20,20));
+
+			pAnim_scale->setStartValue(scale());
+			pAnim_scale->setEndValue(0.2);
+
+			_parallelAnimGroup->start();
+		}
+		else {
+			setPos(QPointF(20, 20)); // bottom of the scene. what if there are other widgets already minimized ???
+			setScale(0.2); // must be some uniform size. So scale value should be differ by each widget
+		}
+	}
+	_windowState = W_MINIMIZED;
 }
 
 void BaseWidget::maximize()
@@ -342,8 +372,9 @@ void BaseWidget::maximize()
 
 	// record current position and scale
 	Q_ASSERT(_appInfo);
-	_appInfo->setRecentBoundingRect(mapRectToScene(boundingRect()));
-	_appInfo->setRecentScale( scale() );
+	_appInfo->setRecentPos(pos());
+	_appInfo->setRecentSize(size());
+	_appInfo->setRecentScale(scale());
 
 	QSizeF s = size(); // current size of the widget. scaling won't change the size of the widget
 	qreal scaleFactorW = scene()->width() / s.width();
@@ -351,51 +382,83 @@ void BaseWidget::maximize()
 	qreal scaleFactor = 1.0;
 	(scaleFactorW < scaleFactorH) ? scaleFactor = scaleFactorW : scaleFactor = scaleFactorH;
 
-	_windowState = W_MAXIMIZED;
 
-	if (pAnim_pos && pAnim_scale && aGroup ) {
-		pAnim_scale->setStartValue(scale());
-		pAnim_scale->setEndValue(scaleFactor);
+	if ( isWindow() ) {
+		if (pAnim_pos && pAnim_size && _parallelAnimGroup) {
+			pAnim_size->setStartValue(size());
+			pAnim_size->setEndValue(scene()->sceneRect().size()  -  QSizeF(40, 60));
 
-		pAnim_pos->setStartValue(pos()); // == mapToParent(0,0)
-		pAnim_pos->setEndValue( QPointF((scene()->width() - s.width())/2 ,(scene()->height() - s.height())/2) );
+			pAnim_pos->setStartValue(pos()); // == mapToParent(0,0)
+			pAnim_pos->setEndValue(scene()->sceneRect().topLeft() + QPointF(20, 40));
 
-		aGroup->start();
+			_parallelAnimGroup->start();
+		}
+		else {
+			resize(scene()->sceneRect().size()  -  QSizeF(40, 60));
+			setPos(scene()->sceneRect().topLeft() + QPointF(20, 40));
+		}
 	}
+	else {
+		if (pAnim_pos && pAnim_scale && _parallelAnimGroup) {
+			pAnim_scale->setStartValue(scale());
+			pAnim_scale->setEndValue(scaleFactor);
+
+			pAnim_pos->setStartValue(pos());
+			pAnim_pos->setEndValue( QPointF((scene()->width() - s.width())/2 ,(scene()->height() - s.height())/2) );
+
+			_parallelAnimGroup->start();
+		}
+		else {
+			setPos(QPointF((scene()->width() - s.width())/2 ,(scene()->height() - s.height())/2));
+			setScale(scaleFactor);
+		}
+	}
+	_windowState = W_MAXIMIZED;
 }
 
 void BaseWidget::restore()
 {
-	//        qDebug() << "BaseWidget::restore()";
+	// qDebug() << "BaseWidget::restore()";
 	if ( _windowState == W_NORMAL ) return;
-
-	Q_ASSERT(_appInfo);
-	QRectF rect = _appInfo->getRecentBoundingRect();
-	//	setPos(rect.topLeft());
-	//	setScale(appInfo->getRecentScale());
-
-	//	prepareGeometryChange();
-	//	setPos(rect.x(), rect.y());
-	//	setCurrentSize(rect.size());
-	//setGeometry(rect);
-
-	_windowState = W_NORMAL;
 
 	/* action status */
 	_restoreAction->setDisabled(true);
 	_minimizeAction->setEnabled(true);
 	_maximizeAction->setEnabled(true);
 
-	if (pAnim_pos && pAnim_scale && aGroup ) {
-		pAnim_pos->setStartValue(pos());
-		pAnim_pos->setEndValue(rect.topLeft());
-//		pAnim_pos->setEndValue(rect.center());
+	Q_ASSERT(_appInfo);
 
-		pAnim_scale->setStartValue(scale());
-		pAnim_scale->setEndValue(_appInfo->getRecentScale());
+	if ( isWindow() ) {
+		if (pAnim_pos && pAnim_size && _parallelAnimGroup) {
+			pAnim_pos->setStartValue(pos());
+			pAnim_pos->setEndValue(_appInfo->recentPos());
 
-		aGroup->start();
+			pAnim_size->setStartValue(size());
+			pAnim_size->setEndValue(_appInfo->recentSize());
+
+			_parallelAnimGroup->start();
+		}
+		else {
+			setPos(_appInfo->recentPos());
+			resize(_appInfo->recentSize());
+		}
 	}
+	else {
+		if (pAnim_pos && pAnim_scale && _parallelAnimGroup) {
+			pAnim_pos->setStartValue(pos());
+			pAnim_pos->setEndValue(_appInfo->recentPos());
+
+			pAnim_scale->setStartValue(scale());
+			pAnim_scale->setEndValue(_appInfo->getRecentScale());
+
+			_parallelAnimGroup->start();
+		}
+		else {
+			setPos(_appInfo->recentPos());
+			setScale(_appInfo->getRecentScale());
+		}
+	}
+	_windowState = W_NORMAL;
 }
 
 void BaseWidget::fadeOutClose()
@@ -713,9 +776,6 @@ void BaseWidget::setLastTouch() {
 void BaseWidget::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
 
 //	qDebug() << "hoverEnter" << event->pos();
-	if ( boundingRect().contains(event->pos()) ) {
-		qDebug() << "hello";
-	}
 }
 
 void BaseWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
@@ -749,10 +809,10 @@ void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 void BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 //	Q_UNUSED(event);
 
-//        qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
+	//qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
 
-        if ( mapRectToScene(boundingRect()).contains(event->scenePos()) )
-                maximize();
+	if ( mapRectToScene(boundingRect()).contains(event->scenePos()) )
+		maximize();
 }
 
 //void BaseWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {

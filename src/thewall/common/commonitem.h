@@ -96,6 +96,12 @@ private:
           This is set when pointerPress is called
           */
         BaseWidget *app;
+
+		/**
+		  Returns the view on which the event occured.
+		  pos is on the scene coordinate
+		  */
+		QGraphicsView * eventReceivingViewport(const QPointF scenePos);
 };
 
 

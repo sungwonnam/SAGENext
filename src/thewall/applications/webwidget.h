@@ -31,7 +31,7 @@ public:
           Reimplementing BaseWidget::mouseClick()
           This function generates mousePressEvent followed by mouseReleaseEvent, post them to the view
           */
-        void mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn= Qt::LeftButton);
+//        void mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn= Qt::LeftButton);
 
         /**
           sets new web URL and triggers webpage loading
@@ -62,7 +62,6 @@ protected:
 
         void wheelEvent(QGraphicsSceneWheelEvent *event);
 
-
         bool windowFrameEvent(QEvent *e);
 
         void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -76,22 +75,22 @@ protected:
 
 
 private:
-        QGraphicsLinearLayout *linearLayout;
-        QGraphicsWebView *gwebview;
-        QLineEdit *urlbox;
-        QGraphicsProxyWidget *urlboxproxy;
+		QGraphicsLinearLayout *linearLayout;
+		QGraphicsWebView *gwebview;
+		QLineEdit *urlbox;
+		QGraphicsProxyWidget *urlboxproxy;
 
 
-        QWebPage *webPage;
-        QWebFrame *webFrame;
-        QFutureWatcher<void> futureWatcher;
+		QWebPage *webPage;
+		QWebFrame *webFrame;
+		//QFutureWatcher<void> futureWatcher;
 
 public slots:
 
-        void setUrlFromLineEdit();
-        void urlChanged(const QUrl &url);
+		void setUrlFromLineEdit();
+		void urlChanged(const QUrl &url);
 
-        void pageLoaded();
+		void pageLoaded();
 };
 
 

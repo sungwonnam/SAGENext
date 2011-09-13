@@ -498,7 +498,7 @@ void ResourceMonitor::removeApp(RailawareWidget *rw) {
         if(pn) {
             if ( pn->removeApp(rw)  ) {
                 emit appRemoved(i);
-                qDebug("ResourceMonitor::%s() : app %d has been removed from proc node %d", __FUNCTION__, rw->globalAppId(), i);
+                qDebug("ResourceMonitor::%s() : app %llu has been removed from proc node %d", __FUNCTION__, rw->globalAppId(), i);
             }
         }
     }

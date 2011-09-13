@@ -371,119 +371,148 @@ void ExternalGUIMain::ungrabMouse() {
 }
 
 void ExternalGUIMain::mouseMoveEvent(QMouseEvent *e) {
-        // setMouseTracking(true) to generate this event even when button isn't pressed
-        if ( hasMouseTracking() ) {
+	// setMouseTracking(true) to generate this event even when button isn't pressed
+	if ( hasMouseTracking() ) {
 
-                int x,y;
-                x = scaleToWallX * e->globalX();
-                y = scaleToWallY * e->globalY();
-                // send mmouse position to the wall's UiServer
-                QByteArray msg(EXTUI_MSG_SIZE, 0);
+		int x,y;
+		x = scaleToWallX * e->globalX();
+		y = scaleToWallY * e->globalY();
+		// send mmouse position to the wall's UiServer
+		QByteArray msg(EXTUI_MSG_SIZE, 0);
 
-                if ( e->buttons() & Qt::LeftButton) {
-                        // dragging.
-                        // msgtype, uiclientid, x, y
-                        sprintf(msg.data(), "%d %llu %d %d", POINTER_DRAGGING, uiclientid, x, y);
-                }
-                else if (e->buttons() & Qt::NoButton) {
-                        // just move pointer
-//			qDebug() << "move " << e->globalPos();
-                }
-                else {
-                        // msgtype, uiclientid, x, y
-                        sprintf(msg.data(), "%d %llu %d %d", POINTER_MOVING, uiclientid, x, y);
-                }
+		if ( e->buttons() & Qt::LeftButton) {
+			// dragging.
+			// msgtype, uiclientid, x, y
+			sprintf(msg.data(), "%d %llu %d %d", POINTER_DRAGGING, uiclientid, x, y);
+		}
+		else if (e->buttons() & Qt::RightButton) {
+			qDebug() << "mouseMoveEvent Rightbutton dragging";
+		}
+		else if (e->buttons() & Qt::NoButton) {
+			// just move pointer
+			// qDebug() << "move " << e->globalPos();
+		}
+		else {
+			// msgtype, uiclientid, x, y
+			sprintf(msg.data(), "%d %llu %d %d", POINTER_MOVING, uiclientid, x, y);
+		}
 
-                if (msgThread && msgThread->isRunning())
-                        QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-        }
-        else {
-                QMainWindow::mouseMoveEvent(e);
-        }
+		if (msgThread && msgThread->isRunning())
+			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
+	}
+	else {
+		QMainWindow::mouseMoveEvent(e);
+	}
 }
 
 void ExternalGUIMain::mousePressEvent(QMouseEvent *e) {
 
-        mousePressedPos = e->globalPos();
+	mousePressedPos = e->globalPos();
 
-        if ( hasMouseTracking() ) {
-//		qDebug() << "mouse press" << e->button() << e->globalPos();
+	if ( hasMouseTracking() ) {
+		//		qDebug() << "mouse press" << e->button() << e->globalPos();
 
-                int x,y;
-                x = scaleToWallX * e->globalX();
-                y = scaleToWallY * e->globalY();
-                // send mmouse position to the wall's UiServer
-                QByteArray msg(EXTUI_MSG_SIZE, 0);
+		int x,y;
+		x = scaleToWallX * e->globalX();
+		y = scaleToWallY * e->globalY();
+		// send mmouse position to the wall's UiServer
+		QByteArray msg(EXTUI_MSG_SIZE, 0);
 
-                if (e->buttons() & Qt::LeftButton) {
-                        qDebug() << "left press" << e->globalPos();
-                        // msgtype, uiclientid, x, y
-                        sprintf(msg.data(), "%d %llu %d %d", POINTER_PRESS, uiclientid, x, y);
-                }
-                else if (e->buttons() & Qt::RightButton) {
-                        qDebug() << "right press";
-                        sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
-                }
+		/**
+		  this will trigger PolygonArrow::setAppUnderPointer
+		  */
+		if (e->buttons() & Qt::LeftButton) {
+//			qDebug() << "left press" << e->globalPos();
+			// msgtype, uiclientid, x, y
+			sprintf(msg.data(), "%d %llu %d %d", POINTER_PRESS, uiclientid, x, y);
+		}
+		/*
+		else if (e->buttons() & Qt::RightButton) {
+//			qDebug() << "right press";
+			sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
+		}
+		*/
 
-                if (msgThread && msgThread->isRunning())
-                        QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-        }
-        else {
-                QMainWindow::mousePressEvent(e);
-        }
+		if (msgThread && msgThread->isRunning())
+			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
+	}
+	else {
+		QMainWindow::mousePressEvent(e);
+	}
 }
 
 void ExternalGUIMain::mouseReleaseEvent(QMouseEvent *e) {
-        if ( hasMouseTracking() ) {
-                int ml = (e->globalPos() - mousePressedPos).manhattanLength();
-//		qDebug() << "release" << e->button() << e->globalPos() << ml;
+	if ( hasMouseTracking() ) {
+		int ml = (e->globalPos() - mousePressedPos).manhattanLength();
+		//		qDebug() << "release" << e->button() << e->globalPos() << ml;
 
-                int x,y;
-                x = scaleToWallX * e->globalX();
-                y = scaleToWallY * e->globalY();
-                // send mmouse position to the wall's UiServer
-                QByteArray msg(EXTUI_MSG_SIZE, 0);
+		int x,y;
+		x = scaleToWallX * e->globalX();
+		y = scaleToWallY * e->globalY();
+		// send mmouse position to the wall's UiServer
+		QByteArray msg(EXTUI_MSG_SIZE, 0);
 
-                if ( ml > 3 ) {
-                        // NO CLICK
-                        //sprintf(msg.data(), "%d %llu %d %d", POINTER_RELEASE, uiclientid, x, y);
-                }
-                else {
-                        // effective CLICK
-                        if (e->button() == Qt::LeftButton) {
-                                qDebug() << "left release " << e->globalPos() << ml;
-                                // msgtype, uiclientid, x, y
-                                sprintf(msg.data(), "%d %llu %d %d", POINTER_CLICK, uiclientid, x, y);
-                        }
-                        else if (e->button() == Qt::RightButton) {
-                                qDebug() << "right release" << e->globalPos() << ml;
-                                sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
-                        }
-                        if (msgThread && msgThread->isRunning())
-                                QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-                }
-        }
-        else {
-                QMainWindow::mouseReleaseEvent(e);
-        }
+		if ( ml > 3 ) {
+			// NO CLICK
+			//sprintf(msg.data(), "%d %llu %d %d", POINTER_RELEASE, uiclientid, x, y);
+		}
+		else {
+			// effective CLICK
+			if (e->button() == Qt::LeftButton) {
+				qDebug() << "left release " << e->globalPos() << ml;
+				// msgtype, uiclientid, x, y
+				sprintf(msg.data(), "%d %llu %d %d", POINTER_CLICK, uiclientid, x, y);
+			}
+
+			/** right click is handled by contextMenuEvent
+			else if (e->button() == Qt::RightButton) {
+				qDebug() << "right release" << e->globalPos() << ml;
+				sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
+			}
+			*/
+
+			if (msgThread && msgThread->isRunning())
+				QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
+		}
+	}
+	else {
+		QMainWindow::mouseReleaseEvent(e);
+	}
+}
+
+void ExternalGUIMain::contextMenuEvent(QContextMenuEvent *e) {
+
+	if (e->reason() | QContextMenuEvent::Mouse) {
+		int x,y;
+        x = scaleToWallX * e->globalX();
+        y = scaleToWallY * e->globalY();
+
+		QByteArray msg(EXTUI_MSG_SIZE, 0);
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
+
+		if (msgThread && msgThread->isRunning())
+			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
+		else
+			qWarning() << "please connect to a wall first";
+	}
 }
 
 void ExternalGUIMain::mouseDoubleClickEvent(QMouseEvent *e) {
-        if ( hasMouseTracking() ) {
-                // maximize/restore the app
-//		qDebug() << "double click";
-                int x,y;
-                x = scaleToWallX * e->globalX();
-                y = scaleToWallY * e->globalY();
-                QByteArray msg(EXTUI_MSG_SIZE, 0);
-                sprintf(msg.data(), "%d %llu %d %d", POINTER_DOUBLECLICK, uiclientid, x, y);
+	if ( hasMouseTracking() ) {
+		// maximize/restore the app
+		// qDebug() << "double click";
+		int x,y;
+		x = scaleToWallX * e->globalX();
+		y = scaleToWallY * e->globalY();
+		QByteArray msg(EXTUI_MSG_SIZE, 0);
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_DOUBLECLICK, uiclientid, x, y);
 
-                if (msgThread && msgThread->isRunning())
-                        QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-        }
-        else {
-                QMainWindow::mouseDoubleClickEvent(e);
-        }
+		if (msgThread && msgThread->isRunning())
+			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
+	}
+	else {
+		QMainWindow::mouseDoubleClickEvent(e);
+	}
 }
 
 void ExternalGUIMain::wheelEvent(QWheelEvent *e) {

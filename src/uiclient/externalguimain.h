@@ -53,6 +53,11 @@ protected:
         void mouseDoubleClickEvent(QMouseEvent *e);
         void wheelEvent(QWheelEvent *e);
 
+		/**
+		  to provide mouse right click
+		  */
+		void contextMenuEvent(QContextMenuEvent *event);
+
 private:
         Ui::ExternalGUIMain *ui;
 
