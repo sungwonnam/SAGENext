@@ -111,57 +111,29 @@ rfbCredential * VNCClientWidget::getCredential(struct _rfbClient *client, int cr
 	return res;
 }
 
-void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
-        if (_perfMon) {
-                _perfMon->getDrawTimer().start();
-        }
+void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
+	if (_perfMon) {
+		_perfMon->getDrawTimer().start();
+	}
 
-//	painter->setRenderHint(QPainter::Antialiasing);
-//	painter->setRenderHint(QPainter::HighQualityAntialiasing);
-        painter->setRenderHint(QPainter::SmoothPixmapTransform); // important -> this will make text smoother
-
-
-        if (isSelected()) {
-                // setBrush hurts performance badly !!
-//		painter->setBrush( QBrush(Qt::lightGray, Qt::Dense2Pattern) ); // very bad
-
-//		painter->drawRect( windowFrameRect() ); // will add 0.5~1 msec when 4K
-//		painter->fillRect(windowFrameRect(), QBrush(Qt::lightGray, Qt::Dense6Pattern)); // bad
-//		painter->fillRect(windowFrameRect(), Qt::lightGray); // will adds 2~3 msec when 4K res
-//		painter->fillRect(windowFrameRect(), Qt::Dense6Pattern); // bad
-
-//		shadow->setEnabled(true);
-        }
-        else {
-//		shadow->setEnabled(false);
-        }
+	//	painter->setRenderHint(QPainter::Antialiasing);
+	//	painter->setRenderHint(QPainter::HighQualityAntialiasing);
+	painter->setRenderHint(QPainter::SmoothPixmapTransform); // important -> this will make text smoother
 
 
-
-        if (!pixmap.isNull())
-                painter->drawPixmap(0, 0, pixmap); // Drawing QPixmap is much faster than QImage
-
+	if (!pixmap.isNull())
+		painter->drawPixmap(0, 0, pixmap); // Drawing QPixmap is much faster than QImage
 
 
-//        if (_image && !_image->isNull()) {
-//                painter->drawImage(0, 0, *_image);
-//        }
+	// if (_image && !_image->isNull()) {
+	//  painter->drawImage(0, 0, *_image);
+	//}
+
+	BaseWidget::paint(painter, o, w);
 
 
-
-
-
-        if ( showInfo  &&  !infoTextItem->isVisible() ) {
-#if defined(Q_OS_LINUX)
-                _appInfo->setDrawingThreadCpu(sched_getcpu());
-#endif
-                infoTextItem->show();
-        }
-        else if (!showInfo && infoTextItem->isVisible()){
-                infoTextItem->hide();
-        }
-        if (_perfMon)
-			_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
+	if (_perfMon)
+		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
 void VNCClientWidget::scheduleUpdate() {

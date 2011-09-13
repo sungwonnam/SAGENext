@@ -253,6 +253,11 @@ protected:
         void init();
 
 
+		/**
+		  This will draw infoTextItem followed by resize rectangle
+		  */
+		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
         /*!
           Derived class should implement paint()
           */

@@ -340,6 +340,8 @@ void ExternalGUIMain::on_pointerButton_clicked()
 	sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, qPrintable(_pointerName), 255, 128, 0);
 
 	if (msgThread && msgThread->isRunning()) {
+
+		// need to use Carbon for mac
 		grabMouse();
 		setMouseTracking(true); // the widget receives mouse move events even if no buttons are pressed
 		qDebug() << "grabMouse";

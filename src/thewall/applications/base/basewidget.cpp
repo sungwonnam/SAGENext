@@ -93,6 +93,8 @@ void BaseWidget::init()
 {
         setAcceptHoverEvents(true);
 
+		setTransformOriginPoint(boundingRect().center());
+
 
         // Indicates that the widget paints all its pixels when it receives a paint event
         // Thus, it is not required for operations like updating, resizing, scrolling and focus changes
@@ -355,13 +357,12 @@ void BaseWidget::maximize()
 		pAnim_scale->setStartValue(scale());
 		pAnim_scale->setEndValue(scaleFactor);
 
-		pAnim_pos->setStartValue(pos());
+		pAnim_pos->setStartValue(pos()); // == mapToParent(0,0)
 
-		// this is based on top left as the transformation origin
-//		pAnim_pos->setEndValue( QPointF( scene()->width() / 2  -  (s.width() * scaleFactor) / 2 , 0) );
-
-		// this is based on center as the transformation origin
-		pAnim_pos->setEndValue( QPointF(scene()->width() / 2 , scene()->height() / 2) );
+		qDebug() << QPointF( (scene()->width() - (s.width() * scaleFactor))/2
+		                     ,(scene()->height() - (s.height() * scaleFactor))/2);
+		pAnim_pos->setEndValue( QPointF( (scene()->width() - (s.width() * scaleFactor))/2
+		                                 ,(scene()->height() - (s.height() * scaleFactor))/2) );
 
 		aGroup->start();
 	}
@@ -391,8 +392,8 @@ void BaseWidget::restore()
 
 	if (pAnim_pos && pAnim_scale && aGroup ) {
 		pAnim_pos->setStartValue(pos());
-//		pAnim_pos->setEndValue(rect.topLeft());
-		pAnim_pos->setEndValue(rect.center());
+		pAnim_pos->setEndValue(rect.topLeft());
+//		pAnim_pos->setEndValue(rect.center());
 
 		pAnim_scale->setStartValue(scale());
 		pAnim_scale->setEndValue(_appInfo->getRecentScale());
@@ -482,18 +483,18 @@ void BaseWidget::setTopmost()
 
 void BaseWidget::reScale(int tick, qreal factor)
 {
-        qreal currentScale = scale();
-        currentScale += ((qreal)tick * factor);
+	qreal currentScale = scale();
+	currentScale += ((qreal)tick * factor);
 
         // Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees, the child's total transformation will be 180 degrees. Similarly, if the item's parent is scaled to 2x its original size, its children will also be twice as large. An item's transformation does not affect its own local geometry; all geometry functions (e.g., contains(), update(), and all the mapping functions) still operate in local coordinates.
-        setScale(currentScale);
+	setScale(currentScale);
 
         //! optional
 //	appInfo->setRecentScale(currentScale);
 
 
         // This function will not change widget's size !!
-//        qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
+//	qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
 }
 
 QRectF BaseWidget::resizeHandleSceneRect()
@@ -666,14 +667,34 @@ void BaseWidget::mouseDrag(const QPointF &, Qt::MouseButton) {
 
 
 
+void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 
+	/* draw resize rectangle upon hoverEnterEvent */
+
+
+
+	/* info overlay */
+	if ( showInfo  &&  !infoTextItem->isVisible() ) {
+#if defined(Q_OS_LINUX)
+		_appInfo->setDrawingThreadCpu(sched_getcpu());
+#endif
+		Q_ASSERT(infoTextItem);
+		//painter->setBrush(Qt::black);
+		//painter->drawRect(infoTextItem->boundingRect());
+		infoTextItem->show();
+	}
+	else if (!showInfo && infoTextItem->isVisible()){
+		Q_ASSERT(infoTextItem);
+		infoTextItem->hide();
+	}
+}
 
 
 /*! reimplementing events */
 
 void BaseWidget::timerEvent(QTimerEvent *) {
 //	qDebug("BaseWidget::%s()", __FUNCTION__);
-        updateInfoTextItem();
+	updateInfoTextItem();
 
         /*
         if ( affControl && affControl->isVisible() ) {
@@ -689,12 +710,16 @@ void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
 }
 
 void BaseWidget::setLastTouch() {
-        _lastTouch = QDateTime::currentMSecsSinceEpoch();
+	_lastTouch = QDateTime::currentMSecsSinceEpoch();
 }
 
 
 void BaseWidget::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
 
+//	qDebug() << "hoverEnter" << event->pos();
+	if ( boundingRect().contains(event->pos()) ) {
+		qDebug() << "hello";
+	}
 }
 
 void BaseWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
