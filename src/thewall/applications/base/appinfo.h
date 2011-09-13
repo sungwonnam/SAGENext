@@ -28,12 +28,21 @@ public:
 
 	void setFileInfo(const QString &absoluteFilePath);
 	void setWebUrl(const QString & url);
+
 	inline void setNativeSize(const QSize &s) { _nativeSize = s;}
 	inline QSize nativeSize() const {return _nativeSize;}
+
 	void setSrcAddr(const QString &ip);
+
+	/**
+	  this sets _nativeSize as well
+	  */
 	void setFrameSize(int width, int height, int bpp);
 	//inline void setFrameSize(int bytecount) { frameSize = bytecount; }
+
 	inline void setMediaType(MEDIA_TYPE t) {mtype = t;}
+	inline MEDIA_TYPE getMediaType() const { return mtype; }
+
 	inline void setDrawingThreadCpu(int c) {drawingThreadCpu=c;}
 	inline void setNetworkUserBufferLength(int l) {networkUserBufferLength=l;}
 
@@ -48,7 +57,7 @@ public:
 //	inline quint32 getOrgWidth() const { return orgWidth; }
 //	inline quint32 getOrgHeight() const { return orgHeight; }
 	inline quint16 getBitPerPixel() const { return bitPerPixel; }
-	inline MEDIA_TYPE getMediaType() const { return mtype; }
+
 	inline int getDrawingThreadCpu() const {return drawingThreadCpu;}
 	inline int getNetworkUserBufferLength() const {return networkUserBufferLength;}
 

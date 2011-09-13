@@ -192,11 +192,14 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         int display = 0;
         int framerate = 24;
         char vncpass[64];
-        sscanf(msg.constData(), "%d %llu %s %d %s %d", &code, &uiclientid, senderIP, &display, vncpass, &framerate);
-        // void startApp(MEDIA_TYPE type, QString filename, qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
+		char username[64];
+        sscanf(msg.constData(), "%d %llu %s %d %s %s %d", &code, &uiclientid, senderIP, &display, username, vncpass, &framerate);
+
+//		qDebug() << "uiserver" << QString(username) << QString(vncpass);
 
         // This isn't elegant way of invoking vnc widget. :(
         QMetaObject::invokeMethod(launcher, "launch", Qt::QueuedConnection,
+		                          Q_ARG(QString, QString(username)),
                                   Q_ARG(QString, QString(vncpass)),
                                   Q_ARG(int, display),
                                   Q_ARG(QString, QString(senderIP)),
@@ -334,8 +337,11 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         if (pa) {
             qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
 
-            // Widget under the pointer can reimplement BaseWidget::mouseClick()
-            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
+//            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
+
+			// Let each application provides mouseClick()
+			 // Widget under the pointer can reimplement BaseWidget::mouseClick()
+			if ( pa->appUnderPointer() ) pa->appUnderPointer()->mouseClick(QPointF(x, y), Qt::LeftButton);
         }
         else {
             qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);

@@ -15,7 +15,7 @@
 class VNCClientWidget : public RailawareWidget
 {
 public:
-        VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString passwd, int framerate, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+        VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int framerate, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
         ~VNCClientWidget();
 
 protected:
@@ -47,8 +47,10 @@ private:
 
         QFuture<void> future;
 
+		static rfbCredential * getCredential(struct _rfbClient *client, int credentialType);
 
         static rfbBool got_data;
+		static QString username;
         static QString vncpasswd;
 
         static void signal_handler(int signal);

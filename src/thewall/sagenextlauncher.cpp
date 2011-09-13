@@ -265,8 +265,9 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
         launch(w);
 }
 
-void SAGENextLauncher::launch(QString vncPasswd, int display, QString vncServerIP, int framerate) {
-        BaseWidget *w = new VNCClientWidget(_globalAppId, vncServerIP, display, vncPasswd, framerate, _settings);
+void SAGENextLauncher::launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate) {
+//	qDebug() << "launch" << username << vncPasswd;
+        BaseWidget *w = new VNCClientWidget(_globalAppId, vncServerIP, display, username, vncPasswd, framerate, _settings);
         launch(w);
 }
 

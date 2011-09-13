@@ -221,52 +221,43 @@ void SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
 }
 
 
-void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
+void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 
-        if (_perfMon) {
-                _perfMon->getDrawTimer().start();
-//		perfMon->startPaintEvent();
-        }
-
-        if (isSelected()) {
-                // setBrush hurts performance badly
-//		painter->setBrush( QBrush(Qt::lightGray, Qt::Dense2Pattern) ); // very bad
-
-//		painter->drawRect( windowFrameRect() ); // will add 0.5~1 msec when 4K
-//		painter->fillRect(windowFrameRect(), QBrush(Qt::lightGray, Qt::Dense6Pattern)); // bad
-//		painter->fillRect(windowFrameRect(), Qt::lightGray); // will adds 2~3 msec when 4K res
-//		painter->fillRect(windowFrameRect(), Qt::Dense6Pattern); // bad
-
-//		shadow->setEnabled(true);
-        }
-        else {
-//		shadow->setEnabled(false);
-        }
-
-//	if ( currentScale != 1.0 ) painter->scale(currentScale, currentScale);
-
-//	Q_ASSERT(image && !image->isNull());
-//	painter->drawImage(0, 0, *image2); // Implicit Sharing
-
-        // slower than painter->scale()
-//	painter->drawImage(QPointF(0, 0), _image->scaled(cs.toSize(), Qt::KeepAspectRatio));
-
-//	  This is bettern than
-//	  pixmap->convertFromImage(*image) followed by painter->drawPixmap(*pixmap)
-//	  in terms of the total latency for a frame.
-//	  HOWEVER, paint() can be called whenever move, resize
-//	  So, it is wise to have paint() function fast
-//	painter->drawPixmap(0, 0, QPixmap::fromImage(*_image));
+	if (_perfMon) {
+		_perfMon->getDrawTimer().start();
+		//perfMon->startPaintEvent();
+	}
 
 
-        if( !_pixmap.isNull()  &&  isVisible()  ) {
-            painter->drawPixmap(0, 0, _pixmap); // the best so far
-        }
+	//	if ( currentScale != 1.0 ) painter->scale(currentScale, currentScale);
 
-//        if (!image2.isNull()  &&  isVisible())
-//            painter->drawImage(0, 0, image2);
+	//	Q_ASSERT(image && !image->isNull());
+	//	painter->drawImage(0, 0, *image2); // Implicit Sharing
+
+	// slower than painter->scale()
+	//	painter->drawImage(QPointF(0, 0), _image->scaled(cs.toSize(), Qt::KeepAspectRatio));
+
+	//	  This is bettern than
+	//	  pixmap->convertFromImage(*image) followed by painter->drawPixmap(*pixmap)
+	//	  in terms of the total latency for a frame.
+	//	  HOWEVER, paint() can be called whenever move, resize
+	//	  So, it is wise to have paint() function fast
+	//	painter->drawPixmap(0, 0, QPixmap::fromImage(*_image));
 
 
+	if( !_pixmap.isNull()  &&  isVisible()  ) {
+		painter->drawPixmap(0, 0, _pixmap); // the best so far
+	}
+
+	// if (!image2.isNull()  &&  isVisible())
+	// painter->drawImage(0, 0, image2);
+
+
+	BaseWidget::paint(painter,o,w);
+
+
+	if (_perfMon)
+		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 /***
         if ( ! image2.isNull() ) {
                 painter->beginNativePainting();
@@ -311,18 +302,6 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
         }
         ****/
 
-
-        if ( showInfo  &&  !infoTextItem->isVisible() ) {
-#if defined(Q_OS_LINUX)
-            _appInfo->setDrawingThreadCpu(sched_getcpu());
-#endif
-            infoTextItem->show();
-        }
-        else if (!showInfo && infoTextItem->isVisible()){
-            infoTextItem->hide();
-        }
-        if (_perfMon)
-            _perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
 

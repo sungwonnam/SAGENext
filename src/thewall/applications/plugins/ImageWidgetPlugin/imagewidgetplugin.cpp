@@ -146,69 +146,82 @@ ExamplePlugin::~ExamplePlugin() {
 }
 
 void ExamplePlugin::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn) {
-        QPointF pos = mapFromScene(clickedScenePos);
-        qDebug() << pos;
+	QGraphicsView *view = 0;
+	Q_ASSERT(scene());
+	foreach(QGraphicsView *v, scene()->views()) {
+
+		// geometry of widget relative to its parent
+		//        v->geometry();
+
+		// internal geometry of widget
+		//        v->rect();
+
+		// Figure out which viewport will receive the mouse event
+		if ( v->rect().contains( v->mapFromScene(clickedScenePos) ) ) {
+			// mouse click position is within this view's bounding rectangle
+			view = v;
+			break;
+		}
+	}
+
+	if (!view) {
+		qDebug() << "ExamplePlugin::mouseClick() : Couldn't find the viewport with clickedScenePos" << clickedScenePos;
+		return;
+	}
 
 
 
+	// The event will be sent to the viewport so the pos should be translated
+	QPointF clickedViewPos = view->mapFromScene( clickedScenePos );
+	QPointF pos = mapFromScene(clickedScenePos);
+	qDebug() << "ExamplePlugin::mouseClick on this item's coordinate" << pos << " scene coord" << clickedScenePos << " viewport coord" << clickedViewPos;
 
-        QGraphicsView *gview = 0;
-        foreach (gview, scene()->views()) {
-                /** There is only one view for now **/
+	// create event objects
+	QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
+	QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
 
-                // convert event's point to viewport coordinate
-                QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-                QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
 
-                QGraphicsItem *mouseGrabItem = 0;
+	// figure out which button should receive the mouse event based on the clicked position
+	QGraphicsItem *mouseGrabItem = 0;
+	if ( proxy_btn_R->boundingRect().contains( proxy_btn_R->mapFromScene(clickedScenePos) ) ) {
+		qDebug() << "R";
 
-//		qDebug() << "pos " << pos;
+		// GUI components should be mouseGrabItem to be able to respond to mouse interaction
+		mouseGrabItem = proxy_btn_R;
+	}
+	else if (proxy_btn_G->boundingRect().contains( proxy_btn_G->mapFromScene(clickedScenePos) )) {
+		qDebug() << "G";
+		mouseGrabItem = proxy_btn_G;
+	}
+	else if (proxy_btn_B->boundingRect().contains( proxy_btn_B->mapFromScene(clickedScenePos) )) {
+		qDebug() << "B";
+		mouseGrabItem = proxy_btn_B;
+	}
+	else if (! mainLayout->geometry().contains( pos ) ) {
+		qDebug() << "hitting outside of mainLayout";
+		mouseGrabItem = this;
+	}
+	else {
+	}
 
-                if ( proxy_btn_R->boundingRect().contains(  proxy_btn_R->mapFromParent(pos) ) ) {
-                        qDebug() << "R";
+	if (mouseGrabItem) mouseGrabItem->grabMouse();
 
-                        // GUI components should be mouseGrabItem to be able to respond to mouse interaction
-                        mouseGrabItem = proxy_btn_R;
-                }
-                else if (proxy_btn_G->boundingRect().contains( proxy_btn_G->mapFromParent(pos) )) {
-                        qDebug() << "G";
-                        mouseGrabItem = proxy_btn_G;
-                }
-                else if (proxy_btn_B->boundingRect().contains( proxy_btn_B->mapFromParent(pos) )) {
-                        qDebug() << "B";
-                        mouseGrabItem = proxy_btn_B;
-                }
-                else if (! mainLayout->geometry().contains( pos ) ) {
-                        qDebug() << "hitting outside of mainLayout";
-                        mouseGrabItem = this;
-                }
-                else {
-//			qDebug() << pos << "isn't contained";
-                }
+	/** Mouse events must be posted to the viewport widget **/
 
-                if (mouseGrabItem) mouseGrabItem->grabMouse();
+	// sendEvent BLOCKS and thus it doesn't delete event object,
+	// so events can be created in stack (local to this function) when using sendEvent
+	if ( ! QApplication::sendEvent(view->viewport(), press) ) {
+		qDebug("ExamplePlugin::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+	}
+	if ( ! QApplication::sendEvent(view->viewport(), release) ) {
+		qDebug("ExamplePlugin::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+	}
 
-                /** Mouse event must be posted to the viewport widget **/
+	if(mouseGrabItem) mouseGrabItem->ungrabMouse();
 
-                // sendEvent doesn't delete event object, so event can be created in stack (local to this function)
-                if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
-                        qDebug("ExamplePlugin::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-                }
-                if ( ! QApplication::sendEvent(gview->viewport(), release) ) {
-                        qDebug("ExamplePlugin::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-                }
-
-                if(mouseGrabItem) mouseGrabItem->ungrabMouse();
-
-                if (press) delete press;
-                if (release) delete release;
-
-                /*
-                  // event loop will take ownership of posted event, so event must be created in heap space
-                   QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
-                   QApplication::postEvent(gview->viewport(), new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier));
-                   */
-        }
+	// sendEvent doesn't delete the event object
+	if (press) delete press;
+	if (release) delete release;
 }
 
 QString ExamplePlugin::name() const {

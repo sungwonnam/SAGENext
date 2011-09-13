@@ -52,16 +52,16 @@ PixmapWidget::PixmapWidget(qint64 filesize, const QString &senderIP, const QStri
                 isImageReady(false)
 
 {
-        setWidgetType(BaseWidget::Widget_Image);
-        _appInfo->setMediaType(MEDIA_TYPE_IMAGE);
-        _appInfo->setSrcAddr(senderIP);
-        start();
+	setWidgetType(BaseWidget::Widget_Image);
+	_appInfo->setMediaType(MEDIA_TYPE_IMAGE);
+	_appInfo->setSrcAddr(senderIP);
+	start();
 }
 
 PixmapWidget::~PixmapWidget() {
-        if (image) delete image;
-        if (pixmap) delete pixmap;
-        qDebug("PixmapWidget::%s()", __FUNCTION__);
+	if (image) delete image;
+	if (pixmap) delete pixmap;
+	qDebug("PixmapWidget::%s()", __FUNCTION__);
 }
 
 void PixmapWidget::start() {
@@ -73,34 +73,34 @@ void PixmapWidget::start() {
         QThreadPool::globalInstance()->start(static_cast<QRunnable *>(this));
         **/
 
-        futureWatcher = new QFutureWatcher<bool>(this);
-        connect(futureWatcher, SIGNAL(finished()), this, SLOT(callUpdate()));
+	futureWatcher = new QFutureWatcher<bool>(this);
+	connect(futureWatcher, SIGNAL(finished()), this, SLOT(callUpdate()));
 
-        /* start receiving thread */
-        QFuture<bool> future = QtConcurrent::run(this, &PixmapWidget::readImage);
+	/* start receiving thread */
+	QFuture<bool> future = QtConcurrent::run(this, &PixmapWidget::readImage);
 
-        futureWatcher->setFuture(future);
+	futureWatcher->setFuture(future);
 }
 
 void PixmapWidget::callUpdate() {
-        if ( futureWatcher->result() ) {
-                resize(image->size());
-                _appInfo->setFrameSize(image->width(), image->height(), image->depth());
+	if ( futureWatcher->result() ) {
+		resize(image->size());
+		_appInfo->setFrameSize(image->width(), image->height(), image->depth());
 
-                /**
-                  set transform origin point to widget's center
-                  **/
-                setTransformOriginPoint( image->width() / 2.0 , image->height() / 2.0 );
+		/**
+				  set transform origin point to widget's center
+				  **/
+		setTransformOriginPoint( image->width() / 2.0 , image->height() / 2.0 );
 
-                delete image;
-                image = 0;
+		delete image;
+		image = 0;
 
-                isImageReady = true;
-                update();
-        }
-        else {
-                qCritical() << "PixmapWidget read thread finished with error";
-        }
+		isImageReady = true;
+		update();
+	}
+	else {
+		qCritical() << "PixmapWidget read thread finished with error";
+	}
 
         /*
         qreal left, top, right, bottom;
@@ -110,82 +110,36 @@ void PixmapWidget::callUpdate() {
 }
 
 void PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
-        Q_UNUSED(o);
-        Q_UNUSED(w);
+	Q_UNUSED(o);
+	Q_UNUSED(w);
 
-//	qDebug() << o->rect << o->state << o->type;
+	//	qDebug() << o->rect << o->state << o->type;
 
-        if ( ! isImageReady ) {
-                QGraphicsSimpleTextItem text("Loading Image...", this);
-//		painter->setBrush(Qt::black);
-//		painter->fillRect(boundingRect(), Qt::lightGray);
-//		painter->setPen(Qt::white);
-//		painter->drawStaticText(0, 0, QStaticText("Loading Image"));
+	if ( ! isImageReady ) {
+//		QGraphicsSimpleTextItem text("Loading Image...", this);
+		//		painter->setBrush(Qt::black);
+		//		painter->fillRect(boundingRect(), Qt::lightGray);
+		//		painter->setPen(Qt::white);
+		//		painter->drawStaticText(0, 0, QStaticText("Loading Image"));
+		return;
+	}
 
-        }
-        else {
+	if (_perfMon)
+		_perfMon->getDrawTimer().start();
 
-                /*!
-                  below if() statement should be called ONLY ONCE */
-//		if (image && pixmap->isNull()) {
-//			QThreadPool::globalInstance()->releaseThread();
+	painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
-//			resize(image->size());
-//			appInfo->setFrameSize(image->width(), image->height(), image->depth());
+	//why not using painter->scale() instead?
+	//painter->drawImage(0, 0, _image->scaled(contentSize.toSize(), Qt::KeepAspectRatio)); // shallow copy (Implicitly Shared mode)
+	//if ( scaleFactorX != 1.0 || scaleFactorY != 1.0 )
+	//painter->scale(scaleFactorX, scaleFactorX);
+	//painter->drawImage(QPointF(0,0), *image);
+	painter->drawPixmap(0, 0, *pixmap);
 
-//			/*! it's strange.. scene won't update if this instruction is in a thread */
-//			pixmap->convertFromImage(*image);
+	BaseWidget::paint(painter, o, w);
 
-//			delete image;
-//			image = 0;
-//		}
-
-//		struct timeval s,e;
-//		gettimeofday(&s, 0);
-
-                if (_perfMon)
-                        _perfMon->getDrawTimer().start();
-
-                painter->setRenderHint(QPainter::SmoothPixmapTransform);
-
-
-                if (isSelected()) {
-//			painter->setBrush( QBrush(Qt::lightGray, Qt::Dense6Pattern) );
-//			painter->drawRect( windowFrameRect() );
-//			shadow->setEnabled(true);
-                }
-                else {
-//			shadow->setEnabled(false);
-                }
-
-//		 why not using painter->scale() instead?
-//		painter->drawImage(0, 0, _image->scaled(contentSize.toSize(), Qt::KeepAspectRatio)); // shallow copy (Implicitly Shared mode)
-//		if ( scaleFactorX != 1.0 || scaleFactorY != 1.0 )
-//			painter->scale(scaleFactorX, scaleFactorX);
-//		painter->drawImage(QPointF(0,0), *image);
-                painter->drawPixmap(0, 0, *pixmap);
-
-                if ( showInfo  &&  !infoTextItem->isVisible() ) {
-#if defined(Q_OS_LINUX)
-                        _appInfo->setDrawingThreadCpu(sched_getcpu());
-#endif
-                        Q_ASSERT(infoTextItem);
-//			painter->setBrush(Qt::black);
-//			painter->drawRect(infoTextItem->boundingRect());
-                        infoTextItem->show();
-                }
-                else if (!showInfo && infoTextItem->isVisible()){
-                        Q_ASSERT(infoTextItem);
-                        infoTextItem->hide();
-                }
-
-                if (_perfMon)
-                        _perfMon->updateDrawLatency();
-
-//		gettimeofday(&e, 0);
-//		qreal el = ((double)e.tv_sec + (double)e.tv_usec * 0.000001) - ((double)s.tv_sec+(double)s.tv_usec*0.000001);
-//		qDebug() << "darwing : " << el * 1000.0 << " msec";
-        }
+	if (_perfMon)
+		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
 

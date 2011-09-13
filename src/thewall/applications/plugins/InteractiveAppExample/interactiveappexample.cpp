@@ -17,6 +17,10 @@ InteractiveAppExample::InteractiveAppExample() :
 	root = new QGraphicsProxyWidget();
 	root->setWindowFlags(Qt::Window);
 	root->setWindowFrameMargins(3, 30, 3, 3);
+
+	/*
+	  QGraphicsProxyWidget will be the proxy widget for your topmost widget
+	  */
 	root->setWidget(this);
 }
 

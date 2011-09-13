@@ -46,7 +46,7 @@ public:
         ~ExternalGUIMain();
 
 protected:
-        void resizeEvent(QResizeEvent *);
+//        void resizeEvent(QResizeEvent *);
         void mouseMoveEvent(QMouseEvent *e);
         void mousePressEvent(QMouseEvent *e);
         void mouseReleaseEvent(QMouseEvent *e);
@@ -128,6 +128,8 @@ private:
 
         QString _myIpAddress;
 
+		QString _vncUsername;
+
         QString _vncPasswd;
 
 
@@ -135,7 +137,7 @@ private:
 
 private slots:
         /**
-          * CMD + N
+          * CMD + N triggers connection dialog
           */
         void on_actionNew_Connection_triggered();
 
@@ -206,6 +208,7 @@ public:
         inline int port() const {return portnum;}
         inline QString myAddress() const {return myaddr;}
         inline QString pointerName() const {return pName;}
+		inline QString vncUsername() const {return vncusername;}
         inline QString vncPasswd() const {return vncpass;}
 
 private:
@@ -226,6 +229,8 @@ private:
           my ip address
           */
         QString myaddr;
+
+		QString vncusername;
 
         QString vncpass;
 

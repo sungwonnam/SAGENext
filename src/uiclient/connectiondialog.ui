@@ -58,7 +58,7 @@
        </property>
       </spacer>
      </item>
-     <item row="4" column="0">
+     <item row="5" column="0">
       <widget class="QLabel" name="pointerNameLabel">
        <property name="text">
         <string>Pointer Name</string>
@@ -68,7 +68,7 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="1" colspan="2">
+     <item row="5" column="1" colspan="2">
       <widget class="QLineEdit" name="pointerNameLineEdit"/>
      </item>
      <item row="2" column="0">
@@ -84,7 +84,7 @@
      <item row="2" column="1" colspan="2">
       <widget class="QLineEdit" name="myaddrLineEdit"/>
      </item>
-     <item row="3" column="0">
+     <item row="4" column="0">
       <widget class="QLabel" name="label_4">
        <property name="text">
         <string>VNC passwd</string>
@@ -94,8 +94,21 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="1" colspan="2">
+     <item row="4" column="1" colspan="2">
       <widget class="QLineEdit" name="vncpasswd"/>
+     </item>
+     <item row="3" column="1" colspan="2">
+      <widget class="QLineEdit" name="vncUsername"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>VNC username</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>

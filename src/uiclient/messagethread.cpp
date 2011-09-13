@@ -89,6 +89,7 @@ void MessageThread::run() {
 }
 
 void MessageThread::endThread() {
+	::close(sockfd);
     end = true;
 }
 
