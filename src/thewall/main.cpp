@@ -2,6 +2,7 @@
 #include <QGLWidget>
 
 #include "settingdialog.h"
+#include "settingstackeddialog.h"
 #include "sagenextscene.h"
 #include "sagenextviewport.h"
 #include "sagenextlauncher.h"
@@ -149,7 +150,8 @@ int main(int argc, char *argv[])
 
 
         // launch setting dialog
-        SettingDialog sd(&s);
+//        SettingDialog sd(&s);
+        SettingStackedDialog sd(&s);
         sd.setWindowModality(Qt::ApplicationModal);
         sd.exec();
 
@@ -229,8 +231,8 @@ int main(int argc, char *argv[])
                         schedcontrol->launchScheduler( s.value("system/scheduler_type").toString(), s.value("system/scheduler_freq").toInt() );
                 }
 
-                char *val = 0;
-                if ( val = getenv("EXP_DATA_FILE") ) {
+                char *val = getenv("EXP_DATA_FILE");
+                if ( val ) {
                         qDebug("EXP_DATA_FILE is defined");
                         resourceMonitor->setPrintDataFlag(true);
                         resourceMonitor->printPrelimDataHeader();

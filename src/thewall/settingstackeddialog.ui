@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
-    <height>480</height>
+    <width>714</width>
+    <height>359</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,2">
+    <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,3">
      <item>
       <widget class="QListWidget" name="listWidget">
        <property name="sizePolicy">
@@ -28,11 +28,18 @@
      </item>
      <item>
       <widget class="QStackedWidget" name="stackedWidget">
-       <property name="currentIndex">
-        <number>0</number>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
        </property>
-       <widget class="QWidget" name="page"/>
-       <widget class="QWidget" name="page_2"/>
+       <property name="frameShadow">
+        <enum>QFrame::Sunken</enum>
+       </property>
+       <property name="lineWidth">
+        <number>1</number>
+       </property>
+       <property name="currentIndex">
+        <number>-1</number>
+       </property>
       </widget>
      </item>
     </layout>

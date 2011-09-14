@@ -77,7 +77,10 @@ FORMS += \
         settingdialog.ui \
         applications/base/affinitycontroldialog.ui \
         system/resourcemonitorwidget.ui \
-    settingstackeddialog.ui
+    settingstackeddialog.ui \
+    generalsettingdialog.ui \
+    systemsettingdialog.ui \
+    graphicssettingdialog.ui
 
 
 RESOURCES += ../resources.qrc
@@ -148,6 +151,9 @@ HEADERS += \
     applications/mediabrowser.h \
     settingstackeddialog.h
 #    common/filereceivingrunnable.h
+
+
+
 
 
 
