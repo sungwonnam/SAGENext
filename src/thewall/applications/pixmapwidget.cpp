@@ -190,16 +190,20 @@ bool PixmapWidget::readImage() {
                         }
 
                         if (image->loadFromData(buffer)) {
-                                pixmap->convertFromImage(*image);
+#if QT_VERSION >= 0x040700
+                            pixmap->convertFromImage(*image);
+#else
+                            QPixmap pm = QPixmap::fromImage(*image);
+                            *pixmap  = pm;
+#endif
 //				isImageReady = true;
-
 
                                 /* save image file to local disk */
 
                                 /* update filename in _appInfo */
                         }
                         else
-                                qWarning("%s::%s() : QImage::loadFromData() failed", metaObject()->className(), __FUNCTION__);
+                            qWarning("%s::%s() : QImage::loadFromData() failed", metaObject()->className(), __FUNCTION__);
 
 
                         /*! close data channel network connection */
@@ -216,7 +220,11 @@ bool PixmapWidget::readImage() {
 
         case FROM_DISK_FILE: {
                         if (image->load(filename)) {
-                                pixmap->convertFromImage(*image);
+#if QT_VERSION >= 0x040700
+                            pixmap->convertFromImage(*image);
+#else
+                            pixmap->load(filename);
+#endif
 //				isImageReady = true;
                         }
                         else qWarning("%s::%s() : QImage::load(%s) failed !",metaObject()->className(), __FUNCTION__, qPrintable(filename));

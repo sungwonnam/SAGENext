@@ -76,7 +76,8 @@ DESTDIR = ../../
 FORMS += \
         settingdialog.ui \
         applications/base/affinitycontroldialog.ui \
-        system/resourcemonitorwidget.ui
+        system/resourcemonitorwidget.ui \
+    settingstackeddialog.ui
 
 
 RESOURCES += ../resources.qrc
@@ -111,7 +112,8 @@ SOURCES += \
         sagenextscene.cpp \
         sagenextviewport.cpp \
         sagenextlauncher.cpp \
-    applications/mediabrowser.cpp
+    applications/mediabrowser.cpp \
+    settingstackeddialog.cpp
 #    common/filereceivingrunnable.cpp
 
 HEADERS += \
@@ -143,8 +145,12 @@ HEADERS += \
         sagenextscene.h \
         sagenextviewport.h \
         sagenextlauncher.h \
-    applications/mediabrowser.h
+    applications/mediabrowser.h \
+    settingstackeddialog.h
 #    common/filereceivingrunnable.h
+
+
+
 
 
 

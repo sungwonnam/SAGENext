@@ -2,7 +2,7 @@
 #define MESSAGETHREAD_H
 
 #include <QThread>
-#include <QHostAddress>
+//#include <QHostAddress>
 #include <QFileInfo>
 
 class MessageThread : public QThread

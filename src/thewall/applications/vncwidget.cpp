@@ -137,9 +137,15 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 }
 
 void VNCClientWidget::scheduleUpdate() {
-	if (! pixmap.convertFromImage(*_image, Qt::AutoColor | Qt::OrderedDither) ) {
-		qDebug("VNCClientWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
-	}
+#if QT_VERSION < 0x040700
+    pixmap = QPixmap::fromImage(*_image);
+    if (pixmap.isNull()) {
+        qDebug("SageStreamWidget::scheduleUpdate() : QPixmap::fromImage() error");
+#else
+    if (! pixmap.convertFromImage(*_image, Qt::AutoColor | Qt::OrderedDither) ) {
+        qDebug("VNCClientWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
+#endif
+    }
 	else {
 		// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
 		// QGraphicsView will process the event
@@ -151,15 +157,23 @@ void VNCClientWidget::receivingThread() {
 
 	while (!_end) {
 		// sleep to ensure desired fps
-		qint64 now = QDateTime::currentMSecsSinceEpoch();
-		while ( (QDateTime::currentMSecsSinceEpoch() - now) < (1000 / framerate)) {
-
+		qint64 now = 0;
+        
+#if QT_VERSION < 0x040700
+        struct timeval tv;
+        gettimeofday(&tv, 0);
+        now = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#else
+        now = QDateTime::currentMSecsSinceEpoch();
+#endif
+        qint64 time = 0;
+		forever {
 			if (!vncclient) {
 				_end = true;
 				break;
 			}
 
-			int i = WaitForMessage(vncclient, 100000);
+            int i = WaitForMessage(vncclient, 100000); // 100 microsecond
 			if ( i<0 ) {
 				rfbClientLog("VNC error. quit\n");
 				_end = true;
@@ -173,13 +187,22 @@ void VNCClientWidget::receivingThread() {
 					break;
 				}
 			}
+            
+#if QT_VERSION < 0x040700
+            struct timeval tv;
+            gettimeofday(&tv, 0);
+            time = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#else
+            time = QDateTime::currentMSecsSinceEpoch();
+#endif
+            if ( (time-now) >= (1000/framerate) ) break;
+            
 		}
 		if (_end) break;
 
 		// now copy pixels
 		unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
 		unsigned char * buffer = _image->bits();
-
 
 		//		_image->loadFromData(vncpixels, vncclient->width * vncclient->height);
 

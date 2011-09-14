@@ -9,6 +9,7 @@
 //#include "../applications/sagestreamwidget.h"
 #include "../applications/base/perfmonitor.h"
 
+#include <sys/time.h>
 
 ResourceMonitorWidget::ResourceMonitorWidget(ResourceMonitor *rm, SchedulerControl *sc, QWidget *parent) :
 	QWidget(parent),
@@ -120,7 +121,14 @@ void ResourceMonitorWidget::refresh() {
 	/***************
 	  per widget performance data table
 	  *************/
-	qint64 ctse = QDateTime::currentMSecsSinceEpoch();
+	qint64 ctse = 0;
+#if QT_VERSION >= 0x040700
+	ctse = QDateTime::currentMSecsSinceEpoch();
+#else
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    ctse = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#endif
 	ui->perAppPerfTable->clearContents(); // because I want to see real time perf info. Data for removed app will be gone.
 	ui->perAppPerfTable->setRowCount(rMonitor->getWidgetList().size());
 	int currentRow = 0;

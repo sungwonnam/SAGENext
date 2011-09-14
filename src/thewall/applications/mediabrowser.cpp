@@ -68,7 +68,7 @@ void MediaBrowser::attachItems() {
 
     MediaBrowser::mediaHashRWLock.lockForRead();
 
-    foreach (QFileInfo fileinfo, _currentDirectory.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDot)) {
+    foreach (QFileInfo fileinfo, _currentDirectory.entryInfoList(QDir::Files | QDir::Dirs)) {
 
         if (fileinfo.isDir()) {
             // directory icon

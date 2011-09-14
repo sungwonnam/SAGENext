@@ -453,8 +453,13 @@ void SMART_EventScheduler::doSchedule() {
 //	}
 
 	// remember, workingSet is orderd by deadline
-
+#if QT_VERSION >= 0x040700
 	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
+#else
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#endif
 
 	RailawareWidget *rw = 0;
 
@@ -547,7 +552,13 @@ DelayDistributionScheduler::DelayDistributionScheduler(ResourceMonitor *r, int g
 void DelayDistributionScheduler::doSchedule() {
 	if (rMonitor->getWidgetList().isEmpty()) return;
 
+#if QT_VERSION >= 0x040700
 	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
+#else
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#endif
 	QList<RailawareWidget *> wlist = rMonitor->getWidgetList(); // snapshot of current list
 
 	qreal SumPriority = 0; qreal SumAdjDevi = 0;
@@ -658,7 +669,13 @@ void SelfAdjustingScheduler::applyNewIncF(int i) {
 }
 
 void SelfAdjustingScheduler::doSchedule() {
+#if QT_VERSION >= 0x040700
 	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
+#else
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#endif
 	QList<RailawareWidget *> wlist = rMonitor->getWidgetList();
 
 
@@ -1094,7 +1111,13 @@ DividerWidgetScheduler::DividerWidgetScheduler(ResourceMonitor *r, int granulari
 	fiducialWidget(0)
 
 {
+#if QT_VERSION >= 0x040700
 	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
+#else
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#endif
 
 	qDebug("\nStarting SelfAdjustingScheduler\n");
 }
@@ -1141,8 +1164,13 @@ void DividerWidgetScheduler::doSchedule() {
 	QList<RailawareWidget *> widgetList = rMonitor->getWidgetList(); // copy of current widget list
 	if (widgetList.isEmpty()) return;
 
-
+#if QT_VERSION >= 0x040700
 	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
+#else
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#endif
 
 	// reset
 	totalRequiredResource = 0.0;

@@ -2,7 +2,7 @@
 #define EXTERNALGUIMAIN_H
 
 #include <QtGui>
-#include <QHostAddress>
+//#include <QHostAddress>
 //#include <QAbstractSocket>
 #include <QSettings>
 

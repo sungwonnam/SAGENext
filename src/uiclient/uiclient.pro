@@ -12,6 +12,7 @@ TEMPLATE = app
 CONFIG += thread
 CONFIG += copy_dir_files
 
+
 BUILDDIR = build
 !exists($$BUILDDIR) {
 message("Creating build directory")
@@ -23,11 +24,10 @@ MOC_DIR = MOC
 OBJECTS_DIR = $${BUILDDIR}
 
 macx {
-	#CONFIG += x86 ppc
-    #CONFIG += x86
-	#LIBS += -framework Carbon
+	CONFIG += x86 ppc
+	LIBS += -framework Carbon
 	#QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.4
-	#QMAKE_MAC_SDK=/
+#	QMAKE_MAC_SDK=/Developer/SDKs/MacOSX10.5.sdk
 }
 
 

@@ -9,6 +9,10 @@
 
 #include <QtGui>
 
+#if QT_VERSION < 0x040700
+#include <sys/time.h>
+#endif
+
 BaseWidget::BaseWidget()
 	: QGraphicsWidget()
 	, _globalAppId(-1)
@@ -769,7 +773,13 @@ void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
 }
 
 void BaseWidget::setLastTouch() {
-	_lastTouch = QDateTime::currentMSecsSinceEpoch();
+#if QT_VERSION < 0x040700
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    _lastTouch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#else
+    _lastTouch = QDateTime::currentMSecsSinceEpoch();
+#endif
 }
 
 
@@ -787,18 +797,22 @@ void BaseWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
   */
 void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 //	qDebug() << "BaseWidget::mousePressEvent() : pos:" << event->pos() << " ,scenePos:" << event->scenePos() << " ,screenPos:" << event->screenPos();
+    if ( event->buttons() & Qt::LeftButton) {
+        // refresh lastTouch
+#if QT_VERSION < 0x040700
+        struct timeval tv;
+        gettimeofday(&tv, 0);
+        _lastTouch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#else
+        _lastTouch = QDateTime::currentMSecsSinceEpoch();
+#endif
 
-        if ( event->buttons() & Qt::LeftButton) {
-
-                // refresh lastTouch
-                _lastTouch = QDateTime::currentMSecsSinceEpoch();
-
-                // change zvalue
-                setTopmost();
-        }
-        // keep the base implementation
-        // The event is QEvent::ignore() for items that are neither movable nor selectable.
-        QGraphicsWidget::mousePressEvent(event);
+        // change zvalue
+        setTopmost();
+    }
+    // keep the base implementation
+    // The event is QEvent::ignore() for items that are neither movable nor selectable.
+    QGraphicsWidget::mousePressEvent(event);
 }
 
 //void BaseWidget::mouseMoveEvent(QGraphicsSceneMouseEvent *e) {

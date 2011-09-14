@@ -340,10 +340,12 @@ void ExternalGUIMain::on_pointerButton_clicked()
 	sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, qPrintable(_pointerName), 255, 128, 0);
 
 	if (msgThread && msgThread->isRunning()) {
-
+        setVisible(true);
 		// need to use Carbon for mac
-		grabMouse();
+		
 		setMouseTracking(true); // the widget receives mouse move events even if no buttons are pressed
+        grabMouse();
+        
 		qDebug() << "grabMouse";
 		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
 	}
@@ -536,9 +538,11 @@ void ExternalGUIMain::wheelEvent(QWheelEvent *e) {
                 if (e->buttons() & Qt::RightButton) {
                         qDebug() << "right";
                 }
+				/*
                 if (e->buttons() & Qt::MiddleButton) {
                         qDebug() << "middle";
                 }
+				*/
 
                 // resize the app
                 QByteArray msg(EXTUI_MSG_SIZE, 0);

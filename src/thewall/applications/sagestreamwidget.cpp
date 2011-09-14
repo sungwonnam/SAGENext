@@ -348,8 +348,14 @@ void SageStreamWidget::scheduleUpdate() {
 
             // converts to QPixmap if you're gonna paint same QImage more than twice.
 //            qDebug() << _globalAppId << imgPtr->byteCount();
+#if QT_VERSION >= 0x040700
             if (! _pixmap.convertFromImage(*imgPtr) ) {
-                  qDebug("SageStreamWidget::scheduleUpdate() : pixmap->convertFromImage() error");
+                qDebug("SageStreamWidget::scheduleUpdate() : pixmap->convertFromImage() error");
+#else
+            _pixmap = QPixmap::fromImage(*imgPtr);
+            if (_pixmap.isNull()) {
+                qDebug("SageStreamWidget::scheduleUpdate() : QPixmap::fromImage() error");
+#endif
             }
 
 //            image2 = imgPtr->convertToFormat(QImage::Format_RGB32);

@@ -181,7 +181,7 @@ void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton b
 
         // sendEvent doesn't delete event object, so event should be created in stack space
         if ( ! QApplication::sendEvent(gview->viewport(), &dblClickEvent) ) {
-            qDebug("PolygonArrow::%s() : sendEvent MouseMuttonDblClick on %.1f,%.1f failed", __FUNCTION__, scenePos.x(), scenePos.y());
+            qDebug("PolygonArrow::%s() : sendEvent MouseMuttonDblClick on (%.1f,%.1f) failed", __FUNCTION__, scenePos.x(), scenePos.y());
         }
     }
     else {
