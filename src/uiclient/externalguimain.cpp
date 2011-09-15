@@ -459,7 +459,7 @@ void ExternalGUIMain::sendMouseWheel(const QPoint globalPos, int delta) {
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
-	qDebug() << "sendMouseWheel" << delta;
+//	qDebug() << "sendMouseWheel" << delta;
 	sprintf(msg.data(), "%d %llu %d %d %d", POINTER_WHEEL, uiclientid, x, y, delta);
 	queueMsgToWall(msg);
 }
