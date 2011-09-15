@@ -116,10 +116,10 @@ void BaseWidget::init()
 
         if (settings) {
             // This will affect boundingRect() of the widget
-                setWindowFrameMargins(settings->value("general/framemarginleft", 3).toDouble(),
-                                                  settings->value("general/framemargintop", 3).toDouble(),
-                                                  settings->value("general/framemarginright",3).toDouble(),
-                                                  settings->value("general/framemarginbottom",3).toDouble());
+                setWindowFrameMargins(settings->value("gui/framemarginleft", 3).toDouble(),
+                                                  settings->value("gui/framemargintop", 3).toDouble(),
+                                                  settings->value("gui/framemarginright",3).toDouble(),
+                                                  settings->value("gui/framemarginbottom",3).toDouble());
         }
 //	getWindowFrameMargins(&frameMarginLeft, &frameMarginTop, &frameMarginRight, &frameMarginBottom);
 

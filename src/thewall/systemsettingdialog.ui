@@ -13,6 +13,202 @@
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>60</y>
+     <width>118</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>The # of NUMA nodes</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="numNumaNodesLabel">
+   <property name="geometry">
+    <rect>
+     <x>190</x>
+     <y>60</y>
+     <width>29</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>value</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_3">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>90</y>
+     <width>146</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>The # of CPU / NUMA node</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_4">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>120</y>
+     <width>143</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>The # of H/W thread / CPU</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_5">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>150</y>
+     <width>142</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>The # of S/W thread / CPU</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="numCpuPerNumaLineEdit">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>90</y>
+     <width>61</width>
+     <height>24</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="numHWThreadLineEdit">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>120</y>
+     <width>61</width>
+     <height>24</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="numSWThreadLineEdit">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>150</y>
+     <width>61</width>
+     <height>24</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_6">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>40</y>
+     <width>131</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Is NUMA  API  available?</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="isNumaAvailLabel">
+   <property name="geometry">
+    <rect>
+     <x>190</x>
+     <y>40</y>
+     <width>29</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>value</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_8">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>200</y>
+     <width>137</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Enable ResourceMonitor</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="rmonitorCheckBox">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>200</y>
+     <width>18</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="schedulerCheckBox">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>220</y>
+     <width>18</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_9">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>220</y>
+     <width>99</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Enable Scheduler</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_10">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>250</y>
+     <width>164</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Scheduling Frequency (msec)</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="schedFreqLineEdit">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>240</y>
+     <width>61</width>
+     <height>24</height>
+    </rect>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>

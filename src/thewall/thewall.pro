@@ -80,7 +80,8 @@ FORMS += \
     settingstackeddialog.ui \
     generalsettingdialog.ui \
     systemsettingdialog.ui \
-    graphicssettingdialog.ui
+    graphicssettingdialog.ui \
+    guisettingdialog.ui
 
 
 RESOURCES += ../resources.qrc
@@ -151,6 +152,7 @@ HEADERS += \
     applications/mediabrowser.h \
     settingstackeddialog.h
 #    common/filereceivingrunnable.h
+
 
 
 

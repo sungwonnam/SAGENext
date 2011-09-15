@@ -9,10 +9,17 @@ namespace Ui {
 class GeneralSettingDialog;
 class SystemSettingDialog;
 class GraphicsSettingDialog;
+class GuiSettingDialog;
 
 class SettingStackedDialog;
 }
 
+/**
+  wall address:port
+  fsManager address:port
+  wall width x height
+  wall offset (x,y)
+  */
 class GeneralSettingDialog : public QDialog {
     Q_OBJECT
 public:
@@ -27,6 +34,10 @@ public slots:
 	void accept();
 };
 
+/**
+  NUMA related stuff
+  ResourceMonitor and Scheduler related stuff
+  */
 class SystemSettingDialog : public QDialog {
     Q_OBJECT
 public:
@@ -39,8 +50,16 @@ private:
 	
 public slots:
 	void accept();
+private slots:
+	void on_schedulerCheckBox_stateChanged(int arg1);
+	void on_rmonitorCheckBox_stateChanged(int arg1);
 };
 
+/**
+  Graphics backend (e.g. -graphicssystem raster)
+  Whether OpenGL widget as the viewport or not
+  The view update modes
+  */
 class GraphicsSettingDialog : public QDialog {
     Q_OBJECT
 public:
@@ -51,6 +70,23 @@ private:
     Ui::GraphicsSettingDialog *ui;
     QSettings *_settings;
 	
+public slots:
+	void accept();
+};
+
+/**
+  GUI related stuff
+  */
+class GuiSettingDialog : public QDialog {
+	Q_OBJECT
+public:
+	explicit GuiSettingDialog(QSettings *s, QWidget *parent=0);
+	~GuiSettingDialog();
+
+private:
+	Ui::GuiSettingDialog *ui;
+	QSettings *_settings;
+
 public slots:
 	void accept();
 };

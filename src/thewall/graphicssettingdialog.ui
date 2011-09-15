@@ -13,6 +13,75 @@
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>70</x>
+     <y>80</y>
+     <width>237</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>use OpenGL Widget as the viewport widget</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_2">
+   <property name="geometry">
+    <rect>
+     <x>160</x>
+     <y>120</y>
+     <width>145</width>
+     <height>14</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>The viewport update mode</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="openglviewportCheckBox">
+   <property name="geometry">
+    <rect>
+     <x>330</x>
+     <y>80</y>
+     <width>18</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="viewportUpdateComboBox">
+   <property name="geometry">
+    <rect>
+     <x>330</x>
+     <y>120</y>
+     <width>75</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <item>
+    <property name="text">
+     <string>minimal</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>smart</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>full</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>no update</string>
+    </property>
+   </item>
+  </widget>
  </widget>
  <resources/>
  <connections/>

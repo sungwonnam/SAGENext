@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
         */
 
         QFont font;
-        font.setPointSize( s.value("general/fontpointsize", 20).toInt());
+        font.setPointSize( s.value("gui/fontpointsize", 20).toInt());
         font.setStyleStrategy(QFont::OpenGLCompatible);
         font.setStyleStrategy(QFont::NoAntialias);
         QApplication::setFont(font);
