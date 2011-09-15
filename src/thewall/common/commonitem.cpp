@@ -196,7 +196,8 @@ void PolygonArrow::pointerWheel(const QPointF &scenePos, int delta) {
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
     if (gview) {
-        if ( ! QApplication::sendEvent(gview->viewport(), & QWheelEvent(gview->mapFromScene(scenePos), gview->mapToGlobal(scenePos.toPoint()), delta, Qt::NoButton, Qt::NoModifier)) ) {
+		qDebug() << "pointerWheel" << delta;
+        if ( ! QApplication::sendEvent(gview->viewport(), & QWheelEvent(gview->mapFromScene(scenePos), /*gview->mapToGlobal(scenePos.toPoint()),*/ delta, Qt::NoButton, Qt::NoModifier)) ) {
             qDebug("PolygonArrow::%s() : send wheelEvent failed", __FUNCTION__);
         }
         else {

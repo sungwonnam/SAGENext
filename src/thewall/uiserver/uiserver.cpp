@@ -391,7 +391,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         PolygonArrow *pa = arrow(uiclientid);
         if (pa) {
             //qDebug() << "UiServer:: wheel" << x << y << 120*tick;
-            pa->pointerWheel(QPointF(x, y), 120 * tick);
+            pa->pointerWheel(QPointF(x, y),  tick);
         }
         break;
     }

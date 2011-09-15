@@ -97,7 +97,7 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 		::shutdown(msgsock, SHUT_RDWR);
 		::close(msgsock);
 //		msgThread->endThread();
-		msgThread->wait();
+		if (msgThread) msgThread->wait();
 		msgsock = 0;
 	}
 
