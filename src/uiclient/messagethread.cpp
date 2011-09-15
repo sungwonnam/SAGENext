@@ -130,7 +130,7 @@ void MessageThread::registerApp(int mediatype, const QString &filename) {
     qDebug("MessageThread::%s() : REG_FROM_UI, %lld Byte sent", __FUNCTION__, sent);
 }
 
-void MessageThread::sendMsg(const QByteArray &msg) {
+void MessageThread::sendMsg(const QByteArray msg) {
     if ( ::send(sockfd, msg.data(), msg.size(), 0) <= 0 ) {
         qDebug("MessageThread::%s() : send error", __FUNCTION__);
         return;

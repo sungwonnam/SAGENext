@@ -51,7 +51,7 @@ public slots:
 //	void requestAppLayout();
         void registerApp(int mediatype, const QString &filename);
 //	void sendFile(const QHostAddres &addr, int port);
-        void sendMsg(const QByteArray &msg);
+        void sendMsg(const QByteArray msg);
 };
 
 #endif // MESSAGETHREAD_H

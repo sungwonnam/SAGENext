@@ -24,7 +24,10 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
     , scaleToWallY(0.0)
     , msgThread(0)
     , sendThread(0)
+	, isMouseCapturing(false)
     , mediaDropFrame(0)
+	, macCapture(0)
+	, mouseBtnPressed(0)
 {
 	ui->setupUi(this);
 
@@ -58,14 +61,21 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
 
 ExternalGUIMain::~ExternalGUIMain()
 {
-        delete ui;
-        delete fdialog;
-//	delete gview;
+	delete ui;
+	if (fdialog) delete fdialog;
 
-        if (hasMouseTracking()) releaseMouse();
+	if (hasMouseTracking()) releaseMouse();
 
-//	if ( msgThread && msgThread->isRunning())
-//		msgThread->terminate();
+	if ( msgThread && msgThread->isRunning()) {
+		msgThread->endThread();
+		msgThread->wait();
+	}
+	
+	if (macCapture) {
+		macCapture->kill();
+//		delete macCapture; // doesn't need because macCapture is a child Qt object
+		macCapture->waitForFinished(-1);
+	}
 }
 
 // triggered by CMD (CTRL) + n
@@ -80,6 +90,7 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 	_myIpAddress = cd.myAddress();
 	_vncUsername = cd.vncUsername();
 	_vncPasswd = cd.vncPasswd();
+	_sharingEdge = cd.sharingEdge();
 
 	// if there is existing connection, close it first
 	if ( msgsock != 0 ) {
@@ -140,21 +151,21 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 	sscanf(buf.constData(), "%llu %d %d %d", &uiclientid, &x, &y, &fileTransferPort);
 	wallSize.rwidth() = x;
 	wallSize.rheight() = y;
-        //qDebug("ExternalGUIMain::%s() : my uiClientId is %llu, wall resolution is %d x %d", __FUNCTION__, uiclientid, x,y);
+	//qDebug("ExternalGUIMain::%s() : my uiClientId is %llu, wall resolution is %d x %d", __FUNCTION__, uiclientid, x,y);
 
 	QDesktopWidget *d = QApplication::desktop();
 	qDebug("My uiclientid is %llu, The wall size is %d x %d, my primary screen size %d x %d", uiclientid, x, y, d->screenGeometry().width(), d->screenGeometry().height());
 
-        /*!
-          When I send my mouse movement to the wall, it's pos should be scaled with these values
-          */
+	/*!
+	  When I send my mouse movement to the wall, it's pos should be scaled with these values
+	*/
 	scaleToWallX = wallSize.width() / (qreal)(d->screenGeometry().width());
 	scaleToWallY = wallSize.height() / (qreal)(d->screenGeometry().height());
 	qDebug("The scaleToWall %.2f x %.2f", scaleToWallX, scaleToWallY);
 
-        /*
-          Below isn't needed. I will not receive app layout
-          */
+	/*
+	 Below isn't needed. I will not receive app layout
+	 */
 //	QGraphicsScene *scene = new QGraphicsScene(this);
 //	scene->setBackgroundBrush(Qt::darkGray);
 //	ui->graphicsView->setScene(scene);
@@ -168,25 +179,416 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 //	qDebug("The scaleFromWall %.6f x %.6f", scaleFromWallX, scaleFromWallY);
 
 
+
 	/*!
 	  One msg thread per wall connection
-	*/
+	 */
 	msgThread = new MessageThread(msgsock, uiclientid, _myIpAddress);
 	connect(msgThread, SIGNAL(finished()), msgThread, SLOT(deleteLater()));
-	//	connect(msgThread, SIGNAL(finished()), scene, SLOT(deleteLater()));
+	//connect(msgThread, SIGNAL(finished()), scene, SLOT(deleteLater()));
 	connect(msgThread, SIGNAL(finished()), this, SLOT(ungrabMouse()));
-	//        connect(msgThread, SIGNAL(newAppLayout(QByteArray)), this, SLOT(updateScene(QByteArray)));
+	//connect(msgThread, SIGNAL(newAppLayout(QByteArray)), this, SLOT(updateScene(QByteArray)));
 	msgThread->start();
 
 
+	
+	
+#ifdef Q_OS_MAC
+	if (!macCapture) {
+		macCapture = new QProcess(this);
+		if ( ! QObject::connect(macCapture, SIGNAL(readyReadStandardOutput()), this, SLOT(sendMouseEventsToWall())) ) {
+			qDebug() << "Can't connect macCapture signal to my slot. macCapture won't be started.";
+		}
+		else {
+			macCapture->start("./macCapture");
+			macCapture->waitForStarted(-1);
+			QByteArray captureEdge(10, '\0');
+			int edge = 3;// left 1, right, top, bottom (in macCapture)
+			if ( _sharingEdge == "top" ) edge = 3;
+			else if (_sharingEdge == "right") edge = 2;
+			else if (_sharingEdge == "left") edge = 1;
+			else if (_sharingEdge == "bottom") edge = 4;
+			sprintf(captureEdge.data(), "14 %d\n", edge);
+			macCapture->write(captureEdge);
+		}
+	}
+#endif
+	
+	
 
-        /**
-          file transfer thread
-          */
-//        sendThread = new SendThread(cd.address(), fileTransferPort);
-//        sendThread->start();
+	/**
+      file transfer thread
+	 */
+	//sendThread = new SendThread(cd.address(), fileTransferPort);
+	//sendThread->start();
 }
 
+
+
+
+void ExternalGUIMain::on_vncButton_clicked()
+{
+	// send msg to UiServer so that local sageapp (vncviewer) can be started
+
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+
+	/*
+	QList<QNetworkInterface> netInterfaces = QNetworkInterface::allInterfaces();
+	foreach (QNetworkInterface net, netInterfaces) {
+		if ( net.isValid() &&  net.flags() & QNetworkInterface::IsRunning  &&  net.flags() & !QNetworkInterface::IsLoopBack) {
+			// fins ip address
+			break;
+		}
+	}
+	*/
+
+	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
+	sprintf(msg.data(), "%d %llu %s %d %s %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 24);
+
+	if (msgThread && msgThread->isRunning()) {
+		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
+	}
+	else {
+		qWarning() << "Sharing screen: please connect to a SAGENext first";
+	}
+}
+
+/**
+  this function is invoked by QProcess::readyReadStandardOutput() signal
+  */
+void ExternalGUIMain::sendMouseEventsToWall() {
+	Q_ASSERT(macCapture);
+
+//	QTextStream textin(macCapture);
+	
+	int msgcode = 0; // capture, release, move, click, wheel,..
+	int x = 0.0, y = 0.0; // MOVE (x, y) is event globalPos
+	int button  = 0; // left or right
+	int state = 0; // pressed or released
+	int wheelvalue = 0; // -1 and 1
+	
+	QByteArray msg(64, '/0');
+	QTextStream in(&msg, QIODevice::ReadOnly);
+	while ( macCapture->readLine(msg.data(), msg.size()) > 0 ) {
+		in >> msgcode;
+		switch(msgcode) {
+		
+		// CAPTURED
+		case 11: {
+			qDebug() << "Start capturing Mac mouse events";
+			on_pointerButton_clicked();
+			break;
+		}
+			
+		// RELEASED
+		case 12: {
+			qDebug() << "Stop capturing Mac mouse events";
+			ungrabMouse();
+			break;
+		}
+			
+		// MOVE, topLeft (0,0)  ->  bottomRight (screen width, screen height)
+		case 1: {
+			in >> x >> y;
+			currentGlobalPos = QPoint(x, y);
+//			qDebug() << "move from macCapture" << currentGlobalPos;
+			if ( mouseBtnPressed == 1 ) {
+				// left button dragging
+				sendMouseMove(QPoint(x, y), Qt::LeftButton);
+			}
+			else if (mouseBtnPressed == 2 ) {
+				// right button dragging
+				sendMouseMove(QPoint(x, y), Qt::RightButton);
+			}
+			else {
+				// just moving
+				sendMouseMove(QPoint(x, y), Qt::NoButton);
+			}
+			break;
+		}
+		
+		// CLICK Left(1) Right(2) Press(1) Release(0)
+		case 2: {
+			in >> button >> state;
+//			qDebug() << "click from macCapture" << currentGlobalPos << button << state;
+			
+			// left pressed
+			if ( button == 1 && state == 1 ) {
+				mouseBtnPressed = 1;
+				sendMousePress(currentGlobalPos); // setAppUnderApp()
+			}
+			else if ( button == 2 && state == 1) {
+				mouseBtnPressed = 2;
+				sendMousePress(currentGlobalPos, Qt::RightButton);
+			}
+			else if ( button == 1 && state == 0 && mouseBtnPressed == 1) {
+				// mouse left click
+				mouseBtnPressed = 0;
+				sendMouseClick(currentGlobalPos);
+			}
+			else if ( button == 2 && state == 0 && mouseBtnPressed == 2) {
+				// mouse right click
+				mouseBtnPressed = 0;
+				sendMouseClick(currentGlobalPos, Qt::RightButton);
+			}
+			break;
+		}
+			
+		// double click (left only)
+		case 5: {
+			in >> button >> state;
+//			qDebug() << "dbl click from macCapture" << currentGlobalPos;
+			sendMouseDblClick(currentGlobalPos);
+		}
+			
+		// WHEEL, scroll up(-1), down(1)
+		case 3: {
+			in >> wheelvalue;
+			sendMouseWheel(currentGlobalPos, wheelvalue * 2 * -1);
+			break;
+		}
+		}
+	}
+}
+
+void ExternalGUIMain::on_pointerButton_clicked()
+{
+	// draw cursor on the wall
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+
+	// msgtype, uiclientid, pointer name, Red, Green, Blue
+	sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, qPrintable(_pointerName), 255, 128, 0);
+
+	if (msgThread && msgThread->isRunning()) {
+		isMouseCapturing = true;
+#ifdef Q_OS_MAC
+		// do nothing
+#else
+		if ( hasMouseTracking() ) return;
+		setMouseTracking(true); // the widget receives mouse move events even if no buttons are pressed
+        grabMouse();
+		qDebug() << "grabMouse";
+#endif
+		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
+	}
+	else {
+		qWarning() << "Sharing pointer: please connect to a SAGENext first";
+	}
+}
+
+void ExternalGUIMain::ungrabMouse() {
+	isMouseCapturing  = false;
+#ifdef Q_OS_MAC
+		// do nothing
+#else
+	if ( ! hasMouseTracking() ) return;
+	setMouseTracking(false);
+	releaseMouse();
+	qDebug() << "mouse released";
+#endif
+	// remove cursor on the wall
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	sprintf(msg.data(), "%d %llu", POINTER_UNSHARE, uiclientid);
+	queueMsgToWall(msg);
+}
+
+
+void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btns /*= Qt::NoButton*/) {
+	int x = 0, y = 0;
+	x = scaleToWallX * globalPos.x();
+	y = scaleToWallY * globalPos.y();
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+
+	if ( btns & Qt::LeftButton) {
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_DRAGGING, uiclientid, x, y);
+	}
+	else if (btns & Qt::RightButton) {
+		qDebug() << "sendMouseMove() Rightbutton dragging";
+	}
+	else {
+		// just move pointer
+//		qDebug() << "sendMouseMove() Moving" << globalPos;
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_MOVING, uiclientid, x, y);
+	}
+	queueMsgToWall(msg);
+}
+
+void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton | Qt::NoButton */) {
+	int x=0 , y=0;
+	x = scaleToWallX * globalPos.x();
+	y = scaleToWallY * globalPos.y();
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	
+	if (btns & Qt::RightButton) {
+		// will trigger item isSelected()
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
+	}
+	else {
+		// will trigger setAppUnderPointer()
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_PRESS, uiclientid, x, y);
+	}
+	queueMsgToWall(msg);
+}
+
+void ExternalGUIMain::sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton | Qt::NoButton */) {
+	int x=0 , y=0;
+	x = scaleToWallX * globalPos.x();
+	y = scaleToWallY * globalPos.y();
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	
+	if (btns & Qt::RightButton) {
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
+	}
+	else {
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_CLICK, uiclientid, x, y);
+	}
+	queueMsgToWall(msg);
+}
+
+void ExternalGUIMain::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons btns /*= Qt::LeftButton | Qt::NoButton*/) {
+	int x=0 , y=0;
+	x = scaleToWallX * globalPos.x();
+	y = scaleToWallY * globalPos.y();
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	sprintf(msg.data(), "%d %llu %d %d", POINTER_DOUBLECLICK, uiclientid, x, y);
+	queueMsgToWall(msg);
+}
+
+void ExternalGUIMain::sendMouseWheel(const QPoint globalPos, int delta) {
+	int x=0 , y=0;
+	x = scaleToWallX * globalPos.x();
+	y = scaleToWallY * globalPos.y();
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	qDebug() << "sendMouseWheel" << delta;
+	sprintf(msg.data(), "%d %llu %d %d %d", POINTER_WHEEL, uiclientid, x, y, delta);
+	queueMsgToWall(msg);
+}
+
+
+void ExternalGUIMain::mouseMoveEvent(QMouseEvent *e) {
+	// setMouseTracking(true) to generate this event even when button isn't pressed
+	if ( isMouseCapturing ) {
+		sendMouseMove(e->globalPos(), e->buttons());
+		e->accept();
+	}
+	else {
+		QMainWindow::mouseMoveEvent(e);
+	}
+}
+
+void ExternalGUIMain::mousePressEvent(QMouseEvent *e) {
+	// to keep track draggin start/end
+	mousePressedPos = e->globalPos();
+
+	if ( isMouseCapturing ) {
+		sendMousePress(e->globalPos(), e->buttons());
+		e->accept();
+	}
+	else {
+		QMainWindow::mousePressEvent(e);
+	}
+}
+
+void ExternalGUIMain::mouseReleaseEvent(QMouseEvent *e) {
+	if ( isMouseCapturing ) {
+		int ml = (e->globalPos() - mousePressedPos).manhattanLength();
+		//		qDebug() << "release" << e->button() << e->globalPos() << ml;
+		if ( ml <= 3 ) {
+			sendMouseClick(e->globalPos()); // Left Click 
+		}
+		e->accept();
+	}
+	else {
+		QMainWindow::mouseReleaseEvent(e);
+	}
+}
+
+void ExternalGUIMain::contextMenuEvent(QContextMenuEvent *e) {
+	if (isMouseCapturing) {
+		sendMouseClick(e->globalPos(), Qt::RightButton); // Right Click
+		e->accept();
+	}
+}
+
+void ExternalGUIMain::mouseDoubleClickEvent(QMouseEvent *e) {
+	if ( isMouseCapturing ) {
+		sendMouseDblClick(e->globalPos()); // Left double click
+		e->accept();
+	}
+	else {
+		QMainWindow::mouseDoubleClickEvent(e);
+	}
+}
+
+void ExternalGUIMain::wheelEvent(QWheelEvent *e) {
+//	int numDegrees = e->delta() / 8;
+//	int numTicks = numDegrees / 15;
+//	qDebug() << "WHEEL" << e->globalPos() << "delta" << e->delta() << numTicks;
+	
+	if ( isMouseCapturing ) {
+		sendMouseWheel(e->globalPos(), e->delta());
+		e->accept();
+	}
+	else {
+		QMainWindow::wheelEvent(e);
+	}
+}
+
+
+void ExternalGUIMain::queueMsgToWall(const QByteArray &msg) {
+	if (msgThread && msgThread->isRunning())
+		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
+	else
+		qWarning() << "The message thread isn't running";
+}
+
+
+
+// CTRL - O to open file dialog
+void ExternalGUIMain::on_actionOpen_Media_triggered()
+{
+	if (fdialog) fdialog->show();
+	else {
+		qDebug() << "fdialog is null";
+	}
+}
+
+void ExternalGUIMain::readFiles(QStringList filenames) {
+    if ( filenames.empty() ) {
+        return;
+    }
+    else {
+        //qDebug("MainWindow::%s() : %d", __FUNCTION__, filenames.size());
+    }
+
+	if (!msgThread || !msgThread->isRunning()) {
+		qWarning() << "Please connect to a SAGENext first";
+		return;
+	}
+
+    QRegExp rxVideo("\\.(avi|mov|mpg|mp4|mkv|mpg|flv|wmv|mpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
+    QRegExp rxImage("\\.(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
+
+
+    for ( int i=0; i<filenames.size(); i++ ) {
+
+        QString filename = filenames.at(i);
+        //qDebug("%s::%s() : %d, %s", metaObject()->className(), __FUNCTION__, i, qPrintable(filename));
+
+        //QFileInfo fi(filename);
+        if ( filename.contains(rxVideo) ) {
+            qDebug("ExternalGUIMain::%s() : Prepare sending the video file %s", __FUNCTION__, qPrintable(filename));
+            QMetaObject::invokeMethod(msgThread, "registerApp", Qt::QueuedConnection, Q_ARG(int, MEDIA_TYPE_LOCAL_VIDEO), Q_ARG(QString, filename));
+        }
+        else if (filename.contains(rxImage)) {
+            qDebug("ExternalGUIMain::%s() : Prepare sending the image file %s", __FUNCTION__, qPrintable(filename));
+            QMetaObject::invokeMethod(msgThread, "registerApp", Qt::QueuedConnection, Q_ARG(int, MEDIA_TYPE_IMAGE), Q_ARG(QString, filename));
+        }
+        else {
+            qCritical("ExternalGUIMain::%s() : Unrecognized file format", __FUNCTION__);
+        }
+    }
+}
 
 //void ExternalGUIMain::updateScene(const QByteArray layout) {
 //	// for each message thread
@@ -241,21 +643,21 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 //	/** how to remove closed app  ??? */
 //}
 
-QGraphicsRectItem * ExternalGUIMain::itemWithGlobalAppId(QGraphicsScene *scene, quint64 gaid) {
-        if (!scene) return 0;
-
-        bool ok = false;
-        quint64 storedId = 0;
-
-        QList<QGraphicsItem *> i = scene->items();
-        foreach( QGraphicsItem *item, i ) {
-                storedId = item->data(0).toULongLong(&ok);
-                if(ok && storedId == gaid) {
-                        return (static_cast<QGraphicsRectItem *>(item));
-                }
-        }
-        return 0;
-}
+//QGraphicsRectItem * ExternalGUIMain::itemWithGlobalAppId(QGraphicsScene *scene, quint64 gaid) {
+//	if (!scene) return 0;
+	
+//	bool ok = false;
+//	quint64 storedId = 0;
+	
+//	QList<QGraphicsItem *> i = scene->items();
+//	foreach( QGraphicsItem *item, i ) {
+//		storedId = item->data(0).toULongLong(&ok);
+//		if(ok && storedId == gaid) {
+//			return (static_cast<QGraphicsRectItem *>(item));
+//		}
+//	}
+//	return 0;
+//}
 
 //void ExternalGUIMain::resizeEvent(QResizeEvent *e) {
 //        Q_UNUSED(e);
@@ -268,10 +670,7 @@ QGraphicsRectItem * ExternalGUIMain::itemWithGlobalAppId(QGraphicsScene *scene, 
 //		scaleFromWallY = ui->graphicsView->height() / wallSize.height();
 //		qDebug() << "scaleFromWall " << scaleFromWallX << "x" << scaleFromWallY;
 //	}
-
 //}
-
-
 
 //void ExternalGUIMain::on_showLayoutButton_clicked()
 //{
@@ -300,313 +699,6 @@ QGraphicsRectItem * ExternalGUIMain::itemWithGlobalAppId(QGraphicsScene *scene, 
 //	}
 
 //}
-
-void ExternalGUIMain::on_vncButton_clicked()
-{
-	// send msg to UiServer so that local sageapp (vncviewer) can be started
-
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
-
-	/*
-	QList<QNetworkInterface> netInterfaces = QNetworkInterface::allInterfaces();
-	foreach (QNetworkInterface net, netInterfaces) {
-		if ( net.isValid() &&  net.flags() & QNetworkInterface::IsRunning  &&  net.flags() & !QNetworkInterface::IsLoopBack) {
-			// fins ip address
-			break;
-		}
-	}
-	*/
-
-	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %llu %s %d %s %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 24);
-
-	if (msgThread && msgThread->isRunning()) {
-		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-	}
-	else {
-		qWarning() << "Sharing screen: please connect to a SAGENext first";
-	}
-}
-
-
-void ExternalGUIMain::on_pointerButton_clicked()
-{
-	if ( hasMouseTracking() ) return;
-
-	// draw cursor on the wall
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
-
-	// msgtype, uiclientid, pointer name, Red, Green, Blue
-	sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, qPrintable(_pointerName), 255, 128, 0);
-
-	if (msgThread && msgThread->isRunning()) {
-        setVisible(true);
-		// need to use Carbon for mac
-		
-		setMouseTracking(true); // the widget receives mouse move events even if no buttons are pressed
-        grabMouse();
-        
-		qDebug() << "grabMouse";
-		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-	}
-	else {
-		qWarning() << "Sharing pointer: please connect to a SAGENext first";
-	}
-}
-
-void ExternalGUIMain::ungrabMouse() {
-	if ( ! hasMouseTracking() ) return;
-
-	setMouseTracking(false);
-	releaseMouse();
-	qDebug() << "mouse released";
-
-	// remove cursor on the wall
-	// draw cursor on the wall
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
-
-	// msgtype, uiclientid
-	sprintf(msg.data(), "%d %llu", POINTER_UNSHARE, uiclientid);
-
-	if (msgThread && msgThread->isRunning())
-		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-}
-
-void ExternalGUIMain::mouseMoveEvent(QMouseEvent *e) {
-	// setMouseTracking(true) to generate this event even when button isn't pressed
-	if ( hasMouseTracking() ) {
-
-		int x,y;
-		x = scaleToWallX * e->globalX();
-		y = scaleToWallY * e->globalY();
-		// send mmouse position to the wall's UiServer
-		QByteArray msg(EXTUI_MSG_SIZE, 0);
-
-		if ( e->buttons() & Qt::LeftButton) {
-			// dragging.
-			// msgtype, uiclientid, x, y
-			sprintf(msg.data(), "%d %llu %d %d", POINTER_DRAGGING, uiclientid, x, y);
-		}
-		else if (e->buttons() & Qt::RightButton) {
-			qDebug() << "mouseMoveEvent Rightbutton dragging";
-		}
-		else if (e->buttons() & Qt::NoButton) {
-			// just move pointer
-			// qDebug() << "move " << e->globalPos();
-		}
-		else {
-			// msgtype, uiclientid, x, y
-			sprintf(msg.data(), "%d %llu %d %d", POINTER_MOVING, uiclientid, x, y);
-		}
-
-		if (msgThread && msgThread->isRunning())
-			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-	}
-	else {
-		QMainWindow::mouseMoveEvent(e);
-	}
-}
-
-void ExternalGUIMain::mousePressEvent(QMouseEvent *e) {
-
-	mousePressedPos = e->globalPos();
-
-	if ( hasMouseTracking() ) {
-		//		qDebug() << "mouse press" << e->button() << e->globalPos();
-
-		int x,y;
-		x = scaleToWallX * e->globalX();
-		y = scaleToWallY * e->globalY();
-		// send mmouse position to the wall's UiServer
-		QByteArray msg(EXTUI_MSG_SIZE, 0);
-
-		/**
-		  this will trigger PolygonArrow::setAppUnderPointer
-		  */
-		if (e->buttons() & Qt::LeftButton) {
-//			qDebug() << "left press" << e->globalPos();
-			// msgtype, uiclientid, x, y
-			sprintf(msg.data(), "%d %llu %d %d", POINTER_PRESS, uiclientid, x, y);
-		}
-		/*
-		else if (e->buttons() & Qt::RightButton) {
-//			qDebug() << "right press";
-			sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
-		}
-		*/
-
-		if (msgThread && msgThread->isRunning())
-			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-	}
-	else {
-		QMainWindow::mousePressEvent(e);
-	}
-}
-
-void ExternalGUIMain::mouseReleaseEvent(QMouseEvent *e) {
-	if ( hasMouseTracking() ) {
-		int ml = (e->globalPos() - mousePressedPos).manhattanLength();
-		//		qDebug() << "release" << e->button() << e->globalPos() << ml;
-
-		int x,y;
-		x = scaleToWallX * e->globalX();
-		y = scaleToWallY * e->globalY();
-		// send mmouse position to the wall's UiServer
-		QByteArray msg(EXTUI_MSG_SIZE, 0);
-
-		if ( ml > 3 ) {
-			// NO CLICK
-			//sprintf(msg.data(), "%d %llu %d %d", POINTER_RELEASE, uiclientid, x, y);
-		}
-		else {
-			// effective CLICK
-			if (e->button() == Qt::LeftButton) {
-				qDebug() << "left release " << e->globalPos() << ml;
-				// msgtype, uiclientid, x, y
-				sprintf(msg.data(), "%d %llu %d %d", POINTER_CLICK, uiclientid, x, y);
-			}
-
-			/** right click is handled by contextMenuEvent
-			else if (e->button() == Qt::RightButton) {
-				qDebug() << "right release" << e->globalPos() << ml;
-				sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
-			}
-			*/
-
-			if (msgThread && msgThread->isRunning())
-				QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-		}
-	}
-	else {
-		QMainWindow::mouseReleaseEvent(e);
-	}
-}
-
-void ExternalGUIMain::contextMenuEvent(QContextMenuEvent *e) {
-
-	if (e->reason() | QContextMenuEvent::Mouse) {
-		int x,y;
-        x = scaleToWallX * e->globalX();
-        y = scaleToWallY * e->globalY();
-
-		QByteArray msg(EXTUI_MSG_SIZE, 0);
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
-
-		if (msgThread && msgThread->isRunning())
-			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-		else
-			qWarning() << "please connect to a wall first";
-	}
-}
-
-void ExternalGUIMain::mouseDoubleClickEvent(QMouseEvent *e) {
-	if ( hasMouseTracking() ) {
-		// maximize/restore the app
-		// qDebug() << "double click";
-		int x,y;
-		x = scaleToWallX * e->globalX();
-		y = scaleToWallY * e->globalY();
-		QByteArray msg(EXTUI_MSG_SIZE, 0);
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_DOUBLECLICK, uiclientid, x, y);
-
-		if (msgThread && msgThread->isRunning())
-			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-	}
-	else {
-		QMainWindow::mouseDoubleClickEvent(e);
-	}
-}
-
-void ExternalGUIMain::wheelEvent(QWheelEvent *e) {
-        if ( hasMouseTracking() ) {
-                int numDegrees = e->delta() / 8;
-                int numTicks = numDegrees / 15;
-
-                int x = scaleToWallX * e->globalX();
-                int y = scaleToWallY * e->globalY();
-
-
-                if ( e->buttons() & Qt::MidButton ) {
-                        qDebug() << "mid button";
-                }
-                if ( e->buttons() & Qt::NoButton ) {
-                        qDebug() << "no button";
-                }
-                if (e->buttons() & Qt::LeftButton) {
-                        qDebug() << "left";
-                }
-                if (e->buttons() & Qt::RightButton) {
-                        qDebug() << "right";
-                }
-				/*
-                if (e->buttons() & Qt::MiddleButton) {
-                        qDebug() << "middle";
-                }
-				*/
-
-                // resize the app
-                QByteArray msg(EXTUI_MSG_SIZE, 0);
-                sprintf(msg.data(), "%d %llu %d %d %d", POINTER_WHEEL, uiclientid, x, y, numTicks);
-                qDebug() << "WHEEL" << e->buttons() << e->globalPos() << numTicks;
-
-                if (msgThread && msgThread->isRunning())
-                        QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-        }
-        else {
-                QMainWindow::wheelEvent(e);
-        }
-}
-
-
-
-
-// CTRL - O to open file dialog
-void ExternalGUIMain::on_actionOpen_Media_triggered()
-{
-	if (fdialog) fdialog->show();
-	else {
-		qDebug() << "fdialog is null";
-	}
-}
-
-void ExternalGUIMain::readFiles(QStringList filenames) {
-    if ( filenames.empty() ) {
-        return;
-    }
-    else {
-        //qDebug("MainWindow::%s() : %d", __FUNCTION__, filenames.size());
-    }
-
-	if (!msgThread || !msgThread->isRunning()) {
-		qWarning() << "Please connect to a SAGENext first";
-		return;
-	}
-
-    QRegExp rxVideo("\\.(avi|mov|mpg|mp4|mkv|mpg|flv|wmv|mpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
-    QRegExp rxImage("\\.(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
-
-
-    for ( int i=0; i<filenames.size(); i++ ) {
-
-        QString filename = filenames.at(i);
-        //qDebug("%s::%s() : %d, %s", metaObject()->className(), __FUNCTION__, i, qPrintable(filename));
-
-        //QFileInfo fi(filename);
-        if ( filename.contains(rxVideo) ) {
-            qDebug("ExternalGUIMain::%s() : Prepare sending the video file %s", __FUNCTION__, qPrintable(filename));
-            QMetaObject::invokeMethod(msgThread, "registerApp", Qt::QueuedConnection, Q_ARG(int, MEDIA_TYPE_LOCAL_VIDEO), Q_ARG(QString, filename));
-        }
-        else if (filename.contains(rxImage)) {
-            qDebug("ExternalGUIMain::%s() : Prepare sending the image file %s", __FUNCTION__, qPrintable(filename));
-            QMetaObject::invokeMethod(msgThread, "registerApp", Qt::QueuedConnection, Q_ARG(int, MEDIA_TYPE_IMAGE), Q_ARG(QString, filename));
-        }
-        else {
-            qCritical("ExternalGUIMain::%s() : Unrecognized file format", __FUNCTION__);
-        }
-    }
-}
-
-
 
 
 DropFrame::DropFrame(QWidget *parent) :
@@ -647,38 +739,46 @@ ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
 		ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
         ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
         ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
+		
+		
+		int idx = ui->sharingEdgeCB->findText(_settings->value("sharingedge", "top").toString());
+		if (idx != -1) 
+			ui->sharingEdgeCB->setCurrentIndex(idx);
+		else
+			ui->sharingEdgeCB->setCurrentIndex(0);
 
 //	ui->ipaddr->setText("127.0.0.1");
 //	ui->port->setText("30003");
 }
 
 ConnectionDialog::~ConnectionDialog() {
-        delete ui;
+	delete ui;
 }
 
 void ConnectionDialog::on_buttonBox_accepted()
 {
-        addr = ui->ipaddr->text();
-        portnum = ui->port->text().toInt();
-        myaddr = ui->myaddrLineEdit->text();
-        pName = ui->pointerNameLineEdit->text();
-		vncusername = ui->vncUsername->text();
-        vncpass = ui->vncpasswd->text();
-
-
-        _settings->setValue("walladdr", addr);
-        _settings->setValue("wallport", portnum);
-        _settings->setValue("myaddr", myaddr);
-        _settings->setValue("pointername", pName);
-		_settings->setValue("vncusername", vncusername);
-        _settings->setValue("vncpasswd", vncpass);
-
-		if (vncusername.isEmpty()) {
-			vncusername = "user";
-		}
-
-        accept();
-//	done(0);
+	addr = ui->ipaddr->text();
+	portnum = ui->port->text().toInt();
+	myaddr = ui->myaddrLineEdit->text();
+	pName = ui->pointerNameLineEdit->text();
+	vncusername = ui->vncUsername->text();
+	vncpass = ui->vncpasswd->text();
+	psharingEdge = ui->sharingEdgeCB->currentText();
+	
+	_settings->setValue("walladdr", addr);
+	_settings->setValue("wallport", portnum);
+	_settings->setValue("myaddr", myaddr);
+	_settings->setValue("pointername", pName);
+	_settings->setValue("vncusername", vncusername);
+	_settings->setValue("vncpasswd", vncpass);
+	_settings->setValue("sharingedge", psharingEdge);
+	
+	if (vncusername.isEmpty()) {
+		vncusername = "user";
+	}
+	
+	accept();
+	//	done(0);
 }
 
 void ConnectionDialog::on_buttonBox_rejected()
