@@ -344,7 +344,7 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 		// WHEEL, scroll up(-1), down(1)
 		case 3: {
 			in >> wheelvalue;
-			sendMouseWheel(currentGlobalPos, wheelvalue * 2 * -1);
+			sendMouseWheel(currentGlobalPos, wheelvalue * -1);
 			break;
 		}
 		}
