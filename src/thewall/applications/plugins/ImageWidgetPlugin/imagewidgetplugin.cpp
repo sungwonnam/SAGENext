@@ -18,8 +18,9 @@ int AffinityInfo::HwThread_Per_Cpu = 0;
 int AffinityInfo::Num_Cpus = 0;
 */
 
-ExamplePlugin::ExamplePlugin() :
-                root(0)
+ExamplePlugin::ExamplePlugin()
+    : BaseWidget(Qt::Window)
+    , root(0)
 {
 
 //	image = new QImage(800, 600, QImage::Format_RGB888);
@@ -139,7 +140,8 @@ void ExamplePlugin::paint(QPainter * /*painter*/, const QStyleOptionGraphicsItem
 
 void ExamplePlugin::wheelEvent(QGraphicsSceneWheelEvent *event) {
     Q_UNUSED(event);
-    // do nothing
+    // do nothing here and keep the base implementation
+	BaseWidget::wheelEvent(event);
 }
 
 ExamplePlugin::~ExamplePlugin() {
@@ -194,7 +196,7 @@ void ExamplePlugin::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton b
 		mouseGrabItem = proxy_btn_G;
 	}
 	else if (proxy_btn_B->boundingRect().contains( proxy_btn_B->mapFromScene(clickedScenePos) )) {
-		qDebug() << "B";
+		qDebug() << "btn 3 will become mouseGrabber";
 		mouseGrabItem = proxy_btn_B;
 	}
 	else if (! mainLayout->geometry().contains( pos ) ) {
@@ -204,20 +206,24 @@ void ExamplePlugin::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton b
 	else {
 	}
 
-	if (mouseGrabItem) mouseGrabItem->grabMouse();
 
-	/** Mouse events must be posted to the viewport widget **/
+	if (mouseGrabItem) mouseGrabItem->grabMouse();
+	qDebug() << "mouse grabbed";
+
+	// Mouse events must be posted to the viewport widget
 
 	// sendEvent BLOCKS and thus it doesn't delete event object,
 	// so events can be created in stack (local to this function) when using sendEvent
 	if ( ! QApplication::sendEvent(view->viewport(), press) ) {
 		qDebug("ExamplePlugin::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
 	}
-	if ( ! QApplication::sendEvent(view->viewport(), release) ) {
-		qDebug("ExamplePlugin::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+	else {
+		if ( ! QApplication::sendEvent(view->viewport(), release) ) {
+			qDebug("ExamplePlugin::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+		}
 	}
-
 	if(mouseGrabItem) mouseGrabItem->ungrabMouse();
+	qDebug() << "mouse ungrabbed";
 
 	// sendEvent doesn't delete the event object
 	if (press) delete press;

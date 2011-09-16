@@ -29,7 +29,7 @@ public:
           Required for plugin to instantiate
           Don't forget to set _globalAppId, settings, rMonitor
           */
-        BaseWidget();
+        BaseWidget(Qt::WindowFlags wflags = Qt::Window);
 
         BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
 
@@ -274,6 +274,9 @@ protected:
 
         /*!
           * Just changes z value and keep base implementation
+
+		  The default implementation makes this widget mouseGrabber (QGraphicsScene::mouseGrabberItem())
+		  Only the mouseGrabber item can receive move/release/doubleClick events
           */
         virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
 

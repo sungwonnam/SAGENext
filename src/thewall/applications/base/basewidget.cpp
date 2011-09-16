@@ -13,8 +13,8 @@
 #include <sys/time.h>
 #endif
 
-BaseWidget::BaseWidget()
-	: QGraphicsWidget()
+BaseWidget::BaseWidget(Qt::WindowFlags wflags)
+	: QGraphicsWidget(0, wflags)
 	, _globalAppId(-1)
 	, settings(0)
 	, _windowState(BaseWidget::W_NORMAL)
@@ -492,31 +492,31 @@ void BaseWidget::fadeOutClose()
 
 void BaseWidget::setTopmost()
 {
-        if(!scene()) return;
+	if(!scene()) return;
 
-        qreal tempZ = -10000.0;
+	qreal tempZ = -10000.0;
 
-        QList<QGraphicsItem *> list = scene()->items(); // all items in the scene
-        QGraphicsItem *item = 0;
+	QList<QGraphicsItem *> list = scene()->items(); // all items in the scene
+	QGraphicsItem *item = 0;
 
-        for ( int i=0; i<list.size(); i++ ) {
-                item = list.at(i);
-//		qDebug() << typeid(*item).name() << ". And this is " << typeid(*this).name();
+	for ( int i=0; i<list.size(); i++ ) {
+		item = list.at(i);
+		//qDebug() << typeid(*item).name() << ". And this is " << typeid(*this).name();
 
-                // only consider real app -> excluding buttons pointers, and so on
-                if ( !item ||  item->type() != UserType + 2 ) continue;
+		// only consider real app -> excluding buttons pointers, and so on
+		if ( !item ||  item->type() != UserType + 2 ) continue;
 
-                if ( item == this ) continue;
+		if ( item == this ) continue;
 
-                if ( tempZ <= item->zValue() ) {
-                        tempZ = item->zValue();
-                }
-        }
+		if ( tempZ <= item->zValue() ) {
+			tempZ = item->zValue();
+		}
+	}
 
-        // default z value is 0
+	// default z value is 0
 
-        if (tempZ >= zValue())
-                setZValue(tempZ + 0.0001);
+	if (tempZ >= zValue())
+		setZValue(tempZ + 0.0001);
 
 
         /**
@@ -562,9 +562,9 @@ void BaseWidget::reScale(int tick, qreal factor)
 
 QRectF BaseWidget::resizeHandleSceneRect()
 {
-        QSizeF size(100, 100);
-        QPointF pos( boundingRect().width() - size.width(), boundingRect().height() - size.height() );
-        return mapRectToScene(QRectF(pos, size));
+	QSizeF size(100, 100);
+	QPointF pos( boundingRect().width() - size.width(), boundingRect().height() - size.height() );
+	return mapRectToScene(QRectF(pos, size));
 }
 
 
@@ -702,7 +702,14 @@ void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn)
             QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
             QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
 
-            //grabMouse(); // don't do this before mousePress
+			/**
+			  Who should become the mouseGrabber depends on how children of this widget is layered out. So it's differ by each application,
+			  and only app developer knows it.
+			  So, it is better to just send mousePressEvent and let a child item receives the event (thereby it will become mouseGrabber)
+			  A parent widget can install eventFilter on its child items. Refer WebWidget.
+			  */
+            //grabMouse();
+
             // sendEvent doesn't delete event object, so event can be created in stack (local to this function)
             if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
                 qDebug("BaseWidget::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
@@ -846,14 +853,19 @@ void BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
 }
 
 void BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
-        // positive delta : rotated forward away from user
-        int numDegrees = event->delta() / 8;
-        int numTicks = numDegrees / 15;
-//	qreal scaleFactor = 0.03; // 3 %
-//	qDebug("BaseWidget::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
-//	qDebug() << "BGW wheel event" << event->pos() << event->scenePos() << event->screenPos() << event->buttons() << event->modifiers();
+	// positive delta : rotated forward away from user
+	int numDegrees = event->delta() / 8;
+	int numTicks = numDegrees / 15;
+	//	qreal scaleFactor = 0.03; // 3 %
+	//	qDebug("BaseWidget::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
+	//	qDebug() << "BGW wheel event" << event->pos() << event->scenePos() << event->screenPos() << event->buttons() << event->modifiers();
 
-        reScale(numTicks, 0.03);
+	if (isWindow()) {
+
+	}
+	else {
+		reScale(numTicks, 0.03);
+	}
 }
 
 

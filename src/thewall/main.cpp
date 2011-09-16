@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
           ResourceMonitor , ResourceMonitorWidget
           Scheduler
           */
-        ResourceMonitor *resourceMonitor = 0;
+		ResourceMonitor *resourceMonitor = 0;
         int rMonitorTimerId = 0;
         ResourceMonitorWidget *rMonitorWidget = 0;
         SchedulerControl *schedcontrol = 0;
@@ -249,6 +249,8 @@ int main(int argc, char *argv[])
                 rMonitorTimerId = resourceMonitor->startTimer(1000);
         }
 
+		scene->setRMonitor( resourceMonitor );
+
 
 
 
@@ -265,7 +267,7 @@ int main(int argc, char *argv[])
           create the UiServer
           */
         UiServer *uiserver = new UiServer(&s, launcher, scene);
-
+		scene->setUiServer(uiserver);
 
 
 
@@ -330,7 +332,7 @@ int main(int argc, char *argv[])
 
 
 
-		if (uiserver) delete uiserver;
+//		if (uiserver) delete uiserver; // uiserver is deleted by the scene
 		//	if (launcher) delete launcher; // launcher is a child of scene. So laucher will be delete when scene is deleted automatically
 		if (resourceMonitor) {
 			resourceMonitor->killTimer(rMonitorTimerId);

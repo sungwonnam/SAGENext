@@ -41,6 +41,10 @@ UiServer::UiServer( const QSettings *s, SAGENextLauncher *snl, SAGENextScene *sn
 UiServer::~UiServer() {
     close();
 
+	foreach (PolygonArrow *pa, pointers) {
+		delete pa;
+	}
+
     //	QByteArray msg(EXTUI_MSG_SIZE, 0);
     //	sprintf(msg.data(), "%d dummy", WALL_IS_CLOSING);
     //	foreach (UiMsgThread *msgthr, uiThreadsMap) {
@@ -216,7 +220,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         QByteArray pname(64, '\0');
         sscanf(msg.constData(), "%d %llu %s %d %d %d", &code, &uiclientid, pname.data(), &r, &g, &b);
 
-        //qDebug("UiServer::%s() : POINTER_SHARE from uiclient %llu, (%s, %d %d %d)",__FUNCTION__, uiclientid, pname.constData(), r,g,b);
+        qDebug("UiServer::%s() : POINTER_SHARE from uiclient %llu, (%s, %d %d %d)",__FUNCTION__, uiclientid, pname.constData(), r,g,b);
 
         PolygonArrow *pointerItem = 0;
         pointerItem = new PolygonArrow(uiclientid, settings, QColor(r,g,b));
@@ -235,13 +239,13 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         quint64 uiclientid;
         sscanf(msg.constData(), "%d %llu", &code, &uiclientid);
         // find the PixmapArrow associated with this uiClientId
-        QGraphicsItem *pa = arrow(uiclientid);
+        QGraphicsItem *pa = getSharedPointer(uiclientid);
         if (pa) {
             delete pa;
             pointers.remove(uiclientid);
         }
         else {
-            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
+            qDebug("UiServer::%s() : POINTER_UNSHARE can't find pointer object", __FUNCTION__);
         }
         break;
     }
@@ -255,47 +259,63 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
 
         // find the PolygonArrow associated with this uiClientId
-        PolygonArrow *pa = arrow(uiclientid);
+        PolygonArrow *pa = getSharedPointer(uiclientid);
         if (pa) {
             //pa->setPos(x,y);
             pa->pointerMove(QPointF(x,y), Qt::NoButton); // just move pointer graphics item
         }
         else {
-            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
+            qDebug("UiServer::%s() : POINTER_MOVING can't find pointer object", __FUNCTION__);
         }
         break;
     }
 
     /*
       An external ui client's mouseMoveEvent plus left button modifier triggers this
-      This is always followed by POINTER_PRESS
+      This is always followed by POINTER_PRESS (left button)
     */
     case POINTER_DRAGGING: {
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
 
-        PolygonArrow *pa = arrow(uiclientid);
+        PolygonArrow *pa = getSharedPointer(uiclientid);
         if (pa) {
             // direct widget manipulation instead of posting mouse event
             pa->pointerMove(QPointF(x,y), Qt::LeftButton);
         }
         else {
-            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
+            qDebug("UiServer::%s() : POINTER_DRAGGING can't find pointer object", __FUNCTION__);
         }
 
         break;
-    }
+	}
+	case POINTER_RIGHTDRAGGING: {
+		quint64 uiclientid;
+		int x,y;
+		sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+
+		PolygonArrow *pa = getSharedPointer(uiclientid);
+		if (pa) {
+			// direct widget manipulation instead of posting mouse event
+			pa->pointerMove(QPointF(x,y), Qt::RightButton);
+		}
+		else {
+			qDebug("UiServer::%s() : POINTER_RIGHTDRAGGING can't find pointer object", __FUNCTION__);
+		}
+
+		break;
+	}
 
 
    /*
-    Pointer will have widget if there is one under it
+    Pointer will set the widget if there is one (QGraphicsItem::UserType + 2) under it
     */
     case POINTER_PRESS: {
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  arrow(uiclientid) ;
+        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
 //            qDebug("UiServer::%s() : POINTER_PRESS : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
 
@@ -305,81 +325,73 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
             //pa->setAppUnderPointer(QPointF(x,y));
         }
         else {
-            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
+            qDebug("UiServer::%s() : POINTER_PRESS can't find pointer object", __FUNCTION__);
         }
         break;
     }
-        /**
-        case POINTER_RELEASE: {
-                        quint64 uiclientid;
-                        int x,y;
-                        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-                        PolygonArrow *pa =  arrow(uiclientid) ;
-                        if (pa) {
-                                qDebug("UiServer::%s() : POINTER_RELEASE : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
-                                pa->pointerRelease(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
-                        }
-                        else {
-                                qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
-                        }
-                        break;
-                }
-                **/
 
-        /**
-         * mouseReleaseEvent from external GUI sends POINTER_CLICK message
-         */
+	case POINTER_RIGHTPRESS: {
+		break;
+	}
+
+
+	/**
+	  mouseReleaseEvent from external GUI sends POINTER_CLICK message
+	  This is left click
+	*/
     case POINTER_CLICK: {
         quint64 uiclientid;
         int x,y; // x,y from ui clients is the scene position of the wall
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  arrow(uiclientid) ;
+        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
-            qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
-
-//            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
+//            qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
+            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
 
 			// Let each application provides mouseClick()
 			 // Widget under the pointer can reimplement BaseWidget::mouseClick()
-			if ( pa->appUnderPointer() ) pa->appUnderPointer()->mouseClick(QPointF(x, y), Qt::LeftButton);
+//			if ( pa->appUnderPointer() ) pa->appUnderPointer()->mouseClick(QPointF(x, y), Qt::LeftButton);
         }
         else {
-            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
+            qDebug("UiServer::%s() : POINTER_CLICK can't find pointer object", __FUNCTION__);
         }
         break;
     }
 
-
-
-        /**
-          In response to external UI's right release
-          */
+    /**
+      In response to external UI's right release
+    */
     case POINTER_RIGHTCLICK: {
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  arrow(uiclientid) ;
+        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
-            qDebug("UiServer::%s() : POINTER_RIGHTCLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
-//            pa->pointerClick(QPointF(x,y), Qt::RightButton, Qt::RightButton);
+//            qDebug("UiServer::%s() : POINTER_RIGHTCLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
+            pa->pointerClick(QPointF(x,y), Qt::RightButton, Qt::RightButton);
+//			if ( pa->appUnderPointer() ) pa->appUnderPointer()->mouseClick(QPointF(x, y), Qt::RightButton);
         }
         else {
-            qDebug("UiServer::%s() : can't find pointer object", __FUNCTION__);
+            qDebug("UiServer::%s() : POINTER_RIGHTCLICK  can't find pointer object", __FUNCTION__);
         }
         break;
     }
 
 
+    /**
+	  Always left button
+	  */
     case POINTER_DOUBLECLICK: {
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  arrow(uiclientid) ;
+        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
-            //qDebug() << "UiServer:: wheel" << x << y << 120*tick;
             pa->pointerDoubleClick(QPointF(x, y), Qt::LeftButton, Qt::LeftButton);
         }
-
+		else {
+            qDebug("UiServer::%s() : POINTER_DOUBLECLICK  can't find pointer object", __FUNCTION__);
+        }
         break;
     }
 
@@ -388,10 +400,13 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         quint64 uiclientid;
         int x,y,tick;
         sscanf(msg.constData(), "%d %llu %d %d %d", &code, &uiclientid, &x, &y, &tick);
-        PolygonArrow *pa = arrow(uiclientid);
+        PolygonArrow *pa = getSharedPointer(uiclientid);
         if (pa) {
             //qDebug() << "UiServer:: wheel" << x << y << 120*tick;
             pa->pointerWheel(QPointF(x, y),  tick);
+        }
+		else {
+            qDebug("UiServer::%s() : POINTER_WHEEL  can't find pointer object", __FUNCTION__);
         }
         break;
     }
@@ -425,7 +440,7 @@ void UiServer::removeFinishedThread(quint64 uiclientid) {
     }
 
     /* delete shared pointer */
-    QGraphicsItem *pa = arrow(uiclientid);
+    QGraphicsItem *pa = getSharedPointer(uiclientid);
     if (pa) {
         if (scene) scene->removeItem(pa);
         delete pa;
@@ -525,7 +540,7 @@ UiMsgThread * UiServer::getUiMsgThread(quint64 uiclientid) {
     return ret;
 }
 
-PolygonArrow * UiServer::arrow(quint64 uiclientid) {
+PolygonArrow * UiServer::getSharedPointer(quint64 uiclientid) {
     QMap<quint64, PolygonArrow *>::iterator it = pointers.find(uiclientid);
     if ( it == pointers.end() ) return 0;
     return it.value();

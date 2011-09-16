@@ -32,22 +32,22 @@ void WidgetRemoveButton::dropEvent(QGraphicsSceneDragDropEvent *event) {
 
 
 PolygonArrow::PolygonArrow(const quint64 uicid, const QSettings *s, const QColor c, QGraphicsItem *parent)
-        : QGraphicsPolygonItem(parent)
-        , uiclientid(uicid)
-        , settings(s)
-        , textItem(0)
-        , app(0)
+    : QGraphicsPolygonItem(parent)
+    , uiclientid(uicid)
+    , settings(s)
+    , textItem(0)
+    , app(0)
 
 {
-        QPolygonF p;
-        p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
+	QPolygonF p;
+	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
 
-        setBrush(QBrush(c));
-        setPolygon(p);
+	setBrush(QBrush(c));
+	setPolygon(p);
 
-        setFlag(QGraphicsItem::ItemIsSelectable, false);
-        setFlag(QGraphicsItem::ItemIsMovable, false);
-        setZValue(9999999); // the top most
+	setFlag(QGraphicsItem::ItemIsSelectable, false);
+	setFlag(QGraphicsItem::ItemIsMovable, false);
+	setZValue(9999999); // the top most
 }
 
 void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags) {
@@ -108,61 +108,52 @@ void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt
     if (!setAppUnderPointer(scenePos)) {
         qDebug() << "pointerPress() : setAppUnderPointer failed";
     }
-}
 
-/*
-void PolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
-        app->grabMouse();
-        if ( ! QApplication::sendEvent(gview->viewport(), &QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier)) ) {
-                qDebug("PolygonArrow::%s() : sendEvent failed", __FUNCTION__);
-        }
-        app->ungrabMouse();
+	// Don't we need to do setTopMost as well?
 }
-*/
 
 
 void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
-        // should be sent to interactive item like gwebview
+	// should be sent to interactive item like gwebview
 
-    QGraphicsView *view = eventReceivingViewport(scenePos);
-	if ( !view ) {
-		qDebug() << "pointerClick: no view is available";
-		return;
-	}
-    QPointF clickedViewPos = view->mapFromScene( scenePos );
+//    QGraphicsView *view = eventReceivingViewport(scenePos);
+//	if ( !view ) {
+//		qDebug() << "pointerClick: no view is available";
+//		return;
+//	}
+//    QPointF clickedViewPos = view->mapFromScene( scenePos );
 
-    QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
-    QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
+//    QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
+//    QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
 
-    /**
-      Pointer can't know (in here) which widget is going to receive this event
-      because it depends on how child widgets are attached to the parent widget.
-      FOr example, gwebview of WebWidget will receive mouse event and gwebview isn't pointed by app.
-      **/
-    //	app->grabMouse();
+//    /**
+//      Pointer can't know (in here) which widget is going to receive this event
+//      because it depends on how child widgets are attached to the parent widget.
 
-    if ( ! QApplication::sendEvent(view->viewport(), & mpe) ) {
-        qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-    }
-    if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
-        qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-    }
-//    app->ungrabMouse();
+//      For example, gwebview of WebWidget will receive mouse event and gwebview isn't pointed by app. It's gwebview's parent (which is WebWidget) that is pointed by the app.
+//	  So, app->grabMouse() is not a good idea especially when WebWidget installs eventFilter for its children
+//      **/
+//    //app->grabMouse();
 
-
+//    if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
+//		// Upon receiving mousePressEvent, the item will become mouseGrabber
+//        qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+//    }
+//    if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
+//        qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+//    }
+////	app->ungrabMouse();
 
 
     /**
       Instead of generating mouse event,
       I can let each widget implement BaseWidget::mouseClick()
       **/
-    /*
-        Q_UNUSED(btnFlags);
-        if (app) {
-                // Reimplement this for your app's specific needs
-                app->mouseClick(scenePos, btn);
-        }
-        */
+	Q_UNUSED(btnFlags);
+	if (app) {
+		// Reimplement this for your app's specific needs
+		app->mouseClick(scenePos, btn);
+	}
 }
 
 
@@ -196,8 +187,11 @@ void PolygonArrow::pointerWheel(const QPointF &scenePos, int delta) {
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
     if (gview) {
-		qDebug() << "pointerWheel" << delta;
-        if ( ! QApplication::sendEvent(gview->viewport(), & QWheelEvent(gview->mapFromScene(scenePos), /*gview->mapToGlobal(scenePos.toPoint()),*/ delta, Qt::NoButton, Qt::NoModifier)) ) {
+//		qDebug() << "pointerWheel" << delta;
+		int _delta = 0;
+		if ( delta > 0 )  _delta = 120;
+		else if (delta <0) _delta = -120;
+        if ( ! QApplication::sendEvent(gview->viewport(), & QWheelEvent(gview->mapFromScene(scenePos), /*gview->mapToGlobal(scenePos.toPoint()),*/ _delta, Qt::NoButton, Qt::NoModifier)) ) {
             qDebug("PolygonArrow::%s() : send wheelEvent failed", __FUNCTION__);
         }
         else {
@@ -207,8 +201,6 @@ void PolygonArrow::pointerWheel(const QPointF &scenePos, int delta) {
 }
 
 PolygonArrow::~PolygonArrow() {
-    if(scene())
-        scene()->removeItem(this);
 }
 
 void PolygonArrow::setPointerName(const QString &text) {
@@ -322,24 +314,21 @@ void SwSimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 
 
 PixmapCloseButton::PixmapCloseButton(const QString res, QGraphicsItem *parent)
-        : QGraphicsPixmapItem(parent)
+    : QGraphicsPixmapItem(parent)
 {
-        setPixmap(QPixmap(res));
-        flag = false;
+	setPixmap(QPixmap(res));
+	flag = false;
 }
 
 
 void PixmapCloseButton::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-        Q_UNUSED(event);
-        flag = true;
+	Q_UNUSED(event);
+	flag = true;
 }
 
 void PixmapCloseButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
-        if (flag && boundingRect().contains(event->pos())) {
-                QList<QGraphicsView *> vlist = scene()->views();
-                QGraphicsView *gview = vlist.front();
-                QMetaObject::invokeMethod(gview, "close", Qt::QueuedConnection);
-        }
+	if (flag && boundingRect().contains(event->pos())) {
+	}
 }
 
 
@@ -347,23 +336,24 @@ void PixmapCloseButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 
 
 PixmapCloseButtonOnScene::PixmapCloseButtonOnScene(const QString res, QGraphicsItem *parent)
-        : QGraphicsPixmapItem(parent)
+    : QGraphicsPixmapItem(parent)
 {
-        setPixmap(QPixmap(res));
-        flag = false;
+	setPixmap(QPixmap(res));
+	flag = false;
 }
 
 void PixmapCloseButtonOnScene::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-        Q_UNUSED(event);
-        flag = true;
+	Q_UNUSED(event);
+	flag = true;
 }
 
 void PixmapCloseButtonOnScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
-        if (flag && boundingRect().contains(event->pos())) {
-//		SAGENextScene *s = qobject_cast<SAGENextScene *>(scene());
-                QGraphicsScene *s = scene();
-                s->deleteLater();
-        }
+	if (flag && boundingRect().contains(event->pos())) {
+		SAGENextScene *s = static_cast<SAGENextScene *>(scene());
+//		QGraphicsScene *s = scene();
+		s->prepareClosing();
+		s->deleteLater();
+	}
 }
 
 

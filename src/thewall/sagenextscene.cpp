@@ -1,17 +1,39 @@
 #include "sagenextscene.h"
 #include <QGraphicsItem>
+
 #include "common/commonitem.h"
 #include "applications/base/basewidget.h"
 
-SAGENextScene::SAGENextScene(QObject *parent) :
-	QGraphicsScene(parent)
+#include "uiserver/uiserver.h"
+
+SAGENextScene::SAGENextScene(QObject *parent)
+    : QGraphicsScene(parent)
+    , _uiserver(0)
+    , _rmonitor(0)
+    , _schedcontrol(0)
 {
+}
+
+void SAGENextScene::prepareClosing() {
+	// close UiServer
+
+	if (_uiserver) {
+		qDebug() << "Scene is deleting UiServer";
+		delete _uiserver;
+	}
 
 
+	if (_rmonitor) {
+		qDebug() << "Scene is deleting ResourceMonitor";
+		delete _rmonitor;
+	}
+
+	::sleep(1);
 }
 
 SAGENextScene::~SAGENextScene() {
 	foreach (QGraphicsItem *item, items()) {
+		if (!item) continue;
 		if (item->type() == QGraphicsItem::UserType + 2) {
 			// this is user application
 			BaseWidget *bw = static_cast<BaseWidget *>(item);
@@ -41,6 +63,7 @@ SAGENextScene::~SAGENextScene() {
 
 void SAGENextScene::closeAllUserApp() {
 	foreach (QGraphicsItem *item, items()) {
+		if (!item ) continue;
 		if (item->type() == QGraphicsItem::UserType + 2) {
 			// this is user application
 			BaseWidget *bw = static_cast<BaseWidget *>(item);

@@ -286,30 +286,35 @@ RailawareWidget * ResourceMonitor::getEarliestDeadlineWidget() {
 
 
 ResourceMonitor::~ResourceMonitor() {
-//	if (procTree) delete procTree;
+	//	if (procTree) delete procTree;
 
-        if (procVec) {
-                ProcessorNode *pn =0;
-                for (int i=0; i<procVec->size(); ++i) {
-                        pn = procVec->at(i);
-                        if(pn) {
-//				qDebug() << "3";
-                                delete pn;
-                        }
-                }
-                delete procVec;
-        }
+	if (schedcontrol) {
+		schedcontrol->killScheduler();
+		delete schedcontrol;
+	}
 
-        /* I shouldn't delete numaInfoTextItem here */
+	if (procVec) {
+		ProcessorNode *pn =0;
+		for (int i=0; i<procVec->size(); ++i) {
+			pn = procVec->at(i);
+			if(pn) {
+				//				qDebug() << "3";
+				delete pn;
+			}
+		}
+		delete procVec;
+	}
 
-        if (numaInfo) free(numaInfo);
+	/* I shouldn't delete numaInfoTextItem here */
 
-        if (_dataFile.isOpen()) {
-                _dataFile.flush();
-                _dataFile.close();
-        }
+	if (numaInfo) free(numaInfo);
 
-        qDebug("ResourceMonitor::%s()", __FUNCTION__);
+	if (_dataFile.isOpen()) {
+		_dataFile.flush();
+		_dataFile.close();
+	}
+
+	qDebug("ResourceMonitor::%s()", __FUNCTION__);
 }
 
 //void ResourceMonitor::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
