@@ -353,12 +353,6 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 
 void ExternalGUIMain::on_pointerButton_clicked()
 {
-	// draw cursor on the wall
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
-
-	// msgtype, uiclientid, pointer name, Red, Green, Blue
-	sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, qPrintable(_pointerName), 255, 128, 0);
-
 	if (msgThread && msgThread->isRunning()) {
 		isMouseCapturing = true;
 #ifdef Q_OS_MAC
@@ -369,7 +363,11 @@ void ExternalGUIMain::on_pointerButton_clicked()
         grabMouse();
 		qDebug() << "grabMouse";
 #endif
-		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
+		QByteArray msg(EXTUI_MSG_SIZE, 0);
+
+		// msgtype, uiclientid, pointer name, Red, Green, Blue
+		sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, qPrintable(_pointerName), 255, 128, 0);
+		queueMsgToWall(msg);
 	}
 	else {
 		qWarning() << "Sharing pointer: please connect to a SAGENext first";
@@ -403,7 +401,8 @@ void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btn
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_DRAGGING, uiclientid, x, y);
 	}
 	else if (btns & Qt::RightButton) {
-		qDebug() << "sendMouseMove() Rightbutton dragging";
+//		qDebug() << "sendMouseMove() Rightbutton dragging";
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTDRAGGING, uiclientid, x, y);
 	}
 	else {
 		// just move pointer
