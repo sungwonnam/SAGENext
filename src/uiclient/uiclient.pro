@@ -6,7 +6,7 @@
 
 QT       += core gui network
 
-TARGET = sagenextui
+TARGET = sagenextpointer
 TEMPLATE = app
 
 CONFIG += thread
@@ -28,6 +28,11 @@ macx {
 #	LIBS += -framework Carbon
 	#QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.4
 #	QMAKE_MAC_SDK=/Developer/SDKs/MacOSX10.5.sdk
+#SOURCES += macCapture.c
+#LIBS += -framework ApplicationServices
+message("Compiling macCapture")
+system(gcc -Wall -o macCapture macCapture.c -framework ApplicationServices)
+system(mv macCapture ../../)
 }
 
 
@@ -45,5 +50,7 @@ HEADERS  += \
 FORMS    += \
 	externalguimain.ui \
 	connectiondialog.ui
+
+
 
 
