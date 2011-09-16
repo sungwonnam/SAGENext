@@ -14,8 +14,14 @@ public:
           uiclientid is determined by the wall and sent to uiclient.
           To discriminate specific wall from multiple walls, sockfd must be used instead of uiclientid, because uiclientid is unique in the wall not in the ui client.
           */
-        explicit MessageThread(int socket, const quint64 uiid, const QString &myip, QObject *parent = 0);
+        explicit MessageThread(QObject *parent = 0);
         ~MessageThread();
+	
+	inline void setSocket(int s) {sockfd = s;}
+	
+	inline void setUiClientId(quint64 i) {uiclientid = i;}
+	
+	inline void setMyIpAddr(const QString ip) {myipaddr = ip;}
 
 protected:
         void run();
@@ -38,7 +44,7 @@ private:
           Note that uiclientid is unique ONLY within the wall represented by sockfd.
           It is absolutely valid and likely that multiple message threads have same uiclientid value
           */
-        const quint64 uiclientid;
+        quint64 uiclientid;
 
         QString myipaddr;
 

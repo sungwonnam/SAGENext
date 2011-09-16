@@ -5,13 +5,12 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
-MessageThread::MessageThread(int sock, const quint64 uiid, const QString &myip, QObject *parent)
+MessageThread::MessageThread(QObject *parent)
     : QThread(parent)
-    , sockfd(sock)
-    , uiclientid(uiid)
-    , myipaddr(myip)
+    , sockfd(0)
+	, end(false)
+    , uiclientid(-1)
 {
-    end = false;
 }
 
 MessageThread::~MessageThread() {
@@ -19,8 +18,25 @@ MessageThread::~MessageThread() {
     qDebug() << "~MessageThread()";
 }
 
-void MessageThread::run() {
 
+void MessageThread::endThread() {
+	::close(sockfd);
+    end = true;
+	wait();
+	sockfd = 0;
+	uiclientid = -1;
+	qDebug() << "MessageThread finished";
+}
+
+void MessageThread::run() {
+	if ( sockfd == 0 || uiclientid == -1 ) {
+		qWarning() << "MessageThread failed to run. Finishing thread. socket" << sockfd << "uiclientid" << uiclientid;
+		return;
+	}
+	
+	end = false;
+	qDebug() << "MessageThread is running";
+	
     QByteArray msg(EXTUI_MSG_SIZE, 0);
     int msgType = 0;
 
@@ -88,10 +104,6 @@ void MessageThread::run() {
     }
 }
 
-void MessageThread::endThread() {
-	::close(sockfd);
-    end = true;
-}
 
 /*
 void MessageThread::requestAppLayout() {

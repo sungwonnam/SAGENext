@@ -57,6 +57,10 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
 
 	mediaDropFrame = new DropFrame(this);
 	ui->verticalLayout->addWidget(mediaDropFrame);
+	
+	// create msg thread
+	msgThread = new MessageThread();
+	connect(msgThread, SIGNAL(finished()), this, SLOT(ungrabMouse()));
 }
 
 ExternalGUIMain::~ExternalGUIMain()
@@ -66,9 +70,10 @@ ExternalGUIMain::~ExternalGUIMain()
 
 	if (hasMouseTracking()) releaseMouse();
 
-	if ( msgThread && msgThread->isRunning()) {
+	if (msgThread && msgThread->isRunning()) {
 		msgThread->endThread();
 		msgThread->wait();
+		delete msgThread;
 	}
 	
 	if (macCapture) {
@@ -93,13 +98,14 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 	_sharingEdge = cd.sharingEdge();
 
 	// if there is existing connection, close it first
-	if ( msgsock != 0 ) {
-		::shutdown(msgsock, SHUT_RDWR);
-		::close(msgsock);
-//		msgThread->endThread();
-		if (msgThread) msgThread->wait();
-		msgsock = 0;
-	}
+//	if ( msgsock != 0 ) {
+//		::shutdown(msgsock, SHUT_RDWR);
+//		::close(msgsock);
+//		msgsock = 0;
+//	}
+	
+	Q_ASSERT(msgThread);
+	if (msgThread->isRunning()) msgThread->endThread();
 
 
 	msgsock = ::socket(AF_INET, SOCK_STREAM, 0);
@@ -128,7 +134,7 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 //	walladdr.sin_addr.s_addr = inet_addr(ipaddr);
 
 	if ( ::connect(msgsock, (const struct sockaddr *)&walladdr, sizeof(walladdr)) != 0 ) {
-		qCritical("ExternalGUIMain::%s() : connect error", __FUNCTION__);
+		qCritical() << "sageNextPointer caouldn't connect to a wall. Maybe the wall is not running.";
 		return;
 	}
 	qDebug("ExternalGUIMain::%s() : connected to %s:%d", __FUNCTION__, qPrintable(cd.address()), cd.port());
@@ -183,10 +189,15 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 	/*!
 	  One msg thread per wall connection
 	 */
-	msgThread = new MessageThread(msgsock, uiclientid, _myIpAddress);
-	connect(msgThread, SIGNAL(finished()), msgThread, SLOT(deleteLater()));
-	//connect(msgThread, SIGNAL(finished()), scene, SLOT(deleteLater()));
-	connect(msgThread, SIGNAL(finished()), this, SLOT(ungrabMouse()));
+	
+	Q_ASSERT(msgThread);
+	if (msgThread->isRunning()) {
+		msgThread->endThread(); // wait() is called in here
+	}
+	msgThread->setSocket(msgsock);
+	msgThread->setUiClientId(uiclientid);
+	msgThread->setMyIpAddr(_myIpAddress);
+	
 	//connect(msgThread, SIGNAL(newAppLayout(QByteArray)), this, SLOT(updateScene(QByteArray)));
 	msgThread->start();
 
@@ -208,7 +219,7 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 			else if (_sharingEdge == "right") edge = 2;
 			else if (_sharingEdge == "left") edge = 1;
 			else if (_sharingEdge == "bottom") edge = 4;
-			sprintf(captureEdge.data(), "14 %d\n", edge);
+			sprintf(captureEdge.data(), "%d %d\n", 14, edge);
 			macCapture->write(captureEdge);
 		}
 	}
@@ -229,7 +240,6 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 void ExternalGUIMain::on_vncButton_clicked()
 {
 	// send msg to UiServer so that local sageapp (vncviewer) can be started
-
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 
 	/*
@@ -245,12 +255,7 @@ void ExternalGUIMain::on_vncButton_clicked()
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
 	sprintf(msg.data(), "%d %llu %s %d %s %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 24);
 
-	if (msgThread && msgThread->isRunning()) {
-		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-	}
-	else {
-		qWarning() << "Sharing screen: please connect to a SAGENext first";
-	}
+	queueMsgToWall(msg);
 }
 
 /**
@@ -353,7 +358,8 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 
 void ExternalGUIMain::on_pointerButton_clicked()
 {
-	if (msgThread && msgThread->isRunning()) {
+	if (msgThread) {
+		if (msgThread->isRunning()) {
 		isMouseCapturing = true;
 #ifdef Q_OS_MAC
 		// do nothing
@@ -364,13 +370,16 @@ void ExternalGUIMain::on_pointerButton_clicked()
 		qDebug() << "grabMouse";
 #endif
 		QByteArray msg(EXTUI_MSG_SIZE, 0);
-
 		// msgtype, uiclientid, pointer name, Red, Green, Blue
 		sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, qPrintable(_pointerName), 255, 128, 0);
 		queueMsgToWall(msg);
+		}
+		else {
+			qWarning() << "Sharing pointer: please connect to a SAGENext first";
+		}
 	}
 	else {
-		qWarning() << "Sharing pointer: please connect to a SAGENext first";
+		qDebug() << "Sharing pointer: msgThread is null";
 	}
 }
 
@@ -385,9 +394,11 @@ void ExternalGUIMain::ungrabMouse() {
 	qDebug() << "mouse released";
 #endif
 	// remove cursor on the wall
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
-	sprintf(msg.data(), "%d %llu", POINTER_UNSHARE, uiclientid);
-	queueMsgToWall(msg);
+	if (msgThread && msgThread->isRunning()) {
+		QByteArray msg(EXTUI_MSG_SIZE, 0);
+		sprintf(msg.data(), "%d %llu", POINTER_UNSHARE, uiclientid);
+		queueMsgToWall(msg);
+	}
 }
 
 
@@ -538,7 +549,7 @@ void ExternalGUIMain::queueMsgToWall(const QByteArray &msg) {
 	if (msgThread && msgThread->isRunning())
 		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
 	else
-		qWarning() << "The message thread isn't running";
+		qWarning() << "couldn't send the message. The message thread isn't running. ";
 }
 
 
