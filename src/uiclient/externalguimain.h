@@ -29,7 +29,7 @@ class connectionDialog;
 /**
   Provides drag & drop feature
   */
-class DropFrame : public QFrame {
+class DropFrame : public QLabel {
 public:
 	explicit DropFrame(QWidget *parent = 0);
 	

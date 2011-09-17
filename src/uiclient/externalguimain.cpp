@@ -712,18 +712,30 @@ void ExternalGUIMain::readFiles(QStringList filenames) {
 
 
 DropFrame::DropFrame(QWidget *parent) :
-        QFrame(parent)
+    QLabel(parent)
 {
-        setAcceptDrops(true);
+	setAcceptDrops(true);
+	setFrameStyle(QFrame::Sunken);
+	setFrameShape(QFrame::Box);
+	setText("Drop media here");
+	setAlignment(Qt::AlignCenter);
 }
 
 void DropFrame::dragEnterEvent(QDragEnterEvent *e) {
-        if (e->mimeData()->hasImage())
-                e->acceptProposedAction();
+	e->acceptProposedAction();
 }
 
 void DropFrame::dropEvent(QDropEvent *e) {
-// file transfer
+	if (e->mimeData()->hasHtml()) {
+//		qDebug() << "Html"; // web address
+		qDebug() << e->mimeData()->text();
+	}
+	else if (e->mimeData()->hasUrls()) {
+//		qDebug() << "Urls"; // all the files
+		QString filename = e->mimeData()->text().remove("file://"); // '\n' at the end of each filename
+		QStringList files = filename.split('\n', QString::SkipEmptyParts);
+		qDebug() << files;
+	}
 }
 
 
