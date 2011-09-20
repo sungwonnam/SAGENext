@@ -10,6 +10,7 @@
 #include "applications/base/perfmonitor.h"
 #include "applications/base/affinityinfo.h"
 
+#include "applications/pdfviewerwidget.h"
 #include "applications/pixmapwidget.h"
 #include "applications/vncwidget.h"
 #include "applications/webwidget.h"
@@ -145,6 +146,7 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
         case MEDIA_TYPE_VIDEO: {
 
                 // the file has to be downloaded first
+			// or remote side has maplyer (compiled with SAIL) already
 
 
                 SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, senderIP, _rMonitor);
@@ -207,6 +209,13 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
             ww->setUrl( filename );
             break;
         }
+
+		case MEDIA_TYPE_PDF: {
+			PDFViewerWidget *pdfviewer = new PDFViewerWidget(filename, _globalAppId, _settings, 0, Qt::Widget);
+			pdfviewer->moveBy(100, 100);
+			w = pdfviewer;
+			break;
+		}
 
         case MEDIA_TYPE_AUDIO: {
                 break;

@@ -6,40 +6,71 @@ TARGET = sagenext
 TEMPLATE = app
 
 
+#CONFIG += thread
+#CONFIG += copy_dir_files
 
 
-#LibVNCServer
-linux-g++|linux-g++-64 {
-        LIBVNCSERVER = ${HOME}/LibVNCServer
-        message("Linking with LibVNC lib")
-        INCLUDEPATH += $$LIBVNCSERVER/include
-        LIBS += -L$$LIBVNCSERVER/lib -lvncclient
-}
-macx {
-        LIBVNCSERVER = ${HOME}/Downloads/LibVNCServer
-        message("Linking with LibVNC lib $$LIBVNCSERVER")
-        INCLUDEPATH += $$LIBVNCSERVER/include
-        LIBS += -L$$LIBVNCSERVER/lib -lvncclient
+# If unix (linux, mac)
+# use pkg-config
+unix {
+    CONFIG += link_pkgconfig
 }
 
 
-#Qwt
+#
+# LibVNCServer
+#
+# Add LIBVNCSERVER_INSTALL_PATH/lib/pkgconfig in PKG_CONFIG_PATH environment variable
+#
+unix {
+# unix includes linux-g++  linux-g++-64  macx   macx-g++   symbian ...
+    message("Linking LibVNCServer lib")
+    PKGCONFIG += libvncclient
+
+
+}
+#macx {
+#    LIBVNCSERVER = ${HOME}/Downloads/LibVNCServer
+#    message("Linking with LibVNC lib $$LIBVNCSERVER")
+#    INCLUDEPATH += $$LIBVNCSERVER/include
+#    LIBS += -L$$LIBVNCSERVER/lib -lvncclient
+#}
+
+
+#
+# Poppler-qt4 for PDFviewer
+#
+# Add QtSDK/Desktop/Qt/474/gcc/lib/pkgconfig in PKG_CONFIG_PATH environment variable
+# configure poppler with --enable-poppler-qt4  (you might need to compile/install openjpeg)
+# Add POPPLER_INSTALL_PATH/lib/pkgconfig in PKG_CONFIG_PATH
+#
+unix {
+    message("Linking Poppler-qt4")
+    PKGCONFIG += poppler-qt4
+}
+
+#
+# Qwt
+#
 #QWT_HOME = /home/evl/snam5/Downloads/qwt-5.2
 #INCLUDEPATH += $${QWT_HOME}/src
 #LIBS += -L$${QWT_HOME}/lib -lqwt
 
+
+#
+# NUMA lib
+#
 linux-g++|linux-g++-64 {
-        message("Linking with Linux libnuma library")
+        message("Linking Linux libnuma library")
         #LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
         LIBS += -lnuma
 }
 macx {
-        message("Excluding -lnuma -lm -lpthread")
-        LIBS -= -lnuma -lm -lpthread
+        message("Excluding -lnuma")
+        LIBS -= -lnuma
 }
 
-#CONFIG += thread
-#CONFIG += copy_dir_files
+
 
 BUILD_DIR = BUILD
 !exists($$BUILD_DIR) {
@@ -52,19 +83,23 @@ MOC_DIR = MOC
 OBJECTS_DIR = $${BUILD_DIR}
 
 
-MEDIA_DIR = ${HOME}/.sagenext/media
-MEDIA_IMAGE_DIR = $${MEDIA_DIR}/image
-MEDIA_VIDEO_DIR = $${MEDIA_DIR}/video
-!exists($${MEDIA_DIR}) {
-    system(mkdir $${MEDIA_DIR})
-    system(mkdir $${MEDIA_IMAGE_DIR})
-    system(mkdir $${MEDIA_VIDEO_DIR})
+# Use parenthesis to read from environment variable
+MEDIA_ROOT_DIR = $$(HOME)/.sagenext/media
+message("Your media root directory : $$MEDIA_ROOT_DIR")
+
+IMAGE_DIR = $$MEDIA_ROOT_DIR/image
+VIDEO_DIR = $$MEDIA_ROOT_DIR/video
+!exists($$MEDIA_ROOT_DIR) {
+    message("Creating media directories")
+    system(mkdir $$MEDIA_ROOT_DIR)
+    system(mkdir $$IMAGE_DIR)
+    system(mkdir $$VIDEO_DIR)
 }
-!exists($${MEDIA_IMAGE_DIR}) {
-    system(mkdir $${MEDIA_IMAGE_DIR})
+!exists($$IMAGE_DIR) {
+    system(mkdir $$IMAGE_DIR)
 }
-!exists($${MEDIA_VIDEO_DIR}) {
-    system(mkdir $${MEDIA_VIDEO_DIR})
+!exists($$VIDEO_DIR) {
+    system(mkdir $$VIDEO_DIR)
 }
 
 
@@ -117,7 +152,8 @@ SOURCES += \
         sagenextviewport.cpp \
         sagenextlauncher.cpp \
     applications/mediabrowser.cpp \
-    settingstackeddialog.cpp
+    settingstackeddialog.cpp \
+    applications/pdfviewerwidget.cpp
 #    common/filereceivingrunnable.cpp
 
 HEADERS += \
@@ -150,8 +186,11 @@ HEADERS += \
         sagenextviewport.h \
         sagenextlauncher.h \
     applications/mediabrowser.h \
-    settingstackeddialog.h
+    settingstackeddialog.h \
+    applications/pdfviewerwidget.h
 #    common/filereceivingrunnable.h
+
+
 
 
 

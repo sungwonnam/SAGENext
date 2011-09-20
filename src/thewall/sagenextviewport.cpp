@@ -14,7 +14,7 @@ SAGENextViewport::SAGENextViewport(int viewportId, QWidget *parent) :
 
 
 	if ( _viewportID == 0 ) {
-		_fdialog = new QFileDialog(this, "Open Files", QDir::homePath().append("/.sagenext/image") , "Images (*.tif *.tiff *.svg *.bmp *.png *.jpg *.jpeg *.gif *.xpm);;RatkoData (*.log);;Session (*.session);;Plugins (*.so *.dll *.dylib);;Videos (*.mov *.avi *.mpg *.mp4 *.mkv *.flv *.wmv);;Any (*)");
+		_fdialog = new QFileDialog(this, "Open Files", QDir::homePath().append("/.sagenext") , "Any (*);;Images (*.tif *.tiff *.svg *.bmp *.png *.jpg *.jpeg *.gif *.xpm);;RatkoData (*.log);;Session (*.session);;Plugins (*.so *.dll *.dylib);;Videos (*.mov *.avi *.mpg *.mp4 *.mkv *.flv *.wmv)");
 		_fdialog->setModal(false);
 		//fdialog->setFileMode(QFileDialog::Directory);
 		connect(_fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(on_actionFilesSelected(QStringList)));
@@ -100,6 +100,7 @@ void SAGENextViewport::on_actionFilesSelected(const QStringList &filenames) {
 
 	QRegExp rxVideo("\\.(avi|mov|mpg|mpeg|mp4|mkv|flv|wmv)$", Qt::CaseInsensitive, QRegExp::RegExp);
 	QRegExp rxImage("\\.(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
+	QRegExp rxPdf("\\.(pdf)$", Qt::CaseInsensitive, QRegExp::RegExp);
 	QRegExp rxSession("\\.session$", Qt::CaseInsensitive, QRegExp::RegExp);
 	QRegExp rxRatkoData("\\.log");
 	QRegExp rxPlugin;
@@ -128,7 +129,6 @@ void SAGENextViewport::on_actionFilesSelected(const QStringList &filenames) {
 //			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection,
 //									  Q_ARG(int, MEDIA_TYPE_LOCAL_VIDEO),
 //									  Q_ARG(QString, filename));
-			return;
 		}
 
 		/*!
@@ -139,9 +139,16 @@ void SAGENextViewport::on_actionFilesSelected(const QStringList &filenames) {
 //			bw = new PixmapWidget(filename, globalAppId, settings);
 //			startApp(MEDIA_TYPE_IMAGE, filename);
 			_launcher->launch((int)MEDIA_TYPE_IMAGE, filename);
-			return;
 		}
 
+		/*!
+		  PDF
+		  */
+		else if ( filename.contains(rxPdf) ) {
+			qDebug("%s::%s() : Opening a PDF file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+			_launcher->launch((int)MEDIA_TYPE_PDF, filename);
+
+		}
 
 		/**
 		  * plugin
@@ -175,11 +182,9 @@ void SAGENextViewport::on_actionFilesSelected(const QStringList &filenames) {
 
 		else if ( QDir(filename).exists() ) {
 			qDebug("%s::%s() : DIRECTORY", metaObject()->className(), __FUNCTION__);
-			return;
 		}
 		else {
 			qCritical("%s::%s() : Unrecognized file format", metaObject()->className(),__FUNCTION__);
-			return;
 		}
 	}
 }

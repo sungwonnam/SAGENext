@@ -15,8 +15,8 @@ CONFIG += copy_dir_files
 
 BUILDDIR = build
 !exists($$BUILDDIR) {
-message("Creating build directory")
-system(mkdir build)
+    message("Creating build directory")
+    system(mkdir build)
 }
 
 DESTDIR = ../../
@@ -29,9 +29,18 @@ macx {
 	#QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.4
 #	QMAKE_MAC_SDK=/Developer/SDKs/MacOSX10.5.sdk
 #LIBS += -framework ApplicationServices
-message("Compiling macCapture")
-system(gcc -Wall -o macCapture macCapture.c -framework ApplicationServices)
-system(mv macCapture ../../)
+    message("Compiling macCapture")
+
+    !exists(macCapture.c) {
+		error(macCapture.c is not available)
+	} else {
+	    system(gcc -Wall -o macCapture macCapture.c -framework ApplicationServices)
+		!exists(macCapture) {
+			error(macCapture failed to compiple)
+		} else {
+			system(mv macCapture ../../)
+		}
+	}
 }
 
 
