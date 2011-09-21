@@ -61,7 +61,7 @@ void PDFViewerWidget::setCurrentPage(int pageNumber) {
 //	qint64 start = QDateTime::currentMSecsSinceEpoch();
 
 #if QT_VERSION >= 0x040700
-	_pixmap.convertFromImage(_currentPage->renderToImage(300, 300));
+	_pixmap.convertFromImage(_currentPage->renderToImage(250, 250));
 #else
 	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(300, 300));
 #endif

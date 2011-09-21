@@ -41,8 +41,18 @@ void GeneralSettingDialog::accept() {
 //	_settings->setValue("general/wallname", ui->wallNameLineEdit->text());
 	_settings->setValue("general/wallip", ui->wallIPLineEdit->text() );
 	_settings->setValue("general/wallport", ui->wallPortLineEdit->text().toInt() );
+
+	/**
+	  This is static
+	  */
+	_settings->setValue("general/fileserverport", 46000);
+
 	_settings->setValue("general/fsmip", ui->fsManagerIPLineEdit->text() );
 	_settings->setValue("general/fsmport", ui->fsManagerPortLineEdit->text().toInt() );
+
+	/**
+	  This is static
+	  */
 	_settings->setValue("general/fsmstreambaseport",  ui->fsManagerPortLineEdit->text().toInt() + 3);
 
 	_settings->setValue("general/width", ui->widthLineEdit->text().toInt());
@@ -271,7 +281,7 @@ SettingStackedDialog::~SettingStackedDialog()
 }
 
 void SettingStackedDialog::changeStackedWidget(QListWidgetItem *current, QListWidgetItem *previous) {
-	QDialog *dialog = static_cast<QDialog *>(ui->stackedWidget->widget(ui->listWidget->row(previous)));
+//	QDialog *dialog = static_cast<QDialog *>(ui->stackedWidget->widget(ui->listWidget->row(previous)));
 //	dialog->accept();
 	
     if (!current) current = previous;

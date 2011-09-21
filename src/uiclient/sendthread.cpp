@@ -1,100 +1,117 @@
 #include "sendthread.h"
-
+/*
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+*/
+#include <QFileInfo>
 
-SendThread::SendThread(const QString &recvaddr, int recvport, QObject *parent)
+#include "externalguimain.h"
+
+SendThread::SendThread(QObject *parent)
     : QThread(parent)
-    , end(false)
-    , receiverPort(recvport)
 {
-    mutex.unlock();
-    fileQueue.clear();
-    receiverAddr.setAddress(recvaddr);
+	_rxImage.setCaseSensitivity(Qt::CaseInsensitive);
+	_rxVideo.setCaseSensitivity(Qt::CaseInsensitive);
+	_rxPdf.setCaseSensitivity(Qt::CaseInsensitive);
+	_rxPlugin.setCaseSensitivity(Qt::CaseInsensitive);
+
+	_rxImage.setPatternSyntax(QRegExp::RegExp);
+	_rxVideo.setPatternSyntax(QRegExp::RegExp);
+	_rxPdf.setPatternSyntax(QRegExp::RegExp);
+	_rxPlugin.setPatternSyntax(QRegExp::RegExp);
+
+	_rxImage.setPattern("(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$");
+	_rxVideo.setPattern("(avi|mov|mpg|mpeg|mp4|mkv|flv|wmv)$");
+	_rxPdf.setPattern("(pdf)$");
+	_rxPlugin.setPattern("(so|dll|dylib)$");
+
+
+	connect(&_dataSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
+}
+
+void SendThread::handleSocketError(QAbstractSocket::SocketError error) {
+	qDebug() << "SendThread socket error" << error;
+	endThread();
 }
 
 SendThread::~SendThread() {
+	_dataSock.abort();
+	_dataSock.close();
+}
+
+void SendThread::endThread() {
+	_dataSock.abort();
+	_dataSock.close();
+	exit();
+}
+
+bool SendThread::setSockFD(int sock) {
+	return _dataSock.setSocketDescriptor(sock);
+}
+
+void SendThread::sendMediaList(const QList<QUrl> urls) {
+	foreach(const QUrl url, urls) {
+		sendMedia(url);
+	}
+}
+
+void SendThread::sendMedia(const QUrl url) {
+	if (_dataSock.state() != QAbstractSocket::ConnectedState) {
+		qDebug() << "SendThread::sendMedia(). socket is not connected to the file server";
+		return;
+	}
+
+	char header[EXTUI_MSG_SIZE];
+	int mediatype = 0;
+
+	QString urlStr = url.toString().trimmed();
+
+//	qDebug() << "encoded url" << url.toEncoded(); // ByteArray
+//	qDebug() << "sendMedia() : urlstr is" << urlStr;
+
+	if (urlStr.contains(QRegExp("^http", Qt::CaseInsensitive)) ) {
+		::sprintf(header, "%d %s %lld", (int)MEDIA_TYPE_WEBURL, qPrintable(urlStr), (qint64)0);
+		_dataSock.write(header, sizeof(header));
+	}
+	else if (urlStr.contains(QRegExp("^file://", Qt::CaseSensitive)) ) {
+		QFileInfo fi(urlStr.remove("file://"));
+		if (!fi.isFile() || fi.size() == 0) {
+			qDebug() << "SendThread::sendMedia : filesize 0 for" << fi.absoluteFilePath();
+			return;
+		}
+		qDebug() << "sendMedia() : filePath" << fi.filePath() << "fileName" << fi.fileName();
+
+		if (fi.suffix().contains(_rxImage)) {
+			mediatype = (int)MEDIA_TYPE_IMAGE;
+		}
+		else if (fi.suffix().contains(_rxVideo)) {
+			mediatype = (int)MEDIA_TYPE_LOCAL_VIDEO; // because the file is going to be copied at the wall
+		}
+		else if (fi.suffix().contains(_rxPdf)) {
+			mediatype = (int)MEDIA_TYPE_PDF;
+		}
+		else if (fi.suffix().contains(_rxPlugin)) {
+			mediatype = (int)MEDIA_TYPE_PLUGIN;
+		}
+
+		QString noSpaceFilename = fi.fileName().replace(QChar(' '), QChar('_'), Qt::CaseInsensitive);
+		::sprintf(header, "%d %s %lld", mediatype, qPrintable(noSpaceFilename), fi.size());
+
+		_dataSock.write(header, sizeof(header));
+
+		QFile file(fi.absoluteFilePath());
+		file.open(QIODevice::ReadOnly);
+		if ( _dataSock.write(file.readAll().constData(), file.size()) < 0) {
+			qDebug() << "SendThread::sendMedia() : error while sending the file";
+		}
+		file.close();
+	}
 }
 
 void SendThread::run() {
-
-    /* connect to File Receiving Server at the UiServer */
-    int datasock = ::socket(AF_INET, SOCK_STREAM, 0);
-
-    sockaddr_in walladdr;
-    memset(&walladdr, 0, sizeof(walladdr));
-    walladdr.sin_port = htons(receiverPort);
-    walladdr.sin_addr.s_addr = receiverAddr.toIPv4Address();
-    //        inet_pton(AF_INET, qPrintable(), &walladdr.sin_addr.s_addr);
-
-    if ( ::connect(datasock, (const struct sockaddr *)&walladdr, sizeof(walladdr)) != 0 ) {
-        qCritical("SendThread::%s() : connect error", __FUNCTION__);
-    }
-    qDebug() << "data channel connected to the wall";
-
-
-
-
-    while(!end) {
-        mutex.lock();
-        fileReady.wait(&mutex);
-
-        /* send file */
-        // open for reading
-        QString filename = fileQueue.front();
-        fileQueue.pop_front();
-        int filefd = ::open(qPrintable(filename), O_RDONLY);
-        if (filefd == -1) {
-            qCritical("%s::%s() : Counldn't open the file", metaObject()->className(), __FUNCTION__);
-            break;
-        }
-
-        char buff[128*1024];
-        int read = 0, totalread= 0;
-        int sent = 0, totalsent = 0;
-
-        while (1) {
-            read = ::read(filefd, buff, 128*1024);
-            if (read < 0) { // read error
-                qCritical("%s::%s() : error while reading the file", metaObject()->className(), __FUNCTION__);
-                break;
-            }
-            else if (read == 0) { // no more data
-                qDebug() << "send finished. total" << totalread << "Byte";
-                break;
-            }
-            else {
-                totalread += read;
-                sent = ::send(datasock, buff, read, 0);
-                if (sent < 0) { // send error
-                    qDebug() << "send error";
-                    break;
-                }
-                else {
-                    totalsent += sent;
-                }
-            }
-        }
-        qDebug() << totalsent << "Byte sent";
-
-        ::close(filefd);
-        mutex.unlock();
-    }
-
-
-
-    ::shutdown(datasock, SHUT_RDWR);
-    ::close(datasock);
-}
-
-void SendThread::sendFile( const QString &filename) {
-    mutex.lock();
-    //    receiverAddr = addr;
-    //    receiverPort = port;
-    fileQueue.enqueue(filename);
-    fileReady.wakeOne();
-    mutex.unlock();
+	exec();
+	qDebug() << "SentThread exit from event loop";
 }

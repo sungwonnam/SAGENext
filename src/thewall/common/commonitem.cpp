@@ -337,9 +337,10 @@ void PixmapCloseButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 
 PixmapCloseButtonOnScene::PixmapCloseButtonOnScene(const QString res, QGraphicsItem *parent)
     : QGraphicsPixmapItem(parent)
+    , flag(false)
 {
 	setPixmap(QPixmap(res));
-	flag = false;
+	setAcceptedMouseButtons(Qt::LeftButton);
 }
 
 void PixmapCloseButtonOnScene::mousePressEvent(QGraphicsSceneMouseEvent *event) {

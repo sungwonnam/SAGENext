@@ -28,16 +28,16 @@ enum EXTUI_MSG_TYPE { MSG_NULL, REG_FROM_UI, ACK_FROM_WALL, DISCONNECT_FROM_WALL
 
 class UiServer : public QTcpServer
 {
-        Q_OBJECT
+	Q_OBJECT
 public:
-        explicit UiServer(const QSettings *s, SAGENextLauncher *snl, SAGENextScene *sns);
-        ~UiServer();
+	explicit UiServer(const QSettings *s, SAGENextLauncher *snl, SAGENextScene *sns);
+	~UiServer();
 
         /**
           * This function is called by the main process (GraphicsViewMain::TimerEvent()) every 1sec (TimerEvent of the main process)
           * It updates this->appLayout and *BROADCAST* this buffer to ALL ui clients
           */
-        void updateAppLayout();
+//        void updateAppLayout();
 
 protected:
         /**
@@ -47,22 +47,22 @@ protected:
           * creates a ui msg thread for each connection
           * insert this connection to clientMap
           */
-        void incomingConnection(int sockfd);
+	void incomingConnection(int sockfd);
 
 private:
         //QHostAddress uiServerIP;
-        const QSettings *settings;
+	const QSettings *settings;
 
         /**
           TCP port number base for uiclient to connect to transfer a file
           */
-        int fileRecvPortBase;
+	int fileRecvPortBase;
 
         /*!
           * Each ui client has to have unique identifier
           This id will be set to 0 if fileRecvPortBase + id >= 65535
           */
-        quint64 uiClientId;
+	quint64 uiClientId;
 
         /*!
           * uiclientid as a key and corresponding msg thread
@@ -80,7 +80,7 @@ private:
           uiclientid and corresponding app layout flag
           appLayout is sent to those clients who set the flag
           */
-        QMap<quint64, bool> appLayoutFlagMap;
+//        QMap<quint64, bool> appLayoutFlagMap;
 
 
 //	QGraphicsScene *scene;
@@ -103,14 +103,14 @@ private:
           The file is stored at $HOME/.sagenext/<image|video>
           This function runs in separate thread.
           */
-        void fileReceivingFunction(int mtype, const QString &fname, qint64 fsize, int port);
+//        void fileReceivingFunction(int mtype, const QString &fname, qint64 fsize, int port);
 
 signals:
         /**
           * REG_FROM_UI handler.
           * will invoke GraphicsViewMain::startApp()
           */
-        void registerApp(MEDIA_TYPE type, QString filename, qint64 filesize, QString senderIP, QString recvIP, quint16 recvPort);
+//        void registerApp(MEDIA_TYPE type, QString filename, qint64 filesize, QString senderIP, QString recvIP, quint16 recvPort);
 
 private slots:
         void handleMessage(const quint64 id, UiMsgThread *, const QByteArray msg);

@@ -89,6 +89,7 @@ message("Your media root directory : $$MEDIA_ROOT_DIR")
 
 IMAGE_DIR = $$MEDIA_ROOT_DIR/image
 VIDEO_DIR = $$MEDIA_ROOT_DIR/video
+PDF_DIR = $$MEDIA_ROOT_DIR/pdf
 !exists($$MEDIA_ROOT_DIR) {
     message("Creating media directories")
     system(mkdir $$MEDIA_ROOT_DIR)
@@ -100,6 +101,9 @@ VIDEO_DIR = $$MEDIA_ROOT_DIR/video
 }
 !exists($$VIDEO_DIR) {
     system(mkdir $$VIDEO_DIR)
+}
+!exists($$PDF_DIR) {
+	system(mkdir $$PDF_DIR)
 }
 
 
@@ -153,7 +157,8 @@ SOURCES += \
         sagenextlauncher.cpp \
     applications/mediabrowser.cpp \
     settingstackeddialog.cpp \
-    applications/pdfviewerwidget.cpp
+    applications/pdfviewerwidget.cpp \
+    uiserver/fileserver.cpp
 #    common/filereceivingrunnable.cpp
 
 HEADERS += \
@@ -187,8 +192,11 @@ HEADERS += \
         sagenextlauncher.h \
     applications/mediabrowser.h \
     settingstackeddialog.h \
-    applications/pdfviewerwidget.h
+    applications/pdfviewerwidget.h \
+    uiserver/fileserver.h
 #    common/filereceivingrunnable.h
+
+
 
 
 

@@ -3,7 +3,7 @@
 
 #include "common/commonitem.h"
 #include "applications/base/basewidget.h"
-
+#include "system/resourcemonitor.h"
 #include "uiserver/uiserver.h"
 
 SAGENextScene::SAGENextScene(QObject *parent)
@@ -28,7 +28,7 @@ void SAGENextScene::prepareClosing() {
 		delete _rmonitor;
 	}
 
-	::sleep(1);
+//	::sleep(1);
 }
 
 SAGENextScene::~SAGENextScene() {
@@ -38,15 +38,14 @@ SAGENextScene::~SAGENextScene() {
 			// this is user application
 			BaseWidget *bw = static_cast<BaseWidget *>(item);
 //			bw->fadeOutClose();
-                        bw->hide();
-                        bw->close();
+			bw->hide();
+			bw->close();
 		}
 		else {
 			// this probably is common GUI
 			delete item;
 		}
 	}
-
 
 	qDebug() << "\nScene is closing all views";
 

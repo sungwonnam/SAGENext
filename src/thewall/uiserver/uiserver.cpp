@@ -15,7 +15,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-UiServer::UiServer( const QSettings *s, SAGENextLauncher *snl, SAGENextScene *sns)
+UiServer::UiServer(const QSettings *s, SAGENextLauncher *snl, SAGENextScene *sns)
     : QTcpServer(0)
     , settings(s)
     , fileRecvPortBase(0)
@@ -67,7 +67,8 @@ void UiServer::incomingConnection(int sockfd) {
          send uiclientid and scene size
         */
     char buf[EXTUI_MSG_SIZE]; memset(buf, '\0', EXTUI_MSG_SIZE);
-    int filetransferport = fileRecvPortBase + uiClientId;
+//    int filetransferport = fileRecvPortBase + uiClientId;
+	int filetransferport = settings->value("general/fileserverport", 46000).toInt();
     sprintf(buf, "%llu %d %d %d", uiClientId, (int)scene->width(), (int)scene->height(), filetransferport);
     ::send(sockfd, buf, 1280, 0);
     qDebug("UiServer::%s() : The scene size %d x %d sent to ui %llu", __FUNCTION__, (int)scene->width(), (int)scene->height(), uiClientId);
@@ -86,8 +87,6 @@ void UiServer::incomingConnection(int sockfd) {
 
     thread->start();
 
-
-
     /**
           create a file recv thread
           */
@@ -95,19 +94,17 @@ void UiServer::incomingConnection(int sockfd) {
     //        recvThread->setAutoDelete(false);
     //        uiFileRecvRunnableMap.insert(uiClientId, recvThread);
 
-
-
-
     // by default, ui client is not receiving app layout on the wall
-    appLayoutFlagMap.insert(uiClientId, false);
-
+//    appLayoutFlagMap.insert(uiClientId, false);
 
     qDebug("UiServer::%s() : ui client %llu has connected.", __FUNCTION__, uiClientId);
 }
 
 void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QByteArray msg) {
+	Q_UNUSED(id);
+	Q_UNUSED(msgThread);
     //	if (!msg) return;
-    QByteArray buffer(EXTUI_MSG_SIZE, '\0');
+//    QByteArray buffer(EXTUI_MSG_SIZE, '\0');
 
     // "msgcode data"
     int code = 0;
@@ -118,10 +115,12 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
     case MSG_NULL: {
         break;
     }
+
+		/*************
     case REG_FROM_UI: {
         qDebug("UiServer::%s() : received REG_FROM_UI [%s]", __FUNCTION__, msg.constData());
 
-        /* read message */
+        // read message
         char senderIP[INET_ADDRSTRLEN];
         char filename[256];
         qint64 filesize;
@@ -130,7 +129,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         sscanf(msg.constData(), "%d %s %s %d %lld %d %d %d %d %d %d %d", &code, senderIP, filename, &mediatype, &filesize, &mode, &resx, &resy, &viewx, &viewy, &posx, &posy);
 
 
-        /* determine which receiver IP:port is going to be used to receive */
+        // determine which receiver IP:port is going to be used to receive
         QString receiverIP( settings->value("general/wallip").toString() );
         int receiverPort = fileRecvPortBase + id;
         if ( receiverPort >= 65535 ) {
@@ -138,31 +137,20 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
             break;
         }
 
-
-        /**
-                          Trigger FileReceivingThread
-                          The media will be launched in here
-                          **/
-        //                        FileReceivingTcpServer *recvThread = uiFileRecvRunnableMap.value(id);
-        //                        recvThread->setFileInfo(QString(filename), filesize); // this can block because of the mutex
-        //                        QThreadPool::globalInstance()->start(recvThread);
-
-
         QtConcurrent::run(this, &UiServer::fileReceivingFunction, mediatype, QString(filename), filesize, receiverPort);
 
-
-        /*
-         send ACK_FROM_WALL through msg channel
-         This will trigger uiclient to transfer the file
-        */
+        //
+         //send ACK_FROM_WALL through msg channel
+         //This will trigger uiclient to transfer the file
+        //
         buffer.fill('\0');
         sprintf(buffer.data(), "%d %s %d", ACK_FROM_WALL, qPrintable(receiverIP), receiverPort);
 
-        //			int ack = ::send(it.value(), buffer.data(), buffer.size(), 0);
-        //			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, buffer));
+        //	int ack = ::send(it.value(), buffer.data(), buffer.size(), 0);
+        //	QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, buffer));
         msgThread->sendMsg(buffer);
 
-        //			qDebug("UiServer::%s() : ACK_FROM_WALL [%s] sent to sock %d", __FUNCTION__, buffer.data(), it.value());
+        //	qDebug("UiServer::%s() : ACK_FROM_WALL [%s] sent to sock %d", __FUNCTION__, buffer.data(), it.value());
 
         break;
     }
@@ -177,18 +165,17 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
             appLayoutFlagMap.insert(uid, ! it.value());
         }
 
-        //			updateAppLayout();
+		//updateAppLayout();
 
-        /*
-                        if ( appLayout->size() > EXTUI_MSG_SIZE ) {
-                                qCritical("%s::%s() : REQUEST_APP_LAYOUT received. Couldn't send msg because the appLayout size is %d", metaObject()->className(), __FUNCTION__, appLayout->size());
-                        }
-                        else {
-                                QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, *appLayout));
-                        }
-                        */
+//		if ( appLayout->size() > EXTUI_MSG_SIZE ) {
+//			qCritical("%s::%s() : REQUEST_APP_LAYOUT received. Couldn't send msg because the appLayout size is %d", metaObject()->className(), __FUNCTION__, appLayout->size());
+//		}
+//		else {
+//			QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, *appLayout));
+//		}
         break;
     }
+	***************/
 
     case VNC_SHARING: {
         quint64 uiclientid;
@@ -431,6 +418,7 @@ void UiServer::removeFinishedThread(quint64 uiclientid) {
         qDebug("UiServer::%s() : No such uiClientId", __FUNCTION__);
     }
 
+	/*
     removed = appLayoutFlagMap.remove(uiclientid);
     if ( removed > 1 ) {
         qDebug("UiServer::%s() : %d entries deleted from appLayoutMap. There were duplicate uiClientId", __FUNCTION__, removed);
@@ -438,6 +426,7 @@ void UiServer::removeFinishedThread(quint64 uiclientid) {
     else if ( removed == 0 ) {
         qDebug("UiServer::%s() : No such uiClientId", __FUNCTION__);
     }
+	*/
 
     /* delete shared pointer */
     QGraphicsItem *pa = getSharedPointer(uiclientid);
@@ -456,8 +445,9 @@ void UiServer::removeFinishedThread(quint64 uiclientid) {
 }
 
 /*!
-  This is called periodically in GraphicsViewMain::timerEvent()
+  This needs to be called periodically. Currently it's not used.
   */
+/**
 void UiServer::updateAppLayout() {
     if (!scene) return;
     QList<QGraphicsItem *> allitems = scene->items();
@@ -531,6 +521,7 @@ void UiServer::updateAppLayout() {
         }
     }
 }
+**/
 
 
 UiMsgThread * UiServer::getUiMsgThread(quint64 uiclientid) {
@@ -546,7 +537,7 @@ PolygonArrow * UiServer::getSharedPointer(quint64 uiclientid) {
     return it.value();
 }
 
-
+/***
 void UiServer::fileReceivingFunction(int mtype, const QString &fname, qint64 fsize, int port) {
     int serverSock = ::socket(AF_INET, SOCK_STREAM, 0);
     if (serverSock == -1) {
@@ -626,9 +617,10 @@ void UiServer::fileReceivingFunction(int mtype, const QString &fname, qint64 fsi
 
 
 
-/* Let the client close the connection */
+	// Let the client close the connection
     sleep(1);
 //    ::shutdown(socket, SHUT_RDWR);
 //    ::close(socket);
 //    ::close(serverSock);
 }
+***/

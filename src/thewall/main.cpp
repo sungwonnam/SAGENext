@@ -8,6 +8,7 @@
 #include "sagenextlauncher.h"
 
 #include "uiserver/uiserver.h"
+#include "uiserver/fileserver.h"
 
 #include "applications/base/affinityinfo.h"
 
@@ -31,41 +32,41 @@ int main(int argc, char *argv[])
 
           And use QImage as a paintdevice
           ***/
-        QApplication::setGraphicsSystem("raster");
+	QApplication::setGraphicsSystem("raster");
 
-        QApplication a(argc, argv);
+	QApplication a(argc, argv);
 
-        qsrand(QDateTime::currentDateTime().toTime_t());
+	qsrand(QDateTime::currentDateTime().toTime_t());
 
         /*
           create system wide settings object
           */
-        QSettings s(QDir::homePath() + "/.sagenext/sagenext.ini", QSettings::IniFormat);
+	QSettings s(QDir::homePath() + "/.sagenext/sagenext.ini", QSettings::IniFormat);
 
         /**
           find out x screen information
           */
-        QDesktopWidget *dw = QApplication::desktop();
-        qDebug() << "Desktop resolution " << dw->width() << " x " << dw->height();
-        qDebug() << "\tPrimary screen: " << dw->primaryScreen();
-        qDebug() << "\tScreen count: " << dw->screenCount();
-        qDebug() << "\tis VirtualDesktop: " << dw->isVirtualDesktop();
-        qDebug() << "\tAvailable geometry: " << dw->availableGeometry();
-        for (int i=0; i<dw->screenCount(); ++i) {
+	QDesktopWidget *dw = QApplication::desktop();
+	qDebug() << "Desktop resolution " << dw->width() << " x " << dw->height();
+	qDebug() << "\tPrimary screen: " << dw->primaryScreen();
+	qDebug() << "\tScreen count: " << dw->screenCount();
+	qDebug() << "\tis VirtualDesktop: " << dw->isVirtualDesktop();
+	qDebug() << "\tAvailable geometry: " << dw->availableGeometry();
+	for (int i=0; i<dw->screenCount(); ++i) {
 //		QRect availGeoOfThis = dw->availableGeometry(i);
 //		qDebug("GraphicsViewMain::%s() : screen %d, available geometry (%d,%d) %dx%d", __FUNCTION__, i,
 //			   availGeoOfThis.x(), availGeoOfThis.y(), availGeoOfThis.width(), availGeoOfThis.height());
-                qDebug() << "\t\tScreen " << i << " screenGeometry: " << dw->screenGeometry(i);
-        }
+		qDebug() << "\t\tScreen " << i << " screenGeometry: " << dw->screenGeometry(i);
+	}
 
 
-        // if user doens't defing size of the wall, use max available
-        if ( s.value("general/width", 0).toInt() <= 0  ||  s.value("general/height", 0).toInt() <= 0 ) {
-                s.setValue("general/width", dw->width());
-                s.setValue("general/height", dw->height());
-//		s.setValue("general/offsetx", 0);
-//		s.setValue("general/offsety", 0);
-        }
+	// if user doens't defing size of the wall, use max available
+	if ( s.value("general/width", 0).toInt() <= 0  ||  s.value("general/height", 0).toInt() <= 0 ) {
+		s.setValue("general/width", dw->width());
+		s.setValue("general/height", dw->height());
+		//s.setValue("general/offsetx", 0);
+		//s.setValue("general/offsety", 0);
+	}
 
 
         /*
@@ -77,51 +78,51 @@ int main(int argc, char *argv[])
         QApplication::setPalette(palette);
         */
 
-        QFont font;
-        font.setPointSize( s.value("gui/fontpointsize", 20).toInt());
-        font.setStyleStrategy(QFont::OpenGLCompatible);
-        font.setStyleStrategy(QFont::NoAntialias);
-        QApplication::setFont(font);
+	QFont font;
+	font.setPointSize( s.value("gui/fontpointsize", 20).toInt());
+	font.setStyleStrategy(QFont::OpenGLCompatible);
+	font.setStyleStrategy(QFont::NoAntialias);
+	QApplication::setFont(font);
 
 
 
 
 #if defined(Q_OS_LINUX)
-        if (numa_available() < 0 ) {
-                s.setValue("system/numa", false);
-        }
-        else {
-                s.setValue("system/numa", true);
-                //			qDebug() << numa_max_node() << numa_num_configured_nodes();
-                s.setValue("system/numnumanodes", numa_num_configured_nodes());
+	if (numa_available() < 0 ) {
+		s.setValue("system/numa", false);
+	}
+	else {
+		s.setValue("system/numa", true);
+		//qDebug() << numa_max_node() << numa_num_configured_nodes();
+		s.setValue("system/numnumanodes", numa_num_configured_nodes());
 
-                        //qDebug() << AffinityInfo::Num_Numa_Nodes << AffinityInfo::Num_Cpus << "\n\n";
+		//qDebug() << AffinityInfo::Num_Numa_Nodes << AffinityInfo::Num_Cpus << "\n\n";
 
-                        /*
-                                                int numa_max_possible_node(); // the size of a kernel type nodemask_t (in bits) - 1
-                                                int numa_num_possible_nodes(); // the size of a kernel type nodemask_t
+		/*
+			int numa_max_possible_node(); // the size of a kernel type nodemask_t (in bits) - 1
+			int numa_num_possible_nodes(); // the size of a kernel type nodemask_t
 
-                                                int numa_max_node(); // the numa node id of the last node (1 if there are two numa nodes)
-                                                int numa_num_configured_node(); // the number of numa node in this system
+			int numa_max_node(); // the numa node id of the last node (1 if there are two numa nodes)
+			int numa_num_configured_node(); // the number of numa node in this system
 
-                                                int numa_num_thread_cpus();
-                                                int numa_num_thread_ndoes();
+			int numa_num_thread_cpus();
+			int numa_num_thread_ndoes();
 
-                                                long numa_node_size(int node, 0); // total
-                                                */
-                qDebug() << "Your system supports NUMA API." << "There are " << numa_num_configured_nodes() << "Configured NUMA nodes";
-                        /*
-                        fprintf(stdout, "Max possible node %d, num possible nodes %d\n", numa_max_possible_node(), numa_num_possible_nodes());
-                        fprintf(stdout, "Max node %d, num configured node %d\n", numa_max_node(), numa_num_configured_node());
-                                        fprintf(stdout, "Num thread cpus %d, num thread nodes %d\n", numa_num_thread_cpus(), numa_num_thread_nodes());
-                                        for ( int i=0; i< numa_num_configured_nodes(); ++i ) {
-                                                        fprintf(stdout, "Node %d : %l MByte of memory\n", i, numa_node_size(i,0) / (1024*1024) );
-                                        }
+			long numa_node_size(int node, 0); // total
+		*/
+		qDebug() << "Your system supports NUMA API." << "There are " << numa_num_configured_nodes() << "Configured NUMA nodes";
+		/*
+	  fprintf(stdout, "Max possible node %d, num possible nodes %d\n", numa_max_possible_node(), numa_num_possible_nodes());
+	  fprintf(stdout, "Max node %d, num configured node %d\n", numa_max_node(), numa_num_configured_node());
+		  fprintf(stdout, "Num thread cpus %d, num thread nodes %d\n", numa_num_thread_cpus(), numa_num_thread_nodes());
+		  for ( int i=0; i< numa_num_configured_nodes(); ++i ) {
+			  fprintf(stdout, "Node %d : %l MByte of memory\n", i, numa_node_size(i,0) / (1024*1024) );
+		  }
 
-                                        settings->setValue("system/numnumanodes", numa_num_configured_node());
-                                        settings->setValue("system/numa", true);
-                                                */
-        }
+		  settings->setValue("system/numnumanodes", numa_num_configured_node());
+		  settings->setValue("system/numa", true);
+		*/
+	}
 
                 //      int ret = sched_getcpu();
                 //      qDebug("GraphicsViewMain::%s() : main() is running on cpu %d", __FUNCTION__, ret);
@@ -148,34 +149,34 @@ int main(int argc, char *argv[])
 #endif
 
 
-
-        // launch setting dialog
-//        SettingDialog sd(&s);
-        SettingStackedDialog sd(&s);
-        sd.setWindowModality(Qt::ApplicationModal);
-        sd.exec();
+	// launch setting dialog
+	// SettingDialog sd(&s);
+	SettingStackedDialog sd(&s);
+	sd.setWindowModality(Qt::ApplicationModal);
+	sd.adjustSize();
+	sd.exec();
 
 
         /**
           set system arch. related parameters
           These values are provided by a user
           */
-        bool ok = false;
-        int tmp = -1;
-        tmp = s.value("system/numnumanodes").toInt(&ok);
-        AffinityInfo::Num_Numa_Nodes = ok ? tmp : -1;
+	bool ok = false;
+	int tmp = -1;
+	tmp = s.value("system/numnumanodes").toInt(&ok);
+	AffinityInfo::Num_Numa_Nodes = ok ? tmp : -1;
 
-        tmp = s.value("system/cpupernumanode").toInt(&ok);
-        AffinityInfo::Cpu_Per_Numa_Node = ok ? tmp : -1;
+	tmp = s.value("system/cpupernumanode").toInt(&ok);
+	AffinityInfo::Cpu_Per_Numa_Node = ok ? tmp : -1;
 
-        tmp = s.value("system/threadpercpu").toInt(&ok);
-        AffinityInfo::HwThread_Per_Cpu = ok ? tmp : -1;
+	tmp = s.value("system/threadpercpu").toInt(&ok);
+	AffinityInfo::HwThread_Per_Cpu = ok ? tmp : -1;
 
-        tmp = s.value("system/swthreadpercpu").toInt(&ok);
-        AffinityInfo::SwThread_Per_Cpu = ok ? tmp : -1;
+	tmp = s.value("system/swthreadpercpu").toInt(&ok);
+	AffinityInfo::SwThread_Per_Cpu = ok ? tmp : -1;
 
-        tmp = s.value("system/numcpus").toInt(&ok);
-        AffinityInfo::Num_Cpus = ok ? tmp : -1;
+	tmp = s.value("system/numcpus").toInt(&ok);
+	AffinityInfo::Num_Cpus = ok ? tmp : -1;
 
 
 
@@ -185,20 +186,20 @@ int main(int argc, char *argv[])
         /**
           create the scene (This is a QObject)
           */
-        qDebug() << "Creating SAGENext Scenes";
-        SAGENextScene *scene = new SAGENextScene;
-        scene->setBackgroundBrush(QColor(20, 20, 20));
-        scene->setSceneRect(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble());
-        /*  This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously. */
-        scene->setItemIndexMethod(QGraphicsScene::NoIndex);
+	qDebug() << "Creating SAGENext Scenes";
+	SAGENextScene *scene = new SAGENextScene;
+	scene->setBackgroundBrush(QColor(20, 20, 20));
+	scene->setSceneRect(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble());
+	/*  This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously. */
+	scene->setItemIndexMethod(QGraphicsScene::NoIndex);
 
         /*
-          attach close button on the scene. if clicked, scene->deleteLater will be called
+          Attach close button on the scene. if clicked, scene->deleteLater will be called
           */
-        QPixmap closeIcon(":/resources/close_over.png");
-        PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(scene->width() * 0.02));
-        scene->addItem(closeButton);
-        closeButton->setX(scene->width() - closeButton->boundingRect().width() - 1);
+	QPixmap closeIcon(":/resources/close_over.png");
+	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(scene->width() * 0.015));
+	scene->addItem(closeButton);
+	closeButton->setX(scene->width() - closeButton->boundingRect().width() - 1);
 
 
 
@@ -269,6 +270,11 @@ int main(int argc, char *argv[])
         UiServer *uiserver = new UiServer(&s, launcher, scene);
 		scene->setUiServer(uiserver);
 
+		/**
+		  create the FileServer
+		  */
+		FileServer *fileServer = new FileServer(&s, launcher);
+
 
 
         /**
@@ -331,9 +337,11 @@ int main(int argc, char *argv[])
         int ret = a.exec();
 
 
+		if (fileServer) delete fileServer;
 
 //		if (uiserver) delete uiserver; // uiserver is deleted by the scene
 		//	if (launcher) delete launcher; // launcher is a child of scene. So laucher will be delete when scene is deleted automatically
+		/*
 		if (resourceMonitor) {
 			resourceMonitor->killTimer(rMonitorTimerId);
 			if (schedcontrol) {
@@ -341,6 +349,7 @@ int main(int argc, char *argv[])
 			}
 			delete resourceMonitor;
 		}
+		*/
 		return ret;
 }
 

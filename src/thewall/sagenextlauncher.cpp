@@ -117,161 +117,159 @@ void SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
   * UiServer triggers this slot
   */
 void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
-//        qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
+	//        qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
 
-        BaseWidget *w = 0;
-        switch(type) {
-        case MEDIA_TYPE_IMAGE: {
+	BaseWidget *w = 0;
+	switch(type) {
+	case MEDIA_TYPE_IMAGE: {
 
-                // streaming from ui client
-                if ( fsize > 0 && !recvIP.isEmpty() && recvPort > 0) {
+		// streaming from ui client
+		if ( fsize > 0 && !recvIP.isEmpty() && recvPort > 0) {
 
-                        // fire file receiving function
-//			QFuture<bool> future = QtConcurrent::run(this, &SAGENextLauncher::fileReceivingFunction, type, filename, fsize, senderIP, recvIP, recvPort);
+			// fire file receiving function
+			//QFuture<bool> future = QtConcurrent::run(this, &SAGENextLauncher::fileReceivingFunction, type, filename, fsize, senderIP, recvIP, recvPort);
 
-                        w = new PixmapWidget(fsize, senderIP, recvIP, recvPort, _globalAppId, _settings);
-                }
-
-                // from local storage
-                else if ( !filename.isEmpty() ) {
-                    qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
-                        w = new PixmapWidget(filename, _globalAppId, _settings);
-                }
-                else
-                        qCritical("%s() : MEDIA_TYPE_IMAGE can't open", __FUNCTION__);
-
-                break;
-        }
-
-        case MEDIA_TYPE_VIDEO: {
-
-                // the file has to be downloaded first
-			// or remote side has maplyer (compiled with SAIL) already
-
-
-                SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, senderIP, _rMonitor);
-                w = sws;
-                _sageWidgetQueue.push_back(sws);
-
-                // invoke sail remotely
-                QProcess *proc1 = new QProcess(this);
-                QStringList args1;
-//		args1 << "-xf" << senderIP << "\"cd $HOME/.sageConfig;$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0\"";
-                args1 << "-xf" << senderIP << "$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0" << filename;
-
-                // this will invoke sail (outside of SAGENext)
-                // _globalAppId shouldn't be incremented in here because StartSageApp() will increment eventually
-                // Also SageStreamWidget will be added to the scene in there
-                proc1->start("ssh",  args1);
-
-                break;
-        }
-
-
-        case MEDIA_TYPE_LOCAL_VIDEO: {
-            qDebug("%s::%s() : MEDIA_TYPE_LOCAL_VIDEO %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
-
-                if ( ! filename.isEmpty() ) {
-
-
-                        /**
-                          create sageWidget
-                          */
-                        SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, "127.0.0.1", _rMonitor);
-                        w = sws;
-
-                        /**
-                          add the widget to the queue
-                          */
-                        _sageWidgetQueue.push_back(sws);
-
-                        /**
-                          initiate SAIL process
-                          */
-                        QProcess *proc = new QProcess(this);
-                        QStringList args;
-                        args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-identify" << filename;
-
-                        // this will invoke sail (outside of SAGENext)
-                        // _globalAppId shouldn't be incremented in here because StartSageApp() will increment eventually
-                        // Also SageStreamWidget will be added to the scene in there
-                        proc->start("mplayer",  args);
-                }
-
-                break;
-        }
-
-        case MEDIA_TYPE_WEBURL: {
-            // filename is url string
-            WebWidget *ww = new WebWidget(_globalAppId, _settings, 0, Qt::Window);
-            ww->moveBy(30, 30);
-            w = ww;
-            ww->setUrl( filename );
-            break;
-        }
-
-		case MEDIA_TYPE_PDF: {
-			PDFViewerWidget *pdfviewer = new PDFViewerWidget(filename, _globalAppId, _settings, 0, Qt::Widget);
-			pdfviewer->moveBy(100, 100);
-			w = pdfviewer;
-			break;
+			w = new PixmapWidget(fsize, senderIP, recvIP, recvPort, _globalAppId, _settings);
 		}
 
-        case MEDIA_TYPE_AUDIO: {
-                break;
-        }
-        case MEDIA_TYPE_UNKNOWN: {
-                break;
-        }
+		// from local storage
+		else if ( !filename.isEmpty() ) {
+			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
+			w = new PixmapWidget(filename, _globalAppId, _settings);
+		}
+		else
+			qCritical("%s() : MEDIA_TYPE_IMAGE can't open", __FUNCTION__);
+
+		break;
+	}
+
+	case MEDIA_TYPE_VIDEO: {
+
+		// the file has to be downloaded first
+		// or remote side has maplyer (compiled with SAIL) already
 
 
-        case MEDIA_TYPE_PLUGIN: {
-                QPluginLoader *loader = new QPluginLoader(filename);
-                QObject *plugin = loader->instance();
-                if (!plugin) {
-                        qWarning("%s::%s() : %s", metaObject()->className(), __FUNCTION__, qPrintable(loader->errorString()));
-                        return;
-                }
-                DummyPluginInterface *dpi = qobject_cast<DummyPluginInterface *>(plugin);
-                if (!dpi) {
-                        qCritical() << "qobject_cast<DummyPluginInterface *>(plugin) failed";
-                        return;
-                }
+		SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, senderIP, _rMonitor);
+		w = sws;
+		_sageWidgetQueue.push_back(sws);
 
-                /*
-                  A plugin inherits BaseWidget
-                  */
-                if (dpi->name() == "BaseWidget") {
-                        w = static_cast<BaseWidget *>(plugin);
+		// invoke sail remotely
+		QProcess *proc1 = new QProcess(this);
+		QStringList args1;
+		//	args1 << "-xf" << senderIP << "\"cd $HOME/.sageConfig;$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0\"";
+		args1 << "-xf" << senderIP << "$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0" << filename;
 
-                        /*************************
-                         Below is very important because plugin always created using DEFAULT constructor !
-                         **************************/
-                        w->setSettings(_settings);
-                        w->setGlobalAppId(_globalAppId);
-                }
-                /*
-                  A plugin inherits QWidget
-                  */
-                else {
-                        w = new BaseWidget(_globalAppId, _settings);
-                        w->setProxyWidget(dpi->rootWidget()); // inefficient
-                        w->setWindowFlags(Qt::Window);
-                        w->setWindowFrameMargins(4,25,4,4);
-                }
+		// this will invoke sail (outside of SAGENext)
+		// _globalAppId shouldn't be incremented in here because StartSageApp() will increment eventually
+		// Also SageStreamWidget will be added to the scene in there
+		proc1->start("ssh",  args1);
 
-                if (w) {
-                        w->moveBy(100, 200);
-                }
-                else {
-                        qDebug() << "Failed to create widget from plugin object";
-                }
-                break;
-        } // end MEDIA_TYPE_PLUGIN
+		break;
+	}
 
-        } // end switch
 
-        launch(w);
+	case MEDIA_TYPE_LOCAL_VIDEO: {
+		qDebug("%s::%s() : MEDIA_TYPE_LOCAL_VIDEO %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
+
+		if ( ! filename.isEmpty() ) {
+			/**
+			  create sageWidget
+			*/
+			SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, "127.0.0.1", _rMonitor);
+			w = sws;
+
+			/**
+		      add the widget to the queue
+			*/
+			_sageWidgetQueue.push_back(sws);
+
+			/**
+	          initiate SAIL process
+			*/
+			QProcess *proc = new QProcess(this);
+			QStringList args;
+			args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-identify" << filename;
+
+			// this will invoke sail (outside of SAGENext)
+			// _globalAppId shouldn't be incremented in here because StartSageApp() will increment eventually
+			// Also SageStreamWidget will be added to the scene in there
+			proc->start("mplayer",  args);
+		}
+
+		break;
+	}
+
+	case MEDIA_TYPE_WEBURL: {
+		// filename is url string
+		WebWidget *ww = new WebWidget(_globalAppId, _settings, 0, Qt::Window);
+		ww->moveBy(30, 30);
+		w = ww;
+		ww->setUrl( filename );
+		break;
+	}
+
+	case MEDIA_TYPE_PDF: {
+		PDFViewerWidget *pdfviewer = new PDFViewerWidget(filename, _globalAppId, _settings, 0, Qt::Widget);
+		pdfviewer->moveBy(30, 30);
+		w = pdfviewer;
+		break;
+	}
+
+	case MEDIA_TYPE_AUDIO: {
+		break;
+	}
+	case MEDIA_TYPE_UNKNOWN: {
+		break;
+	}
+
+
+	case MEDIA_TYPE_PLUGIN: {
+		QPluginLoader *loader = new QPluginLoader(filename);
+		QObject *plugin = loader->instance();
+		if (!plugin) {
+			qWarning("%s::%s() : %s", metaObject()->className(), __FUNCTION__, qPrintable(loader->errorString()));
+			return;
+		}
+		DummyPluginInterface *dpi = qobject_cast<DummyPluginInterface *>(plugin);
+		if (!dpi) {
+			qCritical() << "qobject_cast<DummyPluginInterface *>(plugin) failed";
+			return;
+		}
+
+		/*
+		A plugin inherits BaseWidget
+		*/
+		if (dpi->name() == "BaseWidget") {
+			w = static_cast<BaseWidget *>(plugin);
+
+			/*************************
+				Below is very important because plugin always created using DEFAULT constructor !
+			**************************/
+			w->setSettings(_settings);
+			w->setGlobalAppId(_globalAppId);
+		}
+		/*
+		A plugin inherits QWidget
+		*/
+		else {
+			w = new BaseWidget(_globalAppId, _settings);
+			w->setProxyWidget(dpi->rootWidget()); // inefficient
+			w->setWindowFlags(Qt::Window);
+			w->setWindowFrameMargins(4,25,4,4);
+		}
+
+		if (w) {
+			w->moveBy(100, 200);
+		}
+		else {
+			qDebug() << "Failed to create widget from plugin object";
+		}
+		break;
+	} // end MEDIA_TYPE_PLUGIN
+
+	} // end switch
+
+	launch(w);
 }
 
 void SAGENextLauncher::launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate) {

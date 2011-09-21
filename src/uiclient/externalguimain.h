@@ -5,6 +5,7 @@
 //#include <QHostAddress>
 //#include <QAbstractSocket>
 #include <QSettings>
+#include <QTcpSocket>
 
 #include "messagethread.h"
 #include "sendthread.h"
@@ -30,16 +31,26 @@ class connectionDialog;
   Provides drag & drop feature
   */
 class DropFrame : public QLabel {
+	Q_OBJECT
 public:
-	explicit DropFrame(QWidget *parent = 0);
+	explicit DropFrame(const SendThread *st, QWidget *parent = 0);
 	
 protected:
 	void dragEnterEvent(QDragEnterEvent *);
 	void dropEvent(QDropEvent *);
+
+private:
+	const SendThread *_sendThread;
+
+signals:
+	void mediaDropped(QList<QUrl> mediaurls);
 };
 
 
 
+/**
+  sageNextPointer MainWindow
+  */
 class ExternalGUIMain : public QMainWindow
 {
 	Q_OBJECT
@@ -56,7 +67,7 @@ protected:
 	void wheelEvent(QWheelEvent *e);
 	
 	/**
-	  to provide mouse right click
+	  Override this to provide mouse right click
 	 */
 	void contextMenuEvent(QContextMenuEvent *event);
 	
@@ -68,9 +79,9 @@ protected:
 	void sendMouseWheel(const QPoint globalPos, int delta);
 
 private:
-        Ui::ExternalGUIMain *ui;
+	Ui::ExternalGUIMain *ui;
 
-        QSettings *_settings;
+	QSettings *_settings;
 
         /**
           unique ID of me used by UiServer to differentiate multiple ui clients.
@@ -79,33 +90,37 @@ private:
 
           This should be map data structure to support multiple wall connections
           */
-        quint64 uiclientid;
+	quint64 uiclientid;
 
-        int fileTransferPort;
+	/**
+	  receives this from UiServer upon connection.
+	  It is defined in "general/fileserverport'
+	  */
+	int fileTransferPort;
 
         /**
           * SHIFT + CMD + ALT + m
           */
-        QAction *ungrabMouseAction;
-
-        /**
-          * wall address and port
-          */
-		//QHostAddress wallAddr;
-
-        //QMap<quint64, QGraphicsScene *> wallSceneMap;
-
-        /**
-          socket that connect my msgthread and wall's uimsgthread
-          */
-        int msgsock;
+	QAction *ungrabMouseAction;
 
 
-        /**
-          * when I send my geometry to the wall
-          */
-        qreal scaleToWallX;
-        qreal scaleToWallY;
+	/**
+      The socket for message channel (messageThread)
+      */
+	QTcpSocket _tcpMsgSock;
+
+
+	/**
+	  The socket for file transferring (sendThread)
+	  */
+	QTcpSocket _tcpDataSock;
+
+
+	/**
+       When I send my coord to the wall, I'll multiple this to map my local coord to the wall coord.
+	  */
+	qreal scaleToWallX;
+	qreal scaleToWallY;
 
         /**
           * when I receive app geometry from the wall
@@ -114,44 +129,52 @@ private:
 //	qreal scaleFromWallY;
 
 
-        QSizeF wallSize;
+		/**
+		  Width, Height of the wall in pixel
+		  */
+	QSizeF wallSize;
 
         /**
-          * non-modla file dialog
+          * non-modal file dialog
           */
-        QFileDialog *fdialog;
+	QFileDialog *fdialog;
 
         /**
-          * message thread
+          * The message thread. _tcpMsgSock is used.
           */
-        MessageThread *msgThread;
+	MessageThread *msgThread;
 
         /**
-          file transfer thread
+          The file transfer thread. _tcpDataSock is used.
           */
-        SendThread *sendThread;
+	SendThread *sendThread;
 
 		/**
 		  to keep track mouse dragging start and end position
 		  */
-        QPoint mousePressedPos;
+	QPoint mousePressedPos;
 		
 		/**
 		  true if pointer sharing is on
 		  */
-		bool isMouseCapturing;
+	bool isMouseCapturing;
 
-        DropFrame *mediaDropFrame;
+		/**
+		  This is QLabel that accept dropEvent
+		  */
+	DropFrame *mediaDropFrame;
 
-        QString _pointerName;
+	QString _wallAddress;
 
-        QString _myIpAddress;
+	QString _pointerName;
 
-		QString _vncUsername;
+	QString _myIpAddress;
 
-        QString _vncPasswd;
-		
-		QString _sharingEdge;
+	QString _vncUsername;
+
+	QString _vncPasswd;
+
+	QString _sharingEdge;
 		
 		/**
 		  For mac users, start macCapture process written by Ratko to intercept mac's mouse events
@@ -165,7 +188,7 @@ private:
 		  WHEEL(3) 
 		  DOUBLE_CLICK(5) int
 		  **/
-		QProcess *macCapture;
+	QProcess *macCapture;
 		
 		/**
 		  This is for macCapture
@@ -174,16 +197,19 @@ private:
 		  1 left button pressed
 		  2 right button pressed
 		  */
-		int mouseBtnPressed;
+	int mouseBtnPressed;
 		
 		/**
 		  This is for macCapture
 		  to keep track current mouse position when click/dblclick/wheel happens
 		  */
-		QPoint currentGlobalPos;
+	QPoint currentGlobalPos;
 
 
-		void queueMsgToWall(const QByteArray &msg);
+		/**
+		  Queue invoking MessageThread::sendMsg()
+		  */
+	void queueMsgToWall(const QByteArray &msg);
 		
 //	void connectToWall(const char * ipaddr, quint16 port);
 
@@ -192,6 +218,11 @@ private slots:
           * CMD + N triggers connection dialog
           */
         void on_actionNew_Connection_triggered();
+
+		/**
+		  Upon connection, receive wall size, uiclientid and sets scaleToWallX/Y
+		  */
+		void doHandshaking();
 
         void on_vncButton_clicked();
 
