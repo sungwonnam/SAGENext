@@ -179,6 +179,11 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
       **/
 	Q_UNUSED(btnFlags);
 	if (app) {
+		if (btn == Qt::RightButton) {
+			if ( app->isSelected() ) app->setSelected(false);
+			else app->setSelected(true);
+		}
+
 		// Reimplement this for your app's specific needs
 		app->mouseClick(scenePos, btn);
 	}
@@ -352,6 +357,8 @@ PixmapCloseButtonOnScene::PixmapCloseButtonOnScene(const QString res, QGraphicsI
     : QGraphicsPixmapItem(parent)
     , flag(false)
 {
+
+
 	setPixmap(QPixmap(res));
 	setAcceptedMouseButtons(Qt::LeftButton);
 }

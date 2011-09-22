@@ -12,6 +12,7 @@ SAGENextScene::SAGENextScene(QObject *parent)
     , _rmonitor(0)
     , _schedcontrol(0)
 {
+
 }
 
 void SAGENextScene::prepareClosing() {

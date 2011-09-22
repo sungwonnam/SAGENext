@@ -578,12 +578,13 @@ int SageStreamWidget::initialize(quint64 sageappid, QString appname, QRect initr
         _perfMon->setExpectedFps( (qreal)framerate );
         _perfMon->setAdjustedFps( (qreal)framerate );
 
-        resize(resX, resY);
+        resize(resX, resY); // BaseWidget::ResizeEvent will call setTransforOriginPoint
 
         /**
           set transform origin point to widget's center
+
           **/
-        setTransformOriginPoint( resX / 2.0 , resY / 2.0 );
+//        setTransformOriginPoint( resX / 2.0 , resY / 2.0 );
 
 
         /* create double buffer */
@@ -655,6 +656,37 @@ int SageStreamWidget::initialize(quint64 sageappid, QString appname, QRect initr
 }
 
 
+int SageStreamWidget::getPixelSize(sagePixFmt type)
+{
+   int bytesPerPixel = 0;
+   switch(type) {
+          case PIXFMT_555:
+          case PIXFMT_555_INV:
+          case PIXFMT_565:
+          case PIXFMT_565_INV:
+          case PIXFMT_YUV:
+                 bytesPerPixel = 2;
+                 break;
+          case PIXFMT_888:
+          case PIXFMT_888_INV:
+                 bytesPerPixel = 3;
+                 break;
+
+          case PIXFMT_8888:
+          case PIXFMT_8888_INV:
+                 bytesPerPixel = 4;
+                 break;
+
+          case PIXFMT_DXT:
+                 bytesPerPixel = 8;
+                 break;
+
+          default:
+                 bytesPerPixel = 3;
+                 break;
+   }
+   return bytesPerPixel;
+}
 
 
 
@@ -849,37 +881,6 @@ int SageStreamWidget::initialize(quint64 sageappid, QString appname, QRect initr
 //	qDebug("SageStreamWidget::%s() : thread exit", __FUNCTION__);
 //}
 
-int SageStreamWidget::getPixelSize(sagePixFmt type)
-{
-   int bytesPerPixel = 0;
-   switch(type) {
-          case PIXFMT_555:
-          case PIXFMT_555_INV:
-          case PIXFMT_565:
-          case PIXFMT_565_INV:
-          case PIXFMT_YUV:
-                 bytesPerPixel = 2;
-                 break;
-          case PIXFMT_888:
-          case PIXFMT_888_INV:
-                 bytesPerPixel = 3;
-                 break;
-
-          case PIXFMT_8888:
-          case PIXFMT_8888_INV:
-                 bytesPerPixel = 4;
-                 break;
-
-          case PIXFMT_DXT:
-                 bytesPerPixel = 8;
-                 break;
-
-          default:
-                 bytesPerPixel = 3;
-                 break;
-   }
-   return bytesPerPixel;
-}
 
 
 

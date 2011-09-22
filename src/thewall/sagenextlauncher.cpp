@@ -61,7 +61,7 @@ void SAGENextLauncher::createFsManager() {
 /**
   public slot
   */
-void SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
+BaseWidget * SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
         SageStreamWidget *sw = 0;
 
         if (_sageWidgetQueue.isEmpty()) {
@@ -109,14 +109,14 @@ void SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
 //		resourceMonitor->updateAffInfo(sageWidget, -1, -1);
         }
 
-        launch(sw);
+        return launch(sw);
 }
 
 
 /**
   * UiServer triggers this slot
   */
-void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
+BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
 	//        qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
 
 	BaseWidget *w = 0;
@@ -228,12 +228,12 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
 		QObject *plugin = loader->instance();
 		if (!plugin) {
 			qWarning("%s::%s() : %s", metaObject()->className(), __FUNCTION__, qPrintable(loader->errorString()));
-			return;
+			return 0;
 		}
 		DummyPluginInterface *dpi = qobject_cast<DummyPluginInterface *>(plugin);
 		if (!dpi) {
 			qCritical() << "qobject_cast<DummyPluginInterface *>(plugin) failed";
-			return;
+			return 0;
 		}
 
 		/*
@@ -269,25 +269,26 @@ void SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, 
 
 	} // end switch
 
-	launch(w);
+	return launch(w);
 }
 
-void SAGENextLauncher::launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate) {
-//	qDebug() << "launch" << username << vncPasswd;
-        BaseWidget *w = new VNCClientWidget(_globalAppId, vncServerIP, display, username, vncPasswd, framerate, _settings);
-        launch(w);
+BaseWidget * SAGENextLauncher::launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate) {
+	//	qDebug() << "launch" << username << vncPasswd;
+	BaseWidget *w = new VNCClientWidget(_globalAppId, vncServerIP, display, username, vncPasswd, framerate, _settings);
+	return launch(w);
 }
 
-void SAGENextLauncher::launch(BaseWidget *w) {
-        if ( w ) {
-                _scene->addItem(w);
-//		connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));
-                ++_globalAppId; // increment only when widget is created successfully
-                w->setTopmost();
-        }
-        else {
-                qCritical("%s::%s() : Couldn't create an widget", metaObject()->className(), __FUNCTION__);
-        }
+BaseWidget * SAGENextLauncher::launch(BaseWidget *w) {
+	if ( w ) {
+		_scene->addItem(w);
+		//connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));
+		++_globalAppId; // increment only when widget is created successfully
+		w->setTopmost();
+	}
+	else {
+		qCritical("%s::%s() : Couldn't create an widget", metaObject()->className(), __FUNCTION__);
+	}
+	return w;
 }
 
 

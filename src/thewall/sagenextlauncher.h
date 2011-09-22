@@ -74,23 +74,23 @@ public slots:
         /**
           This slot is invoked by the signal incomingSail in fsManager::incomingConnection
           */
-        void launch(fsManagerMsgThread *);
+        BaseWidget * launch(fsManagerMsgThread *);
 
         /**
           this is general launch function
           */
-        void launch(int mediatype, QString filename, qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
+        BaseWidget * launch(int mediatype, QString filename, qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
 
         /**
           just for VNC widget
           */
-        void launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10);
+        BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10);
 
         /**
           The widget is added to the scene in here.
           _globalAppId is incremented by 1 in here
           */
-        void launch(BaseWidget *);
+        BaseWidget * launch(BaseWidget *);
 
 };
 

@@ -2,6 +2,8 @@
 #include "base/perfmonitor.h"
 
 #include <QPainter>
+#include <QPushButton>
+#include <QGraphicsProxyWidget>
 
 PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
 	: BaseWidget(globalappid, s, parent, wflags)
@@ -38,6 +40,16 @@ PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, co
 //	}
 
 	setCurrentPage(0);
+
+/**
+	QPushButton *_rbtn = new QPushButton(QIcon(":/resources/rightbox.png"), "");
+	connect(_rbtn, SIGNAL(clicked()), this, SLOT(nextPage()));
+	QGraphicsProxyWidget *rButton = new QGraphicsProxyWidget(this);
+	rButton->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);  // button won't scale when parent's scale changes
+	rButton->setWidget(_rbtn);
+	rButton->setPos( 10, size().height() - rButton->size().height() );
+	*/
+
 }
 
 PDFViewerWidget::~PDFViewerWidget() {
@@ -46,6 +58,16 @@ PDFViewerWidget::~PDFViewerWidget() {
 	if (_document) delete _document;
 
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
+}
+
+void PDFViewerWidget::prevPage() {
+	if ( _currentPageIndex == 0 ) return;
+	setCurrentPage(_currentPageIndex - 1);
+}
+
+void PDFViewerWidget::nextPage() {
+	if ( _currentPageIndex >= _document->numPages() - 1) return;
+	setCurrentPage(_currentPageIndex + 1);
 }
 
 void PDFViewerWidget::setCurrentPage(int pageNumber) {
@@ -71,7 +93,6 @@ void PDFViewerWidget::setCurrentPage(int pageNumber) {
 
 //	qDebug() << _pixmap.size();
 	resize(_pixmap.size());
-	setTransformOriginPoint(size().width()/2 , size().height()/2);
 }
 
 void PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {

@@ -90,8 +90,9 @@ void PixmapWidget::callUpdate() {
 
 		/**
 		  set transform origin point to widget's center
+		  this is handled in BaseWidget::resizeEvent()
 		  */
-		setTransformOriginPoint( image->width() / 2.0 , image->height() / 2.0 );
+//		setTransformOriginPoint( image->width() / 2.0 , image->height() / 2.0 );
 
 		delete image;
 		image = 0;

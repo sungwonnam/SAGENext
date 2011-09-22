@@ -272,23 +272,28 @@ protected:
         void timerEvent(QTimerEvent *);
 
         /*!
+		  setTransformOriginPoint() with center of the widget
           */
         virtual void resizeEvent(QGraphicsSceneResizeEvent *event);
 
         /*!
-          * Just changes z value and keep base implementation
+          * Just changes z value and recency of interaction
 
 		  The default implementation makes this widget mouseGrabber (QGraphicsScene::mouseGrabberItem())
-		  Only the mouseGrabber item can receive move/release/doubleClick events
+		  Only the mouseGrabber item can receive move/release/doubleClick events.
+
+		  Reimplementing this makes the event->accept() which makes this widget the mousegrabber
           */
         virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
 
 		/*!
 		  QGraphicsItem::mouseReleaseEvent() handles basic interactions such as selection and moving upon receiving this event.
 		  By reimplement this function with empty definition, those actions won't be enabled through console mouse.
-		  This is intended. We focus on interactions through shared pointers
+		  This makes moving this item with console mouse incorrect.
+
+		  This is intended. We focus on interactions through shared pointers.
 		  */
-		virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *) {}
+		virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
 
 //        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
 
@@ -298,12 +303,12 @@ protected:
         virtual void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event);
 
         /*!
-          * pops up context menu this->_contextMenu
+          * pops up context menu this->_contextMenu upon receiving mouse right click
           */
         virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
 
         /*!
-          * calls reScale()
+          * calls reScale() for Qt::Widget
           */
         virtual void wheelEvent(QGraphicsSceneWheelEvent *event);
 
@@ -350,9 +355,9 @@ public slots:
         virtual void maximize(); /**< maximizes app window */
 
         /*!
-                  This implements opacity animation (pAnim_opacity)
-                  Once the animation emit finishes(), close() should be called with Qt::WA_DeleteOnClose set
-                  */
+          This implements opacity animation (pAnim_opacity)
+          Once the animation emit finishes(), close() should be called with Qt::WA_DeleteOnClose set
+        */
         virtual void fadeOutClose();
 };
 

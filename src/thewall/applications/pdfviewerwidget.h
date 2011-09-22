@@ -44,6 +44,10 @@ private:
 public slots:
 	void setCurrentPage(int pageNumber);
 
+	void nextPage();
+
+	void prevPage();
+
 };
 
 #endif // PDFVIEWERWIDGET_H

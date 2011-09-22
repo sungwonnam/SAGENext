@@ -196,9 +196,14 @@ int main(int argc, char *argv[])
 	  Attach close button on the scene. if clicked, scene->deleteLater will be called
       */
 	QPixmap closeIcon(":/resources/close_over.png");
-	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(scene->width() * 0.015));
-	scene->addItem(closeButton);
+//	QPixmap closeIcon(":/resources/powerbutton_black_64x64.png");
+	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(scene->width() * 0.02));
+	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
+	opacity->setOpacity(0.2);
+	closeButton->setGraphicsEffect(opacity);
 	closeButton->setX(scene->width() - closeButton->boundingRect().width() - 1);
+
+	scene->addItem(closeButton);
 
 
 
@@ -336,8 +341,9 @@ int main(int argc, char *argv[])
 
 		//launcher->launch("", "evl123", 0, "131.193.77.191", 24);
 //		launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
-		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
-		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
+//		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
+//		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
+		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
 
 
         // starts event loop

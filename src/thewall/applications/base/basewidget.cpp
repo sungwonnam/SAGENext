@@ -48,6 +48,21 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
 	, _contextMenu(0)
 	, _priority(0.5)
 {
+	// This will affect boundingRect(), windowFrameRect() of the widget.
+	qreal l = settings->value("gui/framemarginleft", 3).toDouble();
+	qreal t = settings->value("gui/framemargintop", 3).toDouble();
+	qreal r = settings->value("gui/framemarginright", 3).toDouble();
+	qreal b = settings->value("gui/framemarginright", 3).toDouble();
+	if (isWindow()) {
+		// window frame is not interactible by shared pointers
+		setWindowFrameMargins(0, 0, 0, 0);
+		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
+		setContentsMargins(l, t + 20, r, b); // by default, this is 0 0 0 0
+	}
+	else {
+		setWindowFrameMargins(l, t, r, b);
+	}
+
 	init();
 }
 
@@ -114,25 +129,6 @@ void BaseWidget::init()
 	/* Turn cache off for streaming application */
 	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
-	/**
-	  Plugin can't reach here because it uses default constructor
-	  */
-	if (settings) {
-		// This will affect boundingRect(), windowFrameRect() of the widget.
-		qreal l = settings->value("gui/framemarginleft", 3).toDouble();
-		qreal t = settings->value("gui/framemargintop", 3).toDouble();
-		qreal r = settings->value("gui/framemarginright", 3).toDouble();
-		qreal b = settings->value("gui/framemarginright", 3).toDouble();
-		if (isWindow()) {
-			// window frame is not interactible by shared pointers
-			setWindowFrameMargins(0, 0, 0, 0);
-			// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
-			setContentsMargins(l, t + 20, r, b); // by default, this is 0 0 0 0
-		}
-		else {
-			setWindowFrameMargins(l, t, r, b);
-		}
-	}
 	//qDebug() << "BaseWidget::init() : boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
 	//getWindowFrameMargins(&frameMarginLeft, &frameMarginTop, &frameMarginRight, &frameMarginBottom);
 
@@ -678,11 +674,6 @@ void BaseWidget::createActions()
 
 
 void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn) {
-	if (btn == Qt::RightButton) {
-		if ( isSelected() ) setSelected(false);
-		else setSelected(true);
-	}
-
     QPointF itempos = mapFromScene(clickedScenePos);
 
     QGraphicsView *gview = 0;
@@ -782,8 +773,9 @@ void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsI
 }
 
 
-/*! reimplementing events */
-
+/**
+  drawInfo() will start the timer
+  */
 void BaseWidget::timerEvent(QTimerEvent *) {
 //	qDebug("BaseWidget::%s()", __FUNCTION__);
 	updateInfoTextItem();
@@ -794,10 +786,8 @@ void BaseWidget::timerEvent(QTimerEvent *) {
         */
 }
 
-void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
-	if(_appInfo) {
-//		_appInfo->setRecentBoundingRect( boundingRect() );
-	}
+void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
+	setTransformOriginPoint(e->newSize().width() / 2, e->newSize().height() / 2);
 }
 
 void BaseWidget::setLastTouch() {
@@ -812,10 +802,10 @@ void BaseWidget::setLastTouch() {
 
 
 /*!
-  I'm reimplementing this so event will by default be accepted and this is the mousegrabber
+  reimplement this so the item can be the mousegrabber
   */
 void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-	qDebug() << "BaseWidget::mousePressEvent() : buttons"<< event->button() << "pos:" << event->pos() << " ,scenePos:" << event->scenePos() << " ,screenPos:" << event->screenPos();
+//	qDebug() << "BaseWidget::mousePressEvent() : buttons"<< event->button() << "pos:" << event->pos() << " ,scenePos:" << event->scenePos() << " ,screenPos:" << event->screenPos();
     if ( event->buttons() & Qt::LeftButton) {
         // refresh lastTouch
 #if QT_VERSION < 0x040700
@@ -830,14 +820,23 @@ void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 //        setTopmost();
     }
 
-    // keep the base implementation
-    // The event is QEvent::ignore() for items that are neither movable nor selectable.
+	/*
+	  event will by default be accepted, and this item is then the mouse grabber
+	  */
+
 	/*
 	  The mouse press event decides which item should become the mouse grabber (see QGraphicsScene::mouseGrabberItem()).
       If you do not reimplement this function, the press event will propagate to any topmost item beneath this item,
       and no other mouse events will be delivered to this item.
 	  */
 //    QGraphicsWidget::mousePressEvent(event);
+}
+
+void BaseWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
+
+	// If you keep the base implementation for console mouse interaction,
+	// it makes multiple item selection with shared pointer unavailable
+//	QGraphicsItem::mouseReleaseEvent(e);
 }
 
 //void BaseWidget::mouseMoveEvent(QGraphicsSceneMouseEvent *e) {
@@ -851,12 +850,6 @@ void BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 	if ( mapRectToScene(boundingRect()).contains(event->scenePos()) )
 		maximize();
 }
-
-//void BaseWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
-//	if ( event->buttons() & Qt::LeftButton ) {
-//		mapToScene(event->pos());
-//	}
-//}
 
 void BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
 	//	if ( affInfo && _affinityControlAction ) {
@@ -880,6 +873,8 @@ void BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	else {
 		reScale(numTicks, 0.05);
 	}
+
+	// reimplementation will accept the event
 }
 
 

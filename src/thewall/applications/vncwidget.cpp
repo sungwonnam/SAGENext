@@ -76,14 +76,15 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 	//qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
 	/**
-	  This is important
+	  This is important.
+	  Also BaseWidget::resizeEvent() will call setTransformOriginPoint();
      */
 	resize(_image->size());
 
 	/**
 	  sets the transform origin point to widget's center
 	 */
-	setTransformOriginPoint( _image->width() / 2.0 , _image->height() / 2.0 );
+//	setTransformOriginPoint( _image->width() / 2.0 , _image->height() / 2.0 );
 
 	// starting thread.
 	future = QtConcurrent::run(this, &VNCClientWidget::receivingThread);
