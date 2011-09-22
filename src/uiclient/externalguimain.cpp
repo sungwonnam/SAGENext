@@ -114,6 +114,7 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 
 	_wallAddress = cd.address();
 	_pointerName = cd.pointerName();
+	_pointerColor = cd.pointerColor();
 	_myIpAddress = cd.myAddress();
 	_vncUsername = cd.vncUsername();
 	_vncPasswd = cd.vncPasswd();
@@ -457,7 +458,7 @@ void ExternalGUIMain::on_pointerButton_clicked()
 #endif
 			QByteArray msg(EXTUI_MSG_SIZE, 0);
 			// msgtype, uiclientid, pointer name, Red, Green, Blue
-			sprintf(msg.data(), "%d %llu %s %d %d %d", POINTER_SHARE, uiclientid, qPrintable(_pointerName), 255, 128, 0);
+			sprintf(msg.data(), "%d %llu %s %s", POINTER_SHARE, uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
 			queueMsgToWall(msg);
 		}
 		else {
@@ -636,7 +637,7 @@ void ExternalGUIMain::queueMsgToWall(const QByteArray &msg) {
 	if (msgThread && msgThread->isRunning())
 		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
 	else
-		qWarning() << "couldn't send the message. The message thread isn't running. ";
+		qWarning() << "Please connect to the wall first.";
 }
 
 
@@ -880,13 +881,16 @@ ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
 		ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
         ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
         ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
-		
+		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
+//		QColor pc(_settings->value("pointercolor", "#ff0000").toString());
 		
 		int idx = ui->sharingEdgeCB->findText(_settings->value("sharingedge", "top").toString());
 		if (idx != -1) 
 			ui->sharingEdgeCB->setCurrentIndex(idx);
 		else
 			ui->sharingEdgeCB->setCurrentIndex(0);
+
+		adjustSize();
 
 //	ui->ipaddr->setText("127.0.0.1");
 //	ui->port->setText("30003");
@@ -905,11 +909,13 @@ void ConnectionDialog::on_buttonBox_accepted()
 	vncusername = ui->vncUsername->text();
 	vncpass = ui->vncpasswd->text();
 	psharingEdge = ui->sharingEdgeCB->currentText();
+	pColor = ui->pointerColorLabel->text();
 	
 	_settings->setValue("walladdr", addr);
 	_settings->setValue("wallport", portnum);
 	_settings->setValue("myaddr", myaddr);
 	_settings->setValue("pointername", pName);
+	_settings->setValue("pointercolor", pColor);
 	_settings->setValue("vncusername", vncusername);
 	_settings->setValue("vncpasswd", vncpass);
 	_settings->setValue("sharingedge", psharingEdge);
@@ -924,8 +930,13 @@ void ConnectionDialog::on_buttonBox_accepted()
 
 void ConnectionDialog::on_buttonBox_rejected()
 {
-        reject();
+	reject();
 }
 
-
-
+void ConnectionDialog::on_pointerColorButton_clicked()
+{
+	QColor prevColor;
+	prevColor.setNamedColor(_settings->value("pointercolor", "#FF0000").toString());
+	QColor newColor = QColorDialog::getColor(prevColor, this, "Pointer Color"); // pops up modal dialog
+	ui->pointerColorLabel->setText(newColor.name());
+}

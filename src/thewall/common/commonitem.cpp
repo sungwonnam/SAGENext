@@ -42,12 +42,34 @@ PolygonArrow::PolygonArrow(const quint64 uicid, const QSettings *s, const QColor
 	QPolygonF p;
 	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
 
+	QPen pen;
+	pen.setWidth(2); // 3 pixel
+	pen.setColor(Qt::white);
+	setPen(pen);
+
 	setBrush(QBrush(c));
 	setPolygon(p);
 
 	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
-	setZValue(9999999); // the top most
+	setZValue(999999999); // the top most
+}
+
+PolygonArrow::~PolygonArrow() {
+}
+
+void PolygonArrow::setPointerName(const QString &text) {
+        textItem = new QGraphicsSimpleTextItem(text, this);
+        textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
+        textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
+
+		QFont f;
+		f.setPointSize(settings->value("gui/pointerfontsize", 20).toInt());
+		f.setBold(true);
+		textItem->setFont(f);
+
+        textItem->setBrush(Qt::white);
+        textItem->moveBy(0, boundingRect().height());
 }
 
 void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags) {
@@ -104,10 +126,16 @@ void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFla
 }
 
 void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
+	Q_UNUSED(btnFlags);
 	// note that this doesn't consider window frame
     if (!setAppUnderPointer(scenePos)) {
-        qDebug() << "pointerPress() : setAppUnderPointer failed";
+        qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
     }
+	else {
+//		qDebug() << "PolygonArrow::pointerPress() : got the app";
+		if ( btn == Qt::LeftButton)
+			app->setTopmost();
+	}
 
 	// Don't we need to do setTopMost as well?
 }
@@ -136,13 +164,13 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
 //    //app->grabMouse();
 
 //    if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
-//		// Upon receiving mousePressEvent, the item will become mouseGrabber
+//		// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
 //        qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
 //    }
 //    if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
 //        qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
 //    }
-////	app->ungrabMouse();
+//    //app->ungrabMouse();
 
 
     /**
@@ -169,11 +197,15 @@ void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton b
 
     if (gview) {
         QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier);
+		QMouseEvent release(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier);
 
         // sendEvent doesn't delete event object, so event should be created in stack space
         if ( ! QApplication::sendEvent(gview->viewport(), &dblClickEvent) ) {
-            qDebug("PolygonArrow::%s() : sendEvent MouseMuttonDblClick on (%.1f,%.1f) failed", __FUNCTION__, scenePos.x(), scenePos.y());
+            qDebug("PolygonArrow::%s() : sendEvent MouseButtonDblClick on (%.1f,%.1f) failed", __FUNCTION__, scenePos.x(), scenePos.y());
         }
+		if ( ! QApplication::sendEvent(gview->viewport(), &release)) {
+			qDebug("PolygonArrow::%s() : sendEvent releaseEvent failed", __FUNCTION__);
+		}
     }
     else {
         qDebug("PolygonArrow::%s() : there is no viewport on %.1f, %.1f", __FUNCTION__, scenePos.x(), scenePos.y());
@@ -200,17 +232,6 @@ void PolygonArrow::pointerWheel(const QPointF &scenePos, int delta) {
     }
 }
 
-PolygonArrow::~PolygonArrow() {
-}
-
-void PolygonArrow::setPointerName(const QString &text) {
-        textItem = new QGraphicsSimpleTextItem(text, this);
-        textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
-        textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
-        textItem->setBrush(Qt::white);
-        textItem->moveBy(0, boundingRect().height());
-}
-
 bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
     Q_ASSERT(scene());
     QList<QGraphicsItem *> list = scene()->items(scenePos, Qt::ContainsItemBoundingRect, Qt::DescendingOrder);
@@ -221,11 +242,8 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
         if ( item == this ) continue;
         //qDebug() << item;
 
-
-        if ( item->type() == UserType + 2) {
+        if ( item->type() >= UserType + 2) {
             app = static_cast<BaseWidget *>(item);
-
-
             //qDebug("PolygonArrow::%s() : uiclientid %llu, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
             return true;
         }
@@ -251,8 +269,8 @@ QGraphicsView * PolygonArrow::eventReceivingViewport(const QPointF scenePos) {
             // mouse click position is within this view's bounding rectangle
 			return v;
         }
-
     }
+	return 0;
 }
 
 
@@ -261,47 +279,42 @@ QGraphicsView * PolygonArrow::eventReceivingViewport(const QPointF scenePos) {
 
 
 
-SwSimpleTextItem::SwSimpleTextItem(int ps, QGraphicsItem *parent) :
-                QGraphicsSimpleTextItem(parent)
+SwSimpleTextItem::SwSimpleTextItem(int ps, QGraphicsItem *parent)
+	: QGraphicsSimpleTextItem(parent)
 {
-        if ( ps > 0 ) {
-                QFont f;
-                f.setPointSize(ps);
-//		setBrush(Qt::white);
-                //setPen(QPen(Qt::black));
-                setFont(f);
-        }
-
-        setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
+	if ( ps > 0 ) {
+		QFont f;
+		f.setPointSize(ps);
+		setFont(f);
+	}
+//	setBrush(QColor(100, 100, 100, 128)); // will change brush for text
+	setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
 }
 
 SwSimpleTextItem::~SwSimpleTextItem() {
-
 }
-
 void SwSimpleTextItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
-        int numDegrees = event->delta() / 8;
-        int numTicks = numDegrees / 15;
-//	qDebug("SwSimpleTextItem::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
+	int numDegrees = event->delta() / 8;
+	int numTicks = numDegrees / 15;
+	//	qDebug("SwSimpleTextItem::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
 
-        qreal s = scale();
-        if ( numTicks > 0 ) {
-                s += 0.1;
-        }
-        else {
-                s -= 0.1;
-        }
-//	prepareGeometryChange();
-        setScale(s);
-
+	qreal s = scale();
+	if ( numTicks > 0 ) {
+		s += 0.1;
+	}
+	else {
+		s -= 0.1;
+	}
+	//	prepareGeometryChange();
+	setScale(s);
 }
 
 void SwSimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-        Q_UNUSED(option);
-        Q_UNUSED(widget);
+	Q_UNUSED(option);
+	Q_UNUSED(widget);
 
-        painter->fillRect(boundingRect(), Qt::lightGray);
-        QGraphicsSimpleTextItem::paint(painter, option, widget);
+	painter->fillRect(boundingRect(), QBrush(QColor(128, 128, 128, 164)));
+	QGraphicsSimpleTextItem::paint(painter, option, widget);
 }
 
 

@@ -68,6 +68,9 @@ public:
 
 
 
+		/**
+		  This seems only valid on Qt::Window
+		  */
         virtual void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 
@@ -280,6 +283,13 @@ protected:
           */
         virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
 
+		/*!
+		  QGraphicsItem::mouseReleaseEvent() handles basic interactions such as selection and moving upon receiving this event.
+		  By reimplement this function with empty definition, those actions won't be enabled through console mouse.
+		  This is intended. We focus on interactions through shared pointers
+		  */
+		virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *) {}
+
 //        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
 
         /*!
@@ -296,17 +306,6 @@ protected:
           * calls reScale()
           */
         virtual void wheelEvent(QGraphicsSceneWheelEvent *event);
-
-
-        /**
-          child class should provide widget specific behavior.
-          If sagewidget (mplayer) then, provide video control overlay.
-
-          BaseWidget will provide resize handle on four corners
-          */
-        virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
-
-        virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
 
 
 private:

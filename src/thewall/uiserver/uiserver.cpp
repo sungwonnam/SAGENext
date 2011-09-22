@@ -202,15 +202,15 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 
         /** shared pointer **/
     case POINTER_SHARE: {
-        int r,g,b;
+		char colorname[16];
         quint64 uiclientid;
         QByteArray pname(64, '\0');
-        sscanf(msg.constData(), "%d %llu %s %d %d %d", &code, &uiclientid, pname.data(), &r, &g, &b);
+        sscanf(msg.constData(), "%d %llu %s %s", &code, &uiclientid, pname.data(), colorname);
 
-        qDebug("UiServer::%s() : POINTER_SHARE from uiclient %llu, (%s, %d %d %d)",__FUNCTION__, uiclientid, pname.constData(), r,g,b);
+        qDebug("UiServer::%s() : POINTER_SHARE from uiclient %llu, (%s, %s)",__FUNCTION__, uiclientid, pname.constData(), colorname);
 
         PolygonArrow *pointerItem = 0;
-        pointerItem = new PolygonArrow(uiclientid, settings, QColor(r,g,b));
+		pointerItem = new PolygonArrow(uiclientid, settings, QColor(QString(colorname)));
         Q_ASSERT(pointerItem);
         if (!pname.isNull() && !pname.isEmpty()) {
             pointerItem->setPointerName(QString(pname));
@@ -261,7 +261,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
       An external ui client's mouseMoveEvent plus left button modifier triggers this
       This is always followed by POINTER_PRESS (left button)
     */
-    case POINTER_DRAGGING: {
+//	case POINTER_RIGHTDRAGGING:
+    case POINTER_DRAGGING:
+	{
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
@@ -298,7 +300,8 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
    /*
     Pointer will set the widget if there is one (QGraphicsItem::UserType + 2) under it
     */
-    case POINTER_PRESS: {
+    case POINTER_PRESS:
+	{
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
@@ -317,23 +320,34 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         break;
     }
 
-	case POINTER_RIGHTPRESS: {
+	case POINTER_RIGHTPRESS:
+	{
+		quint64 uiclientid;
+        int x,y;
+        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        if (pa) {
+            pa->pointerPress(QPointF(x,y), Qt::RightButton, Qt::NoButton | Qt::RightButton);
+        }
+        else {
+            qDebug("UiServer::%s() : POINTER_RIGHTPRESS can't find pointer object", __FUNCTION__);
+        }
 		break;
 	}
 
 
 	/**
 	  mouseReleaseEvent from external GUI sends POINTER_CLICK message
-	  This is left click
 	*/
-    case POINTER_CLICK: {
+    case POINTER_CLICK:
+	{
         quint64 uiclientid;
         int x,y; // x,y from ui clients is the scene position of the wall
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
         PolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
 //            qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
-            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
+            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::NoButton | Qt::LeftButton);
 
 			// Let each application provides mouseClick()
 			 // Widget under the pointer can reimplement BaseWidget::mouseClick()
@@ -345,21 +359,20 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         break;
     }
 
-    /**
-      In response to external UI's right release
-    */
-    case POINTER_RIGHTCLICK: {
+		/**
+		  contextMenuEvent -> POINTER_RIGHTCLICK
+		  */
+	case POINTER_RIGHTCLICK:
+	{
         quint64 uiclientid;
-        int x,y;
+        int x, y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
         PolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
-//            qDebug("UiServer::%s() : POINTER_RIGHTCLICK : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
-            pa->pointerClick(QPointF(x,y), Qt::RightButton, Qt::RightButton);
-//			if ( pa->appUnderPointer() ) pa->appUnderPointer()->mouseClick(QPointF(x, y), Qt::RightButton);
+            pa->pointerClick(QPointF(x,y), Qt::RightButton, Qt::NoButton | Qt::RightButton);
         }
         else {
-            qDebug("UiServer::%s() : POINTER_RIGHTCLICK  can't find pointer object", __FUNCTION__);
+            qDebug("UiServer::%s() : POINTER_RIGHTCLICK can't find pointer object", __FUNCTION__);
         }
         break;
     }

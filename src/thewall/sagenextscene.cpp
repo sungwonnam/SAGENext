@@ -34,7 +34,7 @@ void SAGENextScene::prepareClosing() {
 SAGENextScene::~SAGENextScene() {
 	foreach (QGraphicsItem *item, items()) {
 		if (!item) continue;
-		if (item->type() == QGraphicsItem::UserType + 2) {
+		if (item->type() >= QGraphicsItem::UserType + 2) {
 			// this is user application
 			BaseWidget *bw = static_cast<BaseWidget *>(item);
 //			bw->fadeOutClose();
@@ -63,7 +63,7 @@ SAGENextScene::~SAGENextScene() {
 void SAGENextScene::closeAllUserApp() {
 	foreach (QGraphicsItem *item, items()) {
 		if (!item ) continue;
-		if (item->type() == QGraphicsItem::UserType + 2) {
+		if (item->type() >= QGraphicsItem::UserType + 2) {
 			// this is user application
 			BaseWidget *bw = static_cast<BaseWidget *>(item);
 			Q_ASSERT(bw);

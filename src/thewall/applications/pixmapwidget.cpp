@@ -85,11 +85,12 @@ void PixmapWidget::start() {
 void PixmapWidget::callUpdate() {
 	if ( futureWatcher->result() ) {
 		resize(image->size());
+//		qDebug() << "boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
 		_appInfo->setFrameSize(image->width(), image->height(), image->depth());
 
 		/**
-				  set transform origin point to widget's center
-				  **/
+		  set transform origin point to widget's center
+		  */
 		setTransformOriginPoint( image->width() / 2.0 , image->height() / 2.0 );
 
 		delete image;

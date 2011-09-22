@@ -203,7 +203,10 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
 {
 	ui->setupUi(this);
 
+	ui->fontSizeLineEdit->setInputMask("900"); // 3 ascii digit. first digit is required
 	ui->fontSizeLineEdit->setText(_settings->value("gui/fontpointsize", 20).toString());
+	ui->pointerFontSizeLineEdit->setInputMask("900");
+	ui->pointerFontSizeLineEdit->setText(_settings->value("gui/pointerfontsize", 20).toString());
 
 	ui->frameBorderLeftLineEdit->setText(_settings->value("gui/framemarginleft", 3).toString());
 	ui->frameBorderTopLineEdit->setText(_settings->value("gui/framemargintop", 3).toString());
@@ -212,6 +215,7 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
 }
 void GuiSettingDialog::accept() {
 	_settings->setValue("gui/fontpointsize", ui->fontSizeLineEdit->text().toInt());
+	_settings->setValue("gui/pointerfontsize", ui->pointerFontSizeLineEdit->text().toInt());
 	/* window frame margins */
 	_settings->setValue("gui/framemarginleft", ui->frameBorderLeftLineEdit->text().toInt());
 	_settings->setValue("gui/framemargintop", ui->frameBorderTopLineEdit->text().toInt());

@@ -156,7 +156,7 @@ int SchedulerControl::launchScheduler(SchedulerControl::Scheduler_Type st, int m
 }
 
 int SchedulerControl::launchScheduler(const QString &str, int msec) {
-	Scheduler_Type st;
+	Scheduler_Type st = SchedulerControl::SelfAdjusting;
 	if ( QString::compare(str, "SMART", Qt::CaseInsensitive) == 0 ) {
 		st = SchedulerControl::SMART;
 	}
@@ -193,7 +193,7 @@ SchedulerControl::~SchedulerControl() {
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
 
-bool SchedulerControl::eventFilter(QObject *obj, QEvent *e) {
+bool SchedulerControl::eventFilter(QObject *, QEvent *) {
 
 //	if ( e->type() == QEvent::Timer ) {
 
@@ -328,6 +328,7 @@ int AbstractScheduler::configureRail() {
 	proc.start("cat /proc/interrupts | grep eth4");
 	// cat /proc/irq/####/smp_affinity // requires sudo permission at least
 
+	return 0;
 }
 
 

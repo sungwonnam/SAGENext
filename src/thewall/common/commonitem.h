@@ -65,9 +65,6 @@ public:
           */
         virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
 
-
-
-
         /**
            This function generates and sends real doubleclick event to the viewport widget
           */
@@ -83,7 +80,6 @@ private:
           * The unique ID of UI client to which this pointer belongs
           */
         const quint64 uiclientid;
-
 
         const QSettings *settings;
 

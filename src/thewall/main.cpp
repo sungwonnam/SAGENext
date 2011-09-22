@@ -27,20 +27,20 @@ int main(int argc, char *argv[])
 {
 //	qt_x11_set_global_double_buffer(false);
 
-        /***
-          When using raster backend, For optimal performance only use the format types QImage::Format_ARGB32_Premultiplied, QImage::Format_RGB32 or QImage::Format_RGB16
-
-          And use QImage as a paintdevice
-          ***/
+	/***
+	  When using raster backend, For optimal performance only use the format types
+      QImage::Format_ARGB32_Premultiplied, QImage::Format_RGB32 or QImage::Format_RGB16
+	  And use QImage as a paintdevice
+	***/
 	QApplication::setGraphicsSystem("raster");
 
 	QApplication a(argc, argv);
 
 	qsrand(QDateTime::currentDateTime().toTime_t());
 
-        /*
-          create system wide settings object
-          */
+	/*
+      create system wide settings object
+	 */
 	QSettings s(QDir::homePath() + "/.sagenext/sagenext.ini", QSettings::IniFormat);
 
         /**
@@ -68,15 +68,14 @@ int main(int argc, char *argv[])
 		//s.setValue("general/offsety", 0);
 	}
 
-
-        /*
-        QPalette palette;
-        palette.setColor(QPalette::Window, Qt::darkGray);
-        palette.setColor(QPalette::WindowText, Qt::white);
-        palette.setColor(QPalette::Base, Qt::darkGray);
-        palette.setColor(QPalette::Text, Qt::white);
-        QApplication::setPalette(palette);
-        */
+//	QPalette palette;
+//	palette.setColor(QPalette::Window, Qt::darkGray); // general background role
+//	palette.setColor(QPalette::WindowText, Qt:); // foreground role (Painter's pen)
+//	QBrush brush(QColor(100, 100, 100, 128), Qt::SolidPattern);
+//	palette.setBrush(QPalette::WindowText, brush);
+//	palette.setColor(QPalette::Base, Qt::darkGray);
+//	palette.setColor(QPalette::Text, Qt::white);
+//	QApplication::setPalette(palette);
 
 	QFont font;
 	font.setPointSize( s.value("gui/fontpointsize", 20).toInt());
@@ -183,19 +182,19 @@ int main(int argc, char *argv[])
 
 
 
-        /**
-          create the scene (This is a QObject)
-          */
+	/**
+      create the scene (This is a QObject)
+      */
 	qDebug() << "Creating SAGENext Scenes";
 	SAGENextScene *scene = new SAGENextScene;
-	scene->setBackgroundBrush(QColor(20, 20, 20));
+	scene->setBackgroundBrush(QColor(0, 0, 0));
 	scene->setSceneRect(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble());
-	/*  This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously. */
+	/* This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously. */
 	scene->setItemIndexMethod(QGraphicsScene::NoIndex);
 
-        /*
-          Attach close button on the scene. if clicked, scene->deleteLater will be called
-          */
+	/*
+	  Attach close button on the scene. if clicked, scene->deleteLater will be called
+      */
 	QPixmap closeIcon(":/resources/close_over.png");
 	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(scene->width() * 0.015));
 	scene->addItem(closeButton);
@@ -208,49 +207,49 @@ int main(int argc, char *argv[])
 
 
 
-        /**
-          ResourceMonitor , ResourceMonitorWidget
-          Scheduler
-          */
-		ResourceMonitor *resourceMonitor = 0;
-        int rMonitorTimerId = 0;
-        ResourceMonitorWidget *rMonitorWidget = 0;
-        SchedulerControl *schedcontrol = 0;
-        if ( s.value("system/resourcemonitor").toBool() ) {
-                qDebug() << "Creating ResourceMonitor";
-                resourceMonitor = new ResourceMonitor(&s);
+	/**
+	  ResourceMonitor , ResourceMonitorWidget
+	  Scheduler
+      */
+	ResourceMonitor *resourceMonitor = 0;
+	int rMonitorTimerId = 0;
+	ResourceMonitorWidget *rMonitorWidget = 0;
+	SchedulerControl *schedcontrol = 0;
+	if ( s.value("system/resourcemonitor").toBool() ) {
+		qDebug() << "Creating ResourceMonitor";
+		resourceMonitor = new ResourceMonitor(&s);
 
-                if ( s.value("system/scheduler").toBool() ) {
-                        qDebug() << "Creating" << s.value("system/scheduler_type").toString() << "Scheduler";
+		if ( s.value("system/scheduler").toBool() ) {
+			qDebug() << "Creating" << s.value("system/scheduler_type").toString() << "Scheduler";
 
-                        schedcontrol = new SchedulerControl(resourceMonitor);
+			schedcontrol = new SchedulerControl(resourceMonitor);
 
-                        a.installEventFilter(schedcontrol); // scheduler will monitor(filter) qApp's event
+			a.installEventFilter(schedcontrol); // scheduler will monitor(filter) qApp's event
 
-                        resourceMonitor->setScheduler(schedcontrol);
+			resourceMonitor->setScheduler(schedcontrol);
 
-                        schedcontrol->launchScheduler( s.value("system/scheduler_type").toString(), s.value("system/scheduler_freq").toInt() );
-                }
+			schedcontrol->launchScheduler( s.value("system/scheduler_type").toString(), s.value("system/scheduler_freq").toInt() );
+		}
 
-                char *val = getenv("EXP_DATA_FILE");
-                if ( val ) {
-                        qDebug("EXP_DATA_FILE is defined");
-                        resourceMonitor->setPrintDataFlag(true);
-                        resourceMonitor->printPrelimDataHeader();
-                }
+		char *val = getenv("EXP_DATA_FILE");
+		if ( val ) {
+			qDebug("EXP_DATA_FILE is defined");
+			resourceMonitor->setPrintDataFlag(true);
+			resourceMonitor->printPrelimDataHeader();
+		}
 
-                resourceMonitor->refresh();
+		resourceMonitor->refresh();
 
-                rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, schedcontrol); // No parent widget
-//		rMonitorWidget->show();
+		rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, schedcontrol); // No parent widget
+		//		rMonitorWidget->show();
 
-                resourceMonitor->setRMonWidget(rMonitorWidget);
+		resourceMonitor->setRMonWidget(rMonitorWidget);
 
-                // this will trigger resourceMonitor->refresh() every 1sec
-                rMonitorTimerId = resourceMonitor->startTimer(1000);
-        }
+		// this will trigger resourceMonitor->refresh() every 1sec
+		rMonitorTimerId = resourceMonitor->startTimer(1000);
+	}
 
-		scene->setRMonitor( resourceMonitor );
+	scene->setRMonitor( resourceMonitor );
 
 
 
@@ -312,6 +311,12 @@ int main(int argc, char *argv[])
         /* DON'T DO THIS ! poor performance and not correct. I don't know why. It's worth look into this */
         //	gvm->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
+		gvm->setFrameStyle(QFrame::NoFrame);
+
+//		QPalette palette;
+//		QBrush brush(QColor(128, 128, 128, 128), Qt::SolidPattern);
+//		palette.setBrush(QPalette::WindowText, brush);
+//		gvm->setPalette(palette);
 
         gvm->setRenderHint(QPainter::SmoothPixmapTransform);
 		//	gvm->setRenderHint(QPainter::HighQualityAntialiasing);
@@ -331,6 +336,8 @@ int main(int argc, char *argv[])
 
 		//launcher->launch("", "evl123", 0, "131.193.77.191", 24);
 //		launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
+		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
+		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
 
 
         // starts event loop

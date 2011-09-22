@@ -95,81 +95,95 @@ void BaseWidget::setProxyWidget(QGraphicsProxyWidget *proxyWidget)
 
 void BaseWidget::init()
 {
-        setAcceptHoverEvents(true);
+	/**
+	  Once your widget findout native resolution, please call setTransformOriginPoint() with your widget's center point
+	  */
+//	setTransformOriginPoint(boundingRect().center());
 
-		setTransformOriginPoint(boundingRect().center());
+	// Indicates that the widget paints all its pixels when it receives a paint event
+	// Thus, it is not required for operations like updating, resizing, scrolling and focus changes
+	// to erase the widget before generating paint events.
+	setAttribute(Qt::WA_OpaquePaintEvent, true);
 
+	// Destructor will be called by close()
+	setAttribute(Qt::WA_DeleteOnClose, true);
 
-        // Indicates that the widget paints all its pixels when it receives a paint event
-        // Thus, it is not required for operations like updating, resizing, scrolling and focus changes
-        // to erase the widget before generating paint events.
-        setAttribute(Qt::WA_OpaquePaintEvent, true);
+	setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
 
-		// Destructor will be called by close()
-        setAttribute(Qt::WA_DeleteOnClose, true);
+	/* When enabled, the item's paint() function will be called only once for each call to update(); for any subsequent repaint requests, the Graphics View framework will redraw from the cache. */
+	/* Turn cache off for streaming application */
+	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
-        setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
+	/**
+	  Plugin can't reach here because it uses default constructor
+	  */
+	if (settings) {
+		// This will affect boundingRect(), windowFrameRect() of the widget.
+		qreal l = settings->value("gui/framemarginleft", 3).toDouble();
+		qreal t = settings->value("gui/framemargintop", 3).toDouble();
+		qreal r = settings->value("gui/framemarginright", 3).toDouble();
+		qreal b = settings->value("gui/framemarginright", 3).toDouble();
+		if (isWindow()) {
+			// window frame is not interactible by shared pointers
+			setWindowFrameMargins(0, 0, 0, 0);
+			// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
+			setContentsMargins(l, t + 20, r, b); // by default, this is 0 0 0 0
+		}
+		else {
+			setWindowFrameMargins(l, t, r, b);
+		}
+	}
+	//qDebug() << "BaseWidget::init() : boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
+	//getWindowFrameMargins(&frameMarginLeft, &frameMarginTop, &frameMarginRight, &frameMarginBottom);
 
-        /* When enabled, the item's paint() function will be called only once for each call to update(); for any subsequent repaint requests, the Graphics View framework will redraw from the cache. */
-        /* Turn cache off for streaming application */
-        setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+	/*!
+	  Define QActions
+	  */
+	createActions();
 
-        if (settings) {
-            // This will affect boundingRect() of the widget
-                setWindowFrameMargins(settings->value("gui/framemarginleft", 3).toDouble(),
-                                                  settings->value("gui/framemargintop", 3).toDouble(),
-                                                  settings->value("gui/framemarginright",3).toDouble(),
-                                                  settings->value("gui/framemarginbottom",3).toDouble());
-        }
-//	getWindowFrameMargins(&frameMarginLeft, &frameMarginTop, &frameMarginRight, &frameMarginBottom);
-
-        /*!
-          Define QActions
-          */
-        createActions();
-
-        /*!
-          System provided context menu (mouse right click)
-          */
-        _contextMenu = new QMenu(tr("Menu"));
-        _contextMenu->addActions( actions() );
-
-
-        //! drawInfo() will show this item
-        infoTextItem = new SwSimpleTextItem(0, this);
-        infoTextItem->setFlag(QGraphicsItem::ItemIsMovable, false);
-        infoTextItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
-//	infoTextItem = new SwSimpleTextItem(settings->value("general/fontpointsize").toInt(), this);
-        infoTextItem->hide();
-
-
-        /*!
-         Define animation
-          */
-        pAnim_pos = new QPropertyAnimation(this, "pos", this);
-        pAnim_pos->setDuration(300); // 300 msec : ~16 paint events
-        pAnim_pos->setEasingCurve(QEasingCurve::OutCubic);
-
-        pAnim_scale = new QPropertyAnimation(this, "scale", this);
-        pAnim_scale->setDuration(300);
-        pAnim_scale->setEasingCurve(QEasingCurve::OutCubic);
-
-		pAnim_size = new QPropertyAnimation(this, "size", this);
-		pAnim_size->setDuration(250);
-		pAnim_size->setEasingCurve(QEasingCurve::OutCubic);
-
-        _parallelAnimGroup = new QParallelAnimationGroup(this);
-        _parallelAnimGroup->addAnimation(pAnim_pos);
-		if (isWindow())
-			_parallelAnimGroup->addAnimation(pAnim_size);
-		else
-			_parallelAnimGroup->addAnimation(pAnim_scale);
+	/*!
+	  System provided context menu (console mouse right click)
+	  This doesn't apply to shared pointers
+	  */
+	_contextMenu = new QMenu(tr("Menu"));
+	_contextMenu->addActions( actions() );
 
 
-        pAnim_opacity = new QPropertyAnimation(this, "opacity", this);
-        pAnim_opacity->setEasingCurve(QEasingCurve::OutCubic);
+	//! drawInfo() will show this item
+	// Note that infoTextItem is child item of BaseWidget
+	infoTextItem = new SwSimpleTextItem(0, this);
+	infoTextItem->setFlag(QGraphicsItem::ItemIsMovable, false);
+	infoTextItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
+	//infoTextItem = new SwSimpleTextItem(settings->value("general/fontpointsize").toInt(), this);
+	infoTextItem->hide();
 
-        connect(pAnim_opacity, SIGNAL(finished()), this, SLOT(close()));
+
+	/*!
+	  Define animation
+	  */
+	pAnim_pos = new QPropertyAnimation(this, "pos", this);
+	pAnim_pos->setDuration(300); // 300 msec : ~16 paint events
+	pAnim_pos->setEasingCurve(QEasingCurve::OutCubic);
+
+	pAnim_scale = new QPropertyAnimation(this, "scale", this);
+	pAnim_scale->setDuration(300);
+	pAnim_scale->setEasingCurve(QEasingCurve::OutCubic);
+
+	pAnim_size = new QPropertyAnimation(this, "size", this);
+	pAnim_size->setDuration(250);
+	pAnim_size->setEasingCurve(QEasingCurve::OutCubic);
+
+	_parallelAnimGroup = new QParallelAnimationGroup(this);
+	_parallelAnimGroup->addAnimation(pAnim_pos);
+	if (isWindow())
+		_parallelAnimGroup->addAnimation(pAnim_size);
+	else
+		_parallelAnimGroup->addAnimation(pAnim_scale);
+
+	pAnim_opacity = new QPropertyAnimation(this, "opacity", this);
+	pAnim_opacity->setEasingCurve(QEasingCurve::OutCubic);
+
+	connect(pAnim_opacity, SIGNAL(finished()), this, SLOT(close()));
 
 
         /*!
@@ -183,52 +197,37 @@ void BaseWidget::init()
 }
 
 
-void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-    Q_UNUSED(option);
-    Q_UNUSED(widget);
-
-    if (isSelected()) {
-
-    }
-    else {
-
-    }
-
-	// for now, let's use default implementation
-	QGraphicsWidget::paintWindowFrame(painter, option, widget);
-}
-
 qreal BaseWidget::ratioToTheWall() const {
-        if(!scene()) return 0.0;
+	if(!scene()) return 0.0;
 
-        QSizeF sceneSize = scene()->sceneRect().size();
-        QSizeF currentSize = size() * scale();
+	QSizeF sceneSize = scene()->sceneRect().size();
+	QSizeF currentSize = size() * scale();
 
-        qreal sceneArea = sceneSize.width() * sceneSize.height();
-        qreal currentArea = currentSize.width() * currentSize.height();
+	qreal sceneArea = sceneSize.width() * sceneSize.height();
+	qreal currentArea = currentSize.width() * currentSize.height();
 
-        if ( currentArea > sceneArea ) return 1;
+	if ( currentArea > sceneArea ) return 1;
 
-        return currentArea / sceneArea;
+	return currentArea / sceneArea;
 }
 
 QRegion BaseWidget::effectiveVisibleRegion() const {
-        QRegion effectiveRegion;
-        if (!scene()) return effectiveRegion; // return empty region
+	QRegion effectiveRegion;
+	if (!scene()) return effectiveRegion; // return empty region
 
-        effectiveRegion = boundingRegion(sceneTransform()); // returns a region in scene coordinates
+	effectiveRegion = boundingRegion(sceneTransform()); // returns a region in scene coordinates
 
-        QList<QGraphicsItem *> collidingItems = scene()->collidingItems(this);
-        foreach (QGraphicsItem *i, collidingItems) {
-                if ( i->zValue() <= zValue() ) continue;
+	QList<QGraphicsItem *> collidingItems = scene()->collidingItems(this);
+	foreach (QGraphicsItem *i, collidingItems) {
+		if ( i->zValue() <= zValue() ) continue;
 
-                QRegion overlapped = i->boundingRegion(i->sceneTransform());
+		QRegion overlapped = i->boundingRegion(i->sceneTransform());
 
-                effectiveRegion = effectiveRegion.subtracted( overlapped );
-        }
+		effectiveRegion = effectiveRegion.subtracted( overlapped );
+	}
 
-//	_effectiveVisibleRegion = effectiveRegion;
-        return effectiveRegion;
+	//	_effectiveVisibleRegion = effectiveRegion;
+	return effectiveRegion;
 }
 
 
@@ -284,7 +283,7 @@ void BaseWidget::drawInfo()
 		showInfo = true;
 		_showInfoAction->setDisabled(true);
 		_hideInfoAction->setEnabled(true);
-		//		update();
+		//update();
 
 		/* starts timer */
 		timerID = startTimer(1000); // timerEvent every 1000 msec
@@ -504,7 +503,7 @@ void BaseWidget::setTopmost()
 		//qDebug() << typeid(*item).name() << ". And this is " << typeid(*this).name();
 
 		// only consider real app -> excluding buttons pointers, and so on
-		if ( !item ||  item->type() != UserType + 2 ) continue;
+		if ( !item ||  item->type() < UserType + 2 ) continue;
 
 		if ( item == this ) continue;
 
@@ -549,14 +548,13 @@ void BaseWidget::reScale(int tick, qreal factor)
 	qreal currentScale = scale();
 	currentScale += ((qreal)tick * factor);
 
-        // Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees, the child's total transformation will be 180 degrees. Similarly, if the item's parent is scaled to 2x its original size, its children will also be twice as large. An item's transformation does not affect its own local geometry; all geometry functions (e.g., contains(), update(), and all the mapping functions) still operate in local coordinates.
+	// Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees, the child's total transformation will be 180 degrees. Similarly, if the item's parent is scaled to 2x its original size, its children will also be twice as large. An item's transformation does not affect its own local geometry; all geometry functions (e.g., contains(), update(), and all the mapping functions) still operate in local coordinates.
 	setScale(currentScale);
 
-        //! optional
+	//! optional
 //	appInfo->setRecentScale(currentScale);
 
-
-        // This function will not change widget's size !!
+// This function will not change widget's size !!
 //	qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
 }
 
@@ -635,43 +633,43 @@ void BaseWidget::updateInfoTextItem()
 
 void BaseWidget::createActions()
 {
-        _showInfoAction = new QAction("Show Info", this);
-        _hideInfoAction = new QAction("Hide Info", this);
+	_showInfoAction = new QAction("Show Info", this);
+	_hideInfoAction = new QAction("Hide Info", this);
 
-        if ( showInfo ) {
-                _showInfoAction->setDisabled(true);
-        }
-        else {
-                _hideInfoAction->setDisabled(true);
-        }
+	if ( showInfo ) {
+		_showInfoAction->setDisabled(true);
+	}
+	else {
+		_hideInfoAction->setDisabled(true);
+	}
 
-        /* this is enabled only when affInfo is not null */
-//	_affinityControlAction = new QAction("Affinity Control", this);
-//	_affinityControlAction->setDisabled(true);
+	/* this is enabled only when affInfo is not null */
+	//_affinityControlAction = new QAction("Affinity Control", this);
+	//_affinityControlAction->setDisabled(true);
 
-        _minimizeAction = new QAction("Minimize", this);
-        _maximizeAction = new QAction("Maximize", this);
-        _restoreAction = new QAction("Restore", this);
-        _restoreAction->setDisabled(true);
-        _closeAction = new QAction("Close", this);
-//	_closeAction->setShortcut( QKeySequence(Qt::CTRL + Qt::Key_W) );
+	_minimizeAction = new QAction("Minimize", this);
+	_maximizeAction = new QAction("Maximize", this);
+	_restoreAction = new QAction("Restore", this);
+	_restoreAction->setDisabled(true);
+	_closeAction = new QAction("Close", this);
+	//_closeAction->setShortcut( QKeySequence(Qt::CTRL + Qt::Key_W) );
 
-        addAction(_showInfoAction);
-        addAction(_hideInfoAction);
-//	addAction(_affinityControlAction);
-        addAction(_minimizeAction);
-        addAction(_maximizeAction);
-        addAction(_restoreAction);
-        addAction(_closeAction);
+	addAction(_showInfoAction);
+	addAction(_hideInfoAction);
+	//addAction(_affinityControlAction);
+	addAction(_minimizeAction);
+	addAction(_maximizeAction);
+	addAction(_restoreAction);
+	addAction(_closeAction);
 
-        connect(_showInfoAction, SIGNAL(triggered()), this, SLOT(drawInfo()));
-        connect(_hideInfoAction, SIGNAL(triggered()), this, SLOT(hideInfo()));
-//	connect(_affinityControlAction, SIGNAL(triggered()), this, SLOT(showAffinityControlDialog()));
-        connect(_minimizeAction, SIGNAL(triggered()), this, SLOT(minimize()));
-        connect(_maximizeAction, SIGNAL(triggered()), this, SLOT(maximize()));
-        connect(_restoreAction, SIGNAL(triggered()), this, SLOT(restore()));
-        connect(_closeAction, SIGNAL(triggered()), this, SLOT(fadeOutClose()));
-//        connect(_closeAction, SIGNAL(triggered()), this, SLOT(close()));
+	connect(_showInfoAction, SIGNAL(triggered()), this, SLOT(drawInfo()));
+	connect(_hideInfoAction, SIGNAL(triggered()), this, SLOT(hideInfo()));
+	//connect(_affinityControlAction, SIGNAL(triggered()), this, SLOT(showAffinityControlDialog()));
+	connect(_minimizeAction, SIGNAL(triggered()), this, SLOT(minimize()));
+	connect(_maximizeAction, SIGNAL(triggered()), this, SLOT(maximize()));
+	connect(_restoreAction, SIGNAL(triggered()), this, SLOT(restore()));
+	connect(_closeAction, SIGNAL(triggered()), this, SLOT(fadeOutClose()));
+	//connect(_closeAction, SIGNAL(triggered()), this, SLOT(close()));
 }
 
 
@@ -680,6 +678,10 @@ void BaseWidget::createActions()
 
 
 void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn) {
+	if (btn == Qt::RightButton) {
+		if ( isSelected() ) setSelected(false);
+		else setSelected(true);
+	}
 
     QPointF itempos = mapFromScene(clickedScenePos);
 
@@ -687,7 +689,6 @@ void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn)
     foreach (gview, scene()->views()) {
 		// geometry of widget relative to its parent
 		//        v->geometry();
-
 		// internal geometry of widget
 		//        v->rect();
         if ( gview->rect().contains(gview->mapFromScene(clickedScenePos)) )
@@ -695,10 +696,8 @@ void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn)
     }
 
     if (gview) {
-
         // be aware that scaling doesn't change size(), boundingRect(), and geometry() at all
         if ( boundingRect().contains(itempos) ) {
-
             QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
             QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
 
@@ -714,8 +713,7 @@ void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn)
             if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
                 qDebug("BaseWidget::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
             }
-
-            // this widget is now mouseGrabber because of the pressEvent
+            // this widget is, maybe, now mouseGrabber because of the pressEvent
 
             if ( ! QApplication::sendEvent(gview->viewport(), release) ) {
                 qDebug("BaseWidget::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
@@ -739,9 +737,19 @@ void BaseWidget::mouseDrag(const QPointF &, Qt::MouseButton) {
 
 void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 
-	/* draw resize rectangle upon hoverEnterEvent */
-
-
+	/**
+	  changing painter state will hurt performance
+	  */
+	QPen pen;
+	pen.setWidth(6);
+	if (isSelected()) {
+		pen.setColor(QColor(170, 170, 5, 200));
+	}
+	else {
+		pen.setColor(QColor(100, 100, 100, 128));
+	}
+	painter->setPen(pen);
+	painter->drawRect(windowFrameRect());
 
 	/* info overlay */
 	if ( showInfo  &&  !infoTextItem->isVisible() ) {
@@ -759,13 +767,26 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 	}
 }
 
+void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
+	if (isSelected()) {
+		painter->fillRect(windowFrameRect(), QColor(170, 170, 5, 200));
+	}
+	else {
+		painter->fillRect(windowFrameRect(), QColor(100, 100, 100, 128));
+	}
+	// Or let's use default implementation
+//	QGraphicsWidget::paintWindowFrame(painter, option, widget);
+}
+
 
 /*! reimplementing events */
 
 void BaseWidget::timerEvent(QTimerEvent *) {
 //	qDebug("BaseWidget::%s()", __FUNCTION__);
 	updateInfoTextItem();
-
         /*
         if ( affControl && affControl->isVisible() ) {
                 affControl->updateInfo();
@@ -775,7 +796,7 @@ void BaseWidget::timerEvent(QTimerEvent *) {
 
 void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
 	if(_appInfo) {
-//		appInfo->setRecentBoundingRect( boundingRect() );
+//		_appInfo->setRecentBoundingRect( boundingRect() );
 	}
 }
 
@@ -790,20 +811,11 @@ void BaseWidget::setLastTouch() {
 }
 
 
-void BaseWidget::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
-
-//	qDebug() << "hoverEnter" << event->pos();
-}
-
-void BaseWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
-
-}
-
 /*!
   I'm reimplementing this so event will by default be accepted and this is the mousegrabber
   */
 void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-//	qDebug() << "BaseWidget::mousePressEvent() : pos:" << event->pos() << " ,scenePos:" << event->scenePos() << " ,screenPos:" << event->screenPos();
+	qDebug() << "BaseWidget::mousePressEvent() : buttons"<< event->button() << "pos:" << event->pos() << " ,scenePos:" << event->scenePos() << " ,screenPos:" << event->screenPos();
     if ( event->buttons() & Qt::LeftButton) {
         // refresh lastTouch
 #if QT_VERSION < 0x040700
@@ -813,13 +825,19 @@ void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 #else
         _lastTouch = QDateTime::currentMSecsSinceEpoch();
 #endif
-
         // change zvalue
-        setTopmost();
+		// This is called by PolygonArrow::pointerPress()
+//        setTopmost();
     }
+
     // keep the base implementation
     // The event is QEvent::ignore() for items that are neither movable nor selectable.
-    QGraphicsWidget::mousePressEvent(event);
+	/*
+	  The mouse press event decides which item should become the mouse grabber (see QGraphicsScene::mouseGrabberItem()).
+      If you do not reimplement this function, the press event will propagate to any topmost item beneath this item,
+      and no other mouse events will be delivered to this item.
+	  */
+//    QGraphicsWidget::mousePressEvent(event);
 }
 
 //void BaseWidget::mouseMoveEvent(QGraphicsSceneMouseEvent *e) {
@@ -829,9 +847,7 @@ void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 
 void BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 //	Q_UNUSED(event);
-
 	//qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
-
 	if ( mapRectToScene(boundingRect()).contains(event->scenePos()) )
 		maximize();
 }
@@ -846,8 +862,6 @@ void BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
 	//	if ( affInfo && _affinityControlAction ) {
 	//		_affinityControlAction->setEnabled(true);
 	//	}
-	scene()->clearSelection();
-	setSelected(true);
 	_contextMenu->exec(event->screenPos());
 	//_contextMenu->popup(event->scenePos());
 }
@@ -861,10 +875,10 @@ void BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	//	qDebug() << "BGW wheel event" << event->pos() << event->scenePos() << event->screenPos() << event->buttons() << event->modifiers();
 
 	if (isWindow()) {
-
+		// do nothing
 	}
 	else {
-		reScale(numTicks, 0.03);
+		reScale(numTicks, 0.05);
 	}
 }
 

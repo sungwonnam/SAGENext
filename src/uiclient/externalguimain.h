@@ -168,6 +168,8 @@ private:
 
 	QString _pointerName;
 
+	QString _pointerColor;
+
 	QString _myIpAddress;
 
 	QString _vncUsername;
@@ -298,6 +300,7 @@ public:
         inline int port() const {return portnum;}
         inline QString myAddress() const {return myaddr;}
         inline QString pointerName() const {return pName;}
+		inline QString pointerColor() const {return pColor;}
 		inline QString vncUsername() const {return vncusername;}
         inline QString vncPasswd() const {return vncpass;}
 		inline QString sharingEdge() const {return psharingEdge;}
@@ -329,12 +332,15 @@ private:
           pointer name
           */
         QString pName;
+
+		QString pColor;
 		
 		QString psharingEdge;
 
 private slots:
         void on_buttonBox_rejected();
         void on_buttonBox_accepted();
+		void on_pointerColorButton_clicked();
 };
 
 #endif // EXTERNALGUIMAIN_H

@@ -90,6 +90,19 @@ ExamplePlugin::ExamplePlugin()
 
         /* appInfo->setFrameSize() takes care of it */
 //	appInfo->setNativeSize(QSize(800, 600)); // duplicate
+
+//		qreal l, r, t, b;
+//		getWindowFrameMargins(&l, &t, &r, &b);
+//		qDebug() << "ImageWidgetPlugin frame margins l, r, t, b" << l << r << t << b;
+
+		// window frame is not interactible by shared pointers
+		setWindowFrameMargins(0, 0, 0, 0);
+
+//		getContentsMargins(&l, &r, &t, &b);
+//		qDebug() << "ImageWidgetPlugin content margins l, r, t, b" << l << r << t << b;
+
+		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin so that window can be moved with shared pointers
+		setContentsMargins(4,24,4,4);
 }
 
 
@@ -107,21 +120,13 @@ void ExamplePlugin::paint(QPainter * /*painter*/, const QStyleOptionGraphicsItem
 
         /*************
 
-          put your drawing code here
+          put your drawing code here if needed
 
           ************/
 
 
         /** overlay app information */
-        if ( showInfo  &&  !infoTextItem->isVisible() ) {
-#if defined(Q_OS_LINUX)
-                _appInfo->setDrawingThreadCpu(sched_getcpu());
-#endif
-                infoTextItem->show();
-        }
-        else if (!showInfo && infoTextItem->isVisible()){
-                infoTextItem->hide();
-        }
+//        BaseWidget::paint(painter, option, widget);
 
         /** measure latency */
         /*
