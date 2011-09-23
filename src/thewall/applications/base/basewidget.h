@@ -37,8 +37,11 @@ public:
 
         /*!
           Only a user application will have this type number
+		  Please use a number greater than 12 for your own custom application
+
+		  SAGENext-generic graphics item will use number lowerthan 12
          */
-        enum { Type = QGraphicsItem::UserType + 2 };
+        enum { Type = QGraphicsItem::UserType + 12 };
         virtual int type() const { return Type;}
 
         enum Window_State { W_NORMAL, W_MINIMIZED, W_MAXIMIZED, W_HIDDEN, W_ICONIZED };

@@ -194,6 +194,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 			// _globalAppId shouldn't be incremented in here because StartSageApp() will increment eventually
 			// Also SageStreamWidget will be added to the scene in there
 			proc->start("mplayer",  args);
+			sws->setSailAppProc(proc);
 		}
 
 		break;

@@ -565,66 +565,66 @@ QRectF BaseWidget::resizeHandleSceneRect()
 
 void BaseWidget::updateInfoTextItem()
 {
-        if (!infoTextItem) return;
+	if (!infoTextItem) return;
 
-        QByteArray infotext(256, '\0');
-        QByteArray perftext(512, '\0');
-        QByteArray afftext(256, '\0');
-        QString text("");
+	QByteArray infotext(256, '\0');
+	QByteArray perftext(512, '\0');
+	QByteArray afftext(256, '\0');
+	QString text("");
 
-        //! let's show scene geometry of this widget
-        QRectF rect = mapRectToScene(boundingRect());
+	//! let's show scene geometry of this widget
+	//QRectF rect = mapRectToScene(boundingRect());
+	QRectF rect = geometry();
 
-        if (_appInfo) {
-                sprintf(infotext.data(), "Global App ID %llu\nNative WxHxbpp: %ux%ux%u (%u KB)\nCurr Geometry: (%.0f,%.0f)(%.0fx%.0f)\nRatio to wall %.3f",
-                                /*qPrintable(appInfo->getFilename()),*/
-                                /* SizeRatio: %u %%\n */
-                                _globalAppId,
-                                _appInfo->nativeSize().width() ,_appInfo->nativeSize().height(), _appInfo->getBitPerPixel(), _appInfo->getFrameBytecount() / 1024, // to KiloByte
-                                rect.topLeft().x(), rect.topLeft().y(),
-                                rect.width() * scale(), rect.height() * scale(),
-//				appInfo->ratioToTheScene( scene()->width() * scene()->height() ),
-                                /*_appInfo->getDrawingThreadCpu()*/
-                                ratioToTheWall()
-                                );
-                text.append( infotext );
-        }
+	if (_appInfo) {
+		sprintf(infotext.data(), "Global App ID %llu\nNative WxHxbpp: %ux%ux%u (%u KB)\nCurr Geometry: (%.0f,%.0f)(%.0fx%.0f)\nCurr Scale: %.1f\nRatio to wall %.3f"
+		        /*qPrintable(appInfo->getFilename()),*/
+		        /* SizeRatio: %u %%\n */
+		        , _globalAppId
+		        , _appInfo->nativeSize().width() ,_appInfo->nativeSize().height(), _appInfo->getBitPerPixel(), _appInfo->getFrameBytecount() / 1024 // to KiloByte
+		        , rect.topLeft().x(), rect.topLeft().y()
+		        , rect.width(), rect.height()
+		        , scale()
+		        //appInfo->ratioToTheScene( scene()->width() * scene()->height() ),
+		        /*_appInfo->getDrawingThreadCpu()*/
+		        , ratioToTheWall()
+		        );
+		text.append( infotext );
+	}
 
-        if ( _affInfo ) {
-                sprintf(afftext.data(), "\nrecv Thread\nRunning on CPU %d\nNUMA Node affinity %s\nMemory bind %s\nCPU affinity %s\n",
-                                _affInfo->cpuOfMine(), _affInfo->getNodeMask(), _affInfo->getMemMask(), _affInfo->getCpuMask()
-                                );
-                text.append(afftext);
-        }
+	if ( _affInfo ) {
+		sprintf(afftext.data(), "\nrecv Thread\nRunning on CPU %d\nNUMA Node affinity %s\nMemory bind %s\nCPU affinity %s\n"
+		        , _affInfo->cpuOfMine(), _affInfo->getNodeMask(), _affInfo->getMemMask(), _affInfo->getCpuMask()
+		        );
+		text.append(afftext);
+	}
 
-        if ( _perfMon ) {
-                sprintf(perftext.data(), "\nCurr/Avg Recv Lat : %.2f / %.2f ms\nCurr/Avg Conv Lat : %.2f / %.2f ms\nCurr/Avg Draw Lat : %.2f / %.2f ms\n\nCurr/Avg Recv FPS : %.2f / %.2f\nCurr/Avg recvFps AbsDevi. %.2f / %.2f\nRecv FPS variance %.4f\nCurr/Avg Disp FPS : %.2f / %.2f\n\nRecv/Draw Count %llu/%llu\nCurr Bandwidth : %.3f Mbps\nCPU usage : %.6f\nVol/InVol Ctx Sw : %ld / %ld" /*maxrss %ld, pageReclaims %ld"*/,
-                                _perfMon->getCurrRecvLatency() * 1000.0 , _perfMon->getAvgRecvLatency() * 1000.0,
-                                _perfMon->getCurrConvDelay() * 1000.0 , _perfMon->getAvgConvDelay() * 1000.0,
-                                /*_perfMon->getCurrEqDelay() * 1000.0, _perfMon->getAvgEqDelay() * 1000.0,*/
-                                _perfMon->getCurrDrawLatency() * 1000.0 , _perfMon->getAvgDrawLatency() * 1000.0,
+	if ( _perfMon ) {
+		sprintf(perftext.data(), "\nCurr/Avg Recv Lat : %.2f / %.2f ms\nCurr/Avg Conv Lat : %.2f / %.2f ms\nCurr/Avg Draw Lat : %.2f / %.2f ms\n\nCurr/Avg Recv FPS : %.2f / %.2f\nCurr/Avg recvFps AbsDevi. %.2f / %.2f\nRecv FPS variance %.4f\nCurr/Avg Disp FPS : %.2f / %.2f\n\nRecv/Draw Count %llu/%llu\nCurr Bandwidth : %.3f Mbps\nCPU usage : %.6f\nVol/InVol Ctx Sw : %ld / %ld" /*maxrss %ld, pageReclaims %ld"*/
+		        ,_perfMon->getCurrRecvLatency() * 1000.0 , _perfMon->getAvgRecvLatency() * 1000.0
+		       ,_perfMon->getCurrConvDelay() * 1000.0 , _perfMon->getAvgConvDelay() * 1000.0
+		        /*_perfMon->getCurrEqDelay() * 1000.0, _perfMon->getAvgEqDelay() * 1000.0,*/
+		        ,_perfMon->getCurrDrawLatency() * 1000.0 , _perfMon->getAvgDrawLatency() * 1000.0
 
-                                _perfMon->getCurrRecvFps(), _perfMon->getAvgRecvFps(),
-                                _perfMon->getCurrAbsDeviation(), _perfMon->getAvgAbsDeviation(),
-                                _perfMon->getRecvFpsVariance(),
-                                _perfMon->getCurrDispFps(), _perfMon->getAvgDispFps(),
+		        ,_perfMon->getCurrRecvFps(), _perfMon->getAvgRecvFps()
+		        ,_perfMon->getCurrAbsDeviation(), _perfMon->getAvgAbsDeviation()
+		        ,_perfMon->getRecvFpsVariance()
+		        ,_perfMon->getCurrDispFps(), _perfMon->getAvgDispFps()
 
-                                _perfMon->getRecvCount(), _perfMon->getDrawCount(),
-                                _perfMon->getCurrBandwidthMbps(),
+		        ,_perfMon->getRecvCount(), _perfMon->getDrawCount()
+		        ,_perfMon->getCurrBandwidthMbps()
 
-                                _perfMon->getCpuUsage() * 100.0, _perfMon->getEndNvcsw(), _perfMon->getEndNivcsw()
-                                /*perfMon->getEndMaxrss(), perfMon->getEndMinflt()*/
-                                );
-                text.append(perftext);
+		        ,_perfMon->getCpuUsage() * 100.0, _perfMon->getEndNvcsw(), _perfMon->getEndNivcsw()
+		        /*perfMon->getEndMaxrss(), perfMon->getEndMinflt()*/
+		        );
+		text.append(perftext);
+		//qDebug() << "BaseWidget::" << __FUNCTION__ <<  _globalAppId << _perfMon->ts_nextframe() *1000.0 << _perfMon->deadline_miseed() * 1000.0 << "ms";
+	}
 
-
-//		qDebug() << "BaseWidget::" << __FUNCTION__ <<  _globalAppId << _perfMon->ts_nextframe() *1000.0 << _perfMon->deadline_miseed() * 1000.0 << "ms";
-        }
-
-        if (infoTextItem) {
-                infoTextItem->setText(QString(text));
-                infoTextItem->update();
-        }
+	if (infoTextItem) {
+		infoTextItem->setText(QString(text));
+		infoTextItem->update();
+	}
 }
 
 void BaseWidget::createActions()

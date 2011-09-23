@@ -81,6 +81,14 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
      */
 	resize(_image->size());
 
+
+	if (_perfMon) {
+		_perfMon->setExpectedFps( (qreal)framerate );
+		_perfMon->setAdjustedFps( (qreal)framerate );
+	}
+
+
+
 	/**
 	  sets the transform origin point to widget's center
 	 */

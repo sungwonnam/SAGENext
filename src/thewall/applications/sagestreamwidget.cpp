@@ -18,6 +18,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include <QProcess>
+
 //#include <sys/time.h>
 //#include <sys/resource.h>
 
@@ -120,6 +122,7 @@
 SageStreamWidget::SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
     : RailawareWidget(globalappid, s, parent, wFlags)
     , _fsmMsgThread(0)
+    , _sailAppProc(0)
     , _sageAppId(0)
     , receiverThread(0)
     , image(0)

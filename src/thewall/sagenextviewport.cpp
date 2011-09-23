@@ -55,7 +55,9 @@ void SAGENextViewport::on_actionSaveSession_triggered() {
 
 	foreach (QGraphicsItem *gi, scene()->items()) {
 		if (!gi) continue;
-		if (gi->type() < QGraphicsItem::UserType + 2) continue;
+
+		// only consider user application
+		if (gi->type() < QGraphicsItem::UserType + 12) continue;
 
 		BaseWidget *bw = static_cast<BaseWidget *>(gi);
 		out << bw->pos() << bw->scale() << bw->zValue();
@@ -70,7 +72,8 @@ void SAGENextViewport::on_actionSaveSession_triggered() {
 void SAGENextViewport::on_actionCloseAll_triggered() {
 	QGraphicsScene *s = scene();
 	foreach(QGraphicsItem *item, s->items()) {
-		if (item->type() >= QGraphicsItem::UserType + 2) {
+		// only consider user applications
+		if (item->type() >= QGraphicsItem::UserType + 12) {
 			BaseWidget *bw = static_cast<BaseWidget *>(item);
 			Q_ASSERT(bw);
 			bw->fadeOutClose();

@@ -95,6 +95,11 @@ private:
         BaseWidget *app;
 
 		/**
+		  The graphics item under this pointer
+		  */
+		QGraphicsItem *_item;
+
+		/**
 		  Returns the view on which the event occured.
 		  pos is on the scene coordinate
 		  */
@@ -107,20 +112,22 @@ private:
 
 
 /**
-  * The close button icon on the wall
+  * The general button pixmap
   */
-class PixmapCloseButton : public QGraphicsPixmapItem
+class PixmapButton : public QGraphicsWidget
 {
+	Q_OBJECT
 public:
-	explicit PixmapCloseButton(const QString resource, QGraphicsItem *parent = 0);
-	explicit PixmapCloseButton(const QPixmap pixmap, QGraphicsItem *parent=0) : QGraphicsPixmapItem(pixmap, parent) {}
+	explicit PixmapButton(const QString resource, QGraphicsItem *parent = 0);
+	explicit PixmapButton(const QPixmap pixmap, QGraphicsItem *parent=0);
+	~PixmapButton();
 
 protected:
-	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 	void mousePressEvent(QGraphicsSceneMouseEvent *event);
+	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
-private:
-	bool flag;
+signals:
+	void clicked();
 };
 
 

@@ -13,6 +13,7 @@ class fsManagerMsgThread;
 class ImageDoubleBuffer;
 class SagePixelReceiver;
 class AffinityInfo;
+class QProcess;
 
 //#include <QFutureWatcher>
 //#include <QWaitCondition>
@@ -36,6 +37,9 @@ public:
 
 	inline quint64 sageAppId() const {return _sageAppId;}
 
+	inline void setSailAppProc(QProcess *p) {_sailAppProc = p;}
+	inline QProcess * sailAppProc() {return _sailAppProc;}
+
 
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -45,6 +49,11 @@ private:
 //	GLuint texhandle;
 
 	fsManagerMsgThread *_fsmMsgThread;
+
+	/**
+	  The local application that sends pixel
+	  */
+	QProcess *_sailAppProc;
 
 	quint64 _sageAppId;
 

@@ -37,7 +37,7 @@ PolygonArrow::PolygonArrow(const quint64 uicid, const QSettings *s, const QColor
     , settings(s)
     , textItem(0)
     , app(0)
-
+    , _item(0)
 {
 	QPolygonF p;
 	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
@@ -59,17 +59,17 @@ PolygonArrow::~PolygonArrow() {
 }
 
 void PolygonArrow::setPointerName(const QString &text) {
-        textItem = new QGraphicsSimpleTextItem(text, this);
-        textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
-        textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
+	textItem = new QGraphicsSimpleTextItem(text, this);
+	textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
+	textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 
-		QFont f;
-		f.setPointSize(settings->value("gui/pointerfontsize", 20).toInt());
-		f.setBold(true);
-		textItem->setFont(f);
+	QFont f;
+	f.setPointSize(settings->value("gui/pointerfontsize", 20).toInt());
+	f.setBold(true);
+	textItem->setFont(f);
 
-        textItem->setBrush(Qt::white);
-        textItem->moveBy(0, boundingRect().height());
+	textItem->setBrush(Qt::white);
+	textItem->moveBy(0, boundingRect().height());
 }
 
 void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags) {
@@ -107,6 +107,37 @@ void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFla
         }
 
 
+		/* PartitionBar for instance */
+		else if (_item) {
+//			QGraphicsLineItem *l = qgraphicsitem_cast<QGraphicsLineItem *>(_item);
+			PartitionBar *bar = dynamic_cast<PartitionBar *>(_item);
+			if (bar) {
+				//  this will trigger ItemScenePositionHasChanged
+//				bar->setPos(_scenePos);
+
+//				qDebug() << "pointerMove bar" << deltax << deltay;
+				if ( bar->orientation() == Qt::Horizontal) {
+					// bar moves only left or right direction (x axis)
+					SAGENextLayoutWidget *left = bar->ownerNode()->leftTopWidget();
+					SAGENextLayoutWidget *right = bar->ownerNode()->rightBottomWidget();
+					left->resize(left->size().width() + deltax, left->size().height());
+					right->resize(right->size().width() - deltax, right->size().height());
+					right->moveBy(deltax, 0);
+
+//					qDebug() << left->size() << right->size();
+				}
+				else {
+					// bar moves only up or down (y axis)
+					SAGENextLayoutWidget *top = bar->ownerNode()->leftTopWidget();
+					SAGENextLayoutWidget *bottom = bar->ownerNode()->rightBottomWidget();
+					top->resize(top->size().width(), top->size().height() + deltay);
+					bottom->resize(bottom->size().width(), bottom->size().height() - deltay);
+					bottom->moveBy(0, deltay);
+				}
+			}
+		}
+
+
         // Why not just send mouse event ??
         // Because Having multiple users simultaneously do mouse draggin will confuse the system
         /*
@@ -133,51 +164,18 @@ void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt
     }
 	else {
 //		qDebug() << "PolygonArrow::pointerPress() : got the app";
-		if ( btn == Qt::LeftButton)
-			app->setTopmost();
+		if (btn == Qt::LeftButton) {
+			if (app) app->setTopmost();
+		}
 	}
-
-	// Don't we need to do setTopMost as well?
 }
 
 
 void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
-	// should be sent to interactive item like gwebview
-
-//    QGraphicsView *view = eventReceivingViewport(scenePos);
-//	if ( !view ) {
-//		qDebug() << "pointerClick: no view is available";
-//		return;
-//	}
-//    QPointF clickedViewPos = view->mapFromScene( scenePos );
-
-//    QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
-//    QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
-
-//    /**
-//      Pointer can't know (in here) which widget is going to receive this event
-//      because it depends on how child widgets are attached to the parent widget.
-
-//      For example, gwebview of WebWidget will receive mouse event and gwebview isn't pointed by app. It's gwebview's parent (which is WebWidget) that is pointed by the app.
-//	  So, app->grabMouse() is not a good idea especially when WebWidget installs eventFilter for its children
-//      **/
-//    //app->grabMouse();
-
-//    if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
-//		// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
-//        qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-//    }
-//    if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
-//        qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-//    }
-//    //app->ungrabMouse();
-
-
     /**
       Instead of generating mouse event,
       I can let each widget implement BaseWidget::mouseClick()
       **/
-	Q_UNUSED(btnFlags);
 	if (app) {
 		if (btn == Qt::RightButton) {
 			if ( app->isSelected() ) app->setSelected(false);
@@ -185,7 +183,47 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
 		}
 
 		// Reimplement this for your app's specific needs
+
+		/**
+		Pointer can't know (in here) which widget is going to receive this event
+		because it depends on how child widgets are attached to the parent widget.
+
+		For example, gwebview of WebWidget will receive mouse event and gwebview isn't pointed by app. It's gwebview's parent (which is WebWidget) that is pointed by the app.
+	 So, app->grabMouse() is not a good idea especially when WebWidget installs eventFilter for its children
+		**/
+
 		app->mouseClick(scenePos, btn);
+	}
+
+
+	/*
+	  mouse event for graphics item
+	  */
+	else if (_item) {
+		PartitionBar *snw = dynamic_cast<PartitionBar *>(_item);
+		if (! snw) {
+			qDebug() << "pointerClick() : it's not partitionBar";
+
+			QGraphicsView *view = eventReceivingViewport(scenePos);
+			if ( !view ) {
+				qDebug() << "pointerClick: no view is available";
+				return;
+			}
+			QPointF clickedViewPos = view->mapFromScene( scenePos );
+
+			QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
+			QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
+
+			if (_item) _item->grabMouse();
+			if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
+				// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
+				qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+			}
+			if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
+				qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+			}
+			if (_item) _item->ungrabMouse();
+		}
 	}
 }
 
@@ -247,13 +285,26 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
         if ( item == this ) continue;
         //qDebug() << item;
 
-        if ( item->type() >= UserType + 2) {
+        if ( item->type() >= QGraphicsItem::UserType + 12) {
+			//
+			// User application (BaseWidget)
+			//
             app = static_cast<BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %llu, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
+			_item = 0;
             return true;
         }
+		else if (item->type() > QGraphicsItem::UserType) {
+		}
+		else {
+			_item = item;
+			qDebug() << _item;
+			app = 0;
+			return true;
+		}
     }
     app = 0; // reset
+	_item = 0;
 
     //qDebug("PolygonArrow::%s() : uiclientid %llu, There's BaseGraphicsWidget type under pointer", __FUNCTION__, uiclientid);
     return false;
@@ -331,23 +382,35 @@ void SwSimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 
 
 
-PixmapCloseButton::PixmapCloseButton(const QString res, QGraphicsItem *parent)
-    : QGraphicsPixmapItem(parent)
+PixmapButton::PixmapButton(const QString res, QGraphicsItem *parent)
+    : QGraphicsWidget(parent)
 {
-	setPixmap(QPixmap(res));
-	flag = false;
+	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(QPixmap(res), this);
+	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+	resize(p->pixmap().size());
+	setOpacity(0.5);
+}
+PixmapButton::PixmapButton(const QPixmap pixmap, QGraphicsItem *parent)
+    : QGraphicsWidget(parent)
+{
+	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(pixmap, this);
+	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+	resize(pixmap.size());
+	setOpacity(0.5);
+}
+PixmapButton::~PixmapButton() {
+
 }
 
-
-void PixmapCloseButton::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-	Q_UNUSED(event);
-	flag = true;
+void PixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {
+	setOpacity(1);
+}
+void PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
+	setOpacity(0.5);
+//	qDebug() << "pixmapbutton emitting signal";
+	emit clicked();
 }
 
-void PixmapCloseButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
-	if (flag && boundingRect().contains(event->pos())) {
-	}
-}
 
 
 
@@ -357,8 +420,6 @@ PixmapCloseButtonOnScene::PixmapCloseButtonOnScene(const QString res, QGraphicsI
     : QGraphicsPixmapItem(parent)
     , flag(false)
 {
-
-
 	setPixmap(QPixmap(res));
 	setAcceptedMouseButtons(Qt::LeftButton);
 }

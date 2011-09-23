@@ -186,24 +186,18 @@ int main(int argc, char *argv[])
       create the scene (This is a QObject)
       */
 	qDebug() << "Creating SAGENext Scenes";
-	SAGENextScene *scene = new SAGENextScene;
+	SAGENextScene *scene = new SAGENextScene(QRectF(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble()));
 	scene->setBackgroundBrush(QColor(0, 0, 0));
-	scene->setSceneRect(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble());
 	/* This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously. */
 	scene->setItemIndexMethod(QGraphicsScene::NoIndex);
 
-	/*
-	  Attach close button on the scene. if clicked, scene->deleteLater will be called
-      */
-	QPixmap closeIcon(":/resources/close_over.png");
-//	QPixmap closeIcon(":/resources/powerbutton_black_64x64.png");
-	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(scene->width() * 0.02));
-	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
-	opacity->setOpacity(0.2);
-	closeButton->setGraphicsEffect(opacity);
-	closeButton->setX(scene->width() - closeButton->boundingRect().width() - 1);
 
-	scene->addItem(closeButton);
+
+
+
+
+//	scene->setRootPartition();
+//	scene->layoutItem()->setGeometry(scene->sceneRect());
 
 
 
@@ -294,7 +288,7 @@ int main(int argc, char *argv[])
 			/**
 			  in linux, youtube isn't working with OpenGL viewport
 			  **/
-			gvm->setViewport(new QGLWidget());
+			gvm->setViewport(new QGLWidget(QGLFormat(QGL::AlphaChannel | QGL::SampleBuffers)));
 			qDebug() << "[ using QGLWidget as the viewport ]";
 		}
 
@@ -343,7 +337,7 @@ int main(int argc, char *argv[])
 //		launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
 //		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
-		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
+//		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
 
 
         // starts event loop

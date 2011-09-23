@@ -12,7 +12,5 @@
         <file>resources/close_over.png</file>
         <file>resources/webkit_128x128.png</file>
         <file>resources/plugin_200x200.png</file>
-        <file>resources/Gear_black_128x128.png</file>
-        <file>resources/rightbox.png</file>
     </qresource>
 </RCC>
