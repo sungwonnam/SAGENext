@@ -149,6 +149,10 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget
 	setPos(r.topLeft()); // partitionRect.topLeft is in it's parent's coordinate
 }
 
+QSizeF SAGENextLayoutWidget::sizeHint(Qt::SizeHint which, const QSizeF &) const {
+	return size();
+}
+
 SAGENextLayoutWidget::~SAGENextLayoutWidget() {
 }
 

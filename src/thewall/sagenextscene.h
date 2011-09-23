@@ -152,7 +152,7 @@ public:
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);
 	void resizeEvent(QGraphicsSceneResizeEvent *event);
-	QSizeF sizeHint(Qt::SizeHint which, const QSizeF &constraint = QSizeF()) const;
+	QSizeF sizeHint(Qt::SizeHint which, const QSizeF &constraint) const;
 
 private:
 	SAGENextLayoutWidget *_parentWidget;
