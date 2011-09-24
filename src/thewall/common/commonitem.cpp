@@ -3,33 +3,6 @@
 #include "../sagenextscene.h"
 
 
-WidgetRemoveButton::WidgetRemoveButton(QGraphicsItem *parent) :
-        QGraphicsPixmapItem(parent)
-{
-        setAcceptDrops(true);
-}
-
-void WidgetRemoveButton::dragEnterEvent(QGraphicsSceneDragDropEvent *event) {
-        Q_UNUSED(event);
-
-        //just highlight the button
-}
-
-void WidgetRemoveButton::dropEvent(QGraphicsSceneDragDropEvent *event) {
-        Q_UNUSED(event);
-
-        // find out the widget dragged to here and close it
-}
-
-
-
-
-
-
-
-
-
-
 
 PolygonArrow::PolygonArrow(const quint64 uicid, const QSettings *s, const QColor c, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
@@ -174,6 +147,9 @@ void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt
 //		qDebug() << "PolygonArrow::pointerPress() : got the app";
 		if (btn == Qt::LeftButton) {
 			if (app) app->setTopmost();
+		}
+		else if (btn == Qt::RightButton) {
+			// do nothing
 		}
 	}
 }
@@ -341,7 +317,6 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
     //qDebug() << "\nPolygonArrow::setAppUnderPointer() :" << list.size() << " items";
     foreach (QGraphicsItem *item, list) {
         if ( item == this ) continue;
-        //qDebug() << item;
 
 		if ( item->acceptedMouseButtons() == 0 ) continue;
 
@@ -361,7 +336,7 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
 		}
 		else {
 			//
-			// regualar graphics item (PixmapButton, PixmapCloseButtonOn
+			// regualar graphics item PixmapButton, PartitionBar
 			//
 			_item = item;
 //			qDebug() << _item;
@@ -396,48 +371,6 @@ QGraphicsView * PolygonArrow::eventReceivingViewport(const QPointF scenePos) {
 }
 
 
-
-
-
-
-
-SwSimpleTextItem::SwSimpleTextItem(int ps, QGraphicsItem *parent)
-	: QGraphicsSimpleTextItem(parent)
-{
-	if ( ps > 0 ) {
-		QFont f;
-		f.setPointSize(ps);
-		setFont(f);
-	}
-//	setBrush(QColor(100, 100, 100, 128)); // will change brush for text
-	setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
-}
-
-SwSimpleTextItem::~SwSimpleTextItem() {
-}
-void SwSimpleTextItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
-	int numDegrees = event->delta() / 8;
-	int numTicks = numDegrees / 15;
-	//	qDebug("SwSimpleTextItem::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
-
-	qreal s = scale();
-	if ( numTicks > 0 ) {
-		s += 0.1;
-	}
-	else {
-		s -= 0.1;
-	}
-	//	prepareGeometryChange();
-	setScale(s);
-}
-
-void SwSimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-	Q_UNUSED(option);
-	Q_UNUSED(widget);
-
-	painter->fillRect(boundingRect(), QBrush(QColor(128, 128, 128, 164)));
-	QGraphicsSimpleTextItem::paint(painter, option, widget);
-}
 
 
 
@@ -497,52 +430,61 @@ void PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 
 
 
-PixmapCloseButtonOnScene::PixmapCloseButtonOnScene(const QString res, QGraphicsItem *parent)
-    : QGraphicsPixmapItem(parent)
-    , flag(false)
+
+
+
+
+
+
+
+
+
+SwSimpleTextItem::SwSimpleTextItem(int ps, QGraphicsItem *parent)
+	: QGraphicsSimpleTextItem(parent)
 {
-	setPixmap(QPixmap(res));
-	setAcceptedMouseButtons(Qt::LeftButton);
-}
-
-void PixmapCloseButtonOnScene::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-	Q_UNUSED(event);
-	flag = true;
-}
-
-void PixmapCloseButtonOnScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
-	if (flag && boundingRect().contains(event->pos())) {
-		SAGENextScene *s = static_cast<SAGENextScene *>(scene());
-//		QGraphicsScene *s = scene();
-		s->prepareClosing();
-		s->deleteLater();
+	if ( ps > 0 ) {
+		QFont f;
+		f.setPointSize(ps);
+		setFont(f);
 	}
+//	setBrush(QColor(100, 100, 100, 128)); // will change brush for text
+	setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
+}
+
+SwSimpleTextItem::~SwSimpleTextItem() {
+}
+void SwSimpleTextItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
+	int numDegrees = event->delta() / 8;
+	int numTicks = numDegrees / 15;
+	//	qDebug("SwSimpleTextItem::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
+
+	qreal s = scale();
+	if ( numTicks > 0 ) {
+		s += 0.1;
+	}
+	else {
+		s -= 0.1;
+	}
+	//	prepareGeometryChange();
+	setScale(s);
+}
+
+void SwSimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+	Q_UNUSED(option);
+	Q_UNUSED(widget);
+
+	painter->fillRect(boundingRect(), QBrush(QColor(128, 128, 128, 164)));
+	QGraphicsSimpleTextItem::paint(painter, option, widget);
 }
 
 
 
 
 
-PixmapArrow::PixmapArrow(const quint64 uicid, QGraphicsItem *parent)
-        : QGraphicsPixmapItem(parent), uiclientid(uicid)
-{
-        QPixmap ar(":/resources/arrow.png");
-        setPixmap(ar);
-        setRotation(120);
 
-        textItem = 0;
-        app = 0;
 
-        setFlag(QGraphicsItem::ItemIsSelectable, false);
-        setFlag(QGraphicsItem::ItemIsMovable, false);
-}
 
-void PixmapArrow::setPointerName(const QString &text) {
-        textItem = new QGraphicsSimpleTextItem(text, this);
-        textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
-        textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
-        textItem->moveBy(0, boundingRect().height());
-}
+
 
 
 

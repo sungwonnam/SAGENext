@@ -3,88 +3,80 @@
 #include "../../../common/commonitem.h"
 #include "../../base/perfmonitor.h"
 #include "../../base/appinfo.h"
-//#include "../../base/affinityinfo.h"
-
-//#include "../../../system/resourcemonitor.h"
-//#include "../../../system/sagenextscheduler.h"
 
 #include <QtGui>
 
-/*
-int AffinityInfo::Num_Numa_Nodes = 0;
-int AffinityInfo::Cpu_Per_Numa_Node = 0;
-int AffinityInfo::SwThread_Per_Cpu = 0;
-int AffinityInfo::HwThread_Per_Cpu = 0;
-int AffinityInfo::Num_Cpus = 0;
-*/
 
 ExamplePlugin::ExamplePlugin()
     : BaseWidget(Qt::Window)
     , root(0)
 {
 
-//	image = new QImage(800, 600, QImage::Format_RGB888);
-//	for (int i=0; i<image->byteCount(); ++i) {
-//		image->bits()[i] = 130;
-//	}
-//	image->fill(130);
+	// Window will have title bar and window frame
+	setWindowFlags(Qt::Window);
 
 
-        // create label
-        label = new QLabel();
+
+	// create label
+	label = new QLabel();
 //	label->setPixmap(QPixmap(800,600));
-        label->setText("Hello World");
-        label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+	label->setText("Hello World");
+	label->setFrameStyle(QFrame::Box);
+	label->setLineWidth(6);
+	label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
+		//
         // create proxywidget for label
-        labelProxy = new QGraphicsProxyWidget(this, Qt::Widget);
-        labelProxy->setWidget(label);
-        labelProxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Label);
+		//
+	labelProxy = new QGraphicsProxyWidget(this, Qt::Widget);
+	labelProxy->setWidget(label);
+	labelProxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Label);
 
 
-        // create buttons and connect to corresponding callback functions
-        btn_R = new QPushButton("button1");
-        btn_G = new QPushButton("button2");
-        btn_B = new QPushButton("button3");
-        connect(btn_R, SIGNAL(clicked()), this, SLOT(buttonR()));
-        connect(btn_G, SIGNAL(clicked()), this, SLOT(buttonG()));
-        connect(btn_B, SIGNAL(clicked()), this, SLOT(buttonB()));
+	// create buttons and connect to corresponding callback functions
+	btn_R = new QPushButton("buttonR");
+	btn_G = new QPushButton("buttonG");
+	btn_B = new QPushButton("buttonB");
+	connect(btn_R, SIGNAL(clicked()), this, SLOT(buttonR()));
+	connect(btn_G, SIGNAL(clicked()), this, SLOT(buttonG()));
+	connect(btn_B, SIGNAL(clicked()), this, SLOT(buttonB()));
 
+		//
         // create proxywidget for buttons
-        proxy_btn_R = new QGraphicsProxyWidget(this, Qt::Widget);
-        proxy_btn_G = new QGraphicsProxyWidget(this, Qt::Widget);
-        proxy_btn_B = new QGraphicsProxyWidget(this, Qt::Widget);
-        proxy_btn_R->setWidget(btn_R);
-        proxy_btn_G->setWidget(btn_G);
-        proxy_btn_B->setWidget(btn_B);
+		//
+	proxy_btn_R = new QGraphicsProxyWidget(this, Qt::Widget);
+	proxy_btn_G = new QGraphicsProxyWidget(this, Qt::Widget);
+	proxy_btn_B = new QGraphicsProxyWidget(this, Qt::Widget);
+	proxy_btn_R->setWidget(btn_R);
+	proxy_btn_G->setWidget(btn_G);
+	proxy_btn_B->setWidget(btn_B);
 
-        // create layout for buttons (proxywidgets for buttons more precisely)
-        btnLayout = new QGraphicsLinearLayout(Qt::Horizontal);
-        btnLayout->addItem(proxy_btn_R);
-        btnLayout->addItem(proxy_btn_G);
-        btnLayout->addItem(proxy_btn_B);
-        btnLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::PushButton);
+	// create layout for buttons (proxywidgets for buttons more precisely)
+	btnLayout = new QGraphicsLinearLayout(Qt::Horizontal);
+	btnLayout->addItem(proxy_btn_R);
+	btnLayout->addItem(proxy_btn_G);
+	btnLayout->addItem(proxy_btn_B);
+	btnLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::PushButton);
 
 
-        // create main layout
-        mainLayout = new QGraphicsLinearLayout(Qt::Vertical);
+	// create main layout
+	mainLayout = new QGraphicsLinearLayout(Qt::Vertical);
 //	mainLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::DefaultType);
 
-        // add GUI components in it
-        mainLayout->addItem(labelProxy);
-        mainLayout->addItem(btnLayout);
+	// add GUI components in it
+	mainLayout->addItem(labelProxy);
+	mainLayout->addItem(btnLayout);
 
-        // set the main layout to be this application's root layout
-        setLayout(mainLayout);
+	// set the main layout to be this application's root layout
+	// previous layout will be deleted by this
+	setLayout(mainLayout);
 
-        // Window will have title bar and window frame
-        setWindowFlags(Qt::Window);
-        resize(800, 600);
 
-        /*!
-          Once you figure out your widget resolution, call this
-          */
-//	resize(800, 600);
+	/*!
+      Once you figure out your widget resolution, call this function. This is important.
+      */
+	resize(800, 600);
+
 
 //	_appInfo->setFrameSize(800, 600, 24);
 
@@ -95,14 +87,17 @@ ExamplePlugin::ExamplePlugin()
 //		getWindowFrameMargins(&l, &t, &r, &b);
 //		qDebug() << "ImageWidgetPlugin frame margins l, r, t, b" << l << r << t << b;
 
-		// window frame is not interactible by shared pointers
-		setWindowFrameMargins(0, 0, 0, 0);
+	//
+	// window frame is not interactable by shared pointers
+	// so use contentsMargins for window frame
+	//
+	setWindowFrameMargins(0, 0, 0, 0);
 
-//		getContentsMargins(&l, &r, &t, &b);
-//		qDebug() << "ImageWidgetPlugin content margins l, r, t, b" << l << r << t << b;
+	//getContentsMargins(&l, &r, &t, &b);
+	//qDebug() << "ImageWidgetPlugin content margins l, r, t, b" << l << r << t << b;
 
-		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin so that window can be moved with shared pointers
-		setContentsMargins(4,24,4,4);
+	// Qt::Window might want to define mouse dragging. For that case, give more room to top margin so that window can be moved with shared pointers
+	setContentsMargins(4,24,4,4);
 }
 
 
@@ -126,7 +121,7 @@ void ExamplePlugin::paint(QPainter * /*painter*/, const QStyleOptionGraphicsItem
 
 
         /** overlay app information */
-//        BaseWidget::paint(painter, option, widget);
+	//BaseWidget::paint(painter, option, widget);
 
         /** measure latency */
         /*
@@ -143,15 +138,89 @@ void ExamplePlugin::paint(QPainter * /*painter*/, const QStyleOptionGraphicsItem
 //}
 
 
-void ExamplePlugin::wheelEvent(QGraphicsSceneWheelEvent *event) {
-    Q_UNUSED(event);
-    // do nothing here and keep the base implementation
-	BaseWidget::wheelEvent(event);
-}
+
 
 ExamplePlugin::~ExamplePlugin() {
 }
 
+
+QString ExamplePlugin::name() const {
+	//
+    // Please return parent class name.
+    // Don't change this !!!
+	//
+	return "BaseWidget";
+}
+
+/*!
+  THis plugin doesn't have to have proxy widget
+  Because it reimplements paint() and manually draw everything.
+  So you don't have to modify this function.
+  */
+QGraphicsProxyWidget * ExamplePlugin::rootWidget() {
+	return root;
+}
+
+void ExamplePlugin::buttonR() {
+	label->setText("Button R");
+
+//	prepareGeometryChange();
+//	labelProxy->resize(640,480);
+//	updateGeometry();
+//	labelProxy->updateGeometry();
+
+//	labelProxy->setGeometry(QRectF(0,0,640,480));
+//	mainLayout->itemAt(0)->setGeometry(QRectF(0,0,640,480));
+//	mainLayout->geometry( 0,0, mainLayout->geometry().size() );
+//	mainLayout->setGeometry();
+}
+void ExamplePlugin::buttonG() {
+	label->setText("Button G");
+}
+void ExamplePlugin::buttonB() {
+	label->setText("Button B");
+}
+
+
+
+
+void ExamplePlugin::wheelEvent(QGraphicsSceneWheelEvent *event) {
+	Q_UNUSED(event);
+	// do something
+}
+
+Q_EXPORT_PLUGIN2(ImageWidgetPlugin, ExamplePlugin)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 void ExamplePlugin::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn) {
 	QGraphicsView *view = 0;
 	Q_ASSERT(scene());
@@ -175,7 +244,6 @@ void ExamplePlugin::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton b
 		qDebug() << "ExamplePlugin::mouseClick() : Couldn't find the viewport with clickedScenePos" << clickedScenePos;
 		return;
 	}
-
 
 
 	// The event will be sent to the viewport so the pos should be translated
@@ -234,44 +302,4 @@ void ExamplePlugin::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton b
 	if (press) delete press;
 	if (release) delete release;
 }
-
-QString ExamplePlugin::name() const {
-        // Please return parent class name.
-        // Don't change this !!!
-        return "BaseWidget";
-}
-
-/*!
-  THis plugin doesn't have to have proxy widget
-  Because it reimplements paint() and manually draw everything.
-  So you don't have to modify this function.
-  */
-QGraphicsProxyWidget * ExamplePlugin::rootWidget() {
-        return root;
-}
-
-void ExamplePlugin::buttonR() {
-	label->setText("Button 1");
-
-//	prepareGeometryChange();
-//	labelProxy->resize(640,480);
-//	updateGeometry();
-//	labelProxy->updateGeometry();
-
-//	labelProxy->setGeometry(QRectF(0,0,640,480));
-//	mainLayout->itemAt(0)->setGeometry(QRectF(0,0,640,480));
-//	mainLayout->geometry( 0,0, mainLayout->geometry().size() );
-//	mainLayout->setGeometry();
-}
-void ExamplePlugin::buttonG() {
-	label->setText("Button 2");
-}
-void ExamplePlugin::buttonB() {
-	label->setText("Button 3");
-}
-
-
-Q_EXPORT_PLUGIN2(ImageWidgetPlugin, ExamplePlugin)
-
-
-
+*/

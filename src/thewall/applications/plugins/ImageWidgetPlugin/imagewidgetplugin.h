@@ -30,11 +30,6 @@ public:
 		  */
         QGraphicsProxyWidget * rootWidget();
 
-        /*!
-          reimplement BaseWidget::mouseClick() to redefine your own mouse click event
-          */
-        void mouseClick(const QPointF &, Qt::MouseButton);
-
 
 protected:
 
@@ -45,10 +40,10 @@ protected:
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
         /**
-          BaseWidget's wheelEvent resizes the entire window
-          It is recommended to provide custom implementation on this event when window flag is set to Qt::Window
+          BaseWidget's wheelEvent resizes the entire window if item flag is Qt::Widget
+		  and nothing happens if Qt::Window
           */
-        void wheelEvent(QGraphicsSceneWheelEvent *event);
+		void wheelEvent(QGraphicsSceneWheelEvent *event);
 
 //	void resizeEvent(QGraphicsSceneResizeEvent *event);
 

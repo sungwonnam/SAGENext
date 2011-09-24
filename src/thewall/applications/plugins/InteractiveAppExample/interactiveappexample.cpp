@@ -1,27 +1,32 @@
 #include "interactiveappexample.h"
 #include "ui_interactiveappexample.h"
 
-InteractiveAppExample::InteractiveAppExample() :
-		ui(new Ui::InteractiveAppExample),
-		root(0)
+InteractiveAppExample::InteractiveAppExample()
+    : ui(new Ui::InteractiveAppExample)
+    , root(0)
 {
-
 	/* init GUI */
 	ui->setupUi(this);
 	connect(ui->button1, SIGNAL(clicked()), this, SLOT(setLabelText1()));
 	connect(ui->button2, SIGNAL(clicked()), this, SLOT(setLabelText2()));
 
+
+
 	/*
 	  Below is to integrate your GUI application into SAGENext
 	  */
 	root = new QGraphicsProxyWidget();
-	root->setWindowFlags(Qt::Window);
-	root->setWindowFrameMargins(3, 30, 3, 3);
+
 
 	/*
 	  QGraphicsProxyWidget will be the proxy widget for your topmost widget
 	  */
 	root->setWidget(this);
+
+
+	root->setWindowFlags(Qt::Window);
+	root->setWindowFrameMargins(0, 0, 0, 0);
+	root->setContentsMargins(4, 24, 4, 4);
 }
 
 InteractiveAppExample::~InteractiveAppExample()

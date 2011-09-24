@@ -7,30 +7,6 @@ class BaseWidget;
 
 
 /**
-  An widget will be moved to this button to be removed on the scene
-  */
-class WidgetRemoveButton : public QGraphicsPixmapItem {
-public:
-        explicit WidgetRemoveButton(QGraphicsItem *parent = 0);
-        ~WidgetRemoveButton() {}
-
-protected:
-        void dragEnterEvent(QGraphicsSceneDragDropEvent *event);
-
-//	void dragLeaveEvent(QGraphicsSceneDragDropEvent *event);
-
-        void dropEvent(QGraphicsSceneDragDropEvent *event);
-};
-
-
-
-
-
-
-
-
-
-/**
   When a user shares his pointer through ui client,
   This class is instantiated and added to the scene
   */
@@ -43,7 +19,7 @@ public:
 
         /**
           This is called by pointerPress()
-          It sets a user widget (QGraphicsItem::UserType + 2) under the pointer
+          It sets a user widget (type() >= QGraphicsItem::UserType + 12) under the pointer.
           */
         bool setAppUnderPointer(const QPointF scenePosOfPointer);
 
@@ -56,22 +32,33 @@ public:
         virtual void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
-          * setAppUnderPointer() is called
+          * This doesn't generate any mouse event. The setAppUnderPointer() is called.
           */
         virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 		/**
           * simulate mouse click by sending mousePressEvent followed by mouseReleaseEvent
+
+		  press
+		  release
+
           */
         virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
-           This function generates and sends real doubleclick event to the viewport widget
+           This function generates and sends real doubleclick event to the viewport widget.
+
+		   press
+		   release
+		   doubleclick
+		   release
+
           */
         virtual void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
-          * This function generates and sends real mouse wheel event to the viewport widget
+           This function generates and sends real mouse wheel event to the viewport widget
+		   An item doesn't have to be the mousegraber to receive this event
           */
         virtual void pointerWheel(const QPointF &scenePos, int delta = 120, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
@@ -95,7 +82,7 @@ private:
         BaseWidget *app;
 
 		/**
-		  The graphics item under this pointer
+		  The graphics item under this pointer. This is to keep track general items on the scene
 		  */
 		QGraphicsItem *_item;
 
@@ -112,7 +99,7 @@ private:
 
 
 /**
-  * The general button pixmap
+  * The general button pixmap that emits signal when clicked
   */
 class PixmapButton : public QGraphicsWidget
 {
@@ -131,28 +118,24 @@ signals:
 };
 
 
+
 /**
-  The same pixmapclose button
-  But this is using scene object
+  An widget will be moved to this button to be removed on the scene
   */
-class PixmapCloseButtonOnScene : public QGraphicsPixmapItem
+class WidgetRemoveButton : public PixmapButton
 {
+	Q_OBJECT
 public:
-	explicit PixmapCloseButtonOnScene(const QString resource, QGraphicsItem *parent = 0);
-	explicit PixmapCloseButtonOnScene(const QPixmap pixmap, QGraphicsItem *parent=0) : QGraphicsPixmapItem(pixmap, parent) {}
-
-protected:
-	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
-	void mousePressEvent(QGraphicsSceneMouseEvent *event);
-
-private:
-	bool flag;
+	explicit WidgetRemoveButton(QGraphicsItem *parent = 0);
+	~WidgetRemoveButton() {}
 };
 
 
 
 
-
+/**
+  This is used to display text on gray rectangle
+  */
 class SwSimpleTextItem : public QGraphicsSimpleTextItem
 {
 public:
@@ -164,26 +147,6 @@ protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 };
-
-
-
-
-class PixmapArrow : public QGraphicsPixmapItem
-{
-public:
-	PixmapArrow(const quint64 uicid, QGraphicsItem *parent=0);
-	void setPointerName(const QString &text);
-
-private:
-	QGraphicsSimpleTextItem *textItem;
-	const quint64 uiclientid;
-
-	/**
-		  * the app under this pointer
-		  */
-	BaseWidget *app;
-};
-
 
 
 #endif // COMMONITEM_H
