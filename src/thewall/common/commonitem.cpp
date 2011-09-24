@@ -112,12 +112,11 @@ void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFla
 //			QGraphicsLineItem *l = qgraphicsitem_cast<QGraphicsLineItem *>(_item);
 			PartitionBar *bar = dynamic_cast<PartitionBar *>(_item);
 			if (bar) {
-				//  this will trigger ItemScenePositionHasChanged
-//				bar->setPos(_scenePos);
-
 //				qDebug() << "pointerMove bar" << deltax << deltay;
 				if ( bar->orientation() == Qt::Horizontal) {
 					// bar moves only left or right direction (x axis)
+//					bar->moveBy(deltax, 0);
+
 					SAGENextLayoutWidget *left = bar->ownerNode()->leftTopWidget();
 					SAGENextLayoutWidget *right = bar->ownerNode()->rightBottomWidget();
 					left->resize(left->size().width() + deltax, left->size().height());
@@ -128,6 +127,8 @@ void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFla
 				}
 				else {
 					// bar moves only up or down (y axis)
+//					bar->moveBy(0, deltay);
+
 					SAGENextLayoutWidget *top = bar->ownerNode()->leftTopWidget();
 					SAGENextLayoutWidget *bottom = bar->ownerNode()->rightBottomWidget();
 					top->resize(top->size().width(), top->size().height() + deltay);
@@ -214,7 +215,7 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
 			QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
 			QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
 
-			if (_item) _item->grabMouse();
+//			if (_item) _item->grabMouse();
 			if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
 				// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
 				qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
@@ -222,7 +223,7 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
 			if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
 				qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
 			}
-			if (_item) _item->ungrabMouse();
+//			if (_item) _item->ungrabMouse();
 		}
 	}
 }
@@ -285,6 +286,8 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
         if ( item == this ) continue;
         //qDebug() << item;
 
+		if ( item->acceptedMouseButtons() == 0 ) continue;
+
         if ( item->type() >= QGraphicsItem::UserType + 12) {
 			//
 			// User application (BaseWidget)
@@ -295,8 +298,14 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
             return true;
         }
 		else if (item->type() > QGraphicsItem::UserType) {
+			//
+			// custom type. So this custom type should be less than UserType + 12
+			//
 		}
 		else {
+			//
+			// regualar graphics item (PixmapButton, PixmapCloseButtonOn
+			//
 			_item = item;
 			qDebug() << _item;
 			app = 0;
@@ -382,20 +391,35 @@ void SwSimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 
 
 
-PixmapButton::PixmapButton(const QString res, QGraphicsItem *parent)
+PixmapButton::PixmapButton(const QString &res, qreal desiredWidth, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
 {
-	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(QPixmap(res), this);
+	QPixmap orgPixmap(res);
+	if (desiredWidth) {
+		orgPixmap = orgPixmap.scaledToWidth(desiredWidth);
+	}
+	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(orgPixmap, this);
+
+	// This widget (PixmapButton) has to receive mouse event
 	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+
 	resize(p->pixmap().size());
 	setOpacity(0.5);
 }
-PixmapButton::PixmapButton(const QPixmap pixmap, QGraphicsItem *parent)
+PixmapButton::PixmapButton(const QPixmap &pixmap, qreal desiredWidth, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
 {
-	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(pixmap, this);
+	QGraphicsPixmapItem *p = 0;
+	if ( desiredWidth ) {
+		p = new QGraphicsPixmapItem(pixmap.scaledToWidth(desiredWidth), this);
+	}
+	else {
+		p = new QGraphicsPixmapItem(pixmap, this);
+	}
+
+	// This widget (PixmapButton) has to receive mouse event
 	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
-	resize(pixmap.size());
+	resize(p->pixmap().size());
 	setOpacity(0.5);
 }
 PixmapButton::~PixmapButton() {

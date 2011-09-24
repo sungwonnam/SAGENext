@@ -118,8 +118,8 @@ class PixmapButton : public QGraphicsWidget
 {
 	Q_OBJECT
 public:
-	explicit PixmapButton(const QString resource, QGraphicsItem *parent = 0);
-	explicit PixmapButton(const QPixmap pixmap, QGraphicsItem *parent=0);
+	explicit PixmapButton(const QString &resource, qreal desiredWidth = 0.0, QGraphicsItem *parent = 0);
+	explicit PixmapButton(const QPixmap &pixmap, qreal desiredWidth = 0.0, QGraphicsItem *parent=0);
 	~PixmapButton();
 
 protected:

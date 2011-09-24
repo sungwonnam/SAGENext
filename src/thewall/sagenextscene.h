@@ -122,12 +122,8 @@ public:
 	inline Qt::Orientation orientation() const {return _orientation;}
 	inline SAGENextLayoutWidget * ownerNode() {return _ownerNode;}
 
-protected:
-	QVariant itemChange(GraphicsItemChange change, const QVariant &value);
-
 private:
 	SAGENextLayoutWidget *_ownerNode;
-
 	Qt::Orientation _orientation;
 };
 
@@ -152,7 +148,6 @@ public:
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);
 	void resizeEvent(QGraphicsSceneResizeEvent *event);
-	QSizeF sizeHint(Qt::SizeHint which, const QSizeF &constraint) const;
 
 private:
 	SAGENextLayoutWidget *_parentWidget;

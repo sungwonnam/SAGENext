@@ -18,7 +18,9 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, QObject *parent)
       */
 	QPixmap closeIcon(":/resources/close_over.png");
 //	QPixmap closeIcon(":/resources/powerbutton_black_64x64.png");
-	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(sceneRect.width() * 0.02));
+//	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(sceneRect.width() * 0.02));
+	PixmapButton *closeButton = new PixmapButton(closeIcon, sceneRect.width() * 0.02);
+	connect(closeButton, SIGNAL(clicked()), this, SLOT(prepareClosing()));
 //	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
 //	opacity->setOpacity(0.2);
 //	closeButton->setGraphicsEffect(opacity);
@@ -27,26 +29,23 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, QObject *parent)
 	addItem(closeButton);
 
 
-
 	_rootLayoutWidget = new SAGENextLayoutWidget(sceneRect);
 	addItem(_rootLayoutWidget);
 }
 
 void SAGENextScene::prepareClosing() {
-	// close UiServer
-
+	// close UiServer so that all the shared pointers can be deleted first
 	if (_uiserver) {
 		qDebug() << "Scene is deleting UiServer";
 		delete _uiserver;
 	}
-
 
 	if (_rmonitor) {
 		qDebug() << "Scene is deleting ResourceMonitor";
 		delete _rmonitor;
 	}
 
-//	::sleep(1);
+	deleteLater();
 }
 
 SAGENextScene::~SAGENextScene() {
@@ -69,11 +68,11 @@ SAGENextScene::~SAGENextScene() {
 		}
 	}
 
-	qDebug() << "\nScene is closing all views";
 
 	/*
 	  close all views
 	  */
+	qDebug() << "\nScene is closing all views";
 	foreach (QGraphicsView *view, views()) {
 		view->close(); // WA_DeleteOnClose is set
 	}
@@ -119,10 +118,12 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget
 //	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
 //	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
+
+	// pointer->setAppUnderPointer() will pass this item
 	setAcceptedMouseButtons(0);
 
-	_hButton = new PixmapButton(":/resources/minimize_shape.gif", this);
-	_vButton = new PixmapButton( ":/resources/maximize_shape.gif", this);
+	_hButton = new PixmapButton(":/resources/minimize_shape.gif", 0, this);
+	_vButton = new PixmapButton( ":/resources/maximize_shape.gif", 0, this);
 
 	// horizontal button will divide the widget vertically
 	connect(_hButton, SIGNAL(clicked()), this, SLOT(createVChildPartitions()));
@@ -134,7 +135,7 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget
 //	_buttonGrp->addToGroup(_hButton);
 
 	if (parent) {
-		_xButton = new PixmapButton(":/resources/close_shape.gif", this);
+		_xButton = new PixmapButton(":/resources/close_shape.gif", 0, this);
 		connect(_xButton, SIGNAL(clicked()), _parentWidget, SLOT(deleteChildPartitions()));
 //		_buttonGrp->addToGroup(_xButton);
 	}
@@ -142,6 +143,7 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget
 
 	}
 //	setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
+//	setMinimumSize(r.size());
 
 	setLayout(0);
 
@@ -149,9 +151,6 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget
 	setPos(r.topLeft()); // partitionRect.topLeft is in it's parent's coordinate
 }
 
-QSizeF SAGENextLayoutWidget::sizeHint(Qt::SizeHint which, const QSizeF &) const {
-	return size();
-}
 
 SAGENextLayoutWidget::~SAGENextLayoutWidget() {
 }
@@ -172,15 +171,44 @@ void SAGENextLayoutWidget::paint(QPainter *painter, const QStyleOptionGraphicsIt
 	painter->drawRect(boundingRect());
 }
 
-void SAGENextLayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
+void SAGENextLayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
+	// adjust button position
 	setButtonPos();
+
+	// this signal will make parentWidget to call adjustBar()
 	emit resized();
+
+	// upon resizing, resize my childs as well
+	if (_bar) {
+		QSizeF delta = e->newSize() - e->oldSize();
+
+		if (_bar->orientation() == Qt::Horizontal) {
+			if (delta.height() = 0) {
+				// resized horizontally
+				_left_top_w->resize(e->newSize().width(), _left_top_w->size().height());
+				_right_bottom_w->resize(e->newSize().width() , _right_bottom_w->size().height());
+			}
+			else if (delta.width() == 0) {
+				// resized vertically
+			}
+		}
+		else {
+
+		}
+	}
+
+	// If growing, do nothing
+	// If shrinking, move baseWidgets accordingly
+
+	// First, check all child basewidgets,
+	// and un-child if the basewidget has moved (by user) from this widget
+	// or set as a child if new basewidget has come.
+	// So, un-child everything and find colliding items and make them as childs
 }
 
 void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation orientation) {
-	QGraphicsLinearLayout *linear = new QGraphicsLinearLayout(orientation);
-	linear->setContentsMargins(0, 0, 0, 0);
-//	linear->setPreferredSize(size());
+//	QGraphicsLinearLayout *linear = new QGraphicsLinearLayout(orientation);
+//	linear->setContentsMargins(0, 0, 0, 0);
 
 	QRectF left_top;
 	QRectF right_bottom;
@@ -217,13 +245,15 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation orientation) {
 	_left_top_w = new SAGENextLayoutWidget(left_top, this, this);
 	_right_bottom_w = new SAGENextLayoutWidget(right_bottom, this, this);
 
+	adjustBar();
+
 	connect(_left_top_w, SIGNAL(resized()), this, SLOT(adjustBar()));
 
-	linear->insertItem(0, _left_top_w);
-	linear->insertItem(1, _right_bottom_w);
+//	linear->insertItem(0, _left_top_w);
+//	linear->insertItem(1, _right_bottom_w);
 
 	// QGraphicsWidget takes ownership of the linear
-	setLayout(linear);
+//	setLayout(linear);
 
 	// hides my buttons. This widget will just hold child widget
 //	_buttonGrp->hide();
@@ -235,12 +265,13 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation orientation) {
 void SAGENextLayoutWidget::adjustBar() {
 	Q_ASSERT(_bar);
 	if ( _bar->orientation() == Qt::Horizontal ) {
-		// left and right
+		// left to right
 		QPointF topRight = _left_top_w->geometry().topRight();
 		QPointF bottomRight = _left_top_w->geometry().bottomRight();
 		_bar->setLine(topRight.x(), topRight.y(), bottomRight.x(), bottomRight.y());
 	}
 	else {
+		// top to bottom
 		QPointF bottomLeft = _left_top_w->geometry().bottomLeft();
 		QPointF bottomRight = _left_top_w->geometry().bottomRight();
 		_bar->setLine(bottomLeft.x(), bottomLeft.y(), bottomRight.x(), bottomRight.y());
@@ -253,14 +284,17 @@ void SAGENextLayoutWidget::deleteChildPartitions() {
 	delete _left_top_w;
 	delete _right_bottom_w;
 
-	setLayout(0);
-
 	Q_ASSERT(_bar);
 	delete _bar;
 
 	if (_isTileOn) {
 		doTile();
 	}
+	else {
+		setLayout(0);
+	}
+
+
 //	_buttonGrp->show();
 	_vButton->show();
 	_hButton->show();
@@ -269,7 +303,6 @@ void SAGENextLayoutWidget::deleteChildPartitions() {
 
 void SAGENextLayoutWidget::doTile() {
 	// I must be an actual partition
-	Q_ASSERT(layout()==0);
 
 	QGraphicsGridLayout *grid = new QGraphicsGridLayout;
 
@@ -290,11 +323,11 @@ PartitionBar::PartitionBar(Qt::Orientation ori, SAGENextLayoutWidget *owner, QGr
     , _orientation(ori)
 {
 //	setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
-//	setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+	setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
 	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, true);
 
-	setAcceptedMouseButtons(0);
+//	setAcceptedMouseButtons(0);
 
 	QPen pen;
 	pen.setWidth(6);
@@ -303,29 +336,7 @@ PartitionBar::PartitionBar(Qt::Orientation ori, SAGENextLayoutWidget *owner, QGr
 	setPen(pen);
 }
 
-QVariant PartitionBar::itemChange(GraphicsItemChange change, const QVariant &value) {
-	if (change == QGraphicsItem::ItemPositionHasChanged) {
 
-		QPointF newpos = value.toPointF();
-		qDebug() << "PartitionBar::itemChange() new position" << newpos;
-
-/*
-		// adjust colliding line item's size
-		QList<QGraphicsItem *> citems = collidingItems(Qt::IntersectsItemBoundingRect);
-		foreach(QGraphicsItem *item, citems) {
-			PartitionBar *bar = dynamic_cast<PartitionBar *>(item);
-			if (bar && bar->orientation() != _orientation) {
-				// change size of those bars
-			}
-		}
-		*/
-
-		Q_ASSERT(_ownerNode);
-//		_ownerNode->lineHasMoved(newpos);
-
-	}
-	return value;
-}
 
 
 
