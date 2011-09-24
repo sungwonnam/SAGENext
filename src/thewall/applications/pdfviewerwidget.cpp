@@ -1,5 +1,6 @@
 #include "pdfviewerwidget.h"
 #include "base/perfmonitor.h"
+#include "../common/commonitem.h"
 
 #include <QPainter>
 #include <QPushButton>
@@ -50,10 +51,15 @@ PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, co
 	rButton->setPos( 10, size().height() - rButton->size().height() );
 	*/
 
+	PixmapButton *left = new PixmapButton(":/resources/media-forward-rtl_128x128.png", 0, this);
+	PixmapButton *right = new PixmapButton(":/resources/media-forward-ltr_128x128.png", 0, this);
+	connect(left, SIGNAL(clicked()), this, SLOT(prevPage()));
+	connect(right, SIGNAL(clicked()), this, SLOT(nextPage()));
+	left->setPos(0, size().height()/2);
+	right->setPos(size().width() - right->size().width(), size().height());
 }
 
 PDFViewerWidget::~PDFViewerWidget() {
-
 	if (_currentPage) delete _currentPage;
 	if (_document) delete _document;
 
@@ -99,10 +105,8 @@ void PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 	if (!_currentPage) return;
 	painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
-
 	if (_perfMon)
 		_perfMon->getDrawTimer().start();
-
 
 	/**
 	  This is slow with Arthur backend
