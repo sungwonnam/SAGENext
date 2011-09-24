@@ -251,11 +251,7 @@ QGraphicsProxyWidget * ExamplePlugin::rootWidget() {
 }
 
 void ExamplePlugin::buttonR() {
-        label->setText("Button 1");
-//	label->resize(640, 480);
-
-//	prepareGeometryChange();
-//	resize(640, 480);
+	label->setText("Button 1");
 
 //	prepareGeometryChange();
 //	labelProxy->resize(640,480);
@@ -268,10 +264,10 @@ void ExamplePlugin::buttonR() {
 //	mainLayout->setGeometry();
 }
 void ExamplePlugin::buttonG() {
-        label->setText("Button 2");
+	label->setText("Button 2");
 }
 void ExamplePlugin::buttonB() {
-        label->setText("Button 3");
+	label->setText("Button 3");
 }
 
 

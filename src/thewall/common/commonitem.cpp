@@ -72,15 +72,19 @@ void PolygonArrow::setPointerName(const QString &text) {
 	textItem->moveBy(0, boundingRect().height());
 }
 
-void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags) {
+void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
     qreal deltax = _scenePos.x() - scenePos().x();
     qreal deltay = _scenePos.y() - scenePos().y();
 
+	//
     // move pointer itself
     // Sets the position of the item to pos, which is in parent coordinates. For items with no parent, pos is in scene coordinates.
+	//
     setPos(_scenePos);
 
-    // if dragging
+	//
+    // LEFT button mouse dragging
+	//
     if ( btnFlags & Qt::LeftButton ) {
 
         /* Because of pointerPress, appUnderPointer has already set at this point */
@@ -103,37 +107,37 @@ void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFla
             else {
                 // move app widget under this pointer
                 app->moveBy(deltax, deltay);
+				app->mouseDrag( _scenePos, Qt::LeftButton, modifier);
             }
         }
 
 
-		/* PartitionBar for instance */
+		//
+		// The PartitionBar item for instance
+		//
 		else if (_item) {
 //			QGraphicsLineItem *l = qgraphicsitem_cast<QGraphicsLineItem *>(_item);
 			PartitionBar *bar = dynamic_cast<PartitionBar *>(_item);
 			if (bar) {
 //				qDebug() << "pointerMove bar" << deltax << deltay;
 				if ( bar->orientation() == Qt::Horizontal) {
-					// bar moves only left or right direction (x axis)
-//					bar->moveBy(deltax, 0);
+					//
+					// bar moves only up or down direction (y axis)
 
-					SAGENextLayoutWidget *left = bar->ownerNode()->leftTopWidget();
-					SAGENextLayoutWidget *right = bar->ownerNode()->rightBottomWidget();
-					left->resize(left->size().width() + deltax, left->size().height());
-					right->resize(right->size().width() - deltax, right->size().height());
-					right->moveBy(deltax, 0);
-
-//					qDebug() << left->size() << right->size();
-				}
-				else {
-					// bar moves only up or down (y axis)
-//					bar->moveBy(0, deltay);
-
-					SAGENextLayoutWidget *top = bar->ownerNode()->leftTopWidget();
-					SAGENextLayoutWidget *bottom = bar->ownerNode()->rightBottomWidget();
-					top->resize(top->size().width(), top->size().height() + deltay);
+					SAGENextLayoutWidget *top = bar->ownerNode()->topWidget();
+					SAGENextLayoutWidget *bottom = bar->ownerNode()->bottomWidget();
+					top->resize(      top->size().width(),    top->size().height() + deltay);
 					bottom->resize(bottom->size().width(), bottom->size().height() - deltay);
 					bottom->moveBy(0, deltay);
+				}
+				else {
+					// bar moves only left or right (x axis)
+
+					SAGENextLayoutWidget *left = bar->ownerNode()->leftWidget();
+					SAGENextLayoutWidget *right = bar->ownerNode()->rightWidget();
+					left->resize(  left->size().width() + deltax,  left->size().height());
+					right->resize(right->size().width() - deltax, right->size().height());
+					right->moveBy(deltax, 0);
 				}
 			}
 		}
@@ -155,9 +159,12 @@ void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFla
         }
         */
     }
+	else if (btnFlags & Qt::RightButton) {
+
+	}
 }
 
-void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
+void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
 	Q_UNUSED(btnFlags);
 	// note that this doesn't consider window frame
     if (!setAppUnderPointer(scenePos)) {
@@ -172,34 +179,42 @@ void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt
 }
 
 
-void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
+void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
     /**
       Instead of generating mouse event,
       I can let each widget implement BaseWidget::mouseClick()
       **/
-	if (app) {
-		if (btn == Qt::RightButton) {
-			if ( app->isSelected() ) app->setSelected(false);
-			else app->setSelected(true);
-		}
+//	if (app) {
+//		if (btn == Qt::RightButton) {
+//			if ( app->isSelected() ) {
+//				app->setSelected(false);
+//				// to be effective, turn off WA_OpaquePaintEvent or set setAutoFillBackground(true)
+//				app->palette().setColor(QPalette::Window, QColor(100, 100, 100, 128));
+//			}
+//			else {
+//				app->setSelected(true);
+//				app->palette().setColor(QPalette::Window, QColor(170, 170, 5, 164));
+//			}
+//		}
 
-		// Reimplement this for your app's specific needs
+//		// Reimplement this for your app's specific needs
 
-		/**
-		Pointer can't know (in here) which widget is going to receive this event
-		because it depends on how child widgets are attached to the parent widget.
+//		/**
+//		Pointer can't know (in here) which widget is going to receive this event
+//		because it depends on how child widgets are attached to the parent widget.
 
-		For example, gwebview of WebWidget will receive mouse event and gwebview isn't pointed by app. It's gwebview's parent (which is WebWidget) that is pointed by the app.
-	 So, app->grabMouse() is not a good idea especially when WebWidget installs eventFilter for its children
-		**/
+//		For example, gwebview of WebWidget will receive mouse event and gwebview isn't pointed by app. It's gwebview's parent (which is WebWidget) that is pointed by the app.
+//	 So, app->grabMouse() is not a good idea especially when WebWidget installs eventFilter for its children
+//		**/
 
-		app->mouseClick(scenePos, btn);
-	}
+//		app->mouseClick(scenePos, btn);
+//	}
 
 
 	/*
 	  mouse event for graphics item
 	  */
+	/*
 	else if (_item) {
 		PartitionBar *snw = dynamic_cast<PartitionBar *>(_item);
 		if (! snw) {
@@ -226,11 +241,39 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
 //			if (_item) _item->ungrabMouse();
 		}
 	}
+	*/
+
+	QGraphicsView *view = eventReceivingViewport(scenePos);
+	if ( !view ) {
+		qDebug() << "pointerClick: no view is available";
+		return;
+	}
+	QPointF clickedViewPos = view->mapFromScene( scenePos );
+
+	QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, modifier);
+	QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, modifier);
+
+	if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
+		// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
+		qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+	}
+	else {
+//		qDebug() << "press delievered";
+		if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
+			qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+		}
+		else {
+//			qDebug() << "release delievered";
+			// who should ungrabmouse() ??
+			QGraphicsItem *mouseGrabberItem = view->scene()->mouseGrabberItem();
+			if (mouseGrabberItem) mouseGrabberItem->ungrabMouse();
+		}
+	}
 }
 
 
 
-void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags) {
+void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
     if (!app) {
         qDebug("PolygonArrow::%s() : There's no app widget under this pointer", __FUNCTION__);
         return;
@@ -240,15 +283,29 @@ void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton b
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
     if (gview) {
-        QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier);
-		QMouseEvent release(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btnFlags, Qt::NoModifier);
+        QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), btn, btnFlags, modifier);
+		QMouseEvent release(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btnFlags, modifier);
 
         // sendEvent doesn't delete event object, so event should be created in stack space
         if ( ! QApplication::sendEvent(gview->viewport(), &dblClickEvent) ) {
             qDebug("PolygonArrow::%s() : sendEvent MouseButtonDblClick on (%.1f,%.1f) failed", __FUNCTION__, scenePos.x(), scenePos.y());
         }
-		if ( ! QApplication::sendEvent(gview->viewport(), &release)) {
-			qDebug("PolygonArrow::%s() : sendEvent releaseEvent failed", __FUNCTION__);
+		else {
+//			qDebug() << "dblClick delievered";
+			if ( ! QApplication::sendEvent(gview->viewport(), &release)) {
+				qDebug("PolygonArrow::%s() : sendEvent releaseEvent failed", __FUNCTION__);
+			}
+			else {
+//				qDebug() << "release delivered";
+
+				//
+				// If the item is still mouse grabber, further pressEvent won't be delievered to any item including this one
+				//
+				QGraphicsItem *mouseGrabberItem = gview->scene()->mouseGrabberItem();
+				if (mouseGrabberItem) mouseGrabberItem->ungrabMouse();
+//				qDebug() << "mouse grabber" << gview->scene()->mouseGrabberItem();
+
+			}
 		}
     }
     else {
@@ -258,7 +315,7 @@ void PolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton b
 
 
 
-void PolygonArrow::pointerWheel(const QPointF &scenePos, int delta) {
+void PolygonArrow::pointerWheel(const QPointF &scenePos, int delta, Qt::KeyboardModifier modifier) {
     // Generate mouse event directly from here
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
@@ -307,7 +364,7 @@ bool PolygonArrow::setAppUnderPointer(const QPointF scenePos) {
 			// regualar graphics item (PixmapButton, PixmapCloseButtonOn
 			//
 			_item = item;
-			qDebug() << _item;
+//			qDebug() << _item;
 			app = 0;
 			return true;
 		}

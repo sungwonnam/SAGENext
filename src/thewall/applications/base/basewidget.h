@@ -107,13 +107,13 @@ public:
           In that case, a user can reimplement this function to define widget's behavior in response to mouse click on the widget.
           The default implementation provides real mouse press and release event.
           */
-        virtual void mouseClick(const QPointF &, Qt::MouseButton);
+//        virtual void mouseClick(const QPointF &, Qt::MouseButton); // this is taken care of in shared pointer
 
 
         /*!
           Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to weird behavior. So this should be implemented in child class manually.
           */
-        virtual void mouseDrag(const QPointF &, Qt::MouseButton);
+        virtual void mouseDrag(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 
         /*!
@@ -252,9 +252,15 @@ protected:
         QAction *_closeAction; /**< fadeOutClose() */
 
 
+		QColor _borderColor;
+		QColor _borderColorSelected;
+
+
         inline void setWindowState(Window_State ws) {_windowState = ws;}
 
         void setWidgetType(Widget_Type wt);
+
+
 
         void init();
 
@@ -276,6 +282,7 @@ protected:
 
         /*!
 		  setTransformOriginPoint() with center of the widget
+		  Because of this, your widget's transformationOrigin is center
           */
         virtual void resizeEvent(QGraphicsSceneResizeEvent *event);
 

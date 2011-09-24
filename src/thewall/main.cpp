@@ -311,6 +311,8 @@ int main(int argc, char *argv[])
         //	gvm->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
 		gvm->setFrameStyle(QFrame::NoFrame);
+		gvm->setLineWidth(0);
+		gvm->setContentsMargins(0, 0, 0, 0);
 
 //		QPalette palette;
 //		QBrush brush(QColor(128, 128, 128, 128), Qt::SolidPattern);
@@ -321,7 +323,11 @@ int main(int argc, char *argv[])
 		//	gvm->setRenderHint(QPainter::HighQualityAntialiasing);
         gvm->setAttribute(Qt::WA_DeleteOnClose);
         gvm->setWindowFlags(Qt::FramelessWindowHint);
-        gvm->setWindowState(Qt::WindowFullScreen);
+
+//        gvm->setWindowState(Qt::WindowFullScreen);
+		gvm->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+		gvm->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
         gvm->setDragMode(QGraphicsView::RubberBandDrag);
         gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, true);
 

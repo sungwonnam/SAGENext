@@ -81,6 +81,8 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
      */
 	resize(_image->size());
 
+	qDebug() << "vnc constructor" << boundingRect() << size();
+
 
 	if (_perfMon) {
 		_perfMon->setExpectedFps( (qreal)framerate );

@@ -49,10 +49,10 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
 	, _priority(0.5)
 {
 	// This will affect boundingRect(), windowFrameRect() of the widget.
-	qreal l = settings->value("gui/framemarginleft", 3).toDouble();
-	qreal t = settings->value("gui/framemargintop", 3).toDouble();
-	qreal r = settings->value("gui/framemarginright", 3).toDouble();
-	qreal b = settings->value("gui/framemarginright", 3).toDouble();
+	qreal l = settings->value("gui/framemarginleft", 6).toDouble();
+	qreal t = settings->value("gui/framemargintop", 6).toDouble();
+	qreal r = settings->value("gui/framemarginright", 6).toDouble();
+	qreal b = settings->value("gui/framemarginright", 6).toDouble();
 	if (isWindow()) {
 		// window frame is not interactible by shared pointers
 		setWindowFrameMargins(0, 0, 0, 0);
@@ -110,23 +110,17 @@ void BaseWidget::setProxyWidget(QGraphicsProxyWidget *proxyWidget)
 
 void BaseWidget::init()
 {
-	/**
-	  Once your widget findout native resolution, please call setTransformOriginPoint() with your widget's center point
-	  */
-//	setTransformOriginPoint(boundingRect().center());
-
-	// Indicates that the widget paints all its pixels when it receives a paint event
-	// Thus, it is not required for operations like updating, resizing, scrolling and focus changes
-	// to erase the widget before generating paint events.
-	setAttribute(Qt::WA_OpaquePaintEvent, true);
-
+	//
 	// Destructor will be called by close()
+	//
 	setAttribute(Qt::WA_DeleteOnClose, true);
 
 	setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
 
+	//
 	/* When enabled, the item's paint() function will be called only once for each call to update(); for any subsequent repaint requests, the Graphics View framework will redraw from the cache. */
 	/* Turn cache off for streaming application */
+	//
 	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
 	//qDebug() << "BaseWidget::init() : boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
@@ -176,10 +170,30 @@ void BaseWidget::init()
 	else
 		_parallelAnimGroup->addAnimation(pAnim_scale);
 
+	//
+	// Opacity effect when closing
 	pAnim_opacity = new QPropertyAnimation(this, "opacity", this);
 	pAnim_opacity->setEasingCurve(QEasingCurve::OutCubic);
-
 	connect(pAnim_opacity, SIGNAL(finished()), this, SLOT(close()));
+
+
+	_borderColor = QColor(100, 100, 100, 128);
+	_borderColorSelected = QColor(170, 170, 5, 128);
+
+
+
+	//
+	// Indicates that the widget paints all its pixels when it receives a paint event
+	// Thus, it is not required for operations like updating, resizing, scrolling and focus changes
+	// to erase the widget before generating paint events.
+	setAttribute(Qt::WA_OpaquePaintEvent, true);
+
+	// will be cleared with this color before paint()
+	palette().setColor(QPalette::Window, _borderColor);
+
+	//
+	// To be effective, unset WA_OpaquePaintEvent
+	setAutoFillBackground(false);
 
 
         /*!
@@ -673,56 +687,11 @@ void BaseWidget::createActions()
 
 
 
-void BaseWidget::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn) {
-    QPointF itempos = mapFromScene(clickedScenePos);
-
-    QGraphicsView *gview = 0;
-    foreach (gview, scene()->views()) {
-		// geometry of widget relative to its parent
-		//        v->geometry();
-		// internal geometry of widget
-		//        v->rect();
-        if ( gview->rect().contains(gview->mapFromScene(clickedScenePos)) )
-            break;
-    }
-
-    if (gview) {
-        // be aware that scaling doesn't change size(), boundingRect(), and geometry() at all
-        if ( boundingRect().contains(itempos) ) {
-            QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-            QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, gview->mapFromScene(clickedScenePos), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-
-			/**
-			  Who should become the mouseGrabber depends on how children of this widget is layered out. So it's differ by each application,
-			  and only app developer knows it.
-			  So, it is better to just send mousePressEvent and let a child item receives the event (thereby it will become mouseGrabber)
-			  A parent widget can install eventFilter on its child items. Refer WebWidget.
-			  */
-            //grabMouse();
-
-            // sendEvent doesn't delete event object, so event can be created in stack (local to this function)
-            if ( ! QApplication::sendEvent(gview->viewport(), press) ) {
-                qDebug("BaseWidget::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-            }
-            // this widget is, maybe, now mouseGrabber because of the pressEvent
-
-            if ( ! QApplication::sendEvent(gview->viewport(), release) ) {
-                qDebug("BaseWidget::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-            }
-            ungrabMouse();
-
-            if (press) delete press;
-            if (release) delete release;
-        }
-    }
-    else {
-        qDebug() << "BaseWidget::mouseClick() : couldn't find viewport contains scene position" << clickedScenePos;
-    }
+void BaseWidget::mouseDrag(const QPointF &scenePos, Qt::MouseButton, Qt::KeyboardModifier) {
 }
 
-void BaseWidget::mouseDrag(const QPointF &, Qt::MouseButton) {
 
-}
+
 
 
 
@@ -731,16 +700,18 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 	/**
 	  changing painter state will hurt performance
 	  */
-	QPen pen;
-	pen.setWidth(6);
-	if (isSelected()) {
-		pen.setColor(QColor(170, 170, 5, 200));
-	}
-	else {
-		pen.setColor(QColor(100, 100, 100, 128));
-	}
-	painter->setPen(pen);
-	painter->drawRect(windowFrameRect());
+//	QPen pen;
+//	pen.setWidth(6); // pen width is ignored when rendering
+//	if (isSelected()) {
+//		pen.setColor(QColor(170, 170, 5, 200));
+//	}
+//	else {
+//		pen.setColor(QColor(100, 100, 100, 128));
+//	}
+//	painter->setPen(pen);
+//	painter->drawRect(windowFrameRect());
+
+
 
 	/* info overlay */
 	if ( showInfo  &&  !infoTextItem->isVisible() ) {
@@ -763,10 +734,10 @@ void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsI
     Q_UNUSED(widget);
 
 	if (isSelected()) {
-		painter->fillRect(windowFrameRect(), QColor(170, 170, 5, 200));
+		painter->fillRect(windowFrameRect(), _borderColorSelected);
 	}
 	else {
-		painter->fillRect(windowFrameRect(), QColor(100, 100, 100, 128));
+		painter->fillRect(windowFrameRect(), _borderColor);
 	}
 	// Or let's use default implementation
 //	QGraphicsWidget::paintWindowFrame(painter, option, widget);
@@ -839,10 +810,6 @@ void BaseWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 //	QGraphicsItem::mouseReleaseEvent(e);
 }
 
-//void BaseWidget::mouseMoveEvent(QGraphicsSceneMouseEvent *e) {
-////	qDebug() << "BGW::mouseMoveEvent" << e->pos() << e->scenePos() << e->screenPos() << e->button() << e->buttons();
-//        QGraphicsWidget::mouseMoveEvent(e);
-//}
 
 void BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 //	Q_UNUSED(event);
@@ -852,11 +819,7 @@ void BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 }
 
 void BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
-	//	if ( affInfo && _affinityControlAction ) {
-	//		_affinityControlAction->setEnabled(true);
-	//	}
 	_contextMenu->exec(event->screenPos());
-	//_contextMenu->popup(event->scenePos());
 }
 
 void BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {

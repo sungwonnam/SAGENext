@@ -122,6 +122,8 @@ public:
 	inline Qt::Orientation orientation() const {return _orientation;}
 	inline SAGENextLayoutWidget * ownerNode() {return _ownerNode;}
 
+protected:
+
 private:
 	SAGENextLayoutWidget *_ownerNode;
 	Qt::Orientation _orientation;
@@ -139,11 +141,14 @@ private:
 class SAGENextLayoutWidget : public QGraphicsWidget {
 	Q_OBJECT
 public:
-	SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget *parentWidget=0, QGraphicsItem *parent=0);
+	SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget=0, QGraphicsItem *parent=0);
 	~SAGENextLayoutWidget();
 
-	inline SAGENextLayoutWidget * leftTopWidget() {return _left_top_w;}
-	inline SAGENextLayoutWidget * rightBottomWidget() {return _right_bottom_w;}
+	inline SAGENextLayoutWidget * leftWidget() {return _leftWidget;}
+	inline SAGENextLayoutWidget * rightWidget() {return _rightWidget;}
+
+	inline SAGENextLayoutWidget * topWidget() {return _topWidget;}
+	inline SAGENextLayoutWidget * bottomWidget() {return _bottomWidget;}
 
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);
@@ -151,8 +156,18 @@ protected:
 
 private:
 	SAGENextLayoutWidget *_parentWidget;
-	SAGENextLayoutWidget *_left_top_w;
-	SAGENextLayoutWidget *_right_bottom_w;
+
+	/**
+	  If this widget has Vertical bar
+	  */
+	SAGENextLayoutWidget *_leftWidget;
+	SAGENextLayoutWidget *_rightWidget;
+
+	/**
+	  If this widget has Horizontal bar
+	  */
+	SAGENextLayoutWidget *_topWidget;
+	SAGENextLayoutWidget *_bottomWidget;
 
 	PartitionBar *_bar;
 	PixmapButton *_tileButton;
@@ -164,7 +179,12 @@ private:
 
 	bool _isTileOn;
 
-	void createChildPartitions(Qt::Orientation);
+	/**
+	  left , right, top, or bottom
+	  */
+	QString _position;
+
+	void createChildPartitions(Qt::Orientation barOrientation);
 
 	void setButtonPos();
 
@@ -172,8 +192,15 @@ signals:
 	void resized();
 
 public slots:
-	inline void createHChildPartitions() {createChildPartitions(Qt::Horizontal);}
-	inline void createVChildPartitions() {createChildPartitions(Qt::Vertical);}
+	/**
+	  create horizontal bar that partitions this widget into top and bottom
+	  */
+	inline void createHBar() {createChildPartitions(Qt::Horizontal);}
+
+	/**
+	  creates vertical bar that partitions this widget into left and right
+	  */
+	inline void createVBar() {createChildPartitions(Qt::Vertical);}
 
 	// I'll become actual partition
 	void deleteChildPartitions();

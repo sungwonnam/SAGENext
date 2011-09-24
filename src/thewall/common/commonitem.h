@@ -53,27 +53,27 @@ public:
           * Moves pointer itself
           * If dragging and there's app under the pointer then move the app widget too
           */
-        virtual void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags);
+        virtual void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
           * setAppUnderPointer() is called
           */
-        virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
+        virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 		/**
           * simulate mouse click by sending mousePressEvent followed by mouseReleaseEvent
           */
-        virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
+        virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
            This function generates and sends real doubleclick event to the viewport widget
           */
-        virtual void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags);
+        virtual void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
           * This function generates and sends real mouse wheel event to the viewport widget
           */
-        virtual void pointerWheel(const QPointF &scenePos, int delta = 120);
+        virtual void pointerWheel(const QPointF &scenePos, int delta = 120, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 private:
         /**

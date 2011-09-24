@@ -29,7 +29,7 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, QObject *parent)
 	addItem(closeButton);
 
 
-	_rootLayoutWidget = new SAGENextLayoutWidget(sceneRect);
+	_rootLayoutWidget = new SAGENextLayoutWidget("ROOT", sceneRect);
 	addItem(_rootLayoutWidget);
 }
 
@@ -102,11 +102,13 @@ void SAGENextScene::closeAllUserApp() {
 
 
 
-SAGENextLayoutWidget::SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget *parentWidget, QGraphicsItem *parent)
+SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
     , _parentWidget(parentWidget)
-    , _left_top_w(0)
-    , _right_bottom_w(0)
+    , _leftWidget(0)
+    , _rightWidget(0)
+    , _topWidget(0)
+    , _bottomWidget(0)
     , _bar(0)
     , _tileButton(0)
     , _hButton(0)
@@ -114,10 +116,11 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget
     , _xButton(0)
     , _buttonGrp(0)
     , _isTileOn(false)
+    , _position(pos)
 {
 //	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
-//	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
+	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
 
 	// pointer->setAppUnderPointer() will pass this item
 	setAcceptedMouseButtons(0);
@@ -126,9 +129,9 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget
 	_vButton = new PixmapButton( ":/resources/maximize_shape.gif", 0, this);
 
 	// horizontal button will divide the widget vertically
-	connect(_hButton, SIGNAL(clicked()), this, SLOT(createVChildPartitions()));
+	connect(_hButton, SIGNAL(clicked()), this, SLOT(createHBar()));
 	// vertical button will divide the widget horizontally
-	connect(_vButton, SIGNAL(clicked()), this, SLOT(createHChildPartitions()));
+	connect(_vButton, SIGNAL(clicked()), this, SLOT(createVBar()));
 
 //	_buttonGrp = new QGraphicsItemGroup(this);
 //	_buttonGrp->addToGroup(_vButton);
@@ -151,18 +154,9 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QRectF &r, SAGENextLayoutWidget
 	setPos(r.topLeft()); // partitionRect.topLeft is in it's parent's coordinate
 }
 
-
 SAGENextLayoutWidget::~SAGENextLayoutWidget() {
 }
 
-void SAGENextLayoutWidget::setButtonPos() {
-//	qDebug() << "attachButton" << boundingRect() << geometry();
-	_vButton->setPos(size().width()-_vButton->size().width() -10,  size().height()/2);
-	_hButton->setPos(_vButton->geometry().x(),  _vButton->geometry().bottom());
-	if (_xButton) {
-		_xButton->setPos(_hButton->geometry().x(),  _hButton->geometry().bottom());
-	}
-}
 
 void SAGENextLayoutWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 	QPen pen;
@@ -175,24 +169,60 @@ void SAGENextLayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	// adjust button position
 	setButtonPos();
 
+	//
 	// this signal will make parentWidget to call adjustBar()
+	//
 	emit resized();
 
 	// upon resizing, resize my childs as well
 	if (_bar) {
-		QSizeF delta = e->newSize() - e->oldSize();
+		QSizeF deltaSize = e->newSize() - e->oldSize();
 
 		if (_bar->orientation() == Qt::Horizontal) {
-			if (delta.height() = 0) {
-				// resized horizontally
-				_left_top_w->resize(e->newSize().width(), _left_top_w->size().height());
-				_right_bottom_w->resize(e->newSize().width() , _right_bottom_w->size().height());
+			//
+			// bar is horizontal so my children is at TOP and BOTTOM
+			//
+			_topWidget->setPos(0, 0);
+
+			if (deltaSize.height() == 0) {
+				//
+				// I'm resized horizontally.  -> only width changes for my childs
+				//
+				_topWidget->resize(   e->newSize().width() ,    _topWidget->size().height());
+				_bottomWidget->resize(e->newSize().width() , _bottomWidget->size().height());
+
+				_bottomWidget->setPos(0, _bottomWidget->geometry().y());
 			}
-			else if (delta.width() == 0) {
-				// resized vertically
+			else if (deltaSize.width() == 0) {
+				//
+				// resized vertically, top and bottom child widgets will share height delta
+				//
+				_topWidget->resize(      _topWidget->size().width() ,    _topWidget->size().height() + deltaSize.height() / 2.0);
+				_bottomWidget->resize(_bottomWidget->size().width() , _bottomWidget->size().height() + deltaSize.height() / 2.0);
+
+				_bottomWidget->setPos(0, _bottomWidget->geometry().y() + deltaSize.height()/2.0);
 			}
 		}
 		else {
+			//
+			// the bar is vertical so my children is at LEFT and RIGHT
+			//
+			_leftWidget->setPos(0,0);
+
+			if (deltaSize.height() == 0) {
+				// I'm resized horizontally. -> no height changes in my children
+				_leftWidget->resize(_leftWidget->size().width() + deltaSize.width()/2.0,  _leftWidget->size().height());
+				_rightWidget->resize(_rightWidget->size().width() + deltaSize.width()/2.0, _rightWidget->size().height());
+
+				_rightWidget->setPos(_rightWidget->geometry().x() + deltaSize.width()/2.0 , 0);
+			}
+			else if (deltaSize.width() == 0) {
+				// I'm resized vertically -> no width changes in my children
+				_leftWidget->resize( _leftWidget->size().width(),  e->newSize().height());
+				_rightWidget->resize(_rightWidget->size().width(), e->newSize().height());
+
+				_rightWidget->setPos(_rightWidget->geometry().x(), 0);
+			}
 
 		}
 	}
@@ -206,48 +236,50 @@ void SAGENextLayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	// So, un-child everything and find colliding items and make them as childs
 }
 
-void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation orientation) {
+void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) {
 //	QGraphicsLinearLayout *linear = new QGraphicsLinearLayout(orientation);
 //	linear->setContentsMargins(0, 0, 0, 0);
 
-	QRectF left_top;
-	QRectF right_bottom;
+	QRectF first;
+	QRectF second;
 //	QSizePolicy sp(QSizePolicy::Fixed, QSizePolicy::Fixed);
 //	linear->setSizePolicy(sp);
 
 	// create PartitionBar child item
-	_bar = new PartitionBar(orientation, this, this);
+	_bar = new PartitionBar(dividerOrientation, this, this);
 
 	QRectF br = boundingRect();
-	if (orientation == Qt::Horizontal) {
+	if (dividerOrientation == Qt::Horizontal) {
 		//
-		// Left and Right
+		// bar is horizontal, partition is Top and Bottom (same X pos)
 		//
-//		linear->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+		first = QRectF(    0, 0,             br.width(), br.height()/2);
+		second = QRectF(0, br.height()/2, br.width(), br.height()/2);
 
-		left_top = QRectF(0, 0, br.width()/2, br.height());
-		right_bottom = QRectF(br.width()/2, 0, br.width()/2, br.height());
-//		_bar->setLine(br.width()/2, 0, br.width()/2, br.height());
+		_topWidget = new SAGENextLayoutWidget("top", first, this, this);
+		_bottomWidget = new SAGENextLayoutWidget("bottom", second, this, this);
+
+		//
+		// if child widget is resized, then adjust my bar pos and length
+		//
+		connect(_topWidget, SIGNAL(resized()), this, SLOT(adjustBar()));
 	}
 	else {
 		//
-		// Top and Bottom
+		// bar is vertical, partition is Left and Right (same Y pos)
 		//
-//		linear->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+		first = QRectF(    0,            0, br.width()/2, br.height());
+		second = QRectF(br.width()/2, 0, br.width()/2, br.height());
+		_leftWidget = new SAGENextLayoutWidget("left", first, this, this);
+		_rightWidget = new SAGENextLayoutWidget("right", second, this, this);
 
-		left_top = QRectF(0, 0, br.width(), br.height()/2);
-		right_bottom = QRectF(0, br.height()/2, br.width(), br.height()/2);
-//		_bar->setLine(0, boundingRect().height()/2, boundingRect().width(), boundingRect().height()/2);
-
+		connect(_leftWidget, SIGNAL(resized()), this, SLOT(adjustBar()));
 	}
 
-//	qDebug() << "createChildPartitions()" << left_top << right_bottom;
-	_left_top_w = new SAGENextLayoutWidget(left_top, this, this);
-	_right_bottom_w = new SAGENextLayoutWidget(right_bottom, this, this);
-
+	//
+	// sets bar's pos and length
+	//
 	adjustBar();
-
-	connect(_left_top_w, SIGNAL(resized()), this, SLOT(adjustBar()));
 
 //	linear->insertItem(0, _left_top_w);
 //	linear->insertItem(1, _right_bottom_w);
@@ -265,26 +297,33 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation orientation) {
 void SAGENextLayoutWidget::adjustBar() {
 	Q_ASSERT(_bar);
 	if ( _bar->orientation() == Qt::Horizontal ) {
-		// left to right
-		QPointF topRight = _left_top_w->geometry().topRight();
-		QPointF bottomRight = _left_top_w->geometry().bottomRight();
-		_bar->setLine(topRight.x(), topRight.y(), bottomRight.x(), bottomRight.y());
+		// my children is top and bottom widgets
+		QPointF bottomLeft = _topWidget->geometry().bottomLeft();
+		QPointF bottomRight = _topWidget->geometry().bottomRight();
+
+		_bar->setLine(bottomLeft.x(), bottomLeft.y(), bottomRight.x(), bottomRight.y());
 	}
 	else {
-		// top to bottom
-		QPointF bottomLeft = _left_top_w->geometry().bottomLeft();
-		QPointF bottomRight = _left_top_w->geometry().bottomRight();
-		_bar->setLine(bottomLeft.x(), bottomLeft.y(), bottomRight.x(), bottomRight.y());
+		// my children is left and right widgets
+		QPointF topRight = _leftWidget->geometry().topRight();
+		QPointF bottomRight = _leftWidget->geometry().bottomRight();
+
+		_bar->setLine(topRight.x(), topRight.y(), bottomRight.x(), bottomRight.y());
 	}
 }
 
 void SAGENextLayoutWidget::deleteChildPartitions() {
 //	layout()->removeAt(0);
 //	layout()->removeAt(1); // widget won't be deleted
-	delete _left_top_w;
-	delete _right_bottom_w;
-
 	Q_ASSERT(_bar);
+	if ( _bar->orientation() == Qt::Horizontal) {
+		delete _topWidget;
+		delete _bottomWidget;
+	}
+	else {
+		delete _leftWidget;
+		delete _rightWidget;
+	}
 	delete _bar;
 
 	if (_isTileOn) {
@@ -293,7 +332,6 @@ void SAGENextLayoutWidget::deleteChildPartitions() {
 	else {
 		setLayout(0);
 	}
-
 
 //	_buttonGrp->show();
 	_vButton->show();
@@ -311,6 +349,14 @@ void SAGENextLayoutWidget::doTile() {
 	setLayout(grid);
 }
 
+void SAGENextLayoutWidget::setButtonPos() {
+//	qDebug() << "attachButton" << boundingRect() << geometry();
+	_vButton->setPos(size().width()-_vButton->size().width() - 10,  size().height()/2);
+	_hButton->setPos(_vButton->geometry().x(),  _vButton->geometry().bottom());
+	if (_xButton) {
+		_xButton->setPos(_hButton->geometry().x(),  _hButton->geometry().bottom());
+	}
+}
 
 
 
@@ -330,7 +376,7 @@ PartitionBar::PartitionBar(Qt::Orientation ori, SAGENextLayoutWidget *owner, QGr
 //	setAcceptedMouseButtons(0);
 
 	QPen pen;
-	pen.setWidth(6);
+	pen.setWidth(12);
 	pen.setStyle(Qt::DashDotLine);
 	pen.setColor(QColor(Qt::white));
 	setPen(pen);
