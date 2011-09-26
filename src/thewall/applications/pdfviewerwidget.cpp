@@ -97,8 +97,12 @@ void PDFViewerWidget::setCurrentPage(int pageNumber) {
 //	qint64 end = QDateTime::currentMSecsSinceEpoch();
 //	qDebug() << end - start << "msec for rendering";
 
-//	qDebug() << _pixmap.size();
 	resize(_pixmap.size());
+	setScale(0.5);
+	
+//	qDebug() << _currentPage->pageSizeF();
+//	QSizeF sizeinch = _currentPage->pageSizeF() / 72;
+//	qDebug() << sizeinch * 250;
 }
 
 void PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
