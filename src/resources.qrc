@@ -12,5 +12,7 @@
         <file>resources/close_over.png</file>
         <file>resources/webkit_128x128.png</file>
         <file>resources/plugin_200x200.png</file>
+        <file>resources/media-forward-ltr_128x128.png</file>
+        <file>resources/media-forward-rtl_128x128.png</file>
     </qresource>
 </RCC>
