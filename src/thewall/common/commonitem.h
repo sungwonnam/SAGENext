@@ -118,6 +118,15 @@ signals:
 };
 
 
+//class ProxyWidgetButton : public QGraphicsProxyWidget {
+//	Q_OBJECT
+//public:
+//	ProxyWidgetButton(const QString &btntext = "", QGraphicsItem *parent=0);
+//	~ProxyWidgetButton() {}
+//};
+
+
+
 
 /**
   An widget will be moved to this button to be removed on the scene

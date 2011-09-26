@@ -29,6 +29,11 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, QObject *parent)
 	addItem(closeButton);
 
 
+
+
+	/**
+	  Create base widget for wall partitioning
+	  */
 	_rootLayoutWidget = new SAGENextLayoutWidget("ROOT", sceneRect);
 	addItem(_rootLayoutWidget);
 }

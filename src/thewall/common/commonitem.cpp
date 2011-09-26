@@ -429,6 +429,24 @@ void PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 
 
 
+//ProxyWidgetButton::ProxyWidgetButton(const QString &text, QGraphicsItem *parent)
+//    : QGraphicsProxyWidget(parent, Qt::Widget)
+//{
+//	QPushButton *button = new QPushButton(text);
+//	setWidget(button);
+
+//	QLinearGradient lg;
+//	lg.setColorAt(0, Qt::white);
+//	lg.setColorAt(1, Qt::black);
+//	QBrush btnBackground(lg);
+
+//	QPalette palette;
+//	palette.setBrush(QPalette::Button, btnBackground);
+//	palette.setColor(QPalette::ButtonText, Qt::white);
+
+//	button->setPalette(palette);
+//}
+
 
 
 

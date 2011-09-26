@@ -166,30 +166,86 @@ GraphicsSettingDialog::GraphicsSettingDialog(QSettings *s, QWidget *parent)
 	: QDialog(parent)
 	, ui(new Ui::GraphicsSettingDialog)
 	, _settings(s)
+    , _numScreens(0)
 {
 	ui->setupUi(this);
 
-	if ( _settings->value("system/openglviewport", false).toBool() )
+	ui->layoutLabel->setVisible(false);
+	ui->dimx->setVisible(false);
+	ui->dimy->setVisible(false);
+	ui->setLayoutButton->setVisible(false);
+
+	connect(ui->setLayoutButton, SIGNAL(clicked()), this, SLOT(createLayoutGrid()));
+
+	//
+	// multiple screens
+	//
+	_numScreens = _settings->value("graphics/screencount", 1).toInt();
+	ui->numScreenLabel->setText(QString::number(_numScreens));
+	if (_numScreens > 1 && !_settings->value("graphics/isvirtualdesktop").toBool()) {
+
+		ui->layoutLabel->setVisible(true);
+		ui->dimx->setVisible(true);
+		ui->dimy->setVisible(true);
+
+//		ui->dimx->setInputMask("D00");
+//		ui->dimy->setInputMask("D00");
+	}
+
+	if ( _settings->value("graphics/openglviewport", false).toBool() )
 		ui->openglviewportCheckBox->setCheckState(Qt::Checked);
 	else
 		ui->openglviewportCheckBox->setCheckState(Qt::Unchecked);
 
-	int idx = ui->viewportUpdateComboBox->findData(_settings->value("system/viewportupdatemode", "").toString());
+	int idx = ui->viewportUpdateComboBox->findData(_settings->value("graphics/viewportupdatemode", "").toString());
 	if (idx != -1) {
 		ui->viewportUpdateComboBox->setCurrentIndex(idx);
 	}
+}
+
+void GraphicsSettingDialog::createLayoutGrid() {
+	bool ok = false;
+	int x = ui->dimx->text().toInt(&ok);
+	if (!ok) return;
+	int y = ui->dimy->text().toInt(&ok);
+	if (!ok) return;
+
+	QGridLayout *layoutgrid = new QGridLayout(this);
+	int row = 0;
+	int col = 0;
+	for (int i=0; i<_numScreens; ++i) {
+
+		if (col == x) {
+			col = 0;
+			row++;
+		}
+
+		QLineEdit *le = new QLineEdit(this);
+		le->setInputMask("D00");
+
+		layoutgrid->addWidget(le, row, col);
+
+		col++;
+	}
+
+	ui->formLayout->addRow("layout", layoutgrid);
 }
 
 void GraphicsSettingDialog::accept() {
 	/* graphics system */
 //	settings->setValue("system/graphicssystem", ui->graphicssystemComboBox->currentText());
 	if ( ui->openglviewportCheckBox->checkState() == Qt::Checked ) {
-		_settings->setValue("system/openglviewport", true);
+		_settings->setValue("graphics/openglviewport", true);
 	}
 	else {
-		_settings->setValue("system/openglviewport", false);
+		_settings->setValue("graphics/openglviewport", false);
 	}
-	_settings->setValue("system/viewportupdatemode", ui->viewportUpdateComboBox->currentText());
+	_settings->setValue("graphics/viewportupdatemode", ui->viewportUpdateComboBox->currentText());
+
+
+	//
+	// save multiple screen config info
+	//
 }
 
 GraphicsSettingDialog::~GraphicsSettingDialog() {delete ui;}

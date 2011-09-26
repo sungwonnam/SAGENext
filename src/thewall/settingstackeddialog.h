@@ -69,9 +69,13 @@ public:
 private:
     Ui::GraphicsSettingDialog *ui;
     QSettings *_settings;
+
+	int _numScreens;
 	
 public slots:
 	void accept();
+
+	void createLayoutGrid();
 };
 
 /**

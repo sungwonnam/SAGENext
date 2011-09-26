@@ -49,8 +49,13 @@ int main(int argc, char *argv[])
 	QDesktopWidget *dw = QApplication::desktop();
 	qDebug() << "Desktop resolution " << dw->width() << " x " << dw->height();
 	qDebug() << "\tPrimary screen: " << dw->primaryScreen();
+
+	s.setValue("graphics/screencount", dw->screenCount());
 	qDebug() << "\tScreen count: " << dw->screenCount();
+
+	s.setValue("graphics/isvirtualdesktop", dw->isVirtualDesktop());
 	qDebug() << "\tis VirtualDesktop: " << dw->isVirtualDesktop();
+
 	qDebug() << "\tAvailable geometry: " << dw->availableGeometry();
 	for (int i=0; i<dw->screenCount(); ++i) {
 //		QRect availGeoOfThis = dw->availableGeometry(i);
@@ -284,7 +289,7 @@ int main(int argc, char *argv[])
 
         gvm->setLauncher(launcher);
 
-		if ( s.value("system/openglviewport").toBool() ) {
+		if ( s.value("graphics/openglviewport").toBool() ) {
 			/**
 			  in linux, youtube isn't working with OpenGL viewport
 			  **/
@@ -292,16 +297,16 @@ int main(int argc, char *argv[])
 			qDebug() << "[ using QGLWidget as the viewport ]";
 		}
 
-		if ( QString::compare(s.value("system/viewportupdatemode").toString(), "full", Qt::CaseInsensitive) == 0 ) {
+		if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "full", Qt::CaseInsensitive) == 0 ) {
 			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 		}
-		else if ( QString::compare(s.value("system/viewportupdatemode").toString(), "minimal", Qt::CaseInsensitive) == 0 ) {
+		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "minimal", Qt::CaseInsensitive) == 0 ) {
 			gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
 		}
-		else if ( QString::compare(s.value("system/viewportupdatemode").toString(), "smart", Qt::CaseInsensitive) == 0 ) {
+		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "smart", Qt::CaseInsensitive) == 0 ) {
 			gvm->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
 		}
-		else if ( QString::compare(s.value("system/viewportupdatemode").toString(), "no update", Qt::CaseInsensitive) == 0 ) {
+		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "no update", Qt::CaseInsensitive) == 0 ) {
 			gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
 		}
 		else {
