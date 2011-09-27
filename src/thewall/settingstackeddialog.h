@@ -4,11 +4,13 @@
 #include <QDialog>
 
 class QSettings;
+class QFrame;
 
 namespace Ui {
 class GeneralSettingDialog;
 class SystemSettingDialog;
 class GraphicsSettingDialog;
+class ScreenLayoutDialog;
 class GuiSettingDialog;
 
 class SettingStackedDialog;
@@ -63,12 +65,14 @@ private slots:
 class GraphicsSettingDialog : public QDialog {
     Q_OBJECT
 public:
-    explicit GraphicsSettingDialog(QSettings *s, QWidget *parent=0);
+    explicit GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent=0);
     ~GraphicsSettingDialog();
 	
 private:
     Ui::GraphicsSettingDialog *ui;
     QSettings *_settings;
+
+	QMap<QPair<int,int>,int> *_layoutMap;
 
 	int _numScreens;
 	
@@ -76,6 +80,22 @@ public slots:
 	void accept();
 
 	void createLayoutGrid();
+};
+
+class ScreenLayoutDialog : public QDialog {
+	Q_OBJECT
+public:
+	explicit ScreenLayoutDialog(QSettings *s, int dimx, int dimy, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent=0);
+	~ScreenLayoutDialog();
+private:
+	Ui::ScreenLayoutDialog *ui;
+	QSettings *_settings;
+	int _dimx;
+	int _dimy;
+	QMap<QPair<int,int>,int> *_layoutMap;
+	QFrame * createScreen(int row, int col);
+private slots:
+	void saveToSettings();
 };
 
 /**
@@ -90,6 +110,8 @@ public:
 private:
 	Ui::GuiSettingDialog *ui;
 	QSettings *_settings;
+
+
 
 public slots:
 	void accept();
@@ -106,7 +128,7 @@ class SettingStackedDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit SettingStackedDialog(QSettings *s, QWidget *parent = 0);
+    explicit SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent = 0);
     ~SettingStackedDialog();
 
 private:

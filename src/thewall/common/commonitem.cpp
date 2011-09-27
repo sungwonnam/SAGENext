@@ -119,14 +119,7 @@ void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFla
         // Why not just send mouse event ??
         // Because Having multiple users simultaneously do mouse draggin will confuse the system
         /*
-        QGraphicsView *view = 0;
-        foreach (QGraphicsView *v, scene()->views()) {
-            if ( v->rect().contains(v->mapFromScene(_scenePos)) ) {
-                view=v;
-                break;
-            }
-        }
-        QMouseEvent mouseDragging(QMouseEvent::MouseMove, view->mapFromScene(_scenePos), Qt::LeftButton, btnFlags, Qt::NoModifier);
+        QMouseEvent mouseDragging(QMouseEvent::MouseMove, view->mapFromScene(_scenePos), Qt::LeftButton, btnFlags, modifier);
         if ( ! QApplication::sendEvent(view->viewport(), &mouseDragging) ) {
             qDebug() << "failed to send mouseMove event with left button";
         }
@@ -150,6 +143,23 @@ void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt
 		}
 		else if (btn == Qt::RightButton) {
 			// do nothing
+		}
+	}
+}
+
+void PolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier) {
+
+	if (app) {
+		//
+		// mouse draggin with the app has finished
+		//
+
+		// I can move this app to SAGENextLayoutWidget that contains released scenePos
+
+		// I can close this app if removeButton on the scene contains released scenePos
+		SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
+		if (sc->isOnAppRemoveButton(scenePos)) {
+			app->close();
 		}
 	}
 }
@@ -225,6 +235,8 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
 		return;
 	}
 	QPointF clickedViewPos = view->mapFromScene( scenePos );
+
+	qDebug() << "pointerClick" << scenePos;
 
 	QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, modifier);
 	QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, modifier);
@@ -381,7 +393,7 @@ QGraphicsView * PolygonArrow::eventReceivingViewport(const QPointF scenePos) {
 
 
 
-PixmapButton::PixmapButton(const QString &res, qreal desiredWidth, QGraphicsItem *parent)
+PixmapButton::PixmapButton(const QString &res, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
 {
 	QPixmap orgPixmap(res);
@@ -390,13 +402,20 @@ PixmapButton::PixmapButton(const QString &res, qreal desiredWidth, QGraphicsItem
 	}
 	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(orgPixmap, this);
 
+	if (!label.isNull() && !label.isEmpty()) {
+		QGraphicsSimpleTextItem *t = new QGraphicsSimpleTextItem(label, p);
+		QFont f;
+		f.setBold(true);
+		t->setFont(f);
+	}
+
 	// This widget (PixmapButton) has to receive mouse event
 	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 
 	resize(p->pixmap().size());
-	setOpacity(0.5);
+//	setOpacity(0.5);
 }
-PixmapButton::PixmapButton(const QPixmap &pixmap, qreal desiredWidth, QGraphicsItem *parent)
+PixmapButton::PixmapButton(const QPixmap &pixmap, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
 {
 	QGraphicsPixmapItem *p = 0;
@@ -407,20 +426,26 @@ PixmapButton::PixmapButton(const QPixmap &pixmap, qreal desiredWidth, QGraphicsI
 		p = new QGraphicsPixmapItem(pixmap, this);
 	}
 
+	if (!label.isNull() && !label.isEmpty()) {
+		QGraphicsSimpleTextItem *t = new QGraphicsSimpleTextItem(label, p);
+		QFont f;
+		f.setBold(true);
+		t->setFont(f);
+	}
+
 	// This widget (PixmapButton) has to receive mouse event
 	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 	resize(p->pixmap().size());
-	setOpacity(0.5);
+//	setOpacity(0.5);
 }
 PixmapButton::~PixmapButton() {
-
 }
 
 void PixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {
-	setOpacity(1);
+//	setOpacity(1);
 }
 void PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
-	setOpacity(0.5);
+//	setOpacity(0.5);
 //	qDebug() << "pixmapbutton emitting signal";
 	emit clicked();
 }
@@ -428,24 +453,6 @@ void PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 
 
 
-
-//ProxyWidgetButton::ProxyWidgetButton(const QString &text, QGraphicsItem *parent)
-//    : QGraphicsProxyWidget(parent, Qt::Widget)
-//{
-//	QPushButton *button = new QPushButton(text);
-//	setWidget(button);
-
-//	QLinearGradient lg;
-//	lg.setColorAt(0, Qt::white);
-//	lg.setColorAt(1, Qt::black);
-//	QBrush btnBackground(lg);
-
-//	QPalette palette;
-//	palette.setBrush(QPalette::Button, btnBackground);
-//	palette.setColor(QPalette::ButtonText, Qt::white);
-
-//	button->setPalette(palette);
-//}
 
 
 

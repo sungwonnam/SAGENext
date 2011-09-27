@@ -5,9 +5,11 @@
 #include "ui_systemsettingdialog.h"
 #include "ui_graphicssettingdialog.h"
 #include "ui_guisettingdialog.h"
+#include "ui_screenlayoutdialog.h"
 
 #include <QSettings>
 #include <QtCore>
+#include <QMessageBox>
 
 
 GeneralSettingDialog::GeneralSettingDialog(QSettings *s, QWidget *parent)
@@ -162,18 +164,14 @@ SystemSettingDialog::~SystemSettingDialog() {delete ui;}
 /*
   Graphics
 */
-GraphicsSettingDialog::GraphicsSettingDialog(QSettings *s, QWidget *parent)
+GraphicsSettingDialog::GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent)
 	: QDialog(parent)
 	, ui(new Ui::GraphicsSettingDialog)
 	, _settings(s)
+    , _layoutMap(screenLayout)
     , _numScreens(0)
 {
 	ui->setupUi(this);
-
-	ui->layoutLabel->setVisible(false);
-	ui->dimx->setVisible(false);
-	ui->dimy->setVisible(false);
-	ui->setLayoutButton->setVisible(false);
 
 	connect(ui->setLayoutButton, SIGNAL(clicked()), this, SLOT(createLayoutGrid()));
 
@@ -182,15 +180,18 @@ GraphicsSettingDialog::GraphicsSettingDialog(QSettings *s, QWidget *parent)
 	//
 	_numScreens = _settings->value("graphics/screencount", 1).toInt();
 	ui->numScreenLabel->setText(QString::number(_numScreens));
-	if (_numScreens > 1 && !_settings->value("graphics/isvirtualdesktop").toBool()) {
 
-		ui->layoutLabel->setVisible(true);
-		ui->dimx->setVisible(true);
-		ui->dimy->setVisible(true);
-
-//		ui->dimx->setInputMask("D00");
-//		ui->dimy->setInputMask("D00");
+	if (_settings->value("graphics/isxinerama", false).toBool()) {
+		ui->isXinerama->setChecked(true);
+		ui->dimx->setText("1");
+		ui->dimy->setText("1");
 	}
+	else {
+		ui->isXinerama->setChecked(false);
+		ui->dimx->setText(_settings->value("graphics/screencountx", 1).toString());
+		ui->dimy->setText(_settings->value("graphics/screencounty", 1).toString());
+	}
+
 
 	if ( _settings->value("graphics/openglviewport", false).toBool() )
 		ui->openglviewportCheckBox->setCheckState(Qt::Checked);
@@ -210,30 +211,32 @@ void GraphicsSettingDialog::createLayoutGrid() {
 	int y = ui->dimy->text().toInt(&ok);
 	if (!ok) return;
 
-	QGridLayout *layoutgrid = new QGridLayout(this);
-	int row = 0;
-	int col = 0;
-	for (int i=0; i<_numScreens; ++i) {
+//	if ((x*y) <= 1) return;
 
-		if (col == x) {
-			col = 0;
-			row++;
-		}
+//	if ( (x * y) !=  _numScreens) {
+//		QMessageBox::critical(this, "Error", "Wrong Screen Dimension"); // application modal
+//		return;
+//	}
 
-		QLineEdit *le = new QLineEdit(this);
-		le->setInputMask("D00");
-
-		layoutgrid->addWidget(le, row, col);
-
-		col++;
-	}
-
-	ui->formLayout->addRow("layout", layoutgrid);
+	//
+	// create Application Modal dialog with grid layout
+	//
+	ScreenLayoutDialog slDialog(_settings, x, y, _layoutMap, this);
+	slDialog.exec(); // shows the dialog as a modal dialog
 }
 
 void GraphicsSettingDialog::accept() {
 	/* graphics system */
 //	settings->setValue("system/graphicssystem", ui->graphicssystemComboBox->currentText());
+
+	if (ui->isXinerama->isChecked())
+		_settings->setValue("graphics/isxinerama", true);
+	else
+		_settings->setValue("graphics/isxinerama", false);
+
+	_settings->setValue("graphics/screencountx", ui->dimx->text().toInt());
+	_settings->setValue("graphics/screencounty", ui->dimy->text().toInt());
+
 	if ( ui->openglviewportCheckBox->checkState() == Qt::Checked ) {
 		_settings->setValue("graphics/openglviewport", true);
 	}
@@ -241,14 +244,110 @@ void GraphicsSettingDialog::accept() {
 		_settings->setValue("graphics/openglviewport", false);
 	}
 	_settings->setValue("graphics/viewportupdatemode", ui->viewportUpdateComboBox->currentText());
-
-
-	//
-	// save multiple screen config info
-	//
 }
 
 GraphicsSettingDialog::~GraphicsSettingDialog() {delete ui;}
+
+
+
+
+
+ScreenLayoutDialog::ScreenLayoutDialog(QSettings *s, int dimx, int dimy, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent)
+    : QDialog(parent)
+    , ui(new Ui::ScreenLayoutDialog)
+    , _settings(s)
+    , _dimx(dimx)
+    , _dimy(dimy)
+    , _layoutMap(screenLayout)
+{
+	ui->setupUi(this);
+
+	int row = 0;
+	int col = 0;
+	for (int i=0; i<dimx*dimy; ++i) {
+
+		if (col == dimx) {
+			col = 0;
+			row++;
+		}
+
+		if (row!=0 || col!=0)
+			ui->gridLayout->addWidget(createScreen(row, col), row, col);
+		else {
+			int screenid = _layoutMap->value( QPair<int,int>(0, 0) );
+			ui->firstLineEdit->setText(QString::number(screenid));
+		}
+
+		col++;
+	}
+
+	QDialogButtonBox *buttonbox = new QDialogButtonBox(QDialogButtonBox::Cancel | QDialogButtonBox::Ok, Qt::Horizontal, this);
+	connect(buttonbox, SIGNAL(accepted()), this, SLOT(saveToSettings()));
+	connect(buttonbox, SIGNAL(rejected()), this, SLOT(close()));
+	ui->gridLayout->addWidget(buttonbox, row+1, 0, 1, dimx, Qt::AlignRight);
+
+	adjustSize();
+}
+
+QFrame * ScreenLayoutDialog::createScreen(int row, int col) {
+	QFrame *frame = new QFrame(this);
+	frame->setLineWidth(3);
+	frame->setFrameStyle(QFrame::Box);
+
+	QLabel *label = new QLabel("Screen " , frame);
+	QLineEdit *le = new QLineEdit(frame);
+	le->setAlignment(Qt::AlignCenter);
+
+	int screenid = _layoutMap->value( QPair<int,int>(col, row) ); // col = x, row = y
+	le->setText(QString::number(screenid));
+
+	QSpacerItem *spacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+	QHBoxLayout *hlayout = new QHBoxLayout(frame);
+	hlayout->addWidget(label, 2, Qt::AlignRight);
+	hlayout->addWidget(le, 1, Qt::AlignLeft);
+	hlayout->addSpacerItem(spacer);
+    hlayout->setStretch(2, 1);
+
+	return frame;
+}
+void ScreenLayoutDialog::saveToSettings() {
+	// overwrite
+	QFile f(QDir::homePath() + "/.sagenext/screenlayout");
+	f.open(QIODevice::WriteOnly);
+	QDataStream out(&f);
+
+	_layoutMap->clear();
+
+	int row = 0;
+	int col = 0;
+	for (int i=0; i<_dimx*_dimy; ++i) {
+		if (col == _dimx) {
+			col = 0;
+			row++;
+		}
+		QFrame *f = static_cast<QFrame *>(ui->gridLayout->itemAtPosition(row, col)->widget());
+		Q_ASSERT(f);
+		QHBoxLayout *hl = static_cast<QHBoxLayout *>(f->layout());
+		Q_ASSERT(hl);
+		QLineEdit *l = static_cast<QLineEdit *>(hl->itemAt(1)->widget());
+		Q_ASSERT(l);
+
+//		qDebug() << col << row << l->text();
+		_layoutMap->insert(QPair<int,int>(col, row) , l->text().toInt());
+		out << col << row << l->text().toInt();
+
+		col++;
+	}
+	f.close();
+	accept();
+}
+
+ScreenLayoutDialog::~ScreenLayoutDialog() {
+	delete ui;
+}
+
+
 
 
 /* GUI */
@@ -258,6 +357,8 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
     , _settings(s)
 {
 	ui->setupUi(this);
+
+	ui->iconWidth->setText(_settings->value("gui/iconwidth", 128).toString());
 
 	ui->fontSizeLineEdit->setInputMask("900"); // 3 ascii digit. first digit is required
 	ui->fontSizeLineEdit->setText(_settings->value("gui/fontpointsize", 20).toString());
@@ -270,6 +371,7 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
 	ui->frameBorderBottomLineEdit->setText(_settings->value("gui/framemarginbottom", 3).toString());
 }
 void GuiSettingDialog::accept() {
+	_settings->setValue("gui/iconwidth", ui->iconWidth->text().toInt());
 	_settings->setValue("gui/fontpointsize", ui->fontSizeLineEdit->text().toInt());
 	_settings->setValue("gui/pointerfontsize", ui->pointerFontSizeLineEdit->text().toInt());
 	/* window frame margins */
@@ -283,7 +385,7 @@ GuiSettingDialog::~GuiSettingDialog() {delete ui;}
 
 
 
-SettingStackedDialog::SettingStackedDialog(QSettings *s, QWidget *parent)
+SettingStackedDialog::SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::SettingStackedDialog)
     , _settings(s)
@@ -296,9 +398,10 @@ SettingStackedDialog::SettingStackedDialog(QSettings *s, QWidget *parent)
 	
 	/*
       stacked widget for each setting page
+	  Ownership of widget is passed on to the QStackedWidget
       */
     ui->stackedWidget->addWidget(new GeneralSettingDialog(_settings));
-	ui->stackedWidget->addWidget(new GraphicsSettingDialog(_settings));
+	ui->stackedWidget->addWidget(new GraphicsSettingDialog(_settings, screenLayout));
 	ui->stackedWidget->addWidget(new GuiSettingDialog(_settings));
 	ui->stackedWidget->addWidget(new SystemSettingDialog(_settings));
     

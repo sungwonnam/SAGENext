@@ -73,9 +73,26 @@ protected:
 	
 	
 	void sendMouseMove(const QPoint globalPos, Qt::MouseButtons btns = Qt::NoButton);
+
+	/**
+	  This will trigger pointer->setAppUnderPointer()
+	  */
 	void sendMousePress(const QPoint globalPos, Qt::MouseButtons btns = Qt::LeftButton);
+
+	/**
+	  This is NOT the mouseRelease that results pointerClick()
+	  This is to know the point where mouse draggin has finished
+	  */
+	void sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btns = Qt::LeftButton);
+
+	/**
+	  mouse press followed by mouse release triggers this.
+	  However, if mouse has moved (while button pressed) greater than 3 manhattan length, then it's not a click
+	  */
 	void sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns = Qt::LeftButton | Qt::NoButton);
+
 	void sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons btns = Qt::LeftButton | Qt::NoButton);
+
 	void sendMouseWheel(const QPoint globalPos, int delta);
 
 private:

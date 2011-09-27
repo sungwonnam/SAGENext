@@ -23,6 +23,10 @@ extern void qt_x11_set_global_double_buffer(bool);
 
 
 
+void setViewAttr(SAGENextViewport *view, const QSettings &s);
+
+
+
 int main(int argc, char *argv[])
 {
 //	qt_x11_set_global_double_buffer(false);
@@ -43,8 +47,33 @@ int main(int argc, char *argv[])
 	 */
 	QSettings s(QDir::homePath() + "/.sagenext/sagenext.ini", QSettings::IniFormat);
 
+
+	//
+	// load screenLayout from a file and try read previous values
+	//
+	QMap<QPair<int, int>, int> screenLayout;
+	QFile layoutFile(QDir::homePath() + "/.sagenext/screenlayout");
+	if (layoutFile.exists()) {
+		layoutFile.open(QIODevice::ReadOnly);
+		//
+		// fill the map with previous values
+		QDataStream in(&layoutFile);
+		while(! in.atEnd()) {
+			int x,y,screenid;
+			in >> x >> y >> screenid;
+			screenLayout.insert(QPair<int,int>(x,y), screenid);
+		}
+	}
+	layoutFile.close();
+	qDebug() << "Screen layout before setting dialog";
+	QMap<QPair<int,int>,int>::iterator it = screenLayout.begin();
+	for (; it != screenLayout.end(); it++) {
+		qDebug() << it.key() << ": " << it.value();
+	}
+
+
         /**
-          find out x screen information
+          find out X screen information
           */
 	QDesktopWidget *dw = QApplication::desktop();
 	qDebug() << "Desktop resolution " << dw->width() << " x " << dw->height();
@@ -153,9 +182,10 @@ int main(int argc, char *argv[])
 #endif
 
 
+	//
 	// launch setting dialog
-	// SettingDialog sd(&s);
-	SettingStackedDialog sd(&s);
+	//
+	SettingStackedDialog sd(&s, &screenLayout);
 	sd.setWindowModality(Qt::ApplicationModal);
 	sd.adjustSize();
 	sd.exec();
@@ -184,30 +214,16 @@ int main(int argc, char *argv[])
 
 
 
-
-
-
 	/**
       create the scene (This is a QObject)
       */
 	qDebug() << "Creating SAGENext Scenes";
-	SAGENextScene *scene = new SAGENextScene(QRectF(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble()));
+	SAGENextScene *scene = new SAGENextScene(QRectF(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble()) ,  &s);
 	scene->setBackgroundBrush(QColor(0, 0, 0));
-	/* This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously. */
+	//
+	// This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously.
+	//
 	scene->setItemIndexMethod(QGraphicsScene::NoIndex);
-
-
-
-
-
-
-//	scene->setRootPartition();
-//	scene->layoutItem()->setGeometry(scene->sceneRect());
-
-
-
-
-
 
 
 
@@ -253,95 +269,104 @@ int main(int argc, char *argv[])
 		rMonitorTimerId = resourceMonitor->startTimer(1000);
 	}
 
-	scene->setRMonitor( resourceMonitor );
+
+	/**
+	  create the launcher
+      */
+	SAGENextLauncher *launcher = new SAGENextLauncher(&s, scene, resourceMonitor, schedcontrol, scene); // scene is the parent
 
 
+	/**
+	  create the UiServer
+	 */
+	UiServer *uiserver = new UiServer(&s, launcher, scene);
+	scene->setUiServer(uiserver);
+
+	/**
+	  create the FileServer
+	 */
+	FileServer *fileServer = new FileServer(&s, launcher);
 
 
-
-        /**
-          create the launcher
-          */
-        SAGENextLauncher *launcher = new SAGENextLauncher(&s, scene, resourceMonitor, schedcontrol, scene); // scene is the parent
-
-
-
-
-        /**
-          create the UiServer
-          */
-        UiServer *uiserver = new UiServer(&s, launcher, scene);
-		scene->setUiServer(uiserver);
-
-		/**
-		  create the FileServer
-		  */
-		FileServer *fileServer = new FileServer(&s, launcher);
-
+	qDebug() << "Screen layout after setting dialog";
+	QMap<QPair<int,int>,int>::iterator it2 = screenLayout.begin();
+	for (; it2 != screenLayout.end(); it2++) {
+		qDebug() << it2.key() << ": " << it2.value();
+	}
 
 
         /**
           create viewport widget (This is a QWidget)
           */
-        qDebug() << "Creating SAGENext Viewport";
+	qDebug() << "Creating SAGENext Viewport";
+	SAGENextViewport *gvm = 0;
 
-        SAGENextViewport *gvm = new SAGENextViewport;
+	QGLFormat glFormat(QGL::DepthBuffer /*QGL::AlphaChannel | QGL::SampleBuffers*/);
 
-        gvm->setLauncher(launcher);
+	if (s.value("graphics/isxinerama").toBool()) {
+		gvm = new SAGENextViewport;
 
 		if ( s.value("graphics/openglviewport").toBool() ) {
 			/**
 			  in linux, youtube isn't working with OpenGL viewport
-			  **/
-			gvm->setViewport(new QGLWidget(QGLFormat(QGL::AlphaChannel | QGL::SampleBuffers)));
+			  */
+			gvm->setViewport(new QGLWidget(glFormat));
 			qDebug() << "[ using QGLWidget as the viewport ]";
 		}
-
-		if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "full", Qt::CaseInsensitive) == 0 ) {
-			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
-		}
-		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "minimal", Qt::CaseInsensitive) == 0 ) {
-			gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
-		}
-		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "smart", Qt::CaseInsensitive) == 0 ) {
-			gvm->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
-		}
-		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "no update", Qt::CaseInsensitive) == 0 ) {
-			gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
-		}
-		else {
-			gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
-		}
-        /* DON'T DO THIS ! poor performance and not correct. I don't know why. It's worth look into this */
-        //	gvm->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
-
-		gvm->setFrameStyle(QFrame::NoFrame);
-		gvm->setLineWidth(0);
-		gvm->setContentsMargins(0, 0, 0, 0);
-
-//		QPalette palette;
-//		QBrush brush(QColor(128, 128, 128, 128), Qt::SolidPattern);
-//		palette.setBrush(QPalette::WindowText, brush);
-//		gvm->setPalette(palette);
-
-        gvm->setRenderHint(QPainter::SmoothPixmapTransform);
-		//	gvm->setRenderHint(QPainter::HighQualityAntialiasing);
-        gvm->setAttribute(Qt::WA_DeleteOnClose);
-        gvm->setWindowFlags(Qt::FramelessWindowHint);
-
-//        gvm->setWindowState(Qt::WindowFullScreen);
-		gvm->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-		gvm->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-        gvm->setDragMode(QGraphicsView::RubberBandDrag);
-        gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, true);
-
-        gvm->setScene(scene);
-
-        gvm->move(s.value("general/offsetx", 0).toInt(), s.value("general/offsety", 0).toInt());
+		gvm->setScene(scene);
+		gvm->move(s.value("general/offsetx", 0).toInt(), s.value("general/offsety", 0).toInt());
         gvm->resize(scene->sceneRect().size().toSize());
 
-        gvm->show();
+		// this is for the file dialog
+		gvm->setLauncher(launcher);
+
+		setViewAttr(gvm, s);
+
+		gvm->show();
+	}
+	else {
+		for (int i=0; i<screenLayout.size(); i++) {
+			//
+			// A viewport for each X screen
+			//
+			gvm = new SAGENextViewport(i, dw->screen(i));
+
+			if ( s.value("graphics/openglviewport").toBool() ) {
+				/**
+				  in linux, youtube isn't working with OpenGL viewport
+				  */
+				gvm->setViewport(new QGLWidget(glFormat, dw->screen(i)));
+				qDebug() << "[ using QGLWidget as the viewport ]";
+			}
+			gvm->setScene(scene);
+
+			//
+			// set sceneRect to be viewed for each viewport
+			//
+			QPair<int,int> pos = screenLayout.key(i); // x,y position of the screen (0,0) as a topleft
+			gvm->setSceneRect(
+			            pos.first * dw->screenGeometry(i).width()
+			            ,pos.second * dw->screenGeometry(i).height()
+			            ,dw->screenGeometry(i).width()
+			            ,dw->screenGeometry(i).height()
+			);
+
+			//
+			// resize viewport for bezel
+			//
+
+
+			gvm->setScene(scene);
+
+			// this is for the file dialog
+			gvm->setLauncher(launcher);
+
+			setViewAttr(gvm, s);
+
+			gvm->show();
+		}
+	}
+
 
 
 		//launcher->launch("", "evl123", 0, "131.193.77.191", 24);
@@ -351,14 +376,14 @@ int main(int argc, char *argv[])
 //		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
 
 
-        // starts event loop
-        int ret = a.exec();
+	// starts the event loop
+	int ret = a.exec();
 
 
-		if (fileServer) delete fileServer;
 
-//		if (uiserver) delete uiserver; // uiserver is deleted by the scene
-		//	if (launcher) delete launcher; // launcher is a child of scene. So laucher will be delete when scene is deleted automatically
+	if (fileServer) delete fileServer;
+	//if (uiserver) delete uiserver; // uiserver is deleted by the scene
+	//if (launcher) delete launcher; // launcher is a child of scene. So laucher will be delete when scene is deleted automatically
 		/*
 		if (resourceMonitor) {
 			resourceMonitor->killTimer(rMonitorTimerId);
@@ -368,9 +393,49 @@ int main(int argc, char *argv[])
 			delete resourceMonitor;
 		}
 		*/
-		return ret;
+	return ret;
 }
 
+
+
+void setViewAttr(SAGENextViewport *gvm, const QSettings &s) {
+	//
+	// viewport update mode
+	//
+	if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "full", Qt::CaseInsensitive) == 0 ) {
+		gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+	}
+	else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "minimal", Qt::CaseInsensitive) == 0 ) {
+		gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
+	}
+	else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "smart", Qt::CaseInsensitive) == 0 ) {
+		gvm->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+	}
+	else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "no update", Qt::CaseInsensitive) == 0 ) {
+		gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
+	}
+	else {
+		gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
+	}
+	/* DON'T DO THIS ! poor performance and not correct. I don't know why. It's worth look into this */
+    //gvm->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
+
+	gvm->setFrameStyle(QFrame::NoFrame);
+	gvm->setLineWidth(0);
+	gvm->setContentsMargins(0, 0, 0, 0);
+
+	gvm->setRenderHint(QPainter::SmoothPixmapTransform);
+	//gvm->setRenderHint(QPainter::HighQualityAntialiasing);
+	gvm->setAttribute(Qt::WA_DeleteOnClose);
+	gvm->setWindowFlags(Qt::FramelessWindowHint);
+
+//  gvm->setWindowState(Qt::WindowFullScreen);
+	gvm->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	gvm->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+	gvm->setDragMode(QGraphicsView::RubberBandDrag);
+	gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, true);
+}
 
 
 /**
@@ -406,10 +471,3 @@ numa_free_cpumask(mask);
 
 
 
-
-
-
-
-
-
-// test 1

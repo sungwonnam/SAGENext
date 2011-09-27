@@ -14,5 +14,12 @@
         <file>resources/plugin_200x200.png</file>
         <file>resources/media-forward-ltr_128x128.png</file>
         <file>resources/media-forward-rtl_128x128.png</file>
+        <file>resources/default_button_down.png</file>
+        <file>resources/default_button_up.png</file>
+        <file>resources/evl-logo.png</file>
+        <file>resources/horizontal_divider_btn_over.png</file>
+        <file>resources/vertical_divider_btn_over.png</file>
+        <file>resources/x_box_red.png</file>
+        <file>resources/x_circle_gray.png</file>
     </qresource>
 </RCC>

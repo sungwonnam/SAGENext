@@ -7,96 +7,17 @@
 #include <QGraphicsLineItem>
 #include <QGraphicsLinearLayout>
 
+#include <QSettings>
+
 class PixmapButton;
 class PartitionBar;
-class PartitionTreeNode;
+//class PartitionTreeNode;
 
 class UiServer;
 class ResourceMonitor;
 class SchedulerControl;
 
 class SAGENextLayoutWidget;
-
-
-class PartitionTreeNode : public QObject {
-	Q_OBJECT
-public:
-	explicit PartitionTreeNode(QGraphicsScene *s, PartitionTreeNode *p, const QRectF &rect, QObject *parent=0);
-	~PartitionTreeNode();
-
-	inline PartitionTreeNode * leftOrTop() {return _leftOrTop;}
-	inline PartitionTreeNode * rightOrBottom() {return _rightOrBottom;}
-
-	inline int orientation() const {return _orientation;}
-
-	/**
-	  adjust children's _rectf
-	  */
-	void lineHasMoved(const QPointF &newpos);
-
-private:
-	QGraphicsScene *_scene;
-
-	PartitionTreeNode *_parentNode;
-	/**
-	  left or top
-	  */
-	PartitionTreeNode * _leftOrTop;
-	PartitionTreeNode * _rightOrBottom;
-
-	/**
-	  1 : horizontal
-	  2 : vertical
-	  */
-	int _orientation;
-
-	QGraphicsLineItem *_lineItem;
-
-//	int _partitionId;
-
-	PixmapButton *_tileButton;
-
-	PixmapButton *_hButton;
-	PixmapButton *_vButton;
-
-	PixmapButton *_closeButton;
-
-	QRectF _rectf;
-
-	/**
-	  create childs and I become partition holder which has _lineItem and no button showing
-	  */
-	void createNewPartition(int o);
-
-public slots:
-	inline void createNewHPartition() {createNewPartition(1);}
-	inline void createNewVPartition() {createNewPartition(2);}
-
-	/**
-	  I'm actual partition and my rect changed
-	  */
-	void setNewRectf(const QRectF &r);
-
-	/**
-	  delete childs and I become an actual partition which has no _lineItem and all buttons showing
-	  */
-	void deleteChildPartitions();
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -141,7 +62,7 @@ private:
 class SAGENextLayoutWidget : public QGraphicsWidget {
 	Q_OBJECT
 public:
-	SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget=0, QGraphicsItem *parent=0);
+	SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent=0);
 	~SAGENextLayoutWidget();
 
 	inline SAGENextLayoutWidget * leftWidget() {return _leftWidget;}
@@ -155,6 +76,8 @@ protected:
 	void resizeEvent(QGraphicsSceneResizeEvent *event);
 
 private:
+	const QSettings *_settings;
+
 	SAGENextLayoutWidget *_parentWidget;
 
 	/**
@@ -218,12 +141,15 @@ class SAGENextScene : public QGraphicsScene
 {
 	Q_OBJECT
 public:
-	explicit SAGENextScene(const QRectF &sceneRect, QObject *parent = 0);
+	explicit SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObject *parent = 0);
 	~SAGENextScene();
 
 	inline void setUiServer(UiServer *u) {_uiserver = u;}
-	inline void setRMonitor(ResourceMonitor *r) {_rmonitor = r;}
+//	inline void setRMonitor(ResourceMonitor *r) {_rmonitor = r;}
 	inline void setSchedControl(SchedulerControl *s) {_schedcontrol = s;}
+	inline SAGENextLayoutWidget * rootLayoutWidget() {return _rootLayoutWidget;}
+
+	bool isOnAppRemoveButton(const QPointF &scenepos);
 
 	/**
 	  This must be called after scene rect has become valid
@@ -233,12 +159,27 @@ public:
 //	inline QGraphicsLinearLayout * rootLinearLayout() {return _rootLinearLayout;}
 
 private:
+	const QSettings *_settings;
 	UiServer *_uiserver;
-	ResourceMonitor *_rmonitor;
+//	ResourceMonitor *_rmonitor;
 	SchedulerControl *_schedcontrol;
 
 //	PartitionTreeNode *_rootPartition;
 	SAGENextLayoutWidget *_rootLayoutWidget;
+
+	/**
+	  first click on _closeButton will just set the flag
+	  second click on _closeButton will trigger shutdown
+	  */
+	bool _closeFlag;
+
+	/**
+	  shutdown the wall
+	  */
+	PixmapButton *_closeButton;
+
+	PixmapButton *_appRemoveButton;
+
 signals:
 
 public slots:
@@ -250,5 +191,75 @@ public slots:
 	void prepareClosing();
 
 };
+
+
+
+
+//class PartitionTreeNode : public QObject {
+//	Q_OBJECT
+//public:
+//	explicit PartitionTreeNode(QGraphicsScene *s, PartitionTreeNode *p, const QRectF &rect, QObject *parent=0);
+//	~PartitionTreeNode();
+
+//	inline PartitionTreeNode * leftOrTop() {return _leftOrTop;}
+//	inline PartitionTreeNode * rightOrBottom() {return _rightOrBottom;}
+
+//	inline int orientation() const {return _orientation;}
+
+//	/**
+//	  adjust children's _rectf
+//	  */
+//	void lineHasMoved(const QPointF &newpos);
+
+//private:
+//	QGraphicsScene *_scene;
+
+//	PartitionTreeNode *_parentNode;
+//	/**
+//	  left or top
+//	  */
+//	PartitionTreeNode * _leftOrTop;
+//	PartitionTreeNode * _rightOrBottom;
+
+//	/**
+//	  1 : horizontal
+//	  2 : vertical
+//	  */
+//	int _orientation;
+
+//	QGraphicsLineItem *_lineItem;
+
+////	int _partitionId;
+
+//	PixmapButton *_tileButton;
+
+//	PixmapButton *_hButton;
+//	PixmapButton *_vButton;
+
+//	PixmapButton *_closeButton;
+
+//	QRectF _rectf;
+
+//	/**
+//	  create childs and I become partition holder which has _lineItem and no button showing
+//	  */
+//	void createNewPartition(int o);
+
+//public slots:
+//	inline void createNewHPartition() {createNewPartition(1);}
+//	inline void createNewVPartition() {createNewPartition(2);}
+
+//	/**
+//	  I'm actual partition and my rect changed
+//	  */
+//	void setNewRectf(const QRectF &r);
+
+//	/**
+//	  delete childs and I become an actual partition which has no _lineItem and all buttons showing
+//	  */
+//	void deleteChildPartitions();
+//};
+
+
 
 #endif // SAGENEXTSCENE_H

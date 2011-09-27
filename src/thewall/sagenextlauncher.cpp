@@ -281,7 +281,12 @@ BaseWidget * SAGENextLauncher::launch(QString username, QString vncPasswd, int d
 
 BaseWidget * SAGENextLauncher::launch(BaseWidget *w) {
 	if ( w ) {
+
+		/**
+		  Without SAGENextLayoutWidget, applications are added to the scene directly
+		  */
 		_scene->addItem(w);
+
 		//connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));
 		++_globalAppId; // increment only when widget is created successfully
 		w->setTopmost();

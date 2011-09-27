@@ -216,6 +216,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
             pointerItem->setPointerName(QString(pname));
         }
         Q_ASSERT(scene);
+		pointerItem->setScale(1.3);
         scene->addItem(pointerItem);
 
         pointers.insert(uiclientid, pointerItem);
@@ -335,6 +336,26 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 		break;
 	}
 
+		/*
+		  This doesn't trigger pointer click. Don't use this to fire pointerClick()
+		  This event is sent from uiclient when mouse draggin has finished.
+		  */
+	case POINTER_RELEASE:
+	{
+		quint64 uiclientid;
+        int x,y;
+        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        PolygonArrow *pa =  getSharedPointer(uiclientid);
+		if (pa) {
+			pa->pointerRelease(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
+		}
+		break;
+	}
+
+	case POINTER_RIGHTRELEASE:
+	{
+		break;
+	}
 
 	/**
 	  mouseReleaseEvent from external GUI sends POINTER_CLICK message

@@ -36,8 +36,14 @@ public:
           */
         virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
+
 		/**
-          * simulate mouse click by sending mousePressEvent followed by mouseReleaseEvent
+		  This is triggered at the end of mouseDragging by the client
+		  */
+		virtual void pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
+
+		/**
+          simulate mouse click by sending mousePressEvent followed by mouseReleaseEvent
 
 		  press
 		  release
@@ -105,8 +111,15 @@ class PixmapButton : public QGraphicsWidget
 {
 	Q_OBJECT
 public:
-	explicit PixmapButton(const QString &resource, qreal desiredWidth = 0.0, QGraphicsItem *parent = 0);
-	explicit PixmapButton(const QPixmap &pixmap, qreal desiredWidth = 0.0, QGraphicsItem *parent=0);
+	/**
+	  creates button with resource
+	  */
+	explicit PixmapButton(const QString &res, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent = 0);
+
+	/**
+	  creates button with image
+	  */
+	explicit PixmapButton(const QPixmap &pixmap, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent=0);
 	~PixmapButton();
 
 protected:
@@ -117,13 +130,6 @@ signals:
 	void clicked();
 };
 
-
-//class ProxyWidgetButton : public QGraphicsProxyWidget {
-//	Q_OBJECT
-//public:
-//	ProxyWidgetButton(const QString &btntext = "", QGraphicsItem *parent=0);
-//	~ProxyWidgetButton() {}
-//};
 
 
 

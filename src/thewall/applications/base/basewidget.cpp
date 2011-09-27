@@ -678,8 +678,8 @@ void BaseWidget::createActions()
 	connect(_minimizeAction, SIGNAL(triggered()), this, SLOT(minimize()));
 	connect(_maximizeAction, SIGNAL(triggered()), this, SLOT(maximize()));
 	connect(_restoreAction, SIGNAL(triggered()), this, SLOT(restore()));
-	connect(_closeAction, SIGNAL(triggered()), this, SLOT(fadeOutClose()));
-	//connect(_closeAction, SIGNAL(triggered()), this, SLOT(close()));
+//	connect(_closeAction, SIGNAL(triggered()), this, SLOT(fadeOutClose()));
+	connect(_closeAction, SIGNAL(triggered()), this, SLOT(close()));
 }
 
 

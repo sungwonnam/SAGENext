@@ -120,7 +120,8 @@ FORMS += \
     generalsettingdialog.ui \
     systemsettingdialog.ui \
     graphicssettingdialog.ui \
-    guisettingdialog.ui
+    guisettingdialog.ui \
+    screenlayoutdialog.ui
 
 
 RESOURCES += ../resources.qrc
@@ -195,6 +196,7 @@ HEADERS += \
     applications/pdfviewerwidget.h \
     uiserver/fileserver.h
 #    common/filereceivingrunnable.h
+
 
 
 

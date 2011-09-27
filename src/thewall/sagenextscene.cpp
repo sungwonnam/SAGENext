@@ -6,55 +6,97 @@
 #include "system/resourcemonitor.h"
 #include "uiserver/uiserver.h"
 
-SAGENextScene::SAGENextScene(const QRectF &sceneRect, QObject *parent)
+SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObject *parent)
     : QGraphicsScene(sceneRect, parent)
+    , _settings(s)
     , _uiserver(0)
-    , _rmonitor(0)
+//    , _rmonitor(0)
     , _schedcontrol(0)
     , _rootLayoutWidget(0)
+    , _closeFlag(false)
+    , _closeButton(0)
+    , _appRemoveButton(0)
 {
 	/*
-	  Attach close button on the scene. if clicked, scene->deleteLater will be called
+	  Attach close button on the scene. if clicked twice, scene->deleteLater will be called
       */
-	QPixmap closeIcon(":/resources/close_over.png");
+	QPixmap closeIcon(":/resources/x_circle_gray.png");
 //	QPixmap closeIcon(":/resources/powerbutton_black_64x64.png");
 //	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(sceneRect.width() * 0.02));
-	PixmapButton *closeButton = new PixmapButton(closeIcon, sceneRect.width() * 0.02);
-	connect(closeButton, SIGNAL(clicked()), this, SLOT(prepareClosing()));
+	_closeButton = new PixmapButton(closeIcon, _settings->value("gui/iconwidth").toDouble());
+	connect(_closeButton, SIGNAL(clicked()), this, SLOT(prepareClosing()));
 //	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
 //	opacity->setOpacity(0.2);
 //	closeButton->setGraphicsEffect(opacity);
-	closeButton->setOpacity(0.2);
-	closeButton->setX(sceneRect.width() - closeButton->boundingRect().width() - 1);
-	addItem(closeButton);
+	_closeButton->setOpacity(0.1);
+	_closeButton->setPos(sceneRect.width() - _closeButton->boundingRect().width() - 10, 10);
+//	_closeButton->setScale(0.5);
+	addItem(_closeButton);
 
+
+
+	_appRemoveButton = new PixmapButton(":/resources/default_button_up.png", 2 * _settings->value("gui/iconwidth").toDouble(), "Remove");
+	_appRemoveButton->setTransformOriginPoint(_appRemoveButton->size().width()/2, 0);
+	_appRemoveButton->setPos(sceneRect.width()/2, 5);
+	_appRemoveButton->setZValue(999999998); // 1 less than polygon arrow
+	addItem(_appRemoveButton);
 
 
 
 	/**
-	  Create base widget for wall partitioning
+	  Create base widget for wall partitioning.
 	  */
-	_rootLayoutWidget = new SAGENextLayoutWidget("ROOT", sceneRect);
+	_rootLayoutWidget = new SAGENextLayoutWidget("ROOT", sceneRect, 0, _settings);
+
+	/**
+	  Child widgets of _rootLayoutWidget, which are sagenext applications, will be added to the scene automatically.
+      refer QGraphicsItem::setParentItem()
+	  So, do NOT explicitly additem(sagenext application) !!
+	  */
 	addItem(_rootLayoutWidget);
 }
 
+bool SAGENextScene::isOnAppRemoveButton(const QPointF &scenepos) {
+	if (!_appRemoveButton) return false;
+
+	return _appRemoveButton->geometry().contains(scenepos);
+}
+
 void SAGENextScene::prepareClosing() {
-	// close UiServer so that all the shared pointers can be deleted first
-	if (_uiserver) {
-		qDebug() << "Scene is deleting UiServer";
-		delete _uiserver;
-	}
+	if (_closeFlag) {
+		// close UiServer so that all the shared pointers can be deleted first
+		if (_uiserver) {
+			qDebug() << "Scene is deleting UiServer";
+			delete _uiserver;
+		}
 
-	if (_rmonitor) {
-		qDebug() << "Scene is deleting ResourceMonitor";
-		delete _rmonitor;
-	}
+//		if (_rmonitor) {
+//			qDebug() << "Scene is deleting ResourceMonitor";
+//			delete _rmonitor;
+//		}
 
-	deleteLater();
+		deleteLater();
+	}
+	else {
+		// set the flag
+		_closeFlag = true;
+		_closeButton->setOpacity(1.0);
+	}
 }
 
 SAGENextScene::~SAGENextScene() {
+	if (_closeButton) {
+		removeItem(_closeButton);
+		delete _closeButton;
+	}
+
+	if (_appRemoveButton) {
+		removeItem(_appRemoveButton);
+		delete _appRemoveButton;
+	}
+
 	if (_rootLayoutWidget) {
+		removeItem(_rootLayoutWidget);
 		delete _rootLayoutWidget;
 	}
 
@@ -72,8 +114,6 @@ SAGENextScene::~SAGENextScene() {
 			delete item;
 		}
 	}
-
-
 	/*
 	  close all views
 	  */
@@ -81,7 +121,6 @@ SAGENextScene::~SAGENextScene() {
 	foreach (QGraphicsView *view, views()) {
 		view->close(); // WA_DeleteOnClose is set
 	}
-
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
 
@@ -107,8 +146,9 @@ void SAGENextScene::closeAllUserApp() {
 
 
 
-SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget, QGraphicsItem *parent)
+SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
+    , _settings(s)
     , _parentWidget(parentWidget)
     , _leftWidget(0)
     , _rightWidget(0)
@@ -130,8 +170,9 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, 
 	// pointer->setAppUnderPointer() will pass this item
 	setAcceptedMouseButtons(0);
 
-	_hButton = new PixmapButton(":/resources/minimize_shape.gif", 0, this);
-	_vButton = new PixmapButton( ":/resources/maximize_shape.gif", 0, this);
+	// these png files are 499x499
+	_hButton = new PixmapButton(":/resources/horizontal_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
+	_vButton = new PixmapButton( ":/resources/vertical_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 
 	// horizontal button will divide the widget vertically
 	connect(_hButton, SIGNAL(clicked()), this, SLOT(createHBar()));
@@ -143,7 +184,7 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, 
 //	_buttonGrp->addToGroup(_hButton);
 
 	if (parent) {
-		_xButton = new PixmapButton(":/resources/close_shape.gif", 0, this);
+		_xButton = new PixmapButton(":/resources/close_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 		connect(_xButton, SIGNAL(clicked()), _parentWidget, SLOT(deleteChildPartitions()));
 //		_buttonGrp->addToGroup(_xButton);
 	}
@@ -261,8 +302,8 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 		first = QRectF(    0, 0,             br.width(), br.height()/2);
 		second = QRectF(0, br.height()/2, br.width(), br.height()/2);
 
-		_topWidget = new SAGENextLayoutWidget("top", first, this, this);
-		_bottomWidget = new SAGENextLayoutWidget("bottom", second, this, this);
+		_topWidget = new SAGENextLayoutWidget("top", first, this, _settings, this);
+		_bottomWidget = new SAGENextLayoutWidget("bottom", second, this, _settings, this);
 
 		//
 		// if child widget is resized, then adjust my bar pos and length
@@ -275,8 +316,8 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 		//
 		first = QRectF(    0,            0, br.width()/2, br.height());
 		second = QRectF(br.width()/2, 0, br.width()/2, br.height());
-		_leftWidget = new SAGENextLayoutWidget("left", first, this, this);
-		_rightWidget = new SAGENextLayoutWidget("right", second, this, this);
+		_leftWidget = new SAGENextLayoutWidget("left", first, this, _settings, this);
+		_rightWidget = new SAGENextLayoutWidget("right", second, this, _settings, this);
 
 		connect(_leftWidget, SIGNAL(resized()), this, SLOT(adjustBar()));
 	}
@@ -406,135 +447,133 @@ PartitionBar::PartitionBar(Qt::Orientation ori, SAGENextLayoutWidget *owner, QGr
 
 
 
-#include "common/commonitem.h"
 
 
+//PartitionTreeNode::PartitionTreeNode(QGraphicsScene *s, PartitionTreeNode *p, const QRectF &r, QObject *parent)
+//    : QObject(parent)
+//    , _scene(s)
+//    , _parentNode(p)
 
-PartitionTreeNode::PartitionTreeNode(QGraphicsScene *s, PartitionTreeNode *p, const QRectF &r, QObject *parent)
-    : QObject(parent)
-    , _scene(s)
-    , _parentNode(p)
+//    , _leftOrTop(0)
+//    , _rightOrBottom(0)
+//    , _orientation(0)
+//    , _lineItem(0)
 
-    , _leftOrTop(0)
-    , _rightOrBottom(0)
-    , _orientation(0)
-    , _lineItem(0)
+//    , _tileButton(0)
+//    , _hButton(0)
+//    , _vButton(0)
+//    , _closeButton(0)
+//{
+//	_rectf = r;
 
-    , _tileButton(0)
-    , _hButton(0)
-    , _vButton(0)
-    , _closeButton(0)
-{
-	_rectf = r;
+//	qDebug() << "PartitionTreeNode() " << _rectf;
 
-	qDebug() << "PartitionTreeNode() " << _rectf;
-
-	_hButton = new PixmapButton(":/resources/minimize_shape.gif");
-	connect(_hButton, SIGNAL(clicked()), this, SLOT(createNewHPartition()));
-	// add this button to the scene based on _rectf
-	_scene->addItem(_hButton);
-	_hButton->setPos(_rectf.width() - _hButton->rect().width(), _rectf.y() +  _rectf.height() / 2);
-
-
-	if ( _parentNode ) {
-		_closeButton = new PixmapButton(":/resources/close_over.png");
-		connect(_closeButton, SIGNAL(clicked()), _parentNode, SLOT(deleteChildPartitions()));
-		_scene->addItem(_closeButton);
-		_closeButton->setPos(_rectf.width() - _closeButton->rect().width(),  _rectf.y() + _rectf.height()/2);
-	}
-}
-PartitionTreeNode::~PartitionTreeNode() {
-	if (_lineItem) delete _lineItem;
-
-	if (_hButton) delete _hButton;
-	if (_vButton) delete _vButton;
-	if (_closeButton) delete _closeButton;
-	if (_tileButton) delete _tileButton;
-
-	if (_leftOrTop) delete _leftOrTop;
-	if (_rightOrBottom) delete _rightOrBottom;
-}
-
-void PartitionTreeNode::lineHasMoved(const QPointF &newpos) {
-	Q_ASSERT(_leftOrTop);
-	Q_ASSERT(_rightOrBottom);
-
-	QRectF leftrect;
-	QRectF rightrect;
-
-	if (_orientation == 1) {
-		// horizontal
-		// line only moves up and down
-
-		// top
-		leftrect = QRectF( _rectf.x(), _rectf.y(), _rectf.width(), newpos.y() - _rectf.y() );
-
-		// bottom
-		rightrect = QRectF(_rectf.x(), newpos.y(), _rectf.width(), _rectf.bottomRight().y() - newpos.y());
-	}
-	else if (_orientation ==2) {
-
-	}
-
-	_leftOrTop->setNewRectf(leftrect);
-	_rightOrBottom->setNewRectf(rightrect);
-}
-
-void PartitionTreeNode::createNewPartition(int o) {
-	_orientation = o;
-
-	QRectF leftrect;
-	QRectF rightrect;
-	Qt::Orientation ori;
-
-	if (o == 1) {
-		// horizontal
-		ori = Qt::Horizontal;
-		qreal newHeight = _rectf.height() / 2.0;
-		leftrect = QRectF(_rectf.x(), _rectf.y(), _rectf.width(), newHeight);
-		rightrect = QRectF(_rectf.x(), _rectf.y() + newHeight, _rectf.width(), newHeight);
-	}
-	else if ( o == 2) {
-		ori = Qt::Vertical;
-	}
-	_leftOrTop = new PartitionTreeNode(_scene, this, leftrect);
-	_rightOrBottom = new PartitionTreeNode(_scene, this, rightrect);
-
-	// hide my buttons
-	if (_hButton) _hButton->hide();
-	if (_closeButton) _closeButton->hide();
+//	_hButton = new PixmapButton(":/resources/minimize_shape.gif");
+//	connect(_hButton, SIGNAL(clicked()), this, SLOT(createNewHPartition()));
+//	// add this button to the scene based on _rectf
+//	_scene->addItem(_hButton);
+//	_hButton->setPos(_rectf.width() - _hButton->rect().width(), _rectf.y() +  _rectf.height() / 2);
 
 
-	// create line item and I'm the owner
-//	_lineItem = new PartitionBar(ori, this);
-	_lineItem->setPos(rightrect.topLeft());
-	_scene->addItem(_lineItem);
+//	if ( _parentNode ) {
+//		_closeButton = new PixmapButton(":/resources/close_over.png");
+//		connect(_closeButton, SIGNAL(clicked()), _parentNode, SLOT(deleteChildPartitions()));
+//		_scene->addItem(_closeButton);
+//		_closeButton->setPos(_rectf.width() - _closeButton->rect().width(),  _rectf.y() + _rectf.height()/2);
+//	}
+//}
+//PartitionTreeNode::~PartitionTreeNode() {
+//	if (_lineItem) delete _lineItem;
 
-}
+//	if (_hButton) delete _hButton;
+//	if (_vButton) delete _vButton;
+//	if (_closeButton) delete _closeButton;
+//	if (_tileButton) delete _tileButton;
 
-void PartitionTreeNode::deleteChildPartitions() {
-	Q_ASSERT(_lineItem);
-	Q_ASSERT(_leftOrTop);
-	Q_ASSERT(_rightOrBottom);
+//	if (_leftOrTop) delete _leftOrTop;
+//	if (_rightOrBottom) delete _rightOrBottom;
+//}
 
-	delete _lineItem;
-	delete _leftOrTop;
-	delete _rightOrBottom;
+//void PartitionTreeNode::lineHasMoved(const QPointF &newpos) {
+//	Q_ASSERT(_leftOrTop);
+//	Q_ASSERT(_rightOrBottom);
 
-	// show my buttons
-	_hButton->show();
-	if (_parentNode && _closeButton) _closeButton->show();
-}
+//	QRectF leftrect;
+//	QRectF rightrect;
 
-void PartitionTreeNode::setNewRectf(const QRectF &r) {
-	qDebug() << "PartitionTreeNode::setNewRectf()" << r;
+//	if (_orientation == 1) {
+//		// horizontal
+//		// line only moves up and down
 
-	// because I'm an actual partition
-	Q_ASSERT( !_lineItem );
-	Q_ASSERT( !_leftOrTop );
-	Q_ASSERT( !_rightOrBottom );
+//		// top
+//		leftrect = QRectF( _rectf.x(), _rectf.y(), _rectf.width(), newpos.y() - _rectf.y() );
 
-	_rectf = r;
+//		// bottom
+//		rightrect = QRectF(_rectf.x(), newpos.y(), _rectf.width(), _rectf.bottomRight().y() - newpos.y());
+//	}
+//	else if (_orientation ==2) {
 
-	// adjust belonging widget's pos
-}
+//	}
+
+//	_leftOrTop->setNewRectf(leftrect);
+//	_rightOrBottom->setNewRectf(rightrect);
+//}
+
+//void PartitionTreeNode::createNewPartition(int o) {
+//	_orientation = o;
+
+//	QRectF leftrect;
+//	QRectF rightrect;
+//	Qt::Orientation ori;
+
+//	if (o == 1) {
+//		// horizontal
+//		ori = Qt::Horizontal;
+//		qreal newHeight = _rectf.height() / 2.0;
+//		leftrect = QRectF(_rectf.x(), _rectf.y(), _rectf.width(), newHeight);
+//		rightrect = QRectF(_rectf.x(), _rectf.y() + newHeight, _rectf.width(), newHeight);
+//	}
+//	else if ( o == 2) {
+//		ori = Qt::Vertical;
+//	}
+//	_leftOrTop = new PartitionTreeNode(_scene, this, leftrect);
+//	_rightOrBottom = new PartitionTreeNode(_scene, this, rightrect);
+
+//	// hide my buttons
+//	if (_hButton) _hButton->hide();
+//	if (_closeButton) _closeButton->hide();
+
+
+//	// create line item and I'm the owner
+////	_lineItem = new PartitionBar(ori, this);
+//	_lineItem->setPos(rightrect.topLeft());
+//	_scene->addItem(_lineItem);
+
+//}
+
+//void PartitionTreeNode::deleteChildPartitions() {
+//	Q_ASSERT(_lineItem);
+//	Q_ASSERT(_leftOrTop);
+//	Q_ASSERT(_rightOrBottom);
+
+//	delete _lineItem;
+//	delete _leftOrTop;
+//	delete _rightOrBottom;
+
+//	// show my buttons
+//	_hButton->show();
+//	if (_parentNode && _closeButton) _closeButton->show();
+//}
+
+//void PartitionTreeNode::setNewRectf(const QRectF &r) {
+//	qDebug() << "PartitionTreeNode::setNewRectf()" << r;
+
+//	// because I'm an actual partition
+//	Q_ASSERT( !_lineItem );
+//	Q_ASSERT( !_leftOrTop );
+//	Q_ASSERT( !_rightOrBottom );
+
+//	_rectf = r;
+
+//	// adjust belonging widget's pos
+//}

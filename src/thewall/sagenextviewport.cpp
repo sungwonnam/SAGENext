@@ -77,7 +77,8 @@ void SAGENextViewport::on_actionCloseAll_triggered() {
 		if (item->type() >= QGraphicsItem::UserType + 12) {
 			BaseWidget *bw = static_cast<BaseWidget *>(item);
 			Q_ASSERT(bw);
-			bw->fadeOutClose();
+//			bw->fadeOutClose();
+			bw->close();
 		}
 	}
 }

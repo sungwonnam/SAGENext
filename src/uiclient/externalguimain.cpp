@@ -406,21 +406,47 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 			// left pressed
 			if ( button == 1 && state == 1 ) {
 				mouseBtnPressed = 1;
+				mousePressedPos = currentGlobalPos;
 				sendMousePress(currentGlobalPos); // setAppUnderApp()
 			}
 			else if ( button == 2 && state == 1) {
 				mouseBtnPressed = 2;
+				mousePressedPos = currentGlobalPos;
 				sendMousePress(currentGlobalPos, Qt::RightButton);
 			}
 			else if ( button == 1 && state == 0 && mouseBtnPressed == 1) {
 				// mouse left click
 				mouseBtnPressed = 0;
-				sendMouseClick(currentGlobalPos);
+
+				int ml = (currentGlobalPos - mousePressedPos).manhattanLength();
+
+				//
+				// pointerClick() won't be generated as a result of mouseDragging
+				//
+				if ( ml <= 3 ) {
+					sendMouseClick(currentGlobalPos); // Left Click
+				}
+
+				//
+				// pointerRelease() at the end of mouse dragging
+				//
+				else {
+					sendMouseRelease(currentGlobalPos); // left release
+				}
 			}
 			else if ( button == 2 && state == 0 && mouseBtnPressed == 2) {
 				// mouse right click
 				mouseBtnPressed = 0;
-				sendMouseClick(currentGlobalPos, Qt::RightButton);
+				//
+				// pointerClick() won't be generated as a result of mouseDragging
+				//
+				int ml = (currentGlobalPos - mousePressedPos).manhattanLength();
+				if ( ml <= 3 ) {
+					sendMouseClick(currentGlobalPos, Qt::RightButton); // right Click
+				}
+				else {
+					sendMouseRelease(currentGlobalPos, Qt::RightButton); // right release
+				}
 			}
 			break;
 		}
@@ -511,7 +537,7 @@ void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btn
 	queueMsgToWall(msg);
 }
 
-void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton | Qt::NoButton */) {
+void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton */) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
@@ -524,6 +550,23 @@ void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons bt
 	else {
 		// will trigger setAppUnderPointer()
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_PRESS, uiclientid, x, y);
+	}
+	queueMsgToWall(msg);
+}
+
+void ExternalGUIMain::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btns /* = Qt::LeftButton */) {
+	int x=0 , y=0;
+	x = scaleToWallX * globalPos.x();
+	y = scaleToWallY * globalPos.y();
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+
+	if (btns & Qt::RightButton) {
+		// will trigger item isSelected()
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTRELEASE, uiclientid, x, y);
+	}
+	else {
+		// will trigger setAppUnderPointer()
+		sprintf(msg.data(), "%d %llu %d %d", POINTER_RELEASE, uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -589,10 +632,16 @@ void ExternalGUIMain::mousePressEvent(QMouseEvent *e) {
 
 void ExternalGUIMain::mouseReleaseEvent(QMouseEvent *e) {
 	if ( isMouseCapturing ) {
+		//
+		// below prevents pointerClick() when mouse was dragged
+		//
 		int ml = (e->globalPos() - mousePressedPos).manhattanLength();
 		//		qDebug() << "release" << e->button() << e->globalPos() << ml;
 		if ( ml <= 3 ) {
-			sendMouseClick(e->globalPos()); // Left Click 
+			sendMouseClick(e->globalPos()); // Left Click, right click is handled by contextMenuEvent
+		}
+		else {
+			sendMouseRelease(e->globalPos(), e->buttons());
 		}
 		e->accept();
 	}
