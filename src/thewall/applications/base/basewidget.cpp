@@ -462,13 +462,13 @@ void BaseWidget::restore()
 			pAnim_pos->setEndValue(_appInfo->recentPos());
 
 			pAnim_scale->setStartValue(scale());
-			pAnim_scale->setEndValue(_appInfo->getRecentScale());
+			pAnim_scale->setEndValue(_appInfo->recentScale());
 
 			_parallelAnimGroup->start();
 		}
 		else {
 			setPos(_appInfo->recentPos());
-			setScale(_appInfo->getRecentScale());
+			setScale(_appInfo->recentScale());
 		}
 	}
 	_windowState = W_NORMAL;
@@ -759,6 +759,7 @@ void BaseWidget::timerEvent(QTimerEvent *) {
 
 void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	setTransformOriginPoint(e->newSize().width() / 2, e->newSize().height() / 2);
+//	setTransformOriginPoint(boundingRect().center());
 }
 
 void BaseWidget::setLastTouch() {

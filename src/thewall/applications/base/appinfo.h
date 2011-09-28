@@ -41,18 +41,18 @@ public:
 	//inline void setFrameSize(int bytecount) { frameSize = bytecount; }
 
 	inline void setMediaType(MEDIA_TYPE t) {mtype = t;}
-	inline MEDIA_TYPE getMediaType() const { return mtype; }
+	inline MEDIA_TYPE mediaType() const { return mtype; }
 
 	inline void setDrawingThreadCpu(int c) {drawingThreadCpu=c;}
 	inline void setNetworkUserBufferLength(int l) {networkUserBufferLength=l;}
 
-	inline void setWebUrl(const QUrl &url) {webUrl = url;}
+	inline void setWebUrl(const QUrl &url) {_webUrl = url;}
 
-	inline void setExecutableName(const QString &str) {executableName = str;}
-	inline void setCmdArgs(const QStringList &strlist) {cmdArgs = strlist;}
+	inline void setExecutableName(const QString &str) {_executableName = str;}
+	inline void setCmdArgs(const QStringList &strlist) {_cmdArgs = strlist;}
 
 
-	inline QString getFilename() const { return fileinfo.absoluteFilePath(); }
+	inline QString mediaFilename() const { return fileinfo.absoluteFilePath(); }
 	inline quint32 getFrameBytecount() const { return frameSize; }
 //	inline quint32 getOrgWidth() const { return orgWidth; }
 //	inline quint32 getOrgHeight() const { return orgHeight; }
@@ -61,10 +61,10 @@ public:
 	inline int getDrawingThreadCpu() const {return drawingThreadCpu;}
 	inline int getNetworkUserBufferLength() const {return networkUserBufferLength;}
 
-	inline QUrl getWebUrl() const {return webUrl;}
+	inline QUrl webUrl() const {return _webUrl;}
 
-	inline QString getExecutableName() const {return executableName;}
-	inline QStringList getCmdArgs() const {return cmdArgs;}
+	inline QString executableName() const {return _executableName;}
+	inline QStringList cmdArgs() const {return _cmdArgs;}
 
 	/**
 	  * saved when maximized/minimized for restore later
@@ -72,13 +72,17 @@ public:
 	inline void setRecentPos(const QPointF &p) {_recentPos = p;}
 	inline QPointF recentPos() const {return _recentPos;}
 
-	inline void setRecentScale(qreal s) {recentScale = s;}
-	inline qreal getRecentScale() const {return recentScale;}
+	inline void setRecentScale(qreal s) {_recentScale = s;}
+	inline qreal recentScale() const {return _recentScale;}
 
 	inline void setRecentSize(const QSizeF &s) {_recentSize = s;}
 	inline QSizeF recentSize() const {return _recentSize;}
 
 
+	inline void setVncUsername(const QString &s) {_vncUsername = s;}
+	inline void setVncPassword(const QString &s) {_vncPasswd = s;}
+	inline QString vncUsername() const {return _vncUsername;}
+	inline QString vncPassword() const {return _vncPasswd;}
 
 private:
 	MEDIA_TYPE mtype;
@@ -89,23 +93,26 @@ private:
 	QFileInfo fileinfo;
 
 	/*!
-	  application name
+	  SAIL application name for SAGE app
 	  */
-	QString executableName;
+	QString _executableName;
 
 	/*!
-	  cmd line arguments
+	  cmd line arguments for SAIL app
 	  */
-	QStringList cmdArgs;
+	QStringList _cmdArgs;
 
-	QUrl webUrl;
+	/**
+	  web URL for WebWidget
+	  */
+	QUrl _webUrl;
 
 	QSize _nativeSize; /**< native resolution */
 
 	/**
-	  * sender's address
+	  * sender's IP address for SageStreamWidget, VNCWidget
 	  */
-	QHostAddress srcaddr;
+	QHostAddress _srcaddr;
 
 	quint16 bitPerPixel;
 
@@ -114,14 +121,20 @@ private:
 	  */
 	quint32 frameSize;
 
+	/**
+	  QGraphicsItem pos
+	  */
 	QPointF _recentPos;
 
+	/**
+	  QGraphicsWidget size
+	  */
 	QSizeF _recentSize;
 
 	/**
-	  * scale before minimized
+	  * QGraphicsItem scale
 	  */
-	qreal recentScale;
+	qreal _recentScale;
 
 	/**
 	  * On which cpu, drawing thread is
@@ -129,6 +142,10 @@ private:
 	int drawingThreadCpu;
 
 	int networkUserBufferLength;
+
+	QString _vncUsername;
+
+	QString _vncPasswd;
 
 };
 

@@ -135,6 +135,9 @@ SageStreamWidget::SageStreamWidget(QString filename, const quint64 globalappid, 
 {
     // this is defined in BaseWidget
     setRMonitor(rm);
+
+	_appInfo->setFileInfo(filename);
+	_appInfo->setSrcAddr(senderIP);
 }
 
 

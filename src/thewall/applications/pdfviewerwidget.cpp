@@ -1,5 +1,6 @@
 #include "pdfviewerwidget.h"
 #include "base/perfmonitor.h"
+#include "base/appinfo.h"
 #include "../common/commonitem.h"
 
 #include <QPainter>
@@ -19,6 +20,9 @@ PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, co
 		deleteLater();
 		return;
 	}
+
+	_appInfo->setFileInfo(filename);
+	_appInfo->setMediaType(MEDIA_TYPE_PDF);
 
 	// this is slow
 //	_document->setRenderBackend(Poppler::Document::ArthurBackend); // qt4

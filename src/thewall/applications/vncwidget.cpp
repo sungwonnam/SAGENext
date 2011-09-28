@@ -41,6 +41,7 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 	vncclient->GetPassword = VNCClientWidget::password_func;
 
 	serverAddr.setAddress(senderIP);
+	_appInfo->setSrcAddr(senderIP);
 
 	if (!VNCClientWidget::username.isEmpty()  &&  !VNCClientWidget::vncpasswd.isEmpty()) {
 		vncclient->GetCredential = VNCClientWidget::getCredential;

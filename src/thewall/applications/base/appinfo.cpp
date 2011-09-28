@@ -4,12 +4,12 @@
 AppInfo::AppInfo() :
 
 		fileinfo(QFileInfo()),
-		webUrl(QUrl()),
+		_webUrl(QUrl()),
 		_nativeSize(QSize()),
-		srcaddr(QHostAddress(QHostAddress::Null)),
+		_srcaddr(QHostAddress(QHostAddress::Null)),
 		bitPerPixel(0),
 		frameSize(0),
-		recentScale(1),
+		_recentScale(1),
 		drawingThreadCpu(-1),
 		networkUserBufferLength(65535) /* 64 kB */
 
@@ -19,12 +19,12 @@ AppInfo::AppInfo() :
 AppInfo::AppInfo(int width, int height, int bpp) :
 
 		fileinfo(QFileInfo()),
-		webUrl(QUrl()),
+		_webUrl(QUrl()),
 		_nativeSize(QSize(width, height)),
-		srcaddr(QHostAddress(QHostAddress::Null)),
+		_srcaddr(QHostAddress(QHostAddress::Null)),
 		bitPerPixel(bpp),
 		frameSize(width * height * bpp),
-		recentScale(1),
+		_recentScale(1),
 		drawingThreadCpu(-1),
 		networkUserBufferLength(65535) /* 64 kB */
 {
@@ -33,12 +33,12 @@ AppInfo::AppInfo(int width, int height, int bpp) :
 AppInfo::AppInfo(int width, int height, int bpp, QString file, QString srcip) :
 
 		fileinfo(QFileInfo(file)),
-		webUrl(QUrl()),
+		_webUrl(QUrl()),
 		_nativeSize(QSize(width, height)),
-		srcaddr(QHostAddress(srcip)),
+		_srcaddr(QHostAddress(srcip)),
 		bitPerPixel(bpp),
 		frameSize(width * height * bpp),
-		recentScale(1),
+		_recentScale(1),
 		drawingThreadCpu(-1),
 		networkUserBufferLength(65535) /* 64 kB */
 {
@@ -60,11 +60,11 @@ void AppInfo::setFrameSize(int width, int height, int bpp) {
 }
 
 void AppInfo::setSrcAddr(const QString &ip) {
-	srcaddr.setAddress(ip);
+	_srcaddr.setAddress(ip);
 }
 
 void AppInfo::setWebUrl(const QString &url) {
-	webUrl.setUrl(url);
+	_webUrl.setUrl(url);
 }
 
 

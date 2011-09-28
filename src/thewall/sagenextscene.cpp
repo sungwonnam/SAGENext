@@ -49,7 +49,7 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 //	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
 //	opacity->setOpacity(0.2);
 //	closeButton->setGraphicsEffect(opacity);
-	_closeButton->setOpacity(0.1);
+	_closeButton->setOpacity(0.05);
 	_closeButton->setPos(sceneRect.width() - _closeButton->boundingRect().width() - 10, 10);
 //	_closeButton->setScale(0.5);
 	addItem(_closeButton);
@@ -58,9 +58,8 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 	//
 	// attach app remove button on the top
 	//
-	_appRemoveButton = new PixmapButton(":/resources/default_button_up.png", 2 * _settings->value("gui/iconwidth").toDouble(), "Remove");
-	_appRemoveButton->setTransformOriginPoint(_appRemoveButton->size().width()/2, 0);
-	_appRemoveButton->setPos(sceneRect.width()/2, 5);
+	_appRemoveButton = new PixmapButton(":/resources/default_button_up.png", QSize(256, 32), "Remove");
+	_appRemoveButton->setPos(sceneRect.width()/2 - _appRemoveButton->size().width()/2, 5); // position to the top center
 	_appRemoveButton->setZValue(999999998); // 1 less than polygon arrow but always higher than apps
 	addItem(_appRemoveButton);
 
@@ -84,6 +83,11 @@ bool SAGENextScene::isOnAppRemoveButton(const QPointF &scenepos) {
 	if (!_appRemoveButton) return false;
 
 	return _appRemoveButton->geometry().contains(scenepos);
+}
+
+void SAGENextScene::addItemOnTheLayout(BaseWidget *bw, const QPointF &scenepos) {
+	Q_ASSERT(_rootLayoutWidget);
+	_rootLayoutWidget->addItem(bw, scenepos);
 }
 
 void SAGENextScene::prepareClosing() {
@@ -170,6 +174,7 @@ void SAGENextScene::closeAllUserApp() {
 
 
 
+
 SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
     , _settings(s)
@@ -195,9 +200,11 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, 
 	setAcceptedMouseButtons(0);
 
 	// these png files are 499x499
+	_tileButton = new PixmapButton(":/resources/tile_btn_over.jpg", _settings->value("gui/iconwidth").toDouble(), "", this);
 	_hButton = new PixmapButton(":/resources/horizontal_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 	_vButton = new PixmapButton( ":/resources/vertical_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 
+	connect(_tileButton, SIGNAL(clicked()), this, SLOT(toggleTile()));
 	// horizontal button will divide the widget vertically
 	connect(_hButton, SIGNAL(clicked()), this, SLOT(createHBar()));
 	// vertical button will divide the widget horizontally
@@ -207,7 +214,7 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, 
 //	_buttonGrp->addToGroup(_vButton);
 //	_buttonGrp->addToGroup(_hButton);
 
-	if (parent) {
+	if (parentWidget) {
 		_xButton = new PixmapButton(":/resources/close_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 		connect(_xButton, SIGNAL(clicked()), _parentLayoutWidget, SLOT(deleteChildPartitions()));
 //		_buttonGrp->addToGroup(_xButton);
@@ -228,7 +235,6 @@ SAGENextLayoutWidget::~SAGENextLayoutWidget() {
 }
 
 void SAGENextLayoutWidget::addItem(BaseWidget *bw, const QPointF &scenepos) {
-
 	/**
 	  If _bar exist, that means this layoutWidget is just a container for child layoutwidgets.
 	  So this layoutWidget can't have any baseWidget as a child.
@@ -265,15 +271,27 @@ void SAGENextLayoutWidget::addItem(BaseWidget *bw, const QPointF &scenepos) {
 	}
 }
 
-void SAGENextLayoutWidget::reparentToNewParent(SAGENextLayoutWidget *newParent) {
+/**
+  Caller's child items will be reparented to the newParent
+  */
+void SAGENextLayoutWidget::reparentWidgets(SAGENextLayoutWidget *newParent) {
 	if (_bar) {
-
+		if (_bar->orientation() == Qt::Horizontal) {
+			_topWidget->reparentWidgets(newParent);
+			_bottomWidget->reparentWidgets(newParent);
+		}
+		else {
+			_leftWidget->reparentWidgets(newParent);
+			_rightWidget->reparentWidgets(newParent);
+		}
 	}
 	else {
 		foreach(QGraphicsItem *item, childItems()) {
-			// exclude SAGENextLayoutWidget
 			// exclude PartitionBar
 			// exclude PixmapButton
+			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ) continue;
+
+			item->setParentItem(newParent);
 		}
 	}
 }
@@ -382,6 +400,17 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 		//
 		// reparent child items to appropriate widget. I shouldn't have any child baseWidgets at this point
 		//
+		foreach(QGraphicsItem *item, childItems()) {
+			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ) continue;
+
+			QRectF intersectedWithTop = _topWidget->boundingRect() & _topWidget->mapRectToItem(_topWidget, item->boundingRect());
+			if ( intersectedWithTop.size().width() * intersectedWithTop.size().height() >= 0.25 * item->boundingRect().size().width() * item->boundingRect().size().height()) {
+				item->setParentItem(_topWidget);
+			}
+			else {
+				item->setParentItem(_bottomWidget);
+			}
+		}
 
 		//
 		// if child widget is resized, then adjust my bar pos and length
@@ -400,6 +429,17 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 		//
 		// reparent child items to appropriate widget.  I shouldn't have any child baseWidgets at this point
 		//
+		foreach(QGraphicsItem *item, childItems()) {
+			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ) continue;
+
+			QRectF intersectedWithLeft = _leftWidget->boundingRect() & _leftWidget->mapRectToItem(_leftWidget, item->boundingRect());
+			if ( intersectedWithLeft.size().width() * intersectedWithLeft.size().height() >= 0.25 * item->boundingRect().size().width() * item->boundingRect().size().height()) {
+				item->setParentItem(_leftWidget);
+			}
+			else {
+				item->setParentItem(_rightWidget);
+			}
+		}
 
 		connect(_leftWidget, SIGNAL(resized()), this, SLOT(adjustBar()));
 	}
@@ -409,14 +449,11 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 	//
 	adjustBar();
 
-//	linear->insertItem(0, _left_top_w);
-//	linear->insertItem(1, _right_bottom_w);
 
-	// QGraphicsWidget takes ownership of the linear
-//	setLayout(linear);
-
+	//
 	// hides my buttons. This widget will just hold child widget
-//	_buttonGrp->hide();
+	//
+	_tileButton->hide();
 	_vButton->hide();
 	_hButton->hide();
 	if (_xButton) _xButton->hide();
@@ -441,55 +478,73 @@ void SAGENextLayoutWidget::adjustBar() {
 }
 
 void SAGENextLayoutWidget::deleteChildPartitions() {
-//	layout()->removeAt(0);
-//	layout()->removeAt(1); // widget won't be deleted
+	Q_ASSERT(_bar);
 
 	//
 	// reparent all basewidgets of my child layouts to me
 	//
-
-
-	Q_ASSERT(_bar);
 	if ( _bar->orientation() == Qt::Horizontal) {
+		_topWidget->reparentWidgets(this);
+		_bottomWidget->reparentWidgets(this);
+
 		delete _topWidget;
 		delete _bottomWidget;
 	}
 	else {
+		_leftWidget->reparentWidgets(this);
+		_rightWidget->reparentWidgets(this);
+
 		delete _leftWidget;
 		delete _rightWidget;
 	}
 	delete _bar;
+	_bar = 0; // do I need this?
 
 	if (_isTileOn) {
 		doTile();
 	}
-	else {
-		setLayout(0);
-	}
 
-//	_buttonGrp->show();
+	//
+	// provide interactivity after everything is done
+	//
+	_tileButton->show();
 	_vButton->show();
 	_hButton->show();
 	if (_xButton) _xButton->show();
 }
 
 void SAGENextLayoutWidget::doTile() {
-	// I must be an actual partition
+	if (_bar) return;
+	foreach(QGraphicsItem *item, childItems()) {
+		// exclude PartitionBar
+		// exclude PixmapButton
+		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ) continue;
+	}
+}
 
-	QGraphicsGridLayout *grid = new QGraphicsGridLayout;
-
-	// add all basewidget into this grid
-
-	setLayout(grid);
+void SAGENextLayoutWidget::toggleTile() {
+	if (_isTileOn) {
+		_isTileOn = false;
+		// do nothing
+	}
+	else {
+		_isTileOn = true;
+		doTile();
+	}
 }
 
 void SAGENextLayoutWidget::setButtonPos() {
 //	qDebug() << "attachButton" << boundingRect() << geometry();
-	_vButton->setPos(size().width()-_vButton->size().width() - 10,  size().height()/2);
-	_hButton->setPos(_vButton->geometry().x(),  _vButton->geometry().bottom());
+	_tileButton->setPos(size().width() - _tileButton->size().width() - 10, size().height()/2);
+	_vButton->setPos(_tileButton->geometry().x(), _tileButton->geometry().bottom() + 5);
+	_hButton->setPos(_vButton->geometry().x(),  _vButton->geometry().bottom() + 5);
 	if (_xButton) {
-		_xButton->setPos(_hButton->geometry().x(),  _hButton->geometry().bottom());
+		_xButton->setPos(_hButton->geometry().x(),  _hButton->geometry().bottom() + 5);
 	}
+}
+
+void SAGENextLayoutWidget::saveCurrentSession() {
+
 }
 
 
@@ -507,8 +562,7 @@ PartitionBar::PartitionBar(Qt::Orientation ori, SAGENextLayoutWidget *owner, QGr
 	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, true);
 
-//	setAcceptedMouseButtons(0);
-
+	setAcceptedMouseButtons(Qt::LeftButton | Qt::NoButton);
 
 	QPen pen;
 	pen.setWidth(12);

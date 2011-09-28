@@ -115,47 +115,52 @@ WebWidget::~WebWidget() {
 
 
 /**
-   This won't be executed if gwebview is set to be stacked behind the parent
-  ,and the parent (which is this object) accept the event.
-
- Because what this function does is intercepting events delivered to its children.
- So the events must be targeted to children.
+  Because what this function does is intercepting events delivered to its children, the events must be delivered to the children.
+  Therefore, this function won't work if childs are stacked behind the parent (WebWidget)
  */
 bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 
-	/* I'll only filter gwebview events */
+	//
+	// I'll only filter events delivered to the gwebview
+	// So this won't be executed if the gwebview is set to be stacked behind the parent
+	//
 	if (watched == gwebview ) {
 		//	qDebug("WebWidget::%s() : gwebview is going to receive event %d", __FUNCTION__, event->type());
 
 		if ( event->type() == QEvent::GraphicsSceneContextMenu) {
 			QGraphicsSceneContextMenuEvent *e = static_cast<QGraphicsSceneContextMenuEvent *>(event);
+
 			BaseWidget::contextMenuEvent(e);
 
-			// context menu is not going to be handled by gwebview
-			// right click should trigger context menu defined in BaseWidget
+			//
+			// Don't forward this event to gwebview
+			//
 			return true;
 		}
 
 		else if (event->type() == QEvent::GraphicsSceneMousePress) {
-			//	BaseWidget::setTopmost();
 //			qDebug() << "gwebview received pressEvent";
 
-			// First, deliver this event to BaseWidget to keep behaviors defined in BaseWidget can be triggered
+			//
+			// First, deliver this event to BaseWidget to keep the behaviors defined in the BaseWidget
+			//
 			BaseWidget::mousePressEvent((QGraphicsSceneMouseEvent *)event);
 
-			// press event should reach to gwebview.
-			// So, return false to forward this event can be delivered to where it's supposed to go
+			//
+			// The press event should reach to gwebview otherwise no mouse click can be done on gwebview.
+			// So, return false to forward this event to the gwebview.
+			//
 			return false;
 		}
 
 		else if (event->type() == QEvent::GraphicsSceneMouseDoubleClick) {
-			// gwebview will not handle doubleclick
-			// webwidget should handle this
-
-			qDebug() << "webwidget received doubleClick event";
+//			qDebug() << "webwidget received doubleClick event";
 			BaseWidget::mouseDoubleClickEvent((QGraphicsSceneMouseEvent *)event);
 
-			// the double click event occured on gwebview will be propagated to its parent which is webwidget
+			//
+			// gwebview will not handle doubleclick
+			// The WebWidget should handle this.
+			//
 			return true;
 		}
 
@@ -180,7 +185,7 @@ bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 			BaseWidget::setTopmost();
 	}
 
-	return false; // All other events will be propagated to gwebview
+	return false; // All other events won't be filtered by WebWidget
 }
 
 
@@ -191,12 +196,12 @@ bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 void WebWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
         // WebWidget will not respond to this event.
         // shouldn't do anything..
-        event->ignore();
+	event->ignore();
 }
 
 bool WebWidget::windowFrameEvent(QEvent *e) {
 //	qDebug() << "frame event" << e << boundingRect() << frame->boundingRect();
-        return QGraphicsWidget::windowFrameEvent(e);
+	return QGraphicsWidget::windowFrameEvent(e);
 }
 
 
@@ -225,6 +230,8 @@ void WebWidget::setUrl(const QString &u) {
 		appInfo()->setWebUrl( url );
 		//	gwebview->setUrl(url);
 		gwebview->load(url);
+
+		_appInfo->setWebUrl(url);
 
 		//	webPage = new QWebPage;
 		//	webFrame = webPage->mainFrame();

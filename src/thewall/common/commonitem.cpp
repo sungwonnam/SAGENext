@@ -437,18 +437,15 @@ PixmapButton::PixmapButton(const QString &res, qreal desiredWidth, const QString
 	}
 	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(orgPixmap, this);
 
-	if (!label.isNull() && !label.isEmpty()) {
-		QGraphicsSimpleTextItem *t = new QGraphicsSimpleTextItem(label, p);
-		QFont f;
-		f.setBold(true);
-		t->setFont(f);
-	}
 
 	// This widget (PixmapButton) has to receive mouse event
 	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
-
 	resize(p->pixmap().size());
 //	setOpacity(0.5);
+
+	if (!label.isNull() && !label.isEmpty()) {
+		_attachLabel(label, p);
+	}
 }
 PixmapButton::PixmapButton(const QPixmap &pixmap, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
@@ -461,19 +458,48 @@ PixmapButton::PixmapButton(const QPixmap &pixmap, qreal desiredWidth, const QStr
 		p = new QGraphicsPixmapItem(pixmap, this);
 	}
 
-	if (!label.isNull() && !label.isEmpty()) {
-		QGraphicsSimpleTextItem *t = new QGraphicsSimpleTextItem(label, p);
-		QFont f;
-		f.setBold(true);
-		t->setFont(f);
-	}
-
 	// This widget (PixmapButton) has to receive mouse event
 	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 	resize(p->pixmap().size());
 //	setOpacity(0.5);
+
+
+	if (!label.isNull() && !label.isEmpty()) {
+		_attachLabel(label, p);
+	}
 }
+
+PixmapButton::PixmapButton(const QString &res, const QSize &size, const QString &label, QGraphicsItem *parent)
+    : QGraphicsWidget(parent)
+{
+	QPixmap pixmap(res);
+	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(pixmap.scaled(size), this);
+
+	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+	resize(p->pixmap().size());
+
+
+	if (!label.isNull() && !label.isEmpty()) {
+		_attachLabel(label, p);
+	}
+}
+
 PixmapButton::~PixmapButton() {
+}
+
+void PixmapButton::_attachLabel(const QString &labeltext, QGraphicsItem *parent) {
+	QGraphicsSimpleTextItem *t = new QGraphicsSimpleTextItem(labeltext, parent);
+//	t->setTransformOriginPoint(t->boundingRect().center());
+
+	QBrush brush(Qt::white);
+	t->setBrush(brush);
+
+//	QFont f;
+//	f.setBold(true);
+//	t->setFont(f);
+
+	QPointF center_delat = boundingRect().center() - t->mapRectToParent(t->boundingRect()).center();
+	t->moveBy(center_delat.x(), center_delat.y());
 }
 
 void PixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {

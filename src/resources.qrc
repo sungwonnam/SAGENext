@@ -21,5 +21,6 @@
         <file>resources/vertical_divider_btn_over.png</file>
         <file>resources/x_box_red.png</file>
         <file>resources/x_circle_gray.png</file>
+        <file>resources/tile_btn_over.jpg</file>
     </qresource>
 </RCC>

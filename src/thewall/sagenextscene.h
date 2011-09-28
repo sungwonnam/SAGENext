@@ -74,12 +74,12 @@ public:
 	/**
 	  Add widget as my child. This will automatically add widget to the scene
 	  */
-	void addItem(BaseWidget *bw, const QPointF &scenepos);
+	void addItem(BaseWidget *bw, const QPointF &scenepos = QPointF(30, 30));
 
 	/**
 	  Reparent all the basewidgets to the new layoutWidget
 	  */
-	void reparentToNewParent(SAGENextLayoutWidget *newParent);
+	void reparentWidgets(SAGENextLayoutWidget *newParent);
 
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);
@@ -121,6 +121,8 @@ private:
 
 	void setButtonPos();
 
+	void doTile();
+
 signals:
 	void resized();
 
@@ -140,7 +142,12 @@ public slots:
 
 	void adjustBar();
 
-	void doTile();
+
+	void toggleTile();
+
+	/**
+	  */
+	void saveCurrentSession();
 };
 
 
@@ -160,6 +167,9 @@ public:
 	inline SAGENextLayoutWidget * rootLayoutWidget() {return _rootLayoutWidget;}
 
 	bool isOnAppRemoveButton(const QPointF &scenepos);
+
+
+	void addItemOnTheLayout(BaseWidget *bw, const QPointF &scenepos = QPointF(30,30));
 
 	/**
 	  This must be called after scene rect has become valid
@@ -199,7 +209,6 @@ public slots:
 	  kills UiServer, fsManager, ResourceMonitor
 	  */
 	void prepareClosing();
-
 };
 
 

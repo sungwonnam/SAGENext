@@ -145,11 +145,10 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 
 	case MEDIA_TYPE_VIDEO: {
 
-		// the file has to be downloaded first
-		// or remote side has maplyer (compiled with SAIL) already
-
+		// Assumes that the remote side (senderIP) has maplyer (compiled with SAIL) already
 
 		SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, senderIP, _rMonitor);
+//		sws->appInfo()->setFileInfo(filename);
 		w = sws;
 		_sageWidgetQueue.push_back(sws);
 
@@ -159,10 +158,13 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 		//	args1 << "-xf" << senderIP << "\"cd $HOME/.sageConfig;$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0\"";
 		args1 << "-xf" << senderIP << "$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0" << filename;
 
+		sws->appInfo()->setCmdArgs(args1);
+
 		// this will invoke sail (outside of SAGENext)
 		// _globalAppId shouldn't be incremented in here because StartSageApp() will increment eventually
 		// Also SageStreamWidget will be added to the scene in there
 		proc1->start("ssh",  args1);
+		sws->appInfo()->setExecutableName("ssh");
 
 		break;
 	}
@@ -176,6 +178,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 			  create sageWidget
 			*/
 			SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, "127.0.0.1", _rMonitor);
+//			sws->appInfo()->setFileInfo(filename);
 			w = sws;
 
 			/**
@@ -190,10 +193,13 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 			QStringList args;
 			args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-identify" << filename;
 
+			sws->appInfo()->setCmdArgs(args);
+
 			// this will invoke sail (outside of SAGENext)
 			// _globalAppId shouldn't be incremented in here because StartSageApp() will increment eventually
 			// Also SageStreamWidget will be added to the scene in there
 			proc->start("mplayer",  args);
+			sws->appInfo()->setExecutableName("mplayer");
 			sws->setSailAppProc(proc);
 		}
 
@@ -285,7 +291,9 @@ BaseWidget * SAGENextLauncher::launch(BaseWidget *w) {
 		/**
 		  Without SAGENextLayoutWidget, applications are added to the scene directly
 		  */
-		_scene->addItem(w);
+//		_scene->addItem(w);
+
+		_scene->addItemOnTheLayout(w);
 
 		//connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));
 		++_globalAppId; // increment only when widget is created successfully

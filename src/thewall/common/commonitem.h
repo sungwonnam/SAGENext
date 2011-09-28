@@ -124,7 +124,16 @@ public:
 	  creates button with image
 	  */
 	explicit PixmapButton(const QPixmap &pixmap, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent=0);
+
+	/**
+	  creates button with custom size
+	  */
+	explicit PixmapButton(const QString &res, const QSize &size = QSize(), const QString &label = QString(), QGraphicsItem *parent=0);
+
 	~PixmapButton();
+
+private:
+	void _attachLabel(const QString &labeltext, QGraphicsItem *parent);
 
 protected:
 	void mousePressEvent(QGraphicsSceneMouseEvent *event);
