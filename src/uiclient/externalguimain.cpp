@@ -403,17 +403,29 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 			in >> button >> state;
 //			qDebug() << "click from macCapture" << currentGlobalPos << button << state;
 			
+			//
 			// left pressed
+			//
 			if ( button == 1 && state == 1 ) {
 				mouseBtnPressed = 1;
 				mousePressedPos = currentGlobalPos;
+
+				// send left press
 				sendMousePress(currentGlobalPos); // setAppUnderApp()
 			}
+
+			//
+			// right pressed
+			//
 			else if ( button == 2 && state == 1) {
 				mouseBtnPressed = 2;
 				mousePressedPos = currentGlobalPos;
-				sendMousePress(currentGlobalPos, Qt::RightButton);
+//				sendMousePress(currentGlobalPos, Qt::RightButton); // don't send mouse right press
 			}
+
+			//
+			// left released (left click)
+			//
 			else if ( button == 1 && state == 0 && mouseBtnPressed == 1) {
 				// mouse left click
 				mouseBtnPressed = 0;
@@ -424,16 +436,22 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 				// pointerClick() won't be generated as a result of mouseDragging
 				//
 				if ( ml <= 3 ) {
-					sendMouseClick(currentGlobalPos); // Left Click
+					sendMouseClick(currentGlobalPos); // left click
 				}
 
 				//
 				// pointerRelease() at the end of mouse dragging
 				//
 				else {
+
+					// send left release (after dragging)
 					sendMouseRelease(currentGlobalPos); // left release
 				}
 			}
+
+			//
+			// right released
+			//
 			else if ( button == 2 && state == 0 && mouseBtnPressed == 2) {
 				// mouse right click
 				mouseBtnPressed = 0;
@@ -442,9 +460,13 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 				//
 				int ml = (currentGlobalPos - mousePressedPos).manhattanLength();
 				if ( ml <= 3 ) {
+
+					// send right click
 					sendMouseClick(currentGlobalPos, Qt::RightButton); // right Click
 				}
 				else {
+
+					// send right release (after dragging)
 					sendMouseRelease(currentGlobalPos, Qt::RightButton); // right release
 				}
 			}
@@ -545,6 +567,7 @@ void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons bt
 	
 	if (btns & Qt::RightButton) {
 		// will trigger item isSelected()
+		qDebug() << "right press";
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
 	}
 	else {
@@ -562,6 +585,7 @@ void ExternalGUIMain::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons 
 
 	if (btns & Qt::RightButton) {
 		// will trigger item isSelected()
+		qDebug() << "right release";
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTRELEASE, uiclientid, x, y);
 	}
 	else {
@@ -578,6 +602,7 @@ void ExternalGUIMain::sendMouseClick(const QPoint globalPos, Qt::MouseButtons bt
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 	
 	if (btns & Qt::RightButton) {
+		qDebug() << "right click";
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
 	}
 	else {
@@ -622,7 +647,10 @@ void ExternalGUIMain::mousePressEvent(QMouseEvent *e) {
 	mousePressedPos = e->globalPos();
 
 	if ( isMouseCapturing ) {
-		sendMousePress(e->globalPos(), e->buttons());
+		if ( e->button() == Qt::LeftButton) {
+			qDebug() << "mouse pressed" << e->button() << "sending mouse press";
+			sendMousePress(e->globalPos(), e->buttons());
+		}
 		e->accept();
 	}
 	else {
@@ -638,9 +666,14 @@ void ExternalGUIMain::mouseReleaseEvent(QMouseEvent *e) {
 		int ml = (e->globalPos() - mousePressedPos).manhattanLength();
 		//		qDebug() << "release" << e->button() << e->globalPos() << ml;
 		if ( ml <= 3 ) {
-			sendMouseClick(e->globalPos()); // Left Click, right click is handled by contextMenuEvent
+			qDebug() << "mouse released" << e->button() << "sending mouse click";
+			sendMouseClick(e->globalPos(), e->buttons());
 		}
 		else {
+			//
+			// this is to know when dragging has finished
+			//
+			qDebug() << "mouse released" << e->button() << "sending mouse release";
 			sendMouseRelease(e->globalPos(), e->buttons());
 		}
 		e->accept();
@@ -652,7 +685,11 @@ void ExternalGUIMain::mouseReleaseEvent(QMouseEvent *e) {
 
 void ExternalGUIMain::contextMenuEvent(QContextMenuEvent *e) {
 	if (isMouseCapturing) {
-		sendMouseClick(e->globalPos(), Qt::RightButton); // Right Click
+		//
+		// right press (without following release) will trigger this
+		//
+//		qDebug() << "contextMenuEvent";
+//		sendMousePress(e->globalPos(), Qt::RightButton); // Right press
 		e->accept();
 	}
 }
