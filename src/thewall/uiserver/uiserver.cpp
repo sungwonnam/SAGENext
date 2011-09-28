@@ -321,6 +321,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         break;
     }
 
+		/**
 	case POINTER_RIGHTPRESS:
 	{
 		quint64 uiclientid;
@@ -335,10 +336,11 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         }
 		break;
 	}
+	**/
 
 		/*
 		  This doesn't trigger pointer click. Don't use this to fire pointerClick()
-		  This event is sent from uiclient when mouse draggin has finished.
+		  This event is sent from uiclient when mouse left draggin has finished.
 		  */
 	case POINTER_RELEASE:
 	{
@@ -352,8 +354,19 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 		break;
 	}
 
+		/*
+		  This doesn't trigger pointer click. Don't use this to fire pointerClick()
+		  This event is sent from uiclient when mouse right draggin has finished.
+		  */
 	case POINTER_RIGHTRELEASE:
 	{
+		quint64 uiclientid;
+        int x,y;
+        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        PolygonArrow *pa =  getSharedPointer(uiclientid);
+		if (pa) {
+			pa->pointerRelease(QPointF(x,y), Qt::RightButton, Qt::RightButton);
+		}
 		break;
 	}
 

@@ -18,7 +18,7 @@ class ResourceMonitor;
 class SchedulerControl;
 
 class SAGENextLayoutWidget;
-
+class BaseWidget;
 
 
 //class PartitionBar : public QGraphicsLineItem {
@@ -71,6 +71,16 @@ public:
 	inline SAGENextLayoutWidget * topWidget() {return _topWidget;}
 	inline SAGENextLayoutWidget * bottomWidget() {return _bottomWidget;}
 
+	/**
+	  Add widget as my child. This will automatically add widget to the scene
+	  */
+	void addItem(BaseWidget *bw, const QPointF &scenepos);
+
+	/**
+	  Reparent all the basewidgets to the new layoutWidget
+	  */
+	void reparentToNewParent(SAGENextLayoutWidget *newParent);
+
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);
 	void resizeEvent(QGraphicsSceneResizeEvent *event);
@@ -78,7 +88,7 @@ protected:
 private:
 	const QSettings *_settings;
 
-	SAGENextLayoutWidget *_parentWidget;
+	SAGENextLayoutWidget *_parentLayoutWidget;
 
 	/**
 	  If this widget has Vertical bar

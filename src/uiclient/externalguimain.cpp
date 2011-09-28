@@ -545,6 +545,7 @@ void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btn
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 
 	if ( btns & Qt::LeftButton) {
+		qDebug() << "send left dargging";
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_DRAGGING, uiclientid, x, y);
 	}
 	else if (btns & Qt::RightButton) {
@@ -567,7 +568,6 @@ void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons bt
 	
 	if (btns & Qt::RightButton) {
 		// will trigger item isSelected()
-		qDebug() << "right press";
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
 	}
 	else {
@@ -585,7 +585,6 @@ void ExternalGUIMain::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons 
 
 	if (btns & Qt::RightButton) {
 		// will trigger item isSelected()
-		qDebug() << "right release";
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTRELEASE, uiclientid, x, y);
 	}
 	else {
@@ -602,7 +601,6 @@ void ExternalGUIMain::sendMouseClick(const QPoint globalPos, Qt::MouseButtons bt
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 	
 	if (btns & Qt::RightButton) {
-		qDebug() << "right click";
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
 	}
 	else {
@@ -634,6 +632,10 @@ void ExternalGUIMain::sendMouseWheel(const QPoint globalPos, int delta) {
 void ExternalGUIMain::mouseMoveEvent(QMouseEvent *e) {
 	// setMouseTracking(true) to generate this event even when button isn't pressed
 	if ( isMouseCapturing ) {
+		//
+		// e->button() is always 0
+		// e->buttons() is only meaningful
+		//
 		sendMouseMove(e->globalPos(), e->buttons());
 		e->accept();
 	}
@@ -648,8 +650,8 @@ void ExternalGUIMain::mousePressEvent(QMouseEvent *e) {
 
 	if ( isMouseCapturing ) {
 		if ( e->button() == Qt::LeftButton) {
-			qDebug() << "mouse pressed" << e->button() << "sending mouse press";
-			sendMousePress(e->globalPos(), e->buttons());
+			qDebug() << "mousePressEvent()" << e->button() << "sending mouse PRESS";
+			sendMousePress(e->globalPos());
 		}
 		e->accept();
 	}
@@ -666,15 +668,15 @@ void ExternalGUIMain::mouseReleaseEvent(QMouseEvent *e) {
 		int ml = (e->globalPos() - mousePressedPos).manhattanLength();
 		//		qDebug() << "release" << e->button() << e->globalPos() << ml;
 		if ( ml <= 3 ) {
-			qDebug() << "mouse released" << e->button() << "sending mouse click";
-			sendMouseClick(e->globalPos(), e->buttons());
+			qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse CLICK";
+			sendMouseClick(e->globalPos(), e->button() | Qt::NoButton);
 		}
 		else {
 			//
 			// this is to know when dragging has finished
 			//
-			qDebug() << "mouse released" << e->button() << "sending mouse release";
-			sendMouseRelease(e->globalPos(), e->buttons());
+			qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse RELEASE";
+			sendMouseRelease(e->globalPos(), e->button() | Qt::NoButton);
 		}
 		e->accept();
 	}

@@ -17,6 +17,27 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
     , _closeButton(0)
     , _appRemoveButton(0)
 {
+	//
+	// This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously.
+	//
+	setItemIndexMethod(QGraphicsScene::NoIndex);
+
+
+//	QBrush brush(Qt::black, QPixmap(":/resources/evl-logo.png")); // 1920 x 725 pixels
+	setBackgroundBrush(Qt::black);
+	/*
+	QGraphicsPixmapItem *pi = new QGraphicsPixmapItem(QPixmap(":/resources/evl-logo.png"));
+	pi->setFlag(QGraphicsItem::ItemIsMovable, false);
+	pi->setFlag(QGraphicsItem::ItemIsSelectable, false);
+	pi->setFlag(QGraphicsItem::ItemIsFocusable, false);
+	pi->setAcceptedMouseButtons(0); // Qt::NoButton
+	pi->setOpacity(0.1);
+	pi->setTransformOriginPoint(pi->boundingRect().width()/2, pi->boundingRect().height()/2); // origin to center
+	addItem(pi);
+	*/
+//	pi->setPos(sceneRect.width()/2, sceneRect.height()/2);
+
+
 	/*
 	  Attach close button on the scene. if clicked twice, scene->deleteLater will be called
       */
@@ -34,12 +55,15 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 	addItem(_closeButton);
 
 
-
+	//
+	// attach app remove button on the top
+	//
 	_appRemoveButton = new PixmapButton(":/resources/default_button_up.png", 2 * _settings->value("gui/iconwidth").toDouble(), "Remove");
 	_appRemoveButton->setTransformOriginPoint(_appRemoveButton->size().width()/2, 0);
 	_appRemoveButton->setPos(sceneRect.width()/2, 5);
-	_appRemoveButton->setZValue(999999998); // 1 less than polygon arrow
+	_appRemoveButton->setZValue(999999998); // 1 less than polygon arrow but always higher than apps
 	addItem(_appRemoveButton);
+
 
 
 
@@ -149,7 +173,7 @@ void SAGENextScene::closeAllUserApp() {
 SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
     , _settings(s)
-    , _parentWidget(parentWidget)
+    , _parentLayoutWidget(parentWidget)
     , _leftWidget(0)
     , _rightWidget(0)
     , _topWidget(0)
@@ -185,7 +209,7 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, 
 
 	if (parent) {
 		_xButton = new PixmapButton(":/resources/close_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
-		connect(_xButton, SIGNAL(clicked()), _parentWidget, SLOT(deleteChildPartitions()));
+		connect(_xButton, SIGNAL(clicked()), _parentLayoutWidget, SLOT(deleteChildPartitions()));
 //		_buttonGrp->addToGroup(_xButton);
 	}
 	else {
@@ -201,6 +225,57 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, 
 }
 
 SAGENextLayoutWidget::~SAGENextLayoutWidget() {
+}
+
+void SAGENextLayoutWidget::addItem(BaseWidget *bw, const QPointF &scenepos) {
+
+	/**
+	  If _bar exist, that means this layoutWidget is just a container for child layoutwidgets.
+	  So this layoutWidget can't have any baseWidget as a child.
+	  */
+	if (_bar) {
+		if (_bar->orientation() == Qt::Horizontal) {
+			if ( _topWidget->rect().contains( _topWidget->mapFromScene(scenepos))) {
+				_topWidget->addItem(bw, scenepos);
+			}
+			else {
+				_bottomWidget->addItem(bw, scenepos);
+			}
+		}
+		else {
+			if (_leftWidget->rect().contains(_leftWidget->mapFromScene(scenepos))) {
+				_leftWidget->addItem(bw, scenepos);
+			}
+			else {
+				_rightWidget->addItem(bw, scenepos);
+			}
+		}
+	}
+	/**
+	  BaseWidgets can be added to me
+	  */
+	else {
+		/**
+		  if the item already has a parent it is first removed from the previous parent
+		  This implicitly adds this item to the scene of the parent.
+
+		  QGraphicsObject::parentChanged() will be emitted
+		  */
+		bw->setParentItem(this);
+	}
+}
+
+void SAGENextLayoutWidget::reparentToNewParent(SAGENextLayoutWidget *newParent) {
+	if (_bar) {
+
+	}
+	else {
+		foreach(QGraphicsItem *item, childItems()) {
+			// exclude SAGENextLayoutWidget
+			// exclude PartitionBar
+			// exclude PixmapButton
+		}
+	}
 }
 
 
@@ -220,7 +295,10 @@ void SAGENextLayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	//
 	emit resized();
 
-	// upon resizing, resize my childs as well
+	//
+	// upon resizing, resize my child layout widgets as well
+	// Since I have the bar, I dont have any base widget as a child
+	//
 	if (_bar) {
 		QSizeF deltaSize = e->newSize() - e->oldSize();
 
@@ -272,14 +350,10 @@ void SAGENextLayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 
 		}
 	}
-
-	// If growing, do nothing
-	// If shrinking, move baseWidgets accordingly
-
-	// First, check all child basewidgets,
-	// and un-child if the basewidget has moved (by user) from this widget
-	// or set as a child if new basewidget has come.
-	// So, un-child everything and find colliding items and make them as childs
+	else {
+		// If growing, do nothing
+		// If shrinking, move child BaseWidgets accordingly
+	}
 }
 
 void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) {
@@ -299,11 +373,15 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 		//
 		// bar is horizontal, partition is Top and Bottom (same X pos)
 		//
-		first = QRectF(    0, 0,             br.width(), br.height()/2);
+		first = QRectF( 0, 0,             br.width(), br.height()/2);
 		second = QRectF(0, br.height()/2, br.width(), br.height()/2);
 
 		_topWidget = new SAGENextLayoutWidget("top", first, this, _settings, this);
 		_bottomWidget = new SAGENextLayoutWidget("bottom", second, this, _settings, this);
+
+		//
+		// reparent child items to appropriate widget. I shouldn't have any child baseWidgets at this point
+		//
 
 		//
 		// if child widget is resized, then adjust my bar pos and length
@@ -314,10 +392,14 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 		//
 		// bar is vertical, partition is Left and Right (same Y pos)
 		//
-		first = QRectF(    0,            0, br.width()/2, br.height());
+		first = QRectF(  0,           0, br.width()/2, br.height());
 		second = QRectF(br.width()/2, 0, br.width()/2, br.height());
 		_leftWidget = new SAGENextLayoutWidget("left", first, this, _settings, this);
 		_rightWidget = new SAGENextLayoutWidget("right", second, this, _settings, this);
+
+		//
+		// reparent child items to appropriate widget.  I shouldn't have any child baseWidgets at this point
+		//
 
 		connect(_leftWidget, SIGNAL(resized()), this, SLOT(adjustBar()));
 	}
@@ -361,6 +443,12 @@ void SAGENextLayoutWidget::adjustBar() {
 void SAGENextLayoutWidget::deleteChildPartitions() {
 //	layout()->removeAt(0);
 //	layout()->removeAt(1); // widget won't be deleted
+
+	//
+	// reparent all basewidgets of my child layouts to me
+	//
+
+
 	Q_ASSERT(_bar);
 	if ( _bar->orientation() == Qt::Horizontal) {
 		delete _topWidget;
@@ -415,11 +503,12 @@ PartitionBar::PartitionBar(Qt::Orientation ori, SAGENextLayoutWidget *owner, QGr
     , _orientation(ori)
 {
 //	setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
-	setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+//	setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
 	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, true);
 
 //	setAcceptedMouseButtons(0);
+
 
 	QPen pen;
 	pen.setWidth(12);

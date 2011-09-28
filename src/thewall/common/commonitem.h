@@ -32,13 +32,18 @@ public:
         virtual void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
-          * This doesn't generate any mouse event. The setAppUnderPointer() is called.
+          This doesn't generate any mouse event. The setAppUnderPointer() is called.
+		  Only left press is sent from uiclient.
           */
         virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 
 		/**
-		  This is triggered at the end of mouseDragging by the client
+		  Both left and right release can be sent if the manhattan distance b/w pressed pos and released pos is greater than 3.
+		  So, this is triggered at the end of mouseDragging by the client.
+
+		  LeftRelease can mean app droping
+		  RightRelease can mean the end position of selection rectangle
 		  */
 		virtual void pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
@@ -47,7 +52,6 @@ public:
 
 		  press
 		  release
-
           */
         virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 

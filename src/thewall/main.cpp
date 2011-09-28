@@ -219,11 +219,6 @@ int main(int argc, char *argv[])
       */
 	qDebug() << "Creating SAGENext Scenes";
 	SAGENextScene *scene = new SAGENextScene(QRectF(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble()) ,  &s);
-	scene->setBackgroundBrush(QColor(0, 0, 0));
-	//
-	// This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously.
-	//
-	scene->setItemIndexMethod(QGraphicsScene::NoIndex);
 
 
 
@@ -341,7 +336,7 @@ int main(int argc, char *argv[])
 			gvm->setScene(scene);
 
 			//
-			// set sceneRect to be viewed for each viewport
+			// set sceneRect to be viewed for each viewport. Bezel size has to be applied to here
 			//
 			QPair<int,int> pos = screenLayout.key(i); // x,y position of the screen (0,0) as a topleft
 			gvm->setSceneRect(
@@ -352,8 +347,9 @@ int main(int argc, char *argv[])
 			);
 
 			//
-			// resize viewport for bezel
+			// resize viewport to screen geometry (filling the screen)
 			//
+			gvm->resize(dw->screenGeometry(i).size());
 
 
 			gvm->setScene(scene);

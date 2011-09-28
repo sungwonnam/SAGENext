@@ -125,11 +125,18 @@ void PolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFla
         }
         */
     }
+
+	//
+	// RIGHT button mouse dragging
+	//
 	else if (btnFlags & Qt::RightButton) {
 
 	}
 }
 
+/**
+  Mouse right press won't be sent from uiclient
+  */
 void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
 	Q_UNUSED(btnFlags);
 	// note that this doesn't consider window frame
@@ -142,10 +149,12 @@ void PolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt
 			if (app) app->setTopmost();
 		}
 		else if (btn == Qt::RightButton) {
+			// this won't be delivered
 			// do nothing
 		}
 	}
 }
+
 
 void PolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier) {
 
@@ -229,32 +238,58 @@ void PolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt
 	}
 	*/
 
-	QGraphicsView *view = eventReceivingViewport(scenePos);
-	if ( !view ) {
-		qDebug() << "pointerClick: no view is available";
-		return;
+
+
+
+	//
+	// if there's app under pointer, toggle selected state with mouse Right click
+	// and DON'T send mouse right click event
+	//
+	if ( btn == Qt::RightButton) {
+		if (app) {
+			if ( app->isSelected() ) {
+				app->setSelected(false);
+				// to be effective, turn off WA_OpaquePaintEvent or set setAutoFillBackground(true)
+				app->palette().setColor(QPalette::Window, QColor(100, 100, 100, 128));
+			}
+			else {
+				app->setSelected(true);
+				app->palette().setColor(QPalette::Window, QColor(170, 170, 5, 164));
+			}
+		}
 	}
-	QPointF clickedViewPos = view->mapFromScene( scenePos );
 
-	qDebug() << "pointerClick" << scenePos;
+	//
+	// mouse left click event will be generated and sent to the viewport no matter what
+	//
+	else if (btn == Qt::LeftButton) {
+		QGraphicsView *view = eventReceivingViewport(scenePos);
+		if ( !view ) {
+			qDebug() << "pointerClick: no view is available";
+			return;
+		}
+		QPointF clickedViewPos = view->mapFromScene( scenePos );
 
-	QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, modifier);
-	QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, modifier);
+		qDebug() << "pointerClick() : LeftButton" << scenePos;
 
-	if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
-		// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
-		qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-	}
-	else {
-//		qDebug() << "press delievered";
-		if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
-			qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+		QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, modifier);
+		QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, modifier);
+
+		if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
+			// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
+			qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
 		}
 		else {
-//			qDebug() << "release delievered";
-			// who should ungrabmouse() ??
-			QGraphicsItem *mouseGrabberItem = view->scene()->mouseGrabberItem();
-			if (mouseGrabberItem) mouseGrabberItem->ungrabMouse();
+			//qDebug() << "press delievered";
+			if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
+				qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+			}
+			else {
+				//qDebug() << "release delievered";
+				// who should ungrabmouse() ??
+				QGraphicsItem *mouseGrabberItem = view->scene()->mouseGrabberItem();
+				if (mouseGrabberItem) mouseGrabberItem->ungrabMouse();
+			}
 		}
 	}
 }
