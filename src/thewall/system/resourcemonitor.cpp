@@ -178,7 +178,6 @@ void ProcessorNode::printOverhead() const {
 
 
 ResourceMonitor::ResourceMonitor(const QSettings *s) :
-        textItem(new SAGENextSimpleTextItem),
         procVec(0),
         settings(s),
         schedcontrol(0),
@@ -186,8 +185,6 @@ ResourceMonitor::ResourceMonitor(const QSettings *s) :
         _rMonWidget(0),
         _printDataFlag(false)
 {
-        textItem->setText("");
-
         buildProcVector();
         Q_ASSERT(procVec);
 

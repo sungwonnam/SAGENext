@@ -70,7 +70,7 @@ void FileServerThread::run() {
 			destdir.append("media/image/");
 			break;
 		}
-		case MEDIA_TYPE_VIDEO : {
+		case MEDIA_TYPE_LOCAL_VIDEO : {
 			destdir.append("media/video/");
 			break;
 		}
