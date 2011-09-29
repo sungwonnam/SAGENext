@@ -17,12 +17,14 @@ SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings 
 	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
 
 	QPen pen;
-	pen.setWidth(2); // 3 pixel
+	pen.setWidth(2); // 2 pixel
 	pen.setColor(Qt::white);
 	setPen(pen);
 
 	setBrush(QBrush(c));
 	setPolygon(p);
+
+	setAcceptedMouseButtons(0);
 
 	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
@@ -48,6 +50,8 @@ void SAGENextPolygonArrow::setPointerName(const QString &text) {
 
 	_textItem->setBrush(Qt::white);
 	_textItem->moveBy(0, boundingRect().height());
+
+//	_textItem->setPen(QColor(Qt::black));
 }
 
 void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
@@ -69,13 +73,15 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
 	// unset hover flag
 	//
 	SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
+
 	foreach(BaseWidget *bw, sc->hoverAcceptingApps) {
 		if (!bw) {
 			sc->hoverAcceptingApps.removeOne(bw);
 			continue;
 		}
 
-		if (bw->rect().contains(  bw->mapFromScene(_scenePos)  )) {
+		if (bw->contains( bw->mapFromScene(_scenePos) ) ) {
+//		if (collidesWithItem(bw, Qt::IntersectsItemBoundingRect)) {
 			bw->toggleHover(this, bw->mapFromScene(_scenePos), true);
 		}
 		else {

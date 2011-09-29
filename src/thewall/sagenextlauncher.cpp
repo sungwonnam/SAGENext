@@ -209,7 +209,6 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 	case MEDIA_TYPE_WEBURL: {
 		// filename is url string
 		WebWidget *ww = new WebWidget(_globalAppId, _settings, 0, Qt::Window);
-		ww->moveBy(30, 30);
 		w = ww;
 		ww->setUrl( filename );
 		break;
@@ -217,7 +216,6 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 
 	case MEDIA_TYPE_PDF: {
 		PDFViewerWidget *pdfviewer = new PDFViewerWidget(filename, _globalAppId, _settings, 0, Qt::Widget);
-		pdfviewer->moveBy(30, 30);
 		w = pdfviewer;
 		break;
 	}
@@ -262,11 +260,11 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 			w = new BaseWidget(_globalAppId, _settings);
 			w->setProxyWidget(dpi->rootWidget()); // inefficient
 			w->setWindowFlags(Qt::Window);
-			w->setWindowFrameMargins(4,25,4,4);
+			w->setWindowFrameMargins(0, 0, 0, 0);
 		}
 
 		if (w) {
-			w->moveBy(100, 200);
+			w->moveBy(10, 10);
 		}
 		else {
 			qDebug() << "Failed to create widget from plugin object";

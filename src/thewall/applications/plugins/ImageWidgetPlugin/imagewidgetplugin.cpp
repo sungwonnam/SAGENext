@@ -34,9 +34,9 @@ ExamplePlugin::ExamplePlugin()
 
 
 	// create buttons and connect to corresponding callback functions
-	btn_R = new QPushButton("buttonR");
-	btn_G = new QPushButton("buttonG");
-	btn_B = new QPushButton("buttonB");
+	btn_R = new QPushButton("Red");
+	btn_G = new QPushButton("Green");
+	btn_B = new QPushButton("Blue");
 	connect(btn_R, SIGNAL(clicked()), this, SLOT(buttonR()));
 	connect(btn_G, SIGNAL(clicked()), this, SLOT(buttonG()));
 	connect(btn_B, SIGNAL(clicked()), this, SLOT(buttonB()));
@@ -62,10 +62,14 @@ ExamplePlugin::ExamplePlugin()
 	// create main layout
 	mainLayout = new QGraphicsLinearLayout(Qt::Vertical);
 //	mainLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::DefaultType);
+	mainLayout->setContentsMargins(0,0,0,0);
+
 
 	// add GUI components in it
 	mainLayout->addItem(labelProxy);
 	mainLayout->addItem(btnLayout);
+
+//	mainLayout->setItemSpacing(0, 2);
 
 	// set the main layout to be this application's root layout
 	// previous layout will be deleted by this
@@ -162,23 +166,19 @@ QGraphicsProxyWidget * ExamplePlugin::rootWidget() {
 }
 
 void ExamplePlugin::buttonR() {
-	label->setText("Button R");
-
-//	prepareGeometryChange();
-//	labelProxy->resize(640,480);
-//	updateGeometry();
-//	labelProxy->updateGeometry();
-
-//	labelProxy->setGeometry(QRectF(0,0,640,480));
-//	mainLayout->itemAt(0)->setGeometry(QRectF(0,0,640,480));
-//	mainLayout->geometry( 0,0, mainLayout->geometry().size() );
-//	mainLayout->setGeometry();
+	QPixmap pixmap(size().toSize());
+	pixmap.fill(QColor(Qt::red));
+	label->setPixmap(pixmap);
 }
 void ExamplePlugin::buttonG() {
-	label->setText("Button G");
+	QPixmap pixmap(size().toSize());
+	pixmap.fill(QColor(Qt::green));
+	label->setPixmap(pixmap);
 }
 void ExamplePlugin::buttonB() {
-	label->setText("Button B");
+	QPixmap pixmap(size().toSize());
+	pixmap.fill(QColor(Qt::blue));
+	label->setPixmap(pixmap);
 }
 
 

@@ -241,7 +241,8 @@ void VNCClientWidget::receivingThread() {
 	}
 
 	qDebug() << "LibVNCClient receiving thread finished";
-	QMetaObject::invokeMethod(this, "fadeOutClose", Qt::QueuedConnection);
+//	QMetaObject::invokeMethod(this, "fadeOutClose", Qt::QueuedConnection);
+	QMetaObject::invokeMethod(this, "close", Qt::QueuedConnection);
 }
 
 

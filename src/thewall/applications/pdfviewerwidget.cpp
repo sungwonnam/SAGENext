@@ -60,7 +60,7 @@ PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, co
 	connect(left, SIGNAL(clicked()), this, SLOT(prevPage()));
 	connect(right, SIGNAL(clicked()), this, SLOT(nextPage()));
 	left->setPos(0, size().height()/2);
-	right->setPos(size().width() - right->size().width(), size().height());
+	right->setPos(size().width() - right->size().width(), size().height()/2);
 }
 
 PDFViewerWidget::~PDFViewerWidget() {
@@ -102,7 +102,6 @@ void PDFViewerWidget::setCurrentPage(int pageNumber) {
 //	qDebug() << end - start << "msec for rendering";
 
 	resize(_pixmap.size());
-	setScale(0.5);
 	
 //	qDebug() << _currentPage->pageSizeF();
 //	QSizeF sizeinch = _currentPage->pageSizeF() / 72;

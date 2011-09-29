@@ -15,6 +15,7 @@ public:
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
+
 private:
 	/**
 	  PDF file name

@@ -994,8 +994,13 @@ ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
 		ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
         ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
         ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
-		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
-//		QColor pc(_settings->value("pointercolor", "#ff0000").toString());
+
+//		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
+		QColor pc(_settings->value("pointercolor", "#ff0000").toString());
+		pColor = pc.name();
+		QPixmap pixmap(ui->pointerColorLabel->size());
+		pixmap.fill(pc);
+		ui->pointerColorLabel->setPixmap(pixmap);
 		
 		int idx = ui->sharingEdgeCB->findText(_settings->value("sharingedge", "top").toString());
 		if (idx != -1) 
@@ -1022,7 +1027,6 @@ void ConnectionDialog::on_buttonBox_accepted()
 	vncusername = ui->vncUsername->text();
 	vncpass = ui->vncpasswd->text();
 	psharingEdge = ui->sharingEdgeCB->currentText();
-	pColor = ui->pointerColorLabel->text();
 	
 	_settings->setValue("walladdr", addr);
 	_settings->setValue("wallport", portnum);
@@ -1051,5 +1055,11 @@ void ConnectionDialog::on_pointerColorButton_clicked()
 	QColor prevColor;
 	prevColor.setNamedColor(_settings->value("pointercolor", "#FF0000").toString());
 	QColor newColor = QColorDialog::getColor(prevColor, this, "Pointer Color"); // pops up modal dialog
-	ui->pointerColorLabel->setText(newColor.name());
+
+	QPixmap pixmap(ui->pointerColorLabel->size());
+	pixmap.fill(newColor);
+//	ui->pointerColorLabel->setText(newColor.name());
+	ui->pointerColorLabel->setPixmap(pixmap);
+
+	pColor = newColor.name();
 }

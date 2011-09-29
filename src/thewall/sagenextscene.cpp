@@ -171,7 +171,8 @@ void SAGENextScene::closeAllUserApp() {
 			// this is user application
 			BaseWidget *bw = static_cast<BaseWidget *>(item);
 			Q_ASSERT(bw);
-			bw->fadeOutClose();
+//			bw->fadeOutClose();
+			bw->close();
 		}
 	}
 }
