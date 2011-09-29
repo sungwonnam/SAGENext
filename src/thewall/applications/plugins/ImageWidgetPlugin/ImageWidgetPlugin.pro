@@ -24,6 +24,7 @@ imagewidgetplugin.cpp \
 ../../base/basewidget.cpp \
 ../../base/appinfo.cpp \
 ../../base/perfmonitor.cpp \
+../../../common/commonitem.cpp
 
 
 HEADERS  += \
@@ -32,3 +33,4 @@ imagewidgetplugin.h \
 ../../base/basewidget.h \
 ../../base/appinfo.h \
 ../../base/perfmonitor.h \
+../../../common/commonitem.h

@@ -7,6 +7,8 @@
 #include "affinityinfo.h"
 //#include "../../system/affinitycontroldialog.h"
 
+#include "../../sagenextscene.h"
+
 #include <QtGui>
 
 #if QT_VERSION < 0x040700
@@ -72,6 +74,11 @@ BaseWidget::~BaseWidget()
 {
     if ( scene() ) {
         scene()->removeItem(this);
+
+		if ( _registerForMouseHover ) {
+			SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
+			sc->hoverAcceptingApps.removeAll(this);
+		}
     }
 
     //qDebug("BaseGraphicsWidget::%s() : deleting _contextMenu", __FUNCTION__);

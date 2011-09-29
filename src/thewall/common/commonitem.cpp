@@ -211,6 +211,7 @@ void SAGENextPolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButt
 			// I can close this app if removeButton on the scene contains released scenePos
 			SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
 			if (sc->isOnAppRemoveButton(scenePos)) {
+				sc->hoverAcceptingApps.removeAll(_basewidget);
 				_basewidget->close();
 			}
 		}
