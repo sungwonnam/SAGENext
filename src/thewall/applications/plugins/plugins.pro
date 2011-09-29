@@ -1,2 +1,4 @@
 TEMPLATE = subdirs
-SUBDIRS += ImageWidgetPlugin InteractiveAppExample
+SUBDIRS += ImageWidgetPlugin InteractiveAppExample \
+    MouseHoverExample
+

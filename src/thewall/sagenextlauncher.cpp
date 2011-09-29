@@ -293,6 +293,9 @@ BaseWidget * SAGENextLauncher::launch(BaseWidget *w) {
 		  */
 //		_scene->addItem(w);
 
+		if ( w->isRegisteredForMouseHover() ) {
+			_scene->hoverAcceptingApps.push_back(w);
+		}
 		_scene->addItemOnTheLayout(w);
 
 		//connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));

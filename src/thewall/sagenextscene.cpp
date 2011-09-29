@@ -90,6 +90,7 @@ void SAGENextScene::addItemOnTheLayout(BaseWidget *bw, const QPointF &scenepos) 
 	_rootLayoutWidget->addItem(bw, scenepos);
 }
 
+
 void SAGENextScene::prepareClosing() {
 	if (_closeFlag) {
 		// close UiServer so that all the shared pointers can be deleted first

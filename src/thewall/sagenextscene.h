@@ -169,7 +169,22 @@ public:
 	bool isOnAppRemoveButton(const QPointF &scenepos);
 
 
+	/**
+	  Add basewidget to the SAGENextLayoutWidget
+	  */
 	void addItemOnTheLayout(BaseWidget *bw, const QPointF &scenepos = QPointF(30,30));
+
+
+
+
+	/**
+	  BaseWidget can register for mousehover by setting _registerMouseHover to true. The registration is done by SAGENextLauncher
+	  SAGENext pointers will iterate over this list in pointerMove() function
+	  ,and call BaseWidget::toggleHover()
+	  */
+	QList<BaseWidget *> hoverAcceptingApps;
+
+
 
 	/**
 	  This must be called after scene rect has become valid
@@ -198,9 +213,10 @@ private:
 	  */
 	SAGENextPixmapButton *_closeButton;
 
+	/**
+	  close an application
+	  */
 	SAGENextPixmapButton *_appRemoveButton;
-
-signals:
 
 public slots:
 	void closeAllUserApp();

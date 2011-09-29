@@ -4,11 +4,12 @@
 
 
 
-SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings *s, const QColor c, QGraphicsItem *parent)
+SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings *s, const QColor &c, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
     , _uiclientid(uicid)
     , _settings(s)
     , _textItem(0)
+	, _color(c)
     , _basewidget(0)
     , _item(0)
 {
@@ -29,6 +30,10 @@ SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings 
 }
 
 SAGENextPolygonArrow::~SAGENextPolygonArrow() {
+	SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
+	foreach(BaseWidget *bw, sc->hoverAcceptingApps) {
+		bw->removePointerFromPointerMap(this);
+	}
 }
 
 void SAGENextPolygonArrow::setPointerName(const QString &text) {
@@ -57,13 +62,21 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
 
 
 	//
-	// iterate over items in the container.
+	// iterate over items in the container maintained by the scene
 	// if pointer is on one of them
 	// set hover flag for the item
 	// else
 	// unset hover flag
 	//
-
+	SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
+	foreach(BaseWidget *bw, sc->hoverAcceptingApps) {
+		if (bw->rect().contains(  bw->mapFromScene(_scenePos)  )) {
+			bw->toggleHover(this, bw->mapFromScene(_scenePos), true);
+		}
+		else {
+			bw->toggleHover(this, QPointF(), false);
+		}
+	}
 
 
 

@@ -13,6 +13,7 @@ class AppInfo;
 class PerfMonitor;
 class AffinityInfo;
 class SAGENextSimpleTextItem;
+class SAGENextPolygonArrow;
 
 class BaseWidget : public QGraphicsWidget
 {
@@ -170,6 +171,16 @@ public:
         void setLastTouch();
         inline qint64 lastTouch() const {return _lastTouch;}
 
+
+
+		inline void setRegisterForMouseHover(bool v = true) {_registerForMouseHover = v;}
+		inline bool isRegisteredForMouseHover() const {return _registerForMouseHover;}
+
+		virtual void toggleHover(SAGENextPolygonArrow *pointer, const QPointF &pointerPosOnMe, bool isHovering) {}
+		inline void removePointerFromPointerMap(SAGENextPolygonArrow *pointer) {
+			_pointerMap.remove(pointer);
+		}
+
 protected:
         quint64 _globalAppId; /**< Unique identifier */
 
@@ -265,6 +276,15 @@ protected:
         void init();
 
 
+
+		/**
+		  This is to know if any pointer is currently hovering on my boundingRect()
+		  */
+		QMap<SAGENextPolygonArrow *, QPair<QPointF, bool> > _pointerMap;
+
+
+
+
 		/**
 		  This will draw infoTextItem followed by resize rectangle
 		  */
@@ -347,13 +367,14 @@ private:
         qreal _priority;
 
 
+		bool _registerForMouseHover;
+
+
         /*!
           To store _priority * offset (for quantization)
           Getting this value is much faster
           */
         int _priorityQuantized;
-
-
 
         void createActions();
 

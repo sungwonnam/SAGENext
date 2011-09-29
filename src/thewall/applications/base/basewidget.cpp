@@ -28,6 +28,7 @@ BaseWidget::BaseWidget(Qt::WindowFlags wflags)
 	, _quality(1.0)
 	, _contextMenu(0)
 	, _priority(0.5)
+	, _registerForMouseHover(false)
 {
 	init();
 }
@@ -47,6 +48,7 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
 	, _quality(1.0)
 	, _contextMenu(0)
 	, _priority(0.5)
+	, _registerForMouseHover(false)
 {
 	// This will affect boundingRect(), windowFrameRect() of the widget.
 	qreal l = settings->value("gui/framemarginleft", 6).toDouble();

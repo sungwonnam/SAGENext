@@ -1,32 +1,29 @@
 #include "appinfo.h"
 //#include "common/perfmonitor.h"
 
-AppInfo::AppInfo() :
-
-		fileinfo(QFileInfo()),
-		_webUrl(QUrl()),
-		_nativeSize(QSize()),
-		_srcaddr(QHostAddress(QHostAddress::Null)),
-		bitPerPixel(0),
-		frameSize(0),
-		_recentScale(1),
-		drawingThreadCpu(-1),
-		networkUserBufferLength(65535) /* 64 kB */
-
+AppInfo::AppInfo()
+	: fileinfo(QFileInfo())
+	, _webUrl(QUrl())
+	, _nativeSize(QSize())
+	, _srcaddr(QString())
+	, bitPerPixel(0)
+	, frameSize(0)
+	, _recentScale(1)
+	, drawingThreadCpu(-1)
+	, networkUserBufferLength(65535) /* 64 kB */
 {
 }
 
-AppInfo::AppInfo(int width, int height, int bpp) :
-
-		fileinfo(QFileInfo()),
-		_webUrl(QUrl()),
-		_nativeSize(QSize(width, height)),
-		_srcaddr(QHostAddress(QHostAddress::Null)),
-		bitPerPixel(bpp),
-		frameSize(width * height * bpp),
-		_recentScale(1),
-		drawingThreadCpu(-1),
-		networkUserBufferLength(65535) /* 64 kB */
+AppInfo::AppInfo(int width, int height, int bpp)
+	: fileinfo(QFileInfo())
+	, _webUrl(QUrl())
+	, _nativeSize(QSize(width, height))
+	, _srcaddr(QString())
+	, bitPerPixel(bpp)
+	, frameSize(width * height * bpp)
+	, _recentScale(1)
+	, drawingThreadCpu(-1)
+	, networkUserBufferLength(65535) /* 64 kB */
 {
 }
 
@@ -35,7 +32,7 @@ AppInfo::AppInfo(int width, int height, int bpp, QString file, QString srcip) :
 		fileinfo(QFileInfo(file)),
 		_webUrl(QUrl()),
 		_nativeSize(QSize(width, height)),
-		_srcaddr(QHostAddress(srcip)),
+		_srcaddr(srcip),
 		bitPerPixel(bpp),
 		frameSize(width * height * bpp),
 		_recentScale(1),
@@ -57,10 +54,6 @@ void AppInfo::setFrameSize(int width, int height, int bpp) {
 	bitPerPixel = bpp;
 
 	frameSize = width * height * bpp / 8; // Byte
-}
-
-void AppInfo::setSrcAddr(const QString &ip) {
-	_srcaddr.setAddress(ip);
 }
 
 void AppInfo::setWebUrl(const QString &url) {

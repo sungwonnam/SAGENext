@@ -1,12 +1,12 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2010-11-09T17:35:01
+# Project created by QtCreator 2011-09-29T00:05:52
 #
 #-------------------------------------------------
 
-QT       += core gui opengl
+QT       += core gui
 
-TARGET = ImageWidgetPlugin
+TARGET = MouseHoverExamplePlugin
 TEMPLATE = lib
 CONFIG += plugin
 DESTDIR = $$(HOME)/.sagenext/plugins
@@ -18,17 +18,16 @@ BUILD_DIR = build
 MOC_DIR = $$BUILD_DIR
 OBJECTS_DIR = $$BUILD_DIR
 
-
-SOURCES += \
-imagewidgetplugin.cpp \
+SOURCES += mousehoverexample.cpp \
 ../../base/basewidget.cpp \
 ../../base/appinfo.cpp \
 ../../base/perfmonitor.cpp \
+../../../common/commonitem.cpp
 
-
-HEADERS  += \
-imagewidgetplugin.h \
+HEADERS  += mousehoverexample.h \
 ../../base/dummyplugininterface.h \
 ../../base/basewidget.h \
 ../../base/appinfo.h \
 ../../base/perfmonitor.h \
+../../../common/commonitem.h
+

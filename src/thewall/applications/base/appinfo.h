@@ -4,9 +4,6 @@
 #include "../../common/commondefinitions.h"
 
 #include <QtCore>
-#include <QHostAddress>
-
-#include <QDir>
 
 /**
   * AppInfo class maintains app specific information
@@ -32,7 +29,7 @@ public:
 	inline void setNativeSize(const QSize &s) { _nativeSize = s;}
 	inline QSize nativeSize() const {return _nativeSize;}
 
-	void setSrcAddr(const QString &ip);
+	inline void setSrcAddr(const QString &ip) {_srcaddr = ip;}
 
 	/**
 	  this sets _nativeSize as well
@@ -112,7 +109,7 @@ private:
 	/**
 	  * sender's IP address for SageStreamWidget, VNCWidget
 	  */
-	QHostAddress _srcaddr;
+	QString _srcaddr;
 
 	quint16 bitPerPixel;
 

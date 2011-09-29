@@ -12,10 +12,16 @@ class BaseWidget;
   */
 class SAGENextPolygonArrow : public QGraphicsPolygonItem {
 public:
-        SAGENextPolygonArrow(const quint64 uicid, const QSettings *, const QColor c, QGraphicsItem *parent=0);
-        ~SAGENextPolygonArrow();
+	SAGENextPolygonArrow(const quint64 uicid, const QSettings *, const QColor &c = QColor(Qt::red), QGraphicsItem *parent=0);
+	~SAGENextPolygonArrow();
 
-        void setPointerName(const QString &text);
+	void setPointerName(const QString &text);
+	inline QString name() const {return _textItem->text();}
+
+	inline quint64 id() const {return _uiclientid;}
+
+	inline QColor color() const {return _color;}
+
 
         /**
           This is called by pointerPress()
@@ -90,6 +96,11 @@ private:
           * The pointer name
           */
         QGraphicsSimpleTextItem *_textItem;
+
+		/**
+		  THe pointer color
+		  */
+		QColor _color;
 
         /**
           The app widget under this pointer
