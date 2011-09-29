@@ -111,7 +111,7 @@ private:
 
 
 	int paintingOnCpu;
-	SwSimpleTextItem *textItem;
+	SAGENextSimpleTextItem *textItem;
 
 	/*!
 	  * Resource Monitor

@@ -11,7 +11,7 @@
 
 class QSettings;
 class AffinityInfo;
-class SwSimpleTextItem;
+class SAGENextSimpleTextItem;
 class BaseWidget;
 class RailawareWidget;
 class SchedulerControl;
@@ -155,10 +155,6 @@ public:
 
 	inline void addROIRectF(ROIRectF *f) {roiRectFs.push_back(f);}
 
-	/*!
-	  text widget to display perf info on the wall. It's text is QString infoText, and is updated in refresh()
-	  */
-	SwSimpleTextItem *textItem;
 
 	/*!
 	  Calls ProcessorNode::refresh() for each processorNode object. This function is called periodically in GraphicsViewMain::TimerEvent()
@@ -208,11 +204,6 @@ protected:
 
 
 private:
-	/*!
-	  A string containing current performance info, and updated by refresh()
-	  */
-	QString infoText;
-
 	/*!
 	  A list of processors (seen by OS) in this system. Initialized by buildProcVector()
 	  */

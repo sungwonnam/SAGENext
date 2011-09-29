@@ -178,7 +178,7 @@ void ProcessorNode::printOverhead() const {
 
 
 ResourceMonitor::ResourceMonitor(const QSettings *s) :
-        textItem(new SwSimpleTextItem),
+        textItem(new SAGENextSimpleTextItem),
         procVec(0),
         settings(s),
         schedcontrol(0),
@@ -330,74 +330,30 @@ ResourceMonitor::~ResourceMonitor() {
 //}
 
 void ResourceMonitor::refresh() {
-//	QString infoText = "Per CPU stat\n(# threads, B/W, CPU usage)\n";
+	//	QString infoText = "Per CPU stat\n(# threads, B/W, CPU usage)\n";
 
-        /* per processor info */
-        if (procVec) {
-//		QByteArray str(128, '\0');
-                ProcessorNode *pn = 0;
-                for (int i=0; i<procVec->size(); ++i) {
-                        pn = procVec->at(i);
-                        pn->refresh();
+	/* per processor info */
+	if (procVec) {
+		//	QByteArray str(128, '\0');
+		ProcessorNode *pn = 0;
+		for (int i=0; i<procVec->size(); ++i) {
+			pn = procVec->at(i);
+			pn->refresh();
 
-//			sprintf(str.data(), "CPU%d: %d\t%.2f\t%.2f\n",pn->getID(), pn->appList()->size(), pn->getBW(), pn->getCpuUsage());
-//			infoText.append( QString(str) );
+			//sprintf(str.data(), "CPU%d: %d\t%.2f\t%.2f\n",pn->getID(), pn->appList()->size(), pn->getBW(), pn->getCpuUsage());
+			//infoText.append( QString(str) );
 
-                        // dont do below here !!
-//			qApp->sendPostedEvents(); // looks like this makes user interaction slow
-                }
-        }
+			// dont do below here !!
+			//qApp->sendPostedEvents(); // looks like this makes user interaction slow
+		}
+	}
 
-        /* numa info */
-        /**
-        infoText.append("\nNUMA stat\n(hit, miss, foreign, local, other)");
-        if (settings->value("system/numnumanodes").toInt() > 1 ) {
-                QProcess p;
-                for (int i=0; i<settings->value("system/numnumanodes").toInt(); ++i) {
-                        QString arg = "cat /sys/devices/system/node/node";
-                        arg.append(QString::number(i));
-                        arg.append("/numastat");
-                        p.start(arg);
-                        p.waitForFinished(-1); // block permanently
-                        QStringList sl = QString(p.readAllStandardOutput()).split(QRegExp("\\s+"), QString::SkipEmptyParts);
-
-//			qDebug() << sl;
-
-                        if(numaInfo) {
-                                infoText.append("\nnode " + QString::number(i) + ": ");
-
-                                numaInfo[i].hit = ((QString)sl[1]).toULongLong() - numaInfo[i].numa_hit;
-                                numaInfo[i].miss = ((QString)sl[3]).toULongLong() - numaInfo[i].numa_miss;
-                                numaInfo[i].foreign = ((QString)sl[5]).toULongLong() - numaInfo[i].numa_foreign;
-                                numaInfo[i].local = ((QString)sl[9]).toULongLong() - numaInfo[i].local_node;
-                                numaInfo[i].other = ((QString)sl[11]).toULongLong() - numaInfo[i].other_node;
-
-                                numaInfo[i].numa_hit = ((QString)sl[1]).toULongLong();
-                                numaInfo[i].numa_miss = ((QString)sl[3]).toULongLong();
-                                numaInfo[i].numa_foreign = ((QString)sl[5]).toULongLong();
-                                numaInfo[i].local_node = ((QString)sl[9]).toULongLong();
-                                numaInfo[i].other_node = ((QString)sl[11]).toULongLong();
-
-//				qDebug() << i << ":" << numaInfo[i].hit << numaInfo[i].miss << numaInfo[i].foreign << numaInfo[i].local << numaInfo[i].other;
-                                // rate of change where delta x is 1 sec
-                                infoText.append( QString::number(numaInfo[i].hit) + ", " );
-                                infoText.append( QString::number(numaInfo[i].miss)+ ", " );
-                                infoText.append( QString::number(numaInfo[i].foreign)+ ", " );
-                                infoText.append( QString::number(numaInfo[i].local)+ ", " );
-                                infoText.append( QString::number(numaInfo[i].other) );
-                        }
-
-                }
-        }
-        **/
-        textItem->setText(infoText);
-
-        /* update ROI */
-        /**
-        foreach (ROIRectF *r, roiRectFs) {
-                if (r) r->update();
-        }
-        **/
+	/* update ROI */
+	/**
+		foreach (ROIRectF *r, roiRectFs) {
+				if (r) r->update();
+		}
+		**/
 }
 
 //ProcessorNode * ResourceMonitor::findNode(quint64 appid) {

@@ -141,7 +141,7 @@ void BaseWidget::init()
 
 	//! drawInfo() will show this item
 	// Note that infoTextItem is child item of BaseWidget
-	infoTextItem = new SwSimpleTextItem(0, this);
+	infoTextItem = new SAGENextSimpleTextItem(0, QColor(Qt::black), QColor(128, 128, 128, 164), this);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
 	//infoTextItem = new SwSimpleTextItem(settings->value("general/fontpointsize").toInt(), this);

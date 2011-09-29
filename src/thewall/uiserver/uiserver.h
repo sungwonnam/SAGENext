@@ -74,7 +74,7 @@ private:
         /*!
           * uiclientid and corresponding shared pointer
           */
-        QMap<quint64, PolygonArrow *> pointers;
+        QMap<quint64, SAGENextPolygonArrow *> pointers;
 
         /*!
           uiclientid and corresponding app layout flag
@@ -96,7 +96,7 @@ private:
 
         UiMsgThread * getUiMsgThread(quint64 uiclientid);
 
-        PolygonArrow * getSharedPointer(quint64 uiclientid);
+        SAGENextPolygonArrow * getSharedPointer(quint64 uiclientid);
 
         /**
           When a user drag and drop media file on the sagenextpointer, the launcher receives the file and fire corresponding widget.

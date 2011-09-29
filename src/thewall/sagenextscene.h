@@ -9,7 +9,7 @@
 
 #include <QSettings>
 
-class PixmapButton;
+class SAGENextPixmapButton;
 class PartitionBar;
 //class PartitionTreeNode;
 
@@ -103,10 +103,10 @@ private:
 	SAGENextLayoutWidget *_bottomWidget;
 
 	PartitionBar *_bar;
-	PixmapButton *_tileButton;
-	PixmapButton *_hButton;
-	PixmapButton *_vButton;
-	PixmapButton *_xButton;
+	SAGENextPixmapButton *_tileButton;
+	SAGENextPixmapButton *_hButton;
+	SAGENextPixmapButton *_vButton;
+	SAGENextPixmapButton *_xButton;
 
 	QGraphicsItemGroup *_buttonGrp;
 
@@ -196,9 +196,9 @@ private:
 	/**
 	  shutdown the wall
 	  */
-	PixmapButton *_closeButton;
+	SAGENextPixmapButton *_closeButton;
 
-	PixmapButton *_appRemoveButton;
+	SAGENextPixmapButton *_appRemoveButton;
 
 signals:
 

@@ -55,8 +55,8 @@ PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, co
 	rButton->setPos( 10, size().height() - rButton->size().height() );
 	*/
 
-	PixmapButton *left = new PixmapButton(":/resources/media-forward-rtl_128x128.png", 0, "", this);
-	PixmapButton *right = new PixmapButton(":/resources/media-forward-ltr_128x128.png", 0, "", this);
+	SAGENextPixmapButton *left = new SAGENextPixmapButton(":/resources/media-forward-rtl_128x128.png", 0, "", this);
+	SAGENextPixmapButton *right = new SAGENextPixmapButton(":/resources/media-forward-ltr_128x128.png", 0, "", this);
 	connect(left, SIGNAL(clicked()), this, SLOT(prevPage()));
 	connect(right, SIGNAL(clicked()), this, SLOT(nextPage()));
 	left->setPos(0, size().height()/2);

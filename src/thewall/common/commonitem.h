@@ -10,10 +10,10 @@ class BaseWidget;
   When a user shares his pointer through ui client,
   This class is instantiated and added to the scene
   */
-class PolygonArrow : public QGraphicsPolygonItem {
+class SAGENextPolygonArrow : public QGraphicsPolygonItem {
 public:
-        PolygonArrow(const quint64 uicid, const QSettings *, const QColor c, QGraphicsItem *parent=0);
-        ~PolygonArrow();
+        SAGENextPolygonArrow(const quint64 uicid, const QSettings *, const QColor c, QGraphicsItem *parent=0);
+        ~SAGENextPolygonArrow();
 
         void setPointerName(const QString &text);
 
@@ -23,17 +23,20 @@ public:
           */
         bool setAppUnderPointer(const QPointF scenePosOfPointer);
 
-        inline BaseWidget * appUnderPointer() {return app;}
+        inline BaseWidget * appUnderPointer() {return _basewidget;}
 
         /**
-          * Moves pointer itself
-          * If dragging and there's app under the pointer then move the app widget too
+          Moves pointer itself and ...
+          there's app under the pointer then move the app widget too (left button)
+		  resize selection rectangle if right button
           */
         virtual void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
-          This doesn't generate any mouse event. The setAppUnderPointer() is called.
-		  Only left press is sent from uiclient.
+          This doesn't generate any mouse event. This is used to know the start of mouse dragging
+
+          The setAppUnderPointer() is called if left button.
+		  Initiate selection rectangle if right button.
           */
         virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
@@ -76,20 +79,23 @@ private:
         /**
           * The unique ID of UI client to which this pointer belongs
           */
-        const quint64 uiclientid;
+        const quint64 _uiclientid;
 
-        const QSettings *settings;
+		/**
+		  The global settings
+		  */
+        const QSettings *_settings;
 
         /**
           * The pointer name
           */
-        QGraphicsSimpleTextItem *textItem;
+        QGraphicsSimpleTextItem *_textItem;
 
         /**
           The app widget under this pointer
-          This is set when pointerPress is called
+          This is set when pointerPress (left button) is called
           */
-        BaseWidget *app;
+        BaseWidget *_basewidget;
 
 		/**
 		  The graphics item under this pointer. This is to keep track general items on the scene
@@ -111,28 +117,31 @@ private:
 /**
   * The general button pixmap that emits signal when clicked
   */
-class PixmapButton : public QGraphicsWidget
+class SAGENextPixmapButton : public QGraphicsWidget
 {
 	Q_OBJECT
 public:
 	/**
 	  creates button with resource
 	  */
-	explicit PixmapButton(const QString &res, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent = 0);
+	explicit SAGENextPixmapButton(const QString &res_normal, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent = 0);
 
 	/**
-	  creates button with image
+	  creates button with pixmap
 	  */
-	explicit PixmapButton(const QPixmap &pixmap, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent=0);
+	explicit SAGENextPixmapButton(const QPixmap &pixmap_normal, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent=0);
 
 	/**
 	  creates button with custom size
 	  */
-	explicit PixmapButton(const QString &res, const QSize &size = QSize(), const QString &label = QString(), QGraphicsItem *parent=0);
+	explicit SAGENextPixmapButton(const QString &res_normal, const QSize &size = QSize(), const QString &label = QString(), QGraphicsItem *parent=0);
 
-	~PixmapButton();
+	~SAGENextPixmapButton();
 
 private:
+	QPixmap _normalPixmap;
+	QPixmap _hoveredPixmap;
+
 	void _attachLabel(const QString &labeltext, QGraphicsItem *parent);
 
 protected:
@@ -147,28 +156,21 @@ signals:
 
 
 
-/**
-  An widget will be moved to this button to be removed on the scene
-  */
-class WidgetRemoveButton : public PixmapButton
-{
-	Q_OBJECT
-public:
-	explicit WidgetRemoveButton(QGraphicsItem *parent = 0);
-	~WidgetRemoveButton() {}
-};
-
 
 
 
 /**
   This is used to display text on gray rectangle
   */
-class SwSimpleTextItem : public QGraphicsSimpleTextItem
+class SAGENextSimpleTextItem : public QGraphicsSimpleTextItem
 {
 public:
-	SwSimpleTextItem(int pointSize=0, QGraphicsItem *parent=0);
-	~SwSimpleTextItem();
+	SAGENextSimpleTextItem(int pointSize=0, const QColor &fontcolor = QColor(Qt::black), const QColor &bgcolor = QColor(Qt::gray), QGraphicsItem *parent=0);
+	~SAGENextSimpleTextItem();
+
+private:
+	QColor _fontcolor;
+	QColor _bgcolor;
 
 protected:
 	void wheelEvent(QGraphicsSceneWheelEvent * event);

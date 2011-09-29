@@ -41,7 +41,7 @@ UiServer::UiServer(const QSettings *s, SAGENextLauncher *snl, SAGENextScene *sns
 UiServer::~UiServer() {
     close();
 
-	foreach (PolygonArrow *pa, pointers) {
+	foreach (SAGENextPolygonArrow *pa, pointers) {
 		delete pa;
 	}
 
@@ -209,8 +209,8 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 
         qDebug("UiServer::%s() : POINTER_SHARE from uiclient %llu, (%s, %s)",__FUNCTION__, uiclientid, pname.constData(), colorname);
 
-        PolygonArrow *pointerItem = 0;
-		pointerItem = new PolygonArrow(uiclientid, settings, QColor(QString(colorname)));
+        SAGENextPolygonArrow *pointerItem = 0;
+		pointerItem = new SAGENextPolygonArrow(uiclientid, settings, QColor(QString(colorname)));
         Q_ASSERT(pointerItem);
         if (!pname.isNull() && !pname.isEmpty()) {
             pointerItem->setPointerName(QString(pname));
@@ -247,7 +247,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
 
         // find the PolygonArrow associated with this uiClientId
-        PolygonArrow *pa = getSharedPointer(uiclientid);
+        SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
         if (pa) {
             //pa->setPos(x,y);
             pa->pointerMove(QPointF(x,y), Qt::NoButton); // just move pointer graphics item
@@ -269,7 +269,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
 
-        PolygonArrow *pa = getSharedPointer(uiclientid);
+        SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
         if (pa) {
             // direct widget manipulation instead of posting mouse event
             pa->pointerMove(QPointF(x,y), Qt::LeftButton);
@@ -285,7 +285,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 		int x,y;
 		sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
 
-		PolygonArrow *pa = getSharedPointer(uiclientid);
+		SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
 		if (pa) {
 			// direct widget manipulation instead of posting mouse event
 			pa->pointerMove(QPointF(x,y), Qt::RightButton);
@@ -306,7 +306,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
 //            qDebug("UiServer::%s() : POINTER_PRESS : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
 
@@ -347,7 +347,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 		quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  getSharedPointer(uiclientid);
+        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid);
 		if (pa) {
 			pa->pointerRelease(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
 		}
@@ -363,7 +363,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 		quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  getSharedPointer(uiclientid);
+        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid);
 		if (pa) {
 			pa->pointerRelease(QPointF(x,y), Qt::RightButton, Qt::RightButton);
 		}
@@ -378,7 +378,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         quint64 uiclientid;
         int x,y; // x,y from ui clients is the scene position of the wall
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
 //            qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
             pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::NoButton | Qt::LeftButton);
@@ -401,7 +401,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         quint64 uiclientid;
         int x, y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
             pa->pointerClick(QPointF(x,y), Qt::RightButton, Qt::NoButton | Qt::RightButton);
         }
@@ -419,7 +419,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         quint64 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
             pa->pointerDoubleClick(QPointF(x, y), Qt::LeftButton, Qt::LeftButton);
         }
@@ -434,7 +434,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         quint64 uiclientid;
         int x,y,tick;
         sscanf(msg.constData(), "%d %llu %d %d %d", &code, &uiclientid, &x, &y, &tick);
-        PolygonArrow *pa = getSharedPointer(uiclientid);
+        SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
         if (pa) {
             //qDebug() << "UiServer:: wheel" << x << y << 120*tick;
             pa->pointerWheel(QPointF(x, y),  tick);
@@ -578,8 +578,8 @@ UiMsgThread * UiServer::getUiMsgThread(quint64 uiclientid) {
     return ret;
 }
 
-PolygonArrow * UiServer::getSharedPointer(quint64 uiclientid) {
-    QMap<quint64, PolygonArrow *>::iterator it = pointers.find(uiclientid);
+SAGENextPolygonArrow * UiServer::getSharedPointer(quint64 uiclientid) {
+    QMap<quint64, SAGENextPolygonArrow *>::iterator it = pointers.find(uiclientid);
     if ( it == pointers.end() ) return 0;
     return it.value();
 }

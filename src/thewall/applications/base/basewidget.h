@@ -12,7 +12,7 @@ class ResourceMonitor;
 class AppInfo;
 class PerfMonitor;
 class AffinityInfo;
-class SwSimpleTextItem;
+class SAGENextSimpleTextItem;
 
 class BaseWidget : public QGraphicsWidget
 {
@@ -203,7 +203,7 @@ protected:
         /*!
           To display information in appInfo, perfMonitor, and affInfo
           */
-        SwSimpleTextItem *infoTextItem;
+        SAGENextSimpleTextItem *infoTextItem;
 
 
         /*!

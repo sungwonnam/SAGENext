@@ -420,7 +420,9 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 			else if ( button == 2 && state == 1) {
 				mouseBtnPressed = 2;
 				mousePressedPos = currentGlobalPos;
-//				sendMousePress(currentGlobalPos, Qt::RightButton); // don't send mouse right press
+
+				// send right press (for selection rectangle)
+				sendMousePress(currentGlobalPos, Qt::RightButton);
 			}
 
 			//
@@ -545,7 +547,7 @@ void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btn
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 
 	if ( btns & Qt::LeftButton) {
-		qDebug() << "send left dargging";
+//		qDebug() << "send left dargging";
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_DRAGGING, uiclientid, x, y);
 	}
 	else if (btns & Qt::RightButton) {
@@ -560,6 +562,9 @@ void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btn
 	queueMsgToWall(msg);
 }
 
+/**
+  both mouse press is needed for dragging operation
+  */
 void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton */) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
@@ -567,16 +572,23 @@ void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons bt
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 	
 	if (btns & Qt::RightButton) {
-		// will trigger item isSelected()
+		//
+		// this is needed to setPos of selection rectangle
+		//
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
 	}
 	else {
-		// will trigger setAppUnderPointer()
+		//
+		// will trigger setAppUnderPointer() which is needed for left mouse dragging
+		//
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_PRESS, uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
 
+/**
+  Both mouse release are needed to know mouse dragging finish
+  */
 void ExternalGUIMain::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btns /* = Qt::LeftButton */) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
@@ -584,11 +596,11 @@ void ExternalGUIMain::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons 
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 
 	if (btns & Qt::RightButton) {
-		// will trigger item isSelected()
+		// will finish selection rectangle
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTRELEASE, uiclientid, x, y);
 	}
 	else {
-		// will trigger setAppUnderPointer()
+		// will pretend droping operation
 		sprintf(msg.data(), "%d %llu %d %d", POINTER_RELEASE, uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
@@ -609,6 +621,9 @@ void ExternalGUIMain::sendMouseClick(const QPoint globalPos, Qt::MouseButtons bt
 	queueMsgToWall(msg);
 }
 
+/**
+  Left button only
+  */
 void ExternalGUIMain::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons btns /*= Qt::LeftButton | Qt::NoButton*/) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
@@ -649,10 +664,8 @@ void ExternalGUIMain::mousePressEvent(QMouseEvent *e) {
 	mousePressedPos = e->globalPos();
 
 	if ( isMouseCapturing ) {
-		if ( e->button() == Qt::LeftButton) {
-			qDebug() << "mousePressEvent()" << e->button() << "sending mouse PRESS";
-			sendMousePress(e->globalPos());
-		}
+		qDebug() << "mousePressEvent()" << e->button() << "sending mouse PRESS";
+		sendMousePress(e->globalPos());
 		e->accept();
 	}
 	else {

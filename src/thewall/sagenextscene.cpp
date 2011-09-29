@@ -44,7 +44,7 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 	QPixmap closeIcon(":/resources/x_circle_gray.png");
 //	QPixmap closeIcon(":/resources/powerbutton_black_64x64.png");
 //	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(sceneRect.width() * 0.02));
-	_closeButton = new PixmapButton(closeIcon, _settings->value("gui/iconwidth").toDouble());
+	_closeButton = new SAGENextPixmapButton(closeIcon, _settings->value("gui/iconwidth").toDouble());
 	connect(_closeButton, SIGNAL(clicked()), this, SLOT(prepareClosing()));
 //	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
 //	opacity->setOpacity(0.2);
@@ -58,7 +58,7 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 	//
 	// attach app remove button on the top
 	//
-	_appRemoveButton = new PixmapButton(":/resources/default_button_up.png", QSize(256, 32), "Remove");
+	_appRemoveButton = new SAGENextPixmapButton(":/resources/default_button_up.png", QSize(256, 32), "Remove");
 	_appRemoveButton->setPos(sceneRect.width()/2 - _appRemoveButton->size().width()/2, 5); // position to the top center
 	_appRemoveButton->setZValue(999999998); // 1 less than polygon arrow but always higher than apps
 	addItem(_appRemoveButton);
@@ -200,9 +200,9 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, 
 	setAcceptedMouseButtons(0);
 
 	// these png files are 499x499
-	_tileButton = new PixmapButton(":/resources/tile_btn_over.jpg", _settings->value("gui/iconwidth").toDouble(), "", this);
-	_hButton = new PixmapButton(":/resources/horizontal_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
-	_vButton = new PixmapButton( ":/resources/vertical_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
+	_tileButton = new SAGENextPixmapButton(":/resources/tile_btn_over.jpg", _settings->value("gui/iconwidth").toDouble(), "", this);
+	_hButton = new SAGENextPixmapButton(":/resources/horizontal_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
+	_vButton = new SAGENextPixmapButton( ":/resources/vertical_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 
 	connect(_tileButton, SIGNAL(clicked()), this, SLOT(toggleTile()));
 	// horizontal button will divide the widget vertically
@@ -215,7 +215,7 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, 
 //	_buttonGrp->addToGroup(_hButton);
 
 	if (parentWidget) {
-		_xButton = new PixmapButton(":/resources/close_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
+		_xButton = new SAGENextPixmapButton(":/resources/close_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 		connect(_xButton, SIGNAL(clicked()), _parentLayoutWidget, SLOT(deleteChildPartitions()));
 //		_buttonGrp->addToGroup(_xButton);
 	}
