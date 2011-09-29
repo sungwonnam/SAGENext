@@ -35,6 +35,10 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
 
 	ui->isConnectedLabel->hide();
 
+#ifdef Q_OS_MAC
+	ui->pointerButton->hide();
+#endif
+
 	_settings = new QSettings("sagenextpointer.ini", QSettings::IniFormat, this);
 
 
