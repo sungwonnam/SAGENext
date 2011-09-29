@@ -62,7 +62,7 @@ private:
 class SAGENextLayoutWidget : public QGraphicsWidget {
 	Q_OBJECT
 public:
-	SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent=0);
+	SAGENextLayoutWidget(const QString &posStr, SAGENextLayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent=0);
 	~SAGENextLayoutWidget();
 
 	inline SAGENextLayoutWidget * leftWidget() {return _leftWidget;}
@@ -80,6 +80,11 @@ public:
 	  Reparent all the basewidgets to the new layoutWidget
 	  */
 	void reparentWidgets(SAGENextLayoutWidget *newParent);
+
+	/**
+	  This will call resize()
+	  */
+	void setRectangle(const QRectF &r);
 
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);

@@ -192,6 +192,8 @@ GraphicsSettingDialog::GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,i
 		ui->dimy->setText(_settings->value("graphics/screencounty", 1).toString());
 	}
 
+	ui->bezelSize->setText(_settings->value("graphics/bezelsize", 0).toString());
+
 
 	if ( _settings->value("graphics/openglviewport", false).toBool() )
 		ui->openglviewportCheckBox->setCheckState(Qt::Checked);
@@ -236,6 +238,8 @@ void GraphicsSettingDialog::accept() {
 
 	_settings->setValue("graphics/screencountx", ui->dimx->text().toInt());
 	_settings->setValue("graphics/screencounty", ui->dimy->text().toInt());
+
+	_settings->setValue("graphics/bezelsize", ui->bezelSize->text().toInt());
 
 	if ( ui->openglviewportCheckBox->checkState() == Qt::Checked ) {
 		_settings->setValue("graphics/openglviewport", true);

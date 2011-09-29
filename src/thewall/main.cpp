@@ -339,6 +339,9 @@ int main(int argc, char *argv[])
 			// set sceneRect to be viewed for each viewport. Bezel size has to be applied to here
 			//
 			QPair<int,int> pos = screenLayout.key(i); // x,y position of the screen (0,0) as a topleft
+
+//			s.value("graphics/bezelsize");
+
 			gvm->setSceneRect(
 			            pos.first * dw->screenGeometry(i).width()
 			            ,pos.second * dw->screenGeometry(i).height()

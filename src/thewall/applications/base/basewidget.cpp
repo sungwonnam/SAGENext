@@ -75,10 +75,10 @@ BaseWidget::~BaseWidget()
     if ( scene() ) {
         scene()->removeItem(this);
 
-		if ( _registerForMouseHover ) {
-			SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
-			sc->hoverAcceptingApps.removeAll(this);
-		}
+//		if ( _registerForMouseHover ) {
+//			SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
+//			sc->hoverAcceptingApps.removeAll(this);
+//		}
     }
 
     //qDebug("BaseGraphicsWidget::%s() : deleting _contextMenu", __FUNCTION__);

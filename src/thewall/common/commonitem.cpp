@@ -70,6 +70,11 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
 	//
 	SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
 	foreach(BaseWidget *bw, sc->hoverAcceptingApps) {
+		if (!bw) {
+			sc->hoverAcceptingApps.removeOne(bw);
+			continue;
+		}
+
 		if (bw->rect().contains(  bw->mapFromScene(_scenePos)  )) {
 			bw->toggleHover(this, bw->mapFromScene(_scenePos), true);
 		}

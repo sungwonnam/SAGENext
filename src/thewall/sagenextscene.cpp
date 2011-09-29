@@ -38,6 +38,8 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 //	pi->setPos(sceneRect.width()/2, sceneRect.height()/2);
 
 
+
+
 	/*
 	  Attach close button on the scene. if clicked twice, scene->deleteLater will be called
       */
@@ -55,10 +57,16 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 	addItem(_closeButton);
 
 
+
+
 	//
 	// attach app remove button on the top
 	//
 	_appRemoveButton = new SAGENextPixmapButton(":/resources/default_button_up.png", QSize(256, 32), "Remove");
+	_appRemoveButton->setFlag(QGraphicsItem::ItemIsMovable, false);
+	_appRemoveButton->setFlag(QGraphicsItem::ItemIsSelectable, false);
+	_appRemoveButton->setFlag(QGraphicsItem::ItemIsFocusable, false);
+	_appRemoveButton->setAcceptedMouseButtons(0); // Qt::NoButton
 	_appRemoveButton->setPos(sceneRect.width()/2 - _appRemoveButton->size().width()/2, 5); // position to the top center
 	_appRemoveButton->setZValue(999999998); // 1 less than polygon arrow but always higher than apps
 	addItem(_appRemoveButton);
@@ -69,7 +77,8 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 	/**
 	  Create base widget for wall partitioning.
 	  */
-	_rootLayoutWidget = new SAGENextLayoutWidget("ROOT", sceneRect, 0, _settings);
+	_rootLayoutWidget = new SAGENextLayoutWidget("ROOT", 0, _settings);
+	_rootLayoutWidget->setRectangle(sceneRect);
 
 	/**
 	  Child widgets of _rootLayoutWidget, which are sagenext applications, will be added to the scene automatically.
@@ -99,6 +108,7 @@ void SAGENextScene::prepareClosing() {
 			delete _uiserver;
 		}
 
+		// don't do this here
 //		if (_rmonitor) {
 //			qDebug() << "Scene is deleting ResourceMonitor";
 //			delete _rmonitor;
@@ -176,7 +186,7 @@ void SAGENextScene::closeAllUserApp() {
 
 
 
-SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, SAGENextLayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent)
+SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, SAGENextLayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
     , _settings(s)
     , _parentLayoutWidget(parentWidget)
@@ -225,14 +235,15 @@ SAGENextLayoutWidget::SAGENextLayoutWidget(const QString &pos, const QRectF &r, 
 	}
 //	setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
 //	setMinimumSize(r.size());
-
-	setLayout(0);
-
-	resize(r.size());
-	setPos(r.topLeft()); // partitionRect.topLeft is in it's parent's coordinate
 }
 
 SAGENextLayoutWidget::~SAGENextLayoutWidget() {
+
+}
+
+void SAGENextLayoutWidget::setRectangle(const QRectF &r) {
+	resize(r.size());
+	setPos(r.topLeft()); // partitionRect.topLeft is in it's parent's coordinate
 }
 
 void SAGENextLayoutWidget::addItem(BaseWidget *bw, const QPointF &scenepos) {
@@ -290,7 +301,7 @@ void SAGENextLayoutWidget::reparentWidgets(SAGENextLayoutWidget *newParent) {
 		foreach(QGraphicsItem *item, childItems()) {
 			// exclude PartitionBar
 			// exclude PixmapButton
-			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ) continue;
+			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget) continue;
 
 			item->setParentItem(newParent);
 		}
@@ -381,6 +392,8 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 
 	QRectF first;
 	QRectF second;
+	SAGENextLayoutWidget *firstlayoutchild = 0;
+	SAGENextLayoutWidget *secondlayoutchild = 0;
 //	QSizePolicy sp(QSizePolicy::Fixed, QSizePolicy::Fixed);
 //	linear->setSizePolicy(sp);
 
@@ -395,28 +408,11 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 		first = QRectF( 0, 0,             br.width(), br.height()/2);
 		second = QRectF(0, br.height()/2, br.width(), br.height()/2);
 
-		_topWidget = new SAGENextLayoutWidget("top", first, this, _settings, this);
-		_bottomWidget = new SAGENextLayoutWidget("bottom", second, this, _settings, this);
+		_topWidget = new SAGENextLayoutWidget("top",  this, _settings, this);
+		_bottomWidget = new SAGENextLayoutWidget("bottom",  this, _settings, this);
 
-		//
-		// reparent child items to appropriate widget. I shouldn't have any child baseWidgets at this point
-		//
-		foreach(QGraphicsItem *item, childItems()) {
-			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ) continue;
-
-			QRectF intersectedWithTop = _topWidget->boundingRect() & _topWidget->mapRectToItem(_topWidget, item->boundingRect());
-			if ( intersectedWithTop.size().width() * intersectedWithTop.size().height() >= 0.25 * item->boundingRect().size().width() * item->boundingRect().size().height()) {
-				item->setParentItem(_topWidget);
-			}
-			else {
-				item->setParentItem(_bottomWidget);
-			}
-		}
-
-		//
-		// if child widget is resized, then adjust my bar pos and length
-		//
-		connect(_topWidget, SIGNAL(resized()), this, SLOT(adjustBar()));
+		firstlayoutchild = _topWidget;
+		secondlayoutchild = _bottomWidget;
 	}
 	else {
 		//
@@ -424,31 +420,47 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 		//
 		first = QRectF(  0,           0, br.width()/2, br.height());
 		second = QRectF(br.width()/2, 0, br.width()/2, br.height());
-		_leftWidget = new SAGENextLayoutWidget("left", first, this, _settings, this);
-		_rightWidget = new SAGENextLayoutWidget("right", second, this, _settings, this);
 
-		//
-		// reparent child items to appropriate widget.  I shouldn't have any child baseWidgets at this point
-		//
-		foreach(QGraphicsItem *item, childItems()) {
-			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ) continue;
+		_leftWidget = new SAGENextLayoutWidget("left",  this, _settings, this);
+		_rightWidget = new SAGENextLayoutWidget("right",  this, _settings, this);
 
-			QRectF intersectedWithLeft = _leftWidget->boundingRect() & _leftWidget->mapRectToItem(_leftWidget, item->boundingRect());
-			if ( intersectedWithLeft.size().width() * intersectedWithLeft.size().height() >= 0.25 * item->boundingRect().size().width() * item->boundingRect().size().height()) {
-				item->setParentItem(_leftWidget);
-			}
-			else {
-				item->setParentItem(_rightWidget);
-			}
+		firstlayoutchild = _leftWidget;
+		secondlayoutchild = _rightWidget;
+	}
+	//
+	// reparent child items to appropriate widget. I shouldn't have any child baseWidgets at this point
+	//
+	foreach(QGraphicsItem *item, childItems()) {
+		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget) {
+//			qDebug() << "createChildlayout skipping myself, buttons and bar";
+			continue;
 		}
 
-		connect(_leftWidget, SIGNAL(resized()), this, SLOT(adjustBar()));
+		QRectF intersectedWithFirst = first & mapRectFromItem(item, item->boundingRect());
+		if ( intersectedWithFirst.size().width() * intersectedWithFirst.size().height() >= 0.25 * item->boundingRect().size().width() * item->boundingRect().size().height()) {
+			item->setParentItem(firstlayoutchild);
+		}
+		else {
+			item->setParentItem(secondlayoutchild);
+		}
 	}
+
+	//
+	// if child widget is resized, then adjust my bar pos and length
+	//
+	connect(firstlayoutchild, SIGNAL(resized()), this, SLOT(adjustBar()));
+
+
+	// will invoke resize()
+	firstlayoutchild->setRectangle(first);
+	secondlayoutchild->setRectangle(second);
+//	qDebug() << "createchild result" << rect() << firstlayoutchild->geometry() << secondlayoutchild->geometry();
+
 
 	//
 	// sets bar's pos and length
 	//
-	adjustBar();
+//	adjustBar();
 
 
 	//
@@ -516,10 +528,12 @@ void SAGENextLayoutWidget::deleteChildPartitions() {
 
 void SAGENextLayoutWidget::doTile() {
 	if (_bar) return;
+
 	foreach(QGraphicsItem *item, childItems()) {
 		// exclude PartitionBar
 		// exclude PixmapButton
-		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ) continue;
+		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget ) continue;
+
 	}
 }
 
