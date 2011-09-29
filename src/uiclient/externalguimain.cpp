@@ -286,20 +286,28 @@ void ExternalGUIMain::doHandshaking() {
 #ifdef Q_OS_MAC
 	if (!macCapture) {
 		macCapture = new QProcess(this);
+		macCapture->setWorkingDirectory(QCoreApplication::applicationDirPath());
+		
 		if ( ! QObject::connect(macCapture, SIGNAL(readyReadStandardOutput()), this, SLOT(sendMouseEventsToWall())) ) {
 			qDebug() << "Can't connect macCapture signal to my slot. macCapture won't be started.";
 		}
 		else {
+//			macCapture->start(QCoreApplication::applicationDirPath().append("/macCapture"));
 			macCapture->start("./macCapture");
-			macCapture->waitForStarted(-1);
-			QByteArray captureEdge(10, '\0');
-			int edge = 3;// left 1, right, top, bottom (in macCapture)
-			if ( _sharingEdge == "top" ) edge = 3;
-			else if (_sharingEdge == "right") edge = 2;
-			else if (_sharingEdge == "left") edge = 1;
-			else if (_sharingEdge == "bottom") edge = 4;
-			sprintf(captureEdge.data(), "%d %d\n", 14, edge);
-			macCapture->write(captureEdge);
+			if (! macCapture->waitForStarted(-1) ) {
+//				qCritical() << "macCapture failed to start !!";
+				QMessageBox::critical(this, "macCapture Error", "Failed to start macCapture");
+			}
+			else {
+				QByteArray captureEdge(10, '\0');
+				int edge = 3;// left 1, right, top, bottom (in macCapture)
+				if ( _sharingEdge == "top" ) edge = 3;
+				else if (_sharingEdge == "right") edge = 2;
+				else if (_sharingEdge == "left") edge = 1;
+				else if (_sharingEdge == "bottom") edge = 4;
+				sprintf(captureEdge.data(), "%d %d\n", 14, edge);
+				macCapture->write(captureEdge);
+			}
 		}
 	}
 #endif
