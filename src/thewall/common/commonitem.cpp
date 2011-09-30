@@ -336,7 +336,7 @@ void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton
 		}
 		QPointF clickedViewPos = view->mapFromScene( scenePos );
 
-		qDebug() << "pointerClick() : LeftButton" << scenePos;
+//		qDebug() << "pointerClick() : LeftButton" << scenePos;
 
 		QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, modifier);
 		QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, modifier);

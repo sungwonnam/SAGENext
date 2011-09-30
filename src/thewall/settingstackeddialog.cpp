@@ -200,7 +200,7 @@ GraphicsSettingDialog::GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,i
 	else
 		ui->openglviewportCheckBox->setCheckState(Qt::Unchecked);
 
-	int idx = ui->viewportUpdateComboBox->findData(_settings->value("graphics/viewportupdatemode", "").toString());
+	int idx = ui->viewportUpdateComboBox->findText(_settings->value("graphics/viewportupdatemode", "").toString());
 	if (idx != -1) {
 		ui->viewportUpdateComboBox->setCurrentIndex(idx);
 	}

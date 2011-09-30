@@ -62,12 +62,12 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 	//
 	// attach app remove button on the top
 	//
-	_appRemoveButton = new SAGENextPixmapButton(":/resources/default_button_up.png", QSize(256, 32), "Remove");
+	_appRemoveButton = new SAGENextPixmapButton(":/resources/default_button_up.png", QSize(512, 32), "Remove");
 	_appRemoveButton->setFlag(QGraphicsItem::ItemIsMovable, false);
 	_appRemoveButton->setFlag(QGraphicsItem::ItemIsSelectable, false);
 	_appRemoveButton->setFlag(QGraphicsItem::ItemIsFocusable, false);
 	_appRemoveButton->setAcceptedMouseButtons(0); // Qt::NoButton
-	_appRemoveButton->setPos(sceneRect.width()/2 - _appRemoveButton->size().width()/2, 5); // position to the top center
+	_appRemoveButton->setPos(sceneRect.width()/2 - _appRemoveButton->size().width()/2, 0); // position to the top center
 	_appRemoveButton->setZValue(999999998); // 1 less than polygon arrow but always higher than apps
 	addItem(_appRemoveButton);
 

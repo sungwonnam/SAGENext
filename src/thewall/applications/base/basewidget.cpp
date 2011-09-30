@@ -130,7 +130,9 @@ void BaseWidget::init()
 	/* When enabled, the item's paint() function will be called only once for each call to update(); for any subsequent repaint requests, the Graphics View framework will redraw from the cache. */
 	/* Turn cache off for streaming application */
 	//
-	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+	// Enabling this will make PixmapWidget insanely slow
+	//
+//	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
 	//qDebug() << "BaseWidget::init() : boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
 	//getWindowFrameMargins(&frameMarginLeft, &frameMarginTop, &frameMarginRight, &frameMarginBottom);
@@ -565,9 +567,20 @@ void BaseWidget::setTopmost()
 void BaseWidget::reScale(int tick, qreal factor)
 {
 	qreal currentScale = scale();
+
+	QSizeF currentVisibleSize = currentScale * size();
+	qreal currentArea = currentVisibleSize.width() * currentVisibleSize.height();
+
+	// shouldn't be too small
+	if ( tick < 0  &&  (currentScale <= 0.05 || currentArea <= 400)) return;
+
 	currentScale += ((qreal)tick * factor);
 
-	// Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees, the child's total transformation will be 180 degrees. Similarly, if the item's parent is scaled to 2x its original size, its children will also be twice as large. An item's transformation does not affect its own local geometry; all geometry functions (e.g., contains(), update(), and all the mapping functions) still operate in local coordinates.
+	// Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees,
+	//the child's total transformation will be 180 degrees.
+	//Similarly, if the item's parent is scaled to 2x its original size, its children will also be twice as large.
+	//An item's transformation does not affect its own local geometry;
+	//all geometry functions (e.g., contains(), update(), and all the mapping functions) still operate in local coordinates.
 	setScale(currentScale);
 
 	//! optional

@@ -992,6 +992,7 @@ ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
 
         ui->port->setText( _settings->value("wallport", 30003).toString() );
 		ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
+		ui->vncpasswd->setEchoMode(QLineEdit::Password);
         ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
         ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
 
