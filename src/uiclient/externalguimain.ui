@@ -34,13 +34,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="pointerButton">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
+       <widget class="QPushButton" name="hookMouseBtn">
         <property name="text">
          <string>share pointer</string>
         </property>
@@ -69,7 +63,7 @@
      <x>0</x>
      <y>0</y>
      <width>242</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

@@ -30,37 +30,43 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
     , mediaDropFrame(0)
 	, macCapture(0)
 	, mouseBtnPressed(0)
+	, _sharingEdge(QString("top"))
 {
 	ui->setupUi(this);
 
 	ui->isConnectedLabel->hide();
-
 #ifdef Q_OS_MAC
-	ui->pointerButton->hide();
+	ui->hookMouseBtn->hide();
 #endif
 
 	_settings = new QSettings("sagenextpointer.ini", QSettings::IniFormat, this);
 
-
+	//
+	// Upon connection, execute handshaking (receiving my uiclientid and wall size)
+	//
 	connect(&_tcpMsgSock, SIGNAL(connected()), this, SLOT(doHandshaking()));
 
 
-	//	wallAddr.clear();
-
-	/* file dialog */
-	//        fdialog = new QFileDialog(this, "Open Media Files", QDir::homePath(), "Images (*.tif *.tiff *.svg *.bmp *.png *.jpg *.jpeg *.gif *.xpm);;Videos (*.mov *.avi *.mpg *.mp4);;Any (*)");
-	fdialog = new QFileDialog(this, "Open Media Files", QDir::homePath(), "*");
-	fdialog->setModal(false);
-	fdialog->setVisible(false);
-	connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readFiles(QStringList)));
+	//
+	// create msg thread
+	msgThread = new MessageThread();
+	connect(msgThread, SIGNAL(finished()), this, SLOT(unhookMouse()));
 
 
-	/* mouse ungrab action */
+	//
+	// create send thread (file transfer)
+	sendThread = new SendThread();
+
+	connect(msgThread, SIGNAL(finished()), sendThread, SLOT(endThread()));
+
+
+	//
+	// mouse ungrab action
 	ungrabMouseAction = new QAction(this);
-	//	ungrabMouseAction->setShortcut( QKeySequence(Qt::Key_CapsLock + Qt::Key_Tab));
 	ungrabMouseAction->setShortcut( QKeySequence(Qt::SHIFT + Qt::CTRL + Qt::ALT + Qt::Key_M));
-	connect(ungrabMouseAction, SIGNAL(triggered()), this, SLOT(ungrabMouse()));
+	connect(ungrabMouseAction, SIGNAL(triggered()), this, SLOT(unhookMouse()));
 	addAction(ungrabMouseAction);
+
 
 	//	timer = new QTimer(this);
 	//	timer->setInterval(500); // msec
@@ -68,24 +74,25 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
 	//	timer->start();
 
 
-	
-	// create msg thread
-	msgThread = new MessageThread();
-	connect(msgThread, SIGNAL(finished()), this, SLOT(ungrabMouse()));
-
-
-	// create send thread
-	sendThread = new SendThread();
-
-	connect(msgThread, SIGNAL(finished()), sendThread, SLOT(endThread()));
-
-
-
+	//
+	// Drag & Drop gui
+	//
 	mediaDropFrame = new DropFrame(sendThread, this);
 	ui->verticalLayout->addWidget(mediaDropFrame);
 	int lastwidgetidx = ui->verticalLayout->count() - 1; // find the index of the last (bottom) widget which is dropFrame
 	ui->verticalLayout->setStretch(lastwidgetidx, 2);
 	connect(mediaDropFrame, SIGNAL(mediaDropped(QList<QUrl>)), sendThread, SLOT(sendMediaList(QList<QUrl>)));
+
+
+
+	//
+	// file dialog (CMD + o)
+	//
+	//fdialog = new QFileDialog(this, "Open Media Files", QDir::homePath(), "Images (*.tif *.tiff *.svg *.bmp *.png *.jpg *.jpeg *.gif *.xpm);;Videos (*.mov *.avi *.mpg *.mp4);;Any (*)");
+	fdialog = new QFileDialog(this, "Open Media Files", QDir::homePath(), "*");
+	fdialog->setModal(false);
+	fdialog->setVisible(false);
+	connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readFiles(QStringList)));
 }
 
 ExternalGUIMain::~ExternalGUIMain()
@@ -310,10 +317,12 @@ void ExternalGUIMain::doHandshaking() {
 			}
 		}
 	}
+#else
+	//
+	// this is to know whether the cursor is on _sharingEdge
+	//
+//	setMouseTracking(true); // the widget receives mouse move events even if no buttons are pressed
 #endif
-
-
-
 
 
 	/*
@@ -340,24 +349,82 @@ void ExternalGUIMain::on_vncButton_clicked()
 	// send msg to UiServer so that local sageapp (vncviewer) can be started
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 
-	/*
-	QList<QNetworkInterface> netInterfaces = QNetworkInterface::allInterfaces();
-	foreach (QNetworkInterface net, netInterfaces) {
-		if ( net.isValid() &&  net.flags() & QNetworkInterface::IsRunning  &&  net.flags() & !QNetworkInterface::IsLoopBack) {
-			// fins ip address
-			break;
-		}
-	}
-	*/
-
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
 	sprintf(msg.data(), "%d %llu %s %d %s %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
 
 	queueMsgToWall(msg);
 }
 
+//
+// for windows and Linux
+void ExternalGUIMain::on_hookMouseBtn_clicked()
+{
+	setMouseTracking(true);
+	hookMouse();
+}
+
+void ExternalGUIMain::hookMouse() {
+	if (msgThread) {
+		if (msgThread->isRunning()) {
+			//
+			// set the flag
+			//
+			isMouseCapturing = true;
+
+			//
+			// change cursor shape
+			//
+			setCursor(Qt::BlankCursor);
+
+
+#ifdef Q_OS_MAC
+			// do nothing
+			ui->isConnectedLabel->setText("Pointer is in SAGENext");
+#else
+			ui->isConnectedLabel->setText("[Shift + Ctrl + Alt + m]\nto relase mouse");
+			//
+			// in Linux and Windows 7, this will work even the mouse curson isn't on this application window.
+			//
+			grabMouse();
+//			qDebug() << "grabMouse";
+#endif
+			QByteArray msg(EXTUI_MSG_SIZE, 0);
+			// msgtype, uiclientid, pointer name, Red, Green, Blue
+			sprintf(msg.data(), "%d %llu %s %s", POINTER_SHARE, uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
+			queueMsgToWall(msg);
+		}
+		else {
+			qWarning() << "Please connect to a SAGENext first";
+		}
+	}
+	else {
+		qDebug() << "Sharing pointer: msgThread is null";
+	}
+}
+
+void ExternalGUIMain::unhookMouse() {
+	isMouseCapturing = false;
+	unsetCursor();
+	ui->isConnectedLabel->setText("");
+#ifdef Q_OS_MAC
+		// do nothing
+#else
+	releaseMouse();
+//	qDebug() << "mouse released";
+#endif
+	// remove cursor on the wall
+	if (msgThread && msgThread->isRunning()) {
+		QByteArray msg(EXTUI_MSG_SIZE, 0);
+		sprintf(msg.data(), "%d %llu", POINTER_UNSHARE, uiclientid);
+		queueMsgToWall(msg);
+	}
+}
+
+
+
+
 /**
-  this function is invoked by QProcess::readyReadStandardOutput() signal
+  This function is used by Mac OS X and invoked by QProcess::readyReadStandardOutput() signal
   */
 void ExternalGUIMain::sendMouseEventsToWall() {
 	Q_ASSERT(macCapture);
@@ -379,14 +446,14 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 		// CAPTURED
 		case 11: {
 			qDebug() << "Start capturing Mac mouse events";
-			on_pointerButton_clicked();
+			hookMouse();
 			break;
 		}
 			
 		// RELEASED
 		case 12: {
 			qDebug() << "Stop capturing Mac mouse events";
-			ungrabMouse();
+			unhookMouse();
 			break;
 		}
 			
@@ -504,52 +571,7 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 	}
 }
 
-void ExternalGUIMain::on_pointerButton_clicked()
-{
-	if (msgThread) {
-		if (msgThread->isRunning()) {
-			isMouseCapturing = true;
-			ui->isConnectedLabel->setText("Pointer is in SAGENext");
-#ifdef Q_OS_MAC
-			// do nothing
-#else
-			if ( hasMouseTracking() ) return;
-			setMouseTracking(true); // the widget receives mouse move events even if no buttons are pressed
-			grabMouse();
-			qDebug() << "grabMouse";
-#endif
-			QByteArray msg(EXTUI_MSG_SIZE, 0);
-			// msgtype, uiclientid, pointer name, Red, Green, Blue
-			sprintf(msg.data(), "%d %llu %s %s", POINTER_SHARE, uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
-			queueMsgToWall(msg);
-		}
-		else {
-			qWarning() << "Sharing pointer: please connect to a SAGENext first";
-		}
-	}
-	else {
-		qDebug() << "Sharing pointer: msgThread is null";
-	}
-}
 
-void ExternalGUIMain::ungrabMouse() {
-	isMouseCapturing  = false;
-	ui->isConnectedLabel->setText("");
-#ifdef Q_OS_MAC
-		// do nothing
-#else
-	if ( ! hasMouseTracking() ) return;
-	setMouseTracking(false);
-	releaseMouse();
-	qDebug() << "mouse released";
-#endif
-	// remove cursor on the wall
-	if (msgThread && msgThread->isRunning()) {
-		QByteArray msg(EXTUI_MSG_SIZE, 0);
-		sprintf(msg.data(), "%d %llu", POINTER_UNSHARE, uiclientid);
-		queueMsgToWall(msg);
-	}
-}
 
 
 void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btns /*= Qt::NoButton*/) {
@@ -656,7 +678,16 @@ void ExternalGUIMain::sendMouseWheel(const QPoint globalPos, int delta) {
 }
 
 
+
+
+
+
+
+
+
+
 void ExternalGUIMain::mouseMoveEvent(QMouseEvent *e) {
+//	qDebug() << "moveEvent" << e->globalPos();
 	// setMouseTracking(true) to generate this event even when button isn't pressed
 	if ( isMouseCapturing ) {
 		//
@@ -790,8 +821,9 @@ void ExternalGUIMain::readFiles(QStringList filenames) {
     for ( int i=0; i<filenames.size(); i++ ) {
 
         QString filename = filenames.at(i);
+//		qDebug() << "readFile" << QUrl::fromLocalFile(filename);
         //qDebug("%s::%s() : %d, %s", metaObject()->className(), __FUNCTION__, i, qPrintable(filename));
-		QMetaObject::invokeMethod(sendThread, "sendMedia", Qt::QueuedConnection, Q_ARG(QUrl, QUrl(filename.prepend("file://"))));
+		QMetaObject::invokeMethod(sendThread, "sendMedia", Qt::QueuedConnection, Q_ARG(QUrl, QUrl::fromLocalFile(filename)));
 
 		/*
         //QFileInfo fi(filename);
@@ -1064,3 +1096,5 @@ void ConnectionDialog::on_pointerColorButton_clicked()
 
 	pColor = newColor.name();
 }
+
+

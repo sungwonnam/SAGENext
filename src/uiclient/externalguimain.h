@@ -246,11 +246,13 @@ private slots:
         void on_vncButton_clicked();
 
         /**
-          * will set mouseTracking(true) and grabMouse()
+          * This is for Windows OS temporarily
           */
-        void on_pointerButton_clicked();
+		void on_hookMouseBtn_clicked();
 
-        void ungrabMouse();
+		void hookMouse();
+
+        void unhookMouse();
 
 
         /**
@@ -286,6 +288,7 @@ private slots:
 
 
 //        QGraphicsRectItem * itemWithGlobalAppId(QGraphicsScene *scene, quint64 gaid);
+
 
 };
 

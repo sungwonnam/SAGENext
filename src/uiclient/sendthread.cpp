@@ -77,7 +77,7 @@ void SendThread::sendMedia(const QUrl url) {
 		_dataSock.write(header, sizeof(header));
 	}
 	else if (urlStr.contains(QRegExp("^file://", Qt::CaseSensitive)) ) {
-		QFileInfo fi(urlStr.remove("file://"));
+		QFileInfo fi(url.toLocalFile());
 		if (!fi.isFile() || fi.size() == 0) {
 			qDebug() << "SendThread::sendMedia : filesize 0 for" << fi.absoluteFilePath();
 			return;
