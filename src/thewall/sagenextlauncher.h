@@ -18,16 +18,20 @@ class QGraphicsItem;
 
 class BaseWidget;
 class SageStreamWidget;
+class SAGENextPolygonArrow;
 
 class SAGENextLauncher : public QObject
 {
         Q_OBJECT
 public:
-        explicit SAGENextLauncher(const QSettings *s, SAGENextScene *scene, ResourceMonitor *rm = 0, SchedulerControl *sc = 0, QObject *parent = 0);
+        explicit SAGENextLauncher(const QSettings *s, SAGENextScene *scene, ResourceMonitor *rm = 0, SchedulerControl *sc = 0, QFile *scenarioFile = 0, QObject *parent = 0);
         ~SAGENextLauncher();
 
-
-
+	/**
+	  This is temporary for scenario stuff
+	  Use UiServer's container instead
+	  */
+	QMap<quint64, SAGENextPolygonArrow *> _pointerMap;
 
 private:
         const QSettings *_settings;
@@ -56,7 +60,7 @@ private:
           The SAIL_1 , SAIL_2 have been fired as well. But SAIL_2's connection got to the fsManager before SAIL_1
           Then SAIL_2 will be blindly assigned to sageWidget_1.
 
-          This is because there's no way to corelate sageWidget to SAIL connection...
+          This is because there's no way to co-relate sageWidget to SAIL connection...
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!
           */
         QList<SageStreamWidget *> _sageWidgetQueue;
@@ -67,8 +71,12 @@ private:
 
         SchedulerControl *_schedCtrl;
 
+		/**
+		  To record new widget/pointer starts.
+		  This will be passed to polygonArrows
+		  */
+		QFile *_scenarioFile;
 
-signals:
 
 public slots:
         /**
@@ -91,6 +99,43 @@ public slots:
           _globalAppId is incremented by 1 in here
           */
         BaseWidget * launch(BaseWidget *);
+
+
+		SAGENextPolygonArrow * launchPointer(quint64 uiclientid, const QString &name, const QColor &color);
+
+
+		/**
+		  This slot should be running in a separate thread
+		  */
+		void launchScenario(const QString &scenarioFilename);
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class ScenarioThread : public QThread {
+	Q_OBJECT
+public:
+	ScenarioThread(SAGENextLauncher *launcher, const QString &file, QObject *parent = 0);
+	~ScenarioThread();
+
+protected:
+	void run();
+
+private:
+	SAGENextLauncher *_launcher;
+
+	QFile _scenarioFile;
 
 };
 

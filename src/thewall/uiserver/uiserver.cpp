@@ -210,14 +210,12 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         qDebug("UiServer::%s() : POINTER_SHARE from uiclient %llu, (%s, %s)",__FUNCTION__, uiclientid, pname.constData(), colorname);
 
         SAGENextPolygonArrow *pointerItem = 0;
-		pointerItem = new SAGENextPolygonArrow(uiclientid, settings, QColor(QString(colorname)));
-        Q_ASSERT(pointerItem);
-        if (!pname.isNull() && !pname.isEmpty()) {
-            pointerItem->setPointerName(QString(pname));
-        }
-        Q_ASSERT(scene);
-		pointerItem->setScale(1.3);
-        scene->addItem(pointerItem);
+//		pointerItem = new SAGENextPolygonArrow(uiclientid, settings, QString(pname), QColor(QString(colorname)));
+//        Q_ASSERT(pointerItem);
+//        Q_ASSERT(scene);
+//		pointerItem->setScale(1.3);
+//        scene->addItem(pointerItem);
+		pointerItem = launcher->launchPointer(uiclientid, QString(pname), QColor(QString(colorname)));
 
         pointers.insert(uiclientid, pointerItem);
 
@@ -312,7 +310,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 
             // Below will call setAppUnderPointer()
             // followed by setTopmost()
-            pa->pointerPress(QPointF(x,y), Qt::LeftButton, Qt::NoButton | Qt::LeftButton);
+            pa->pointerPress(QPointF(x,y), Qt::LeftButton);
             //pa->setAppUnderPointer(QPointF(x,y));
         }
         else {
@@ -349,7 +347,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid);
 		if (pa) {
-			pa->pointerRelease(QPointF(x,y), Qt::LeftButton, Qt::LeftButton);
+			pa->pointerRelease(QPointF(x,y), Qt::LeftButton);
 		}
 		break;
 	}
@@ -365,7 +363,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid);
 		if (pa) {
-			pa->pointerRelease(QPointF(x,y), Qt::RightButton, Qt::RightButton);
+			pa->pointerRelease(QPointF(x,y), Qt::RightButton);
 		}
 		break;
 	}
@@ -381,7 +379,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
 //            qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
-            pa->pointerClick(QPointF(x,y), Qt::LeftButton, Qt::NoButton | Qt::LeftButton);
+            pa->pointerClick(QPointF(x,y), Qt::LeftButton);
 
 			// Let each application provides mouseClick()
 			 // Widget under the pointer can reimplement BaseWidget::mouseClick()
@@ -403,7 +401,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
-            pa->pointerClick(QPointF(x,y), Qt::RightButton, Qt::NoButton | Qt::RightButton);
+            pa->pointerClick(QPointF(x,y), Qt::RightButton);
         }
         else {
             qDebug("UiServer::%s() : POINTER_RIGHTCLICK can't find pointer object", __FUNCTION__);
@@ -421,7 +419,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
-            pa->pointerDoubleClick(QPointF(x, y), Qt::LeftButton, Qt::LeftButton);
+            pa->pointerDoubleClick(QPointF(x, y), Qt::LeftButton);
         }
 		else {
             qDebug("UiServer::%s() : POINTER_DOUBLECLICK  can't find pointer object", __FUNCTION__);

@@ -469,6 +469,9 @@ void SettingStackedDialog::on_buttonBox_accepted()
 	_settings->setValue("network/recvwindow", 16777216);
 	_settings->setValue("network/sendwindow", 65535);
 	_settings->setValue("network/mtu", 1450);
+
+
+	_settings->setValue("misc/printperfdataattheend", false);
 }
 
 void SettingStackedDialog::on_buttonBox_rejected()

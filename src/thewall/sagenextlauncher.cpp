@@ -4,6 +4,9 @@
 #include "common/commonitem.h"
 
 #include "sage/fsManager.h"
+#include "sage/fsmanagermsgthread.h"
+
+#include "system/resourcemonitor.h"
 
 #include "applications/base/basewidget.h"
 #include "applications/base/appinfo.h"
@@ -17,34 +20,28 @@
 #include "applications/sagestreamwidget.h"
 #include "applications/base/dummyplugininterface.h"
 
-#include "system/resourcemonitor.h"
 
-#include "sage/fsmanagermsgthread.h"
-
-
-
-
-SAGENextLauncher::SAGENextLauncher(const QSettings *s, SAGENextScene *scene,  ResourceMonitor *rm /*= 0*/, SchedulerControl *sc /* = 0*/,QObject *parent /*0*/) :
-        QObject(parent),
-        _settings(s),
-        _globalAppId(1),
-        _scene(scene),
-        _rMonitor(rm),
-        _schedCtrl(sc)
+SAGENextLauncher::SAGENextLauncher(const QSettings *s, SAGENextScene *scene, ResourceMonitor *rm /*= 0*/, SchedulerControl *sc /* = 0*/, QFile *scenarioFile, QObject *parent /*0*/)
+	: QObject(parent)
+	, _settings(s)
+	, _globalAppId(1)
+	, _scene(scene)
+	, _rMonitor(rm)
+	, _schedCtrl(sc)
+	, _scenarioFile(scenarioFile)
 {
-        Q_ASSERT(_settings);
-        Q_ASSERT(_scene);
+	Q_ASSERT(_settings);
+	Q_ASSERT(_scene);
 
-        // start listening for sage message
-        createFsManager();
+	// start listening for sage message
+	createFsManager();
 }
 
 SAGENextLauncher::~SAGENextLauncher() {
+	/* kills fsManager */
+	if (_fsm) _fsm->close(); _fsm->deleteLater();
 
-        /* kills fsManager */
-        if (_fsm) _fsm->close(); _fsm->deleteLater();
-
-        qDebug("%s::%s()" , metaObject()->className(), __FUNCTION__);
+	qDebug("%s::%s()" , metaObject()->className(), __FUNCTION__);
 }
 
 
@@ -53,9 +50,9 @@ void SAGENextLauncher::createFsManager() {
         /**
           QTcpServer::listen() will be called in constructor
           */
-        _fsm = new fsManager(_settings, this);
+	_fsm = new fsManager(_settings, this);
 //	connect(_fsm, SIGNAL(sailConnected(const quint64, QString, int, int, const QRect)), this, SLOT(startSageApp(const quint64,QString, int, int, const QRect)));
-        connect(_fsm, SIGNAL(incomingSail(fsManagerMsgThread*)), this, SLOT(launch(fsManagerMsgThread*)));
+	connect(_fsm, SIGNAL(incomingSail(fsManagerMsgThread*)), this, SLOT(launch(fsManagerMsgThread*)));
 }
 
 /**
@@ -65,15 +62,21 @@ BaseWidget * SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
         SageStreamWidget *sw = 0;
 
         if (_sageWidgetQueue.isEmpty()) {
+			// This means the SAGE application was NOT started by the launcher but manually by a user.
+			// For instance, running mplayer in console terminal will make fsManager to emit incomingSail(fsmThread *)
+			// which is connected to this slot
+
                 // create new sageWidget
                 sw = new SageStreamWidget("", _globalAppId, _settings, "127.0.0.1", _rMonitor); // 127.0.0.1 ??????????
         }
         else {
+			// This means the SAGE application was started by the launcher.
+			// For instances, through mediaBrowser, or drag&drop on sageNextPointer's drop frame
+
                 // there's sageWidget waiting for SAIL connection
                 sw = _sageWidgetQueue.front();
                 _sageWidgetQueue.pop_front();
         }
-
 
         // give fsmThread to the sagewidget
         if (sw) {
@@ -83,7 +86,6 @@ BaseWidget * SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
 
                 QObject::connect(sw, SIGNAL(destroyed()), fsmThread, SLOT(sendSailShutdownMsg()));
         }
-
 
         /*!
           Resource monitor & processor assignment
@@ -119,11 +121,33 @@ BaseWidget * SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
 BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
 	//        qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
 
+
+
+
+	//
+	// record event
+	//
+	if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
+		if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
+			char record[256];
+			sprintf(record, "%lld %d %d %s\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(filename));
+			_scenarioFile->write(record);
+		}
+		else {
+			qDebug() << "Launcher::launch() : can't write the launching event";
+		}
+	}
+
+
+
+
+
 	BaseWidget *w = 0;
 	switch(type) {
 	case MEDIA_TYPE_IMAGE: {
-
+		//
 		// streaming from ui client
+		//
 		if ( fsize > 0 && !recvIP.isEmpty() && recvPort > 0) {
 
 			// fire file receiving function
@@ -132,13 +156,16 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 			w = new PixmapWidget(fsize, senderIP, recvIP, recvPort, _globalAppId, _settings);
 		}
 
+		//
 		// from local storage
+		//
 		else if ( !filename.isEmpty() ) {
+
 			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			w = new PixmapWidget(filename, _globalAppId, _settings);
 		}
 		else
-			qCritical("%s() : MEDIA_TYPE_IMAGE can't open", __FUNCTION__);
+			qCritical("%s::%s() : MEDIA_TYPE_IMAGE can't open", metaObject()->className(), __FUNCTION__);
 
 		break;
 	}
@@ -147,25 +174,38 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 
 		// Assumes that the remote side (senderIP) has maplyer (compiled with SAIL) already
 
-		SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, senderIP, _rMonitor);
-//		sws->appInfo()->setFileInfo(filename);
-		w = sws;
-		_sageWidgetQueue.push_back(sws);
+		if (!filename.isEmpty() && !senderIP.isEmpty()) {
+			SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, senderIP, _rMonitor);
+			sws->appInfo()->setFileInfo(filename);
+			w = sws;
 
-		// invoke sail remotely
-		QProcess *proc1 = new QProcess(this);
-		QStringList args1;
-		//	args1 << "-xf" << senderIP << "\"cd $HOME/.sageConfig;$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0\"";
-		args1 << "-xf" << senderIP << "$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0" << filename;
+			//
+			// add widget to the queue for launch(fsmThread *)
+			//
+			_sageWidgetQueue.push_back(sws);
 
-		sws->appInfo()->setCmdArgs(args1);
+			// invoke sail remotely
+			QProcess *proc1 = new QProcess(this);
+			QStringList args1;
+			//	args1 << "-xf" << senderIP << "\"cd $HOME/.sageConfig;$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0\"";
+			args1 << "-xf" << senderIP << "$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0" << filename;
 
-		// this will invoke sail (outside of SAGENext)
-		// _globalAppId shouldn't be incremented in here because StartSageApp() will increment eventually
-		// Also SageStreamWidget will be added to the scene in there
-		proc1->start("ssh",  args1);
-		sws->appInfo()->setExecutableName("ssh");
+			sws->appInfo()->setCmdArgs(args1);
 
+			//
+			// this will invoke sail (outside of SAGENext) which will trigger fsManager::incomingSail(fsmThread *) signal which is connected to launch(fsmThread *)
+			//
+			proc1->start("ssh",  args1);
+			sws->appInfo()->setExecutableName("ssh");
+			sws->setSailAppProc(proc1);
+
+			//
+			///
+			//// launch(w) will be called in launch(fsmMessageThread *)
+			///
+			//
+			return sws;
+		}
 		break;
 	}
 
@@ -178,7 +218,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 			  create sageWidget
 			*/
 			SageStreamWidget *sws = new SageStreamWidget(filename, _globalAppId, _settings, "127.0.0.1", _rMonitor);
-//			sws->appInfo()->setFileInfo(filename);
+			sws->appInfo()->setFileInfo(filename);
 			w = sws;
 
 			/**
@@ -190,17 +230,30 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 	          initiate SAIL process
 			*/
 			QProcess *proc = new QProcess(this);
+//			proc->setWorkingDirectory("$SAGE_DIRECTORY");
+//			proc->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
+
 			QStringList args;
 			args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-identify" << filename;
 
 			sws->appInfo()->setCmdArgs(args);
 
-			// this will invoke sail (outside of SAGENext)
-			// _globalAppId shouldn't be incremented in here because StartSageApp() will increment eventually
-			// Also SageStreamWidget will be added to the scene in there
+			//
+			// this will invoke sail (outside of SAGENext) which will trigger fsManager::incomingSail(fsmThread *) signal which is connected to launch(fsmThread *)
+			//
+//			qDebug() << proc->environment();
+
 			proc->start("mplayer",  args);
+
 			sws->appInfo()->setExecutableName("mplayer");
 			sws->setSailAppProc(proc);
+
+			//
+			///
+			//// launch(w) will be called in launch(fsmMessageThread *)
+			///
+			//
+			return sws;
 		}
 
 		break;
@@ -306,8 +359,171 @@ BaseWidget * SAGENextLauncher::launch(BaseWidget *w) {
 	return w;
 }
 
+SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint64 uiclientid, const QString &name, const QColor &color) {
+
+	SAGENextPolygonArrow *pointer = 0;
+
+	//
+	// record NEW_POINTER
+	//
+	if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
+		if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
+			char record[256];
+			sprintf(record, "%lld %d %llu %s %s\n",QDateTime::currentMSecsSinceEpoch(), 1, uiclientid, qPrintable(name), qPrintable(color.name()));
+			_scenarioFile->write(record);
+
+			pointer = new SAGENextPolygonArrow(uiclientid, _settings, name, color, _scenarioFile);
+		}
+		else {
+			qDebug() << "Launcher::launchPointer() : Can't write";
+		}
+	}
+	else {
+		pointer = new SAGENextPolygonArrow(uiclientid, _settings, name, color);
+	}
+
+	_scene->addItem(pointer);
+	pointer->setScale(1.3);
+
+	// temporary for scenario
+	_pointerMap.insert(uiclientid, pointer);
+
+	return pointer;
+}
+
+void SAGENextLauncher::launchScenario(const QString &scenarioFilename) {
+	ScenarioThread *thread = new ScenarioThread(this, scenarioFilename);
+	thread->start();
+}
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+ScenarioThread::ScenarioThread(SAGENextLauncher *launcher, const QString &file, QObject *parent)
+	: QThread(parent)
+	, _launcher(launcher)
+{
+	_scenarioFile.setFileName(file);
+}
+ScenarioThread::~ScenarioThread()
+{
+	wait();
+}
+
+void ScenarioThread::run() {
+	Q_ASSERT(_launcher);
+	if (!_scenarioFile.exists()) {
+		qDebug() << _scenarioFile.fileName() << "doesn't exist";
+		return;
+	}
+
+	if (!_scenarioFile.open(QIODevice::ReadOnly)) {
+		qDebug() << "can't open" << _scenarioFile.fileName();
+		return;
+	}
+
+	// the very first line contains start time
+	char line[64];
+	qint64 read = _scenarioFile.readLine(line, 64);
+	qint64 starttime;
+	sscanf(line, "%lld", &starttime);
+
+	qint64 offset = QDateTime::currentMSecsSinceEpoch() - starttime;
+	qDebug() << "Starting scenario, Time offset:" << offset << "msec";
+
+	forever {
+		char line[512];
+		qint64 read = _scenarioFile.readLine(line, 512);
+
+		if (read == 0) {
+			qDebug() << "scenario thread : readLine returned" << read;
+			break;
+		}
+		else if (read < 0) {
+			qDebug() << "scenario thread : readLine returned" << read;
+			break;
+		}
+
+		qint64 when;
+		int type;
+		sscanf(line, "%lld %d", &when, &type);
+
+		qint64 sleep = (when + offset) - QDateTime::currentMSecsSinceEpoch();
+		if (sleep > 0) QThread::msleep((unsigned long)sleep);
+
+
+		quint64 pointerid;
+		int x,y;
+		int button;
+		SAGENextPolygonArrow *pointer = 0;
+
+
+
+		switch(type) {
+
+		case 0: {
+			int mtype;
+			char filename[256];
+			sscanf(line, "%lld %d %d %s", &when, &type, &mtype, filename);
+//			qDebug() << "NEW_WIDGET" << mtype << filename;
+//			_launcher->launch(mtype, QString(filename));
+			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(int, mtype), Q_ARG(QString, QString(filename)));
+			break;
+		}
+		case 1: {
+			quint64 uiclientid;
+			char pname[128];
+			char color[16];
+			sscanf(line, "%lld %d %llu %s %s", &when, &type, &uiclientid, pname, color);
+//			qDebug() << "NEW_POINTER" << uiclientid << pname << color;
+			_launcher->launchPointer(uiclientid, QString(pname), QColor(QString(color)));
+//			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(quint64, uiclientid), Q_ARG(QString, QString(pname)), Q_ARG(QColor, QColor(QString(color))));
+			break;
+		}
+		case 11: { // POINTER_UNSHARE
+			sscanf(line, "%lld %d %llu", &when, &type, &pointerid);
+			pointer = _launcher->_pointerMap.value(pointerid);
+			delete pointer;
+			break;
+		}
+		case 2: // move
+		case 3: // press
+		case 4: // release
+		case 5: // click
+		case 6: // dbl click
+		case 7: // wheel
+		{
+			sscanf(line, "%lld %d %llu %d %d %d", &when, &type, &pointerid, &x, &y, &button);
+			pointer = _launcher->_pointerMap.value(pointerid);
+			Q_ASSERT(pointer);
+
+			Qt::MouseButton btn = Qt::NoButton;
+			if (button == 1) btn = Qt::LeftButton;
+			else if (button == 2) btn = Qt::RightButton;
+
+			Qt::MouseButtons btnflag = btn | Qt::NoButton;
+
+			pointer->pointerOperation(type-2, QPointF(x,y), btn, button, btnflag);
+
+			break;
+		}
+
+		} // end of switch
+	}
+
+	qDebug() << "Scenario Thread finished";
+}
 
 
 

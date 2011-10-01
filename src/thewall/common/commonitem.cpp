@@ -4,7 +4,7 @@
 
 
 
-SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings *s, const QColor &c, QGraphicsItem *parent)
+SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings *s, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
     , _uiclientid(uicid)
     , _settings(s)
@@ -12,6 +12,7 @@ SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings 
 	, _color(c)
     , _basewidget(0)
     , _item(0)
+	, _scenarioFile(scenarioFile)
 {
 	QPolygonF p;
 	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
@@ -29,12 +30,21 @@ SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings 
 	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
 	setZValue(999999999); // the top most
+
+	if (!name.isNull() && !name.isEmpty())
+		setPointerName(name);
 }
 
 SAGENextPolygonArrow::~SAGENextPolygonArrow() {
 	SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
 	foreach(BaseWidget *bw, sc->hoverAcceptingApps) {
 		bw->removePointerFromPointerMap(this);
+	}
+	if (_scenarioFile) {
+		char buffer[64];
+		sprintf(buffer, "%lld %d %llu", QDateTime::currentMSecsSinceEpoch(), 11, _uiclientid);
+		_scenarioFile->write(buffer);
+		_scenarioFile->flush();
 	}
 }
 
@@ -63,6 +73,18 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
     // Sets the position of the item to pos, which is in parent coordinates. For items with no parent, pos is in scene coordinates.
 	//
     setPos(_scenePos);
+
+	//
+	// Record
+	//
+	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
+		char record[64];
+		int button = 0;
+		if (btnFlags & Qt::LeftButton) button = 1;
+		else if (btnFlags & Qt::RightButton) button = 2;
+		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 2, _uiclientid, _scenePos.toPoint().x(), _scenePos.toPoint().y(), button);
+		_scenarioFile->write(record);
+	}
 
 
 	//
@@ -180,8 +202,19 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
 /**
   Mouse right press won't be sent from uiclient
   */
-void SAGENextPolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
-	Q_UNUSED(btnFlags);
+void SAGENextPolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
+	Q_UNUSED(modifier);
+
+	//
+	// Record
+	//
+	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
+		char record[64];
+		sprintf(record, "%lld %d %llu %d %d %d\n",QDateTime::currentMSecsSinceEpoch(), 3, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
+		_scenarioFile->write(record);
+	}
+
+
 	// note that this doesn't consider window frame
     if (!setAppUnderPointer(scenePos)) {
         qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
@@ -205,7 +238,19 @@ void SAGENextPolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton
 }
 
 
-void SAGENextPolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier) {
+void SAGENextPolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
+	Q_UNUSED(modifier);
+
+	//
+	// Record
+	//
+	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
+		char record[64];
+		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 4, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), button);
+		_scenarioFile->write(record);
+	}
+
+
 	//
 	// left mouse draggin with the app has finished
 	//
@@ -224,6 +269,12 @@ void SAGENextPolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButt
 			if (sc->isOnAppRemoveButton(scenePos)) {
 				sc->hoverAcceptingApps.removeAll(_basewidget);
 				_basewidget->close();
+
+//				if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
+//					char record[64];
+//					sprintf(record, "%lld %d \n", QDateTime::currentMSecsSinceEpoch(), 8, _uiclientid, scenePos.x(), scenePos.y(), button);
+//					_scenarioFile->write(record);
+//				}
 			}
 		}
 	}
@@ -240,7 +291,7 @@ void SAGENextPolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButt
 }
 
 
-void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
+void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
     /**
       Instead of generating mouse event,
       I can let each widget implement BaseWidget::mouseClick()
@@ -272,37 +323,15 @@ void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton
 //	}
 
 
-	/*
-	  mouse event for graphics item
-	  */
-	/*
-	else if (_item) {
-		PartitionBar *snw = dynamic_cast<PartitionBar *>(_item);
-		if (! snw) {
-			qDebug() << "pointerClick() : it's not partitionBar";
 
-			QGraphicsView *view = eventReceivingViewport(scenePos);
-			if ( !view ) {
-				qDebug() << "pointerClick: no view is available";
-				return;
-			}
-			QPointF clickedViewPos = view->mapFromScene( scenePos );
-
-			QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
-			QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, Qt::NoModifier);
-
-//			if (_item) _item->grabMouse();
-			if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
-				// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
-				qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-			}
-			if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
-				qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-			}
-//			if (_item) _item->ungrabMouse();
-		}
+	//
+	// Record
+	//
+	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
+		char record[64];
+		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 5, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
+		_scenarioFile->write(record);
 	}
-	*/
 
 
 
@@ -338,8 +367,8 @@ void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton
 
 //		qDebug() << "pointerClick() : LeftButton" << scenePos;
 
-		QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btnFlags, modifier);
-		QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btnFlags, modifier);
+		QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
+		QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
 
 		if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
 			// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
@@ -362,7 +391,18 @@ void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton
 
 
 
-void SAGENextPolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
+void SAGENextPolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
+
+	//
+	// Record
+	//
+	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
+		char record[64];
+		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 6, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
+		_scenarioFile->write(record);
+	}
+
+
     if (!_basewidget) {
         qDebug("PolygonArrow::%s() : There's no app widget under this pointer", __FUNCTION__);
         return;
@@ -372,8 +412,8 @@ void SAGENextPolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::Mouse
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
     if (gview) {
-        QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), btn, btnFlags, modifier);
-		QMouseEvent release(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btnFlags, modifier);
+        QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), btn, btn | Qt::NoButton, modifier);
+		QMouseEvent release(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btn | Qt::NoButton, modifier);
 
         // sendEvent doesn't delete event object, so event should be created in stack space
         if ( ! QApplication::sendEvent(gview->viewport(), &dblClickEvent) ) {
@@ -404,7 +444,18 @@ void SAGENextPolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::Mouse
 
 
 
-void SAGENextPolygonArrow::pointerWheel(const QPointF &scenePos, int delta, Qt::KeyboardModifier modifier) {
+void SAGENextPolygonArrow::pointerWheel(const QPointF &scenePos, int delta, Qt::KeyboardModifier) {
+
+	//
+	// Record
+	//
+	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
+		char record[64];
+		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 7, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), delta);
+		_scenarioFile->write(record);
+	}
+
+
     // Generate mouse event directly from here
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
@@ -481,6 +532,44 @@ QGraphicsView * SAGENextPolygonArrow::eventReceivingViewport(const QPointF scene
         }
     }
 	return 0;
+}
+
+void SAGENextPolygonArrow::pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags) {
+	switch(opcode) {
+
+	// MOVE
+	case 0: {
+		pointerMove(scenepos, btnflags);
+		break;
+	}
+		// PRESS
+	case 1: {
+		pointerPress(scenepos, btn);
+		break;
+	}
+		// RELEASE
+	case 2: {
+		pointerRelease(scenepos, btn);
+		break;
+	}
+
+		// CLICK
+	case 3: {
+		pointerClick(scenepos, btn);
+		break;
+	}
+		// DOUBLE CLICK
+	case 4: {
+		pointerDoubleClick(scenepos, btn);
+		break;
+	}
+
+		// WHEEL
+	case 5: {
+		pointerWheel(scenepos, delta);
+		break;
+	}
+	}
 }
 
 

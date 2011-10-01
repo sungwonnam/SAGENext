@@ -85,11 +85,11 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 	qDebug() << "vnc constructor" << boundingRect() << size();
 
 
+	setWidgetType(BaseWidget::Widget_RealTime);
 	if (_perfMon) {
 		_perfMon->setExpectedFps( (qreal)framerate );
 		_perfMon->setAdjustedFps( (qreal)framerate );
 	}
-
 
 
 	/**

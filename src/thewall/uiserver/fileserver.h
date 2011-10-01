@@ -53,6 +53,8 @@ public:
     explicit FileServer(const QSettings *s, SAGENextLauncher *l, QObject *parent = 0);
 	~FileServer();
 
+	inline int fileServerListenPort() const {return _fileServerPort;}
+
 protected:
 	void incomingConnection(int handle);
 

@@ -87,7 +87,12 @@ BaseWidget::~BaseWidget()
         delete _contextMenu;
 
     if ( _appInfo ) delete _appInfo;
-    if ( _perfMon ) delete _perfMon;
+	if ( _perfMon ) {
+		if (settings->value("misc/printperfdataattheend",false).toBool()) {
+			_perfMon->printData();
+		}
+		delete _perfMon;
+	}
     //	if ( infoTextItem ) delete infoTextItem;
 
     qDebug("BaseWidget::%s() : Removed widget %llu from scene.", __FUNCTION__, _globalAppId);

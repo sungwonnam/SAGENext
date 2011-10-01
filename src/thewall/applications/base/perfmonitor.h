@@ -63,7 +63,7 @@ public:
 	inline qreal getAdjustedFps() const {return adjustedFps;}
 
 
-
+	void printData() const;
 
 
 

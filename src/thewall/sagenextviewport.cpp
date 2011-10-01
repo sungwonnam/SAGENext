@@ -108,6 +108,7 @@ void SAGENextViewport::on_actionFilesSelected(const QStringList &filenames) {
 	QRegExp rxPdf("\\.(pdf)$", Qt::CaseInsensitive, QRegExp::RegExp);
 	QRegExp rxSession("\\.session$", Qt::CaseInsensitive, QRegExp::RegExp);
 	QRegExp rxRatkoData("\\.log");
+	QRegExp rxScenario("\\.recording");
 	QRegExp rxPlugin;
 	rxPlugin.setCaseSensitivity(Qt::CaseInsensitive);
 	rxPlugin.setPatternSyntax(QRegExp::RegExp);
@@ -182,6 +183,11 @@ void SAGENextViewport::on_actionFilesSelected(const QStringList &filenames) {
 			*/
 //			RatkoDataSimulator *rdsThread = new RatkoDataSimulator(filename);
 //			rdsThread->start();
+		}
+
+		else if (filename.contains(rxScenario)) {
+			qDebug("%s::%s() : Launching scenario file, %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
+			_launcher->launchScenario(filename);
 		}
 
 

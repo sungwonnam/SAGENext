@@ -20,6 +20,8 @@
 
 #include <QProcess>
 
+#include <QGLWidget>
+
 //#include <sys/time.h>
 //#include <sys/resource.h>
 
@@ -255,8 +257,8 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 		painter->drawPixmap(0, 0, _pixmap); // the best so far
 	}
 
-	// if (!image2.isNull()  &&  isVisible())
-	// painter->drawImage(0, 0, image2);
+//	 if (!image2.isNull()  &&  isVisible())
+//		 painter->drawImage(0, 0, image2);
 
 
 	BaseWidget::paint(painter,o,w);
@@ -370,11 +372,11 @@ void SageStreamWidget::scheduleUpdate() {
 //            }
 
 
-            //image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
-            //image2 = QGLWidget::convertToGLFormat(*imgPtr);
-            //if ( image2.isNull() )  {
-            //	qDebug("Sibal");
-            //}
+//            image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
+//            image2 = QGLWidget::convertToGLFormat(*imgPtr);
+//			if ( image2.isNull() )  {
+//            	qDebug("Sibal");
+//            }
 
 
             else {

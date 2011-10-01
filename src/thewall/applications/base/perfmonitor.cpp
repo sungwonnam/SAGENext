@@ -74,7 +74,10 @@ PerfMonitor::PerfMonitor(QObject *parent) :
 ////	qDebug("%s() : avg draw latency %.3f msec, recv/draw (%llu, %llu)\n", __FUNCTION__, avgDrawLatency * 1000.0, recvFrameCount, drawCount);
 //}
 
-
+void PerfMonitor::printData() const {
+	// avgRecvLatency,  avgConvDelay,  avgDrawLatency,  avgRecvFps, avgDispFps, recvFpsVariance , avgAbsDeviation, recvFpsStdDeviation
+	qDebug() << avgRecvLatency << avgConvDelay << avgDrawLatency << avgRecvFps << avgDispFps  << recvFpsVariance << avgAbsDeviation << recvFpsStdDeviation;
+}
 
 
 ///*!

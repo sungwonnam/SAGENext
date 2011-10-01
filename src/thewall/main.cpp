@@ -21,7 +21,7 @@
 extern void qt_x11_set_global_double_buffer(bool);
 #endif
 
-
+#include <unistd.h>
 
 void setViewAttr(SAGENextViewport *view, const QSettings &s);
 
@@ -29,6 +29,53 @@ void setViewAttr(SAGENextViewport *view, const QSettings &s);
 
 int main(int argc, char *argv[])
 {
+	int errflag = 0;
+	int c;
+	QString configFile(QDir::homePath() + "/.sagenext/sagenext.ini");
+	bool popSettingsDialog = true;
+	QString recordingname; // null, empty string
+
+	while ((c = getopt(argc, argv, "c:r")) != -1) {
+		switch(c) {
+		case 'c': // config file
+		{
+			configFile = QString(optarg);
+			popSettingsDialog = false;
+			break;
+		}
+		case 'r': // recording
+		{
+			recordingname = QString(optarg);
+			break;
+		}
+		case '?':
+		{
+			errflag++;
+			break;
+		}
+		default:
+			errflag++;
+			break;
+		}
+	}
+	if (errflag) {
+		fprintf(stderr, "\n");
+		fprintf(stderr, "usage: %s\n", argv[0]);
+		fprintf(stderr, "\t -c <config file>: Optional config file name. default is ~/.sagenext/sagenext.ini\n");
+		fprintf(stderr, "\t -r <recording filename>: Turn on recording. Recording file is created in ~/.sagenext\n");
+		fprintf(stderr, "\t -g <opengl | raster>: graphics backend. opengl backend is still experimental\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "Examples\n");
+		fprintf(stderr, "./sagenext  (Run sagenext without recording. Configuration dialog will pop up with the default config file\n");
+		fprintf(stderr, "./sagenext -c configFile.ini  (Run sagenext without recording. Configuration dialog will NOT pop up\n");
+		fprintf(stderr, "./sagenest -c configFile.ini -r myrecord.recording  (Run sagenext with recording enabled. Configuration dialog will NOT pop up\n");
+		fprintf(stderr, "\n");
+		exit(-1);
+	}
+
+	//
+	// what is this?
+	//
 //	qt_x11_set_global_double_buffer(false);
 
 	/***
@@ -36,7 +83,8 @@ int main(int argc, char *argv[])
       QImage::Format_ARGB32_Premultiplied, QImage::Format_RGB32 or QImage::Format_RGB16
 	  And use QImage as a paintdevice
 	***/
-	QApplication::setGraphicsSystem("raster");
+	QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
+//	QApplication::setGraphicsSystem( "raster" );
 
 	QApplication a(argc, argv);
 
@@ -45,7 +93,18 @@ int main(int argc, char *argv[])
 	/*
       create system wide settings object
 	 */
-	QSettings s(QDir::homePath() + "/.sagenext/sagenext.ini", QSettings::IniFormat);
+	QSettings s(configFile, QSettings::IniFormat);
+
+
+	if (!recordingname.isNull() && !recordingname.isEmpty()) {
+		s.setValue("misc/record_launcher", true);
+		s.setValue("misc/record_pointer", true);
+		s.setValue("misc/recordingfile", recordingname);
+	}
+	else {
+		s.setValue("misc/record_launcher", false);
+		s.setValue("misc/record_pointer", false);
+	}
 
 
 	//
@@ -65,11 +124,13 @@ int main(int argc, char *argv[])
 		}
 	}
 	layoutFile.close();
+	/*
 	qDebug() << "Screen layout before setting dialog";
 	QMap<QPair<int,int>,int>::iterator it = screenLayout.begin();
 	for (; it != screenLayout.end(); it++) {
 		qDebug() << it.key() << ": " << it.value();
 	}
+	*/
 
 
         /**
@@ -183,12 +244,15 @@ int main(int argc, char *argv[])
 
 
 	//
-	// launch setting dialog
+	// launch setting dialog if user didn't provide config file
 	//
-	SettingStackedDialog sd(&s, &screenLayout);
-	sd.setWindowModality(Qt::ApplicationModal);
-	sd.adjustSize();
-	sd.exec();
+	if (popSettingsDialog) {
+		SettingStackedDialog sd(&s, &screenLayout);
+		sd.setWindowModality(Qt::ApplicationModal);
+		sd.adjustSize();
+		sd.exec();
+	}
+	s.setValue("misc/printperfdataattheend", true);
 
 
         /**
@@ -217,7 +281,7 @@ int main(int argc, char *argv[])
 	/**
       create the scene (This is a QObject)
       */
-	qDebug() << "Creating SAGENext Scenes";
+	qDebug() << "Creating the SAGENextScene" << s.value("general/width").toDouble() << s.value("general/height").toDouble();
 	SAGENextScene *scene = new SAGENextScene(QRectF(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble()) ,  &s);
 
 
@@ -248,7 +312,7 @@ int main(int argc, char *argv[])
 
 		char *val = getenv("EXP_DATA_FILE");
 		if ( val ) {
-			qDebug("EXP_DATA_FILE is defined");
+			qDebug("EXP_DATA_FILE is defined. Performance data will be written by the ResourceMonitor.");
 			resourceMonitor->setPrintDataFlag(true);
 			resourceMonitor->printPrelimDataHeader();
 		}
@@ -268,7 +332,26 @@ int main(int argc, char *argv[])
 	/**
 	  create the launcher
       */
-	SAGENextLauncher *launcher = new SAGENextLauncher(&s, scene, resourceMonitor, schedcontrol, scene); // scene is the parent
+	QFile *scenarioFile = 0;
+	if (s.value("misc/record_launcher", false).toBool() ||  s.value("misc/record_pointer", false).toBool()) {
+
+		recordingname.append( "__" + s.value("general/wallip").toString() );
+
+		QString filetimestr = QDateTime::currentDateTime().toString("hh:mm:ss.zzz_MM.dd.yyyy_");
+		filetimestr.append(".recording");
+		recordingname.append(filetimestr);
+
+		qDebug() << "SAGENext will record events to" << recordingname;
+
+		scenarioFile = new QFile(QDir::homePath() + "/.sagenext/" + recordingname);
+		scenarioFile->open(QIODevice::ReadWrite);
+
+		qint64 time = QDateTime::currentMSecsSinceEpoch();
+		char buffer[64];
+		sprintf(buffer, "%lld\n", time);
+		scenarioFile->write(buffer); // fill the first line
+	}
+	SAGENextLauncher *launcher = new SAGENextLauncher(&s, scene, resourceMonitor, schedcontrol, scenarioFile, scene); // scene is the parent
 
 
 	/**
@@ -281,13 +364,16 @@ int main(int argc, char *argv[])
 	  create the FileServer
 	 */
 	FileServer *fileServer = new FileServer(&s, launcher);
+	qDebug() << "FileServer is listening on" << fileServer->fileServerListenPort();
 
 
+	/*
 	qDebug() << "Screen layout after setting dialog";
 	QMap<QPair<int,int>,int>::iterator it2 = screenLayout.begin();
 	for (; it2 != screenLayout.end(); it2++) {
 		qDebug() << it2.key() << ": " << it2.value();
 	}
+	*/
 
 
         /**
@@ -296,7 +382,7 @@ int main(int argc, char *argv[])
 	qDebug() << "Creating SAGENext Viewport";
 	SAGENextViewport *gvm = 0;
 
-	QGLFormat glFormat(QGL::DepthBuffer /*QGL::AlphaChannel | QGL::SampleBuffers*/);
+	QGLFormat glFormat(QGL::DoubleBuffer | QGL::Rgba  | QGL::DepthBuffer | QGL::SampleBuffers);
 
 	if (s.value("graphics/isxinerama").toBool()) {
 		gvm = new SAGENextViewport;
@@ -306,7 +392,10 @@ int main(int argc, char *argv[])
 			  in linux, youtube isn't working with OpenGL viewport
 			  */
 			gvm->setViewport(new QGLWidget(glFormat));
-			qDebug() << "[ using QGLWidget as the viewport ]";
+			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+			gvm->setWindowState(Qt::WindowFullScreen);
+			qDebug() << "\n[ using QGLWidget as the viewport ]";
+			qDebug() << glFormat << "\n";
 		}
 		gvm->setScene(scene);
 		gvm->move(s.value("general/offsetx", 0).toInt(), s.value("general/offsety", 0).toInt());
@@ -331,7 +420,11 @@ int main(int argc, char *argv[])
 				  in linux, youtube isn't working with OpenGL viewport
 				  */
 				gvm->setViewport(new QGLWidget(glFormat, dw->screen(i)));
-				qDebug() << "[ using QGLWidget as the viewport ]";
+				gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+				gvm->setWindowState(Qt::WindowFullScreen);
+				qDebug() << "\n[ using QGLWidget as the viewport ]";
+				qDebug() << glFormat << "\n";
+
 			}
 			gvm->setScene(scene);
 
@@ -374,9 +467,17 @@ int main(int argc, char *argv[])
 //		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
 //		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
 
+//	launcher->launchScenario( QDir::homePath() + "/.sagenext/test.scenario" );
+
 
 	// starts the event loop
 	int ret = a.exec();
+
+
+	if (scenarioFile) {
+		scenarioFile->flush();
+		scenarioFile->close();
+	}
 
 
 
@@ -401,20 +502,19 @@ void setViewAttr(SAGENextViewport *gvm, const QSettings &s) {
 	//
 	// viewport update mode
 	//
-	if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "full", Qt::CaseInsensitive) == 0 ) {
-		gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
-	}
-	else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "minimal", Qt::CaseInsensitive) == 0 ) {
-		gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
-	}
-	else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "smart", Qt::CaseInsensitive) == 0 ) {
-		gvm->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
-	}
-	else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "no update", Qt::CaseInsensitive) == 0 ) {
-		gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
-	}
-	else {
-		gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
+	if ( ! s.value("graphics/openglviewport").toBool() ) {
+		if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "minimal", Qt::CaseInsensitive) == 0 ) {
+			gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
+		}
+		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "smart", Qt::CaseInsensitive) == 0 ) {
+			gvm->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+		}
+		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "no update", Qt::CaseInsensitive) == 0 ) {
+			gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
+		}
+		else {
+			gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
+		}
 	}
 	/* DON'T DO THIS ! poor performance and not correct. I don't know why. It's worth look into this */
     //gvm->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
@@ -424,15 +524,19 @@ void setViewAttr(SAGENextViewport *gvm, const QSettings &s) {
 	gvm->setContentsMargins(0, 0, 0, 0);
 
 	gvm->setRenderHint(QPainter::SmoothPixmapTransform);
-	//gvm->setRenderHint(QPainter::HighQualityAntialiasing);
+	//gvm->setRenderHint(QPainter::HighQualityAntialiasing); // OpenGL
 	gvm->setAttribute(Qt::WA_DeleteOnClose);
 	gvm->setWindowFlags(Qt::FramelessWindowHint);
 
-//  gvm->setWindowState(Qt::WindowFullScreen);
 	gvm->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	gvm->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-	gvm->setDragMode(QGraphicsView::RubberBandDrag);
+	gvm->setDragMode(QGraphicsView::NoDrag); // NoDrag is default
+
+	///
+	/// GraphicsView will not protect the painter state when rendering.
+	/// You can call QPainter::setPen() or setBrush() without restoring the state after painting
+	///
 	gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, true);
 }
 

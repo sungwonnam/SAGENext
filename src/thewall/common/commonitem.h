@@ -12,7 +12,7 @@ class BaseWidget;
   */
 class SAGENextPolygonArrow : public QGraphicsPolygonItem {
 public:
-	SAGENextPolygonArrow(const quint64 uicid, const QSettings *, const QColor &c = QColor(Qt::red), QGraphicsItem *parent=0);
+	SAGENextPolygonArrow(const quint64 uicid, const QSettings *, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
 	~SAGENextPolygonArrow();
 
 	void setPointerName(const QString &text);
@@ -22,6 +22,7 @@ public:
 
 	inline QColor color() const {return _color;}
 
+	void pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags);
 
         /**
           This is called by pointerPress()
@@ -44,7 +45,7 @@ public:
           The setAppUnderPointer() is called if left button.
 		  Initiate selection rectangle if right button.
           */
-        virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
+        virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 
 		/**
@@ -54,7 +55,7 @@ public:
 		  LeftRelease can mean app droping
 		  RightRelease can mean the end position of selection rectangle
 		  */
-		virtual void pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
+		virtual void pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 		/**
           simulate mouse click by sending mousePressEvent followed by mouseReleaseEvent
@@ -62,7 +63,7 @@ public:
 		  press
 		  release
           */
-        virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
+        virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button,  Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
            This function generates and sends real doubleclick event to the viewport widget.
@@ -73,7 +74,7 @@ public:
 		   release
 
           */
-        virtual void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
+        virtual void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button,  Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
            This function generates and sends real mouse wheel event to the viewport widget
@@ -112,6 +113,11 @@ private:
 		  The graphics item under this pointer. This is to keep track general items on the scene
 		  */
 		QGraphicsItem *_item;
+
+		/**
+		  To record all the actions that users gave
+		  */
+		QFile *_scenarioFile;
 
 		/**
 		  Returns the view on which the event occured.
