@@ -7,6 +7,19 @@ class BaseWidget;
 
 
 /**
+  A selection rectangle when the pointer selects a set of basewidget with dragging
+  */
+class SelectionRectangle : public QGraphicsWidget {
+	Q_OBJECT
+public:
+	explicit SelectionRectangle(QGraphicsItem *parent = 0);
+};
+
+
+
+
+
+/**
   When a user shares his pointer through ui client,
   This class is instantiated and added to the scene
   */
@@ -113,6 +126,16 @@ private:
 		  The graphics item under this pointer. This is to keep track general items on the scene
 		  */
 		QGraphicsItem *_item;
+		
+		/**
+		  A rectangle when mouse draggin on empty space
+		  */
+		SelectionRectangle *_selectionRect;
+		
+		/**
+		  a set of basewidgtes selected by selection rectangle
+		  */
+		QGraphicsItemGroup *_selectedApps;
 
 		/**
 		  To record all the actions that users gave
