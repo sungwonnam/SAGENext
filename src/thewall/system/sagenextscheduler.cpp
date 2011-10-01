@@ -571,7 +571,7 @@ void DelayDistributionScheduler::doSchedule() {
 		// framerate deviation from adjusted FPS
 		SumAdjDevi += r->perfMon()->getCurrAdjDeviation();
 
-		SumResNeeded += (r->perfMon()->getCurrAdjDeviation() * r->appInfo()->getFrameBytecount() * 8); // bps
+		SumResNeeded += (r->perfMon()->getCurrAdjDeviation() * r->appInfo()->frameSizeInByte() * 8); // bps
 //		system_wide_curr_bandwidth += r->perfMon()->getCurrBandwidthMbps();
 
 //		r->setQuality( r->observedQuality() );
@@ -586,9 +586,9 @@ void DelayDistributionScheduler::doSchedule() {
 	foreach (RailawareWidget *r, wlist) {
 		qreal p = r->priority(currMsecSinceEpoch) / SumPriority;
 		int intp = p * 100;
-		qDebug() << r->globalAppId() << p << intp << "%. I need " << ((r->perfMon()->getExpetctedFps() * 8 * r->appInfo()->getFrameBytecount()) / 1000000) - r->perfMon()->getCurrBandwidthMbps() << "Mbps more";
+		qDebug() << r->globalAppId() << p << intp << "%. I need " << ((r->perfMon()->getExpetctedFps() * 8 * r->appInfo()->frameSizeInByte()) / 1000000) - r->perfMon()->getCurrBandwidthMbps() << "Mbps more";
 
-		qreal needed = ((r->perfMon()->getExpetctedFps() * 8 * r->appInfo()->getFrameBytecount()) / 1000000) - r->perfMon()->getCurrBandwidthMbps(); // Mbps more needed to fullfill expected FPS
+		qreal needed = ((r->perfMon()->getExpetctedFps() * 8 * r->appInfo()->frameSizeInByte()) / 1000000) - r->perfMon()->getCurrBandwidthMbps(); // Mbps more needed to fullfill expected FPS
 		qreal allowed = p * needed;
 	}
 	qDebug() << "\n\n";
@@ -1313,7 +1313,7 @@ void DividerWidgetScheduler::doSchedule() {
 //		higher->perfMon()->setAdjustedFps( desired_minimum_fps );
 		higher->setQuality(newQualityScale);
 
-		qreal expectedBW = 8 * higher->appInfo()->getFrameBytecount() * higher->perfMon()->getAdjustedFps(); // desired bandwidth based on the curve (in bps)
+		qreal expectedBW = 8 * higher->appInfo()->frameSizeInByte() * higher->perfMon()->getAdjustedFps(); // desired bandwidth based on the curve (in bps)
 		qreal observedBW = 1000000 * higher->perfMon()->getCurrBandwidthMbps(); // current observed bandwidth in bps
 		qreal requiredBW = expectedBW - observedBW;
 		if (requiredBW > 0)
@@ -1404,7 +1404,7 @@ void DividerWidgetScheduler::doSchedule() {
 					else {
 						qDebug() << "\tlower priority widget id" << r->globalAppId() << " adjusted fps" << r->perfMon()->getAdjustedFps();
 						// update knapsack ( is in bps )
-						totalRequiredResource -= (scoop * 8 * r->appInfo()->getFrameBytecount()); // scoop frame worth bandwidth
+						totalRequiredResource -= (scoop * 8 * r->appInfo()->frameSizeInByte()); // scoop frame worth bandwidth
 					}
 
 					/*********************************

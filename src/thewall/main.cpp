@@ -385,7 +385,7 @@ int main(int argc, char *argv[])
 	QGLFormat glFormat(QGL::DoubleBuffer | QGL::Rgba  | QGL::DepthBuffer | QGL::SampleBuffers);
 
 	if (s.value("graphics/isxinerama").toBool()) {
-		gvm = new SAGENextViewport;
+		gvm = new SAGENextViewport(scene, 0, launcher);
 
 		if ( s.value("graphics/openglviewport").toBool() ) {
 			/**
@@ -397,12 +397,8 @@ int main(int argc, char *argv[])
 			qDebug() << "\n[ using QGLWidget as the viewport ]";
 			qDebug() << glFormat << "\n";
 		}
-		gvm->setScene(scene);
 		gvm->move(s.value("general/offsetx", 0).toInt(), s.value("general/offsety", 0).toInt());
         gvm->resize(scene->sceneRect().size().toSize());
-
-		// this is for the file dialog
-		gvm->setLauncher(launcher);
 
 		setViewAttr(gvm, s);
 
@@ -413,7 +409,7 @@ int main(int argc, char *argv[])
 			//
 			// A viewport for each X screen
 			//
-			gvm = new SAGENextViewport(i, dw->screen(i));
+			gvm = new SAGENextViewport(scene, i, launcher, dw->screen(i));
 
 			if ( s.value("graphics/openglviewport").toBool() ) {
 				/**
@@ -426,8 +422,6 @@ int main(int argc, char *argv[])
 				qDebug() << glFormat << "\n";
 
 			}
-			gvm->setScene(scene);
-
 			//
 			// set sceneRect to be viewed for each viewport. Bezel size has to be applied to here
 			//
@@ -446,12 +440,6 @@ int main(int argc, char *argv[])
 			// resize viewport to screen geometry (filling the screen)
 			//
 			gvm->resize(dw->screenGeometry(i).size());
-
-
-			gvm->setScene(scene);
-
-			// this is for the file dialog
-			gvm->setLauncher(launcher);
 
 			setViewAttr(gvm, s);
 

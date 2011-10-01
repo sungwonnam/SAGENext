@@ -21,47 +21,49 @@ public:
 	AppInfo(int width, int height, int bpp = 24);
 	AppInfo(int width, int height, int bpp, const QString filename, const QString srcip);
 
-//	inline QMimeData & getMimeData() { return mimedata;}
 
-	void setFileInfo(const QString &absoluteFilePath);
-	void setWebUrl(const QString & url);
+	inline void setMediaType(MEDIA_TYPE t) {_mtype = t;}
+	inline MEDIA_TYPE mediaType() const { return _mtype; }
+
+	inline void setFileInfo(const QString &absoluteFilePath) {_fileinfo.setFile(absoluteFilePath);}
+	inline QFileInfo fileInfo() const {return _fileinfo;}
+	inline QString mediaFilename() const { return _fileinfo.absoluteFilePath(); }
+
+	/**
+	  useful for SageStreamWidget
+	  */
+	inline void setExecutableName(const QString &str) {_executableName = str;}
+	inline QString executableName() const {return _executableName;}
+
+	/**
+	  useful for SageStreamWidget
+	  */
+	inline void setCmdArgs(const QStringList &strlist) {_cmdArgs = strlist;}
+	inline QStringList cmdArgs() const {return _cmdArgs;}
+
+	/**
+	  WebWidget
+	  */
+	inline void setWebUrl(const QUrl &url) {_webUrl = url;}
+	inline QUrl webUrl() const {return _webUrl;}
 
 	inline void setNativeSize(const QSize &s) { _nativeSize = s;}
 	inline QSize nativeSize() const {return _nativeSize;}
 
+	/**
+	  sender ip address for VNCWidget and SageStreamWidget
+	  */
 	inline void setSrcAddr(const QString &ip) {_srcaddr = ip;}
+	inline const QString & srcAddr() const {return _srcaddr;}
+
+	inline quint16 bitPerPixel() const { return _bitPerPixel; }
 
 	/**
-	  this sets _nativeSize as well
+	  This sets _nativeSize and _bitPerPixel as well
 	  */
 	void setFrameSize(int width, int height, int bpp);
-	//inline void setFrameSize(int bytecount) { frameSize = bytecount; }
+	inline quint32 frameSizeInByte() const { return _frameSize; }
 
-	inline void setMediaType(MEDIA_TYPE t) {mtype = t;}
-	inline MEDIA_TYPE mediaType() const { return mtype; }
-
-	inline void setDrawingThreadCpu(int c) {drawingThreadCpu=c;}
-	inline void setNetworkUserBufferLength(int l) {networkUserBufferLength=l;}
-
-	inline void setWebUrl(const QUrl &url) {_webUrl = url;}
-
-	inline void setExecutableName(const QString &str) {_executableName = str;}
-	inline void setCmdArgs(const QStringList &strlist) {_cmdArgs = strlist;}
-
-
-	inline QString mediaFilename() const { return fileinfo.absoluteFilePath(); }
-	inline quint32 getFrameBytecount() const { return frameSize; }
-//	inline quint32 getOrgWidth() const { return orgWidth; }
-//	inline quint32 getOrgHeight() const { return orgHeight; }
-	inline quint16 getBitPerPixel() const { return bitPerPixel; }
-
-	inline int getDrawingThreadCpu() const {return drawingThreadCpu;}
-	inline int getNetworkUserBufferLength() const {return networkUserBufferLength;}
-
-	inline QUrl webUrl() const {return _webUrl;}
-
-	inline QString executableName() const {return _executableName;}
-	inline QStringList cmdArgs() const {return _cmdArgs;}
 
 	/**
 	  * saved when maximized/minimized for restore later
@@ -69,25 +71,31 @@ public:
 	inline void setRecentPos(const QPointF &p) {_recentPos = p;}
 	inline QPointF recentPos() const {return _recentPos;}
 
-	inline void setRecentScale(qreal s) {_recentScale = s;}
-	inline qreal recentScale() const {return _recentScale;}
-
 	inline void setRecentSize(const QSizeF &s) {_recentSize = s;}
 	inline QSizeF recentSize() const {return _recentSize;}
 
+	inline void setRecentScale(qreal s) {_recentScale = s;}
+	inline qreal recentScale() const {return _recentScale;}
 
 	inline void setVncUsername(const QString &s) {_vncUsername = s;}
 	inline void setVncPassword(const QString &s) {_vncPasswd = s;}
 	inline QString vncUsername() const {return _vncUsername;}
 	inline QString vncPassword() const {return _vncPasswd;}
 
+
+	inline void setDrawingThreadCpu(int c) {_drawingThreadCpu=c;}
+	inline int drawingThreadCpu() const {return _drawingThreadCpu;}
+
+	inline void setNetworkUserBufferLength(int l) {_networkUserBufferLength=l;}
+	inline int networkUserBufferLength() const {return _networkUserBufferLength;}
+
 private:
-	MEDIA_TYPE mtype;
+	MEDIA_TYPE _mtype;
 
 	/**
 	  * file information. If it's web then isNull
 	  */
-	QFileInfo fileinfo;
+	QFileInfo _fileinfo;
 
 	/*!
 	  SAIL application name for SAGE app
@@ -111,12 +119,12 @@ private:
 	  */
 	QString _srcaddr;
 
-	quint16 bitPerPixel;
+	quint16 _bitPerPixel;
 
 	/**
 	  * Byte count of single frame
 	  */
-	quint32 frameSize;
+	quint32 _frameSize;
 
 	/**
 	  QGraphicsItem pos
@@ -136,9 +144,9 @@ private:
 	/**
 	  * On which cpu, drawing thread is
 	  */
-	int drawingThreadCpu;
+	int _drawingThreadCpu;
 
-	int networkUserBufferLength;
+	int _networkUserBufferLength;
 
 	QString _vncUsername;
 

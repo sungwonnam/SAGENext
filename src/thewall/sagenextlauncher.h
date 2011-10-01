@@ -100,14 +100,23 @@ public slots:
           */
         BaseWidget * launch(BaseWidget *);
 
+		/**
+		  Only with filename, this slot launches all sorts of things (media, session, recording,..)
+		  */
+		BaseWidget * launch(const QStringList &fileList);
+
 
 		SAGENextPolygonArrow * launchPointer(quint64 uiclientid, const QString &name, const QColor &color);
 
+		/**
+		  Load a saved session
+		  */
+		void launchSavedSession(const QString &sessionfilename);
 
 		/**
 		  This slot should be running in a separate thread
 		  */
-		void launchScenario(const QString &scenarioFilename);
+		void launchRecording(const QString &recordingFilename);
 };
 
 
