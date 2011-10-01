@@ -60,11 +60,13 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
 	if (isWindow()) {
 		// window frame is not interactible by shared pointers
 		setWindowFrameMargins(0, 0, 0, 0);
+		
 		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
 		setContentsMargins(l, t + 20, r, b); // by default, this is 0 0 0 0
 	}
 	else {
-		setWindowFrameMargins(l, t, r, b);
+		// setting frameMargins won't have any effect.. (Qt::Widget doesn't have frame)
+		// setting contentMargins won't have any effect unless this widget has a layout.
 	}
 
 	init();
@@ -737,6 +739,26 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 //	}
 //	painter->setPen(pen);
 //	painter->drawRect(windowFrameRect());
+	
+	/*
+	QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
+	if (isSelected()) {
+ lg.setColorAt(0, QColor(250, 250, 0, 164));
+	lg.setColorAt(1, QColor(200, 0, 0, 164));
+	}
+	else {
+ lg.setColorAt(0, QColor(230, 230, 230, 164));
+	lg.setColorAt(1, QColor(20, 20, 20, 164));
+	}
+	QBrush brush(lg);
+	
+	QPen pen;
+	pen.setWidth(6);
+	pen.setBrush(brush);
+	
+	painter->setPen(pen);
+	painter->drawRect(boundingRect());
+	*/
 
 
 
@@ -754,20 +776,6 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 		Q_ASSERT(infoTextItem);
 		infoTextItem->hide();
 	}
-}
-
-void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-    Q_UNUSED(option);
-    Q_UNUSED(widget);
-
-	if (isSelected()) {
-		painter->fillRect(windowFrameRect(), _borderColorSelected);
-	}
-	else {
-		painter->fillRect(windowFrameRect(), _borderColor);
-	}
-	// Or let's use default implementation
-//	QGraphicsWidget::paintWindowFrame(painter, option, widget);
 }
 
 

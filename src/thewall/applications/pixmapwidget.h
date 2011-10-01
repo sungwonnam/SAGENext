@@ -28,7 +28,7 @@ public:
 
 
 	/*!
-	  single-shot pixel receiving thread.
+	  single-shot pixel receiving thread. (Either from local file or socket)
 	  */
 	bool readImage();
 
@@ -76,11 +76,15 @@ private:
 	QFutureWatcher<bool> *futureWatcher;
 
 	/*!
-	  Starts readImage function as a thread
+	  Starts readImage function as a thread.
+	  This is called in the constructor
 	  */
 	void start();
 
 public slots:
+	/**
+	  After an image has loaded (after the thread finished), this slot is called to do resize() and update()
+	  */
 	void callUpdate();
 };
 

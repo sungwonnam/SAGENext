@@ -511,7 +511,7 @@ void setViewAttr(SAGENextViewport *gvm, const QSettings &s) {
 	gvm->setLineWidth(0);
 	gvm->setContentsMargins(0, 0, 0, 0);
 
-	gvm->setRenderHint(QPainter::SmoothPixmapTransform);
+//	gvm->setRenderHint(QPainter::SmoothPixmapTransform); // this isn't good for performance
 	//gvm->setRenderHint(QPainter::HighQualityAntialiasing); // OpenGL
 	gvm->setAttribute(Qt::WA_DeleteOnClose);
 	gvm->setWindowFlags(Qt::FramelessWindowHint);

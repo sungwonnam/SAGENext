@@ -73,9 +73,9 @@ public:
 
 
 		/**
-		  This seems only valid on Qt::Window
+		  This seems only valid on Qt::Window and windowFrameMargins > 0
 		  */
-        virtual void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+//        virtual void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 
         /*!

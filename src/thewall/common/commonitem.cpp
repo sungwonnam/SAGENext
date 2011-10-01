@@ -3,6 +3,12 @@
 #include "../sagenextscene.h"
 
 
+SelectionRectangle::SelectionRectangle(QGraphicsItem *parent)
+	: QGraphicsWidget(parent)
+{
+	
+}
+
 
 SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings *s, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
@@ -12,8 +18,15 @@ SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings 
 	, _color(c)
     , _basewidget(0)
     , _item(0)
+	, _selectionRect(0)
+	, _selectedApps(0)
 	, _scenarioFile(scenarioFile)
 {
+	///
+	/// will this help?
+	///
+	setCacheMode(QGraphicsItem::ItemCoordinateCache);
+	
 	QPolygonF p;
 	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
 
