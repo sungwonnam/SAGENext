@@ -624,7 +624,7 @@ void BaseWidget::updateInfoTextItem()
 		        /*qPrintable(appInfo->getFilename()),*/
 		        /* SizeRatio: %u %%\n */
 		        , _globalAppId
-		        , _appInfo->nativeSize().width() ,_appInfo->nativeSize().height(), _appInfo->getBitPerPixel(), _appInfo->getFrameBytecount() / 1024 // to KiloByte
+		        , _appInfo->nativeSize().width() ,_appInfo->nativeSize().height(), _appInfo->bitPerPixel(), _appInfo->frameSizeInByte() / 1024 // to KiloByte
 		        , rect.topLeft().x(), rect.topLeft().y()
 		        , rect.width(), rect.height()
 		        , scale()

@@ -359,6 +359,107 @@ BaseWidget * SAGENextLauncher::launch(BaseWidget *w) {
 	return w;
 }
 
+BaseWidget * SAGENextLauncher::launch(const QStringList &fileList) {
+	if ( fileList.empty() ) {
+		return 0;
+	}
+
+	QRegExp rxVideo("\\.(avi|mov|mpg|mpeg|mp4|mkv|flv|wmv)$", Qt::CaseInsensitive, QRegExp::RegExp);
+	QRegExp rxImage("\\.(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
+	QRegExp rxPdf("\\.(pdf)$", Qt::CaseInsensitive, QRegExp::RegExp);
+	QRegExp rxPlugin;
+	rxPlugin.setCaseSensitivity(Qt::CaseInsensitive);
+	rxPlugin.setPatternSyntax(QRegExp::RegExp);
+#if defined(Q_OS_LINUX)
+	rxPlugin.setPattern("\\.so$");
+#elif defined(Q_OS_WIN32)
+	rxPlugin.setPattern("\\.dll$");
+#elif defined(Q_OS_DARWIN)
+	rxPlugin.setPattern("\\.dylib$");
+#endif
+
+	QRegExp rxSession("\\.session$", Qt::CaseInsensitive, QRegExp::RegExp);
+	QRegExp rxScenario("\\.recording", Qt::CaseInsensitive, QRegExp::RegExp);
+	QRegExp rxRatkoData("\\.log", Qt::CaseInsensitive, QRegExp::RegExp);
+
+	for ( int i=0; i<fileList.size(); i++ ) {
+		//qDebug("GraphicsViewMain::%s() : %d, %s", __FUNCTION__, i, qPrintable(filenames.at(i)));
+		QString filename = fileList.at(i);
+
+		if ( filename.contains(rxVideo) ) {
+			qDebug("%s::%s() : Opening a video file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+
+//			w = new PhononWidget(filename, globalAppId, settings);
+//			QFuture<void> future = QtConcurrent::run(qobject_cast<PhononWidget *>(w), &PhononWidget::threadInit, filename);
+
+			return launch((int)MEDIA_TYPE_LOCAL_VIDEO, filename);
+		}
+
+		/*!
+		  Image
+		  */
+		else if ( filename.contains(rxImage) ) {
+			qDebug("%s::%s() : Opening an image file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+			return launch((int)MEDIA_TYPE_IMAGE, filename);
+		}
+
+		/*!
+		  PDF
+		  */
+		else if ( filename.contains(rxPdf) ) {
+			qDebug("%s::%s() : Opening a PDF file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+			return launch((int)MEDIA_TYPE_PDF, filename);
+		}
+
+		/**
+		  * plugin
+		  */
+		else if (filename.contains(rxPlugin) ) {
+			qDebug("%s::%s() : Loading a plugin %s", metaObject()->className(),__FUNCTION__, qPrintable(filename));
+			return launch((int)MEDIA_TYPE_PLUGIN, filename);
+		}
+
+		/*!
+		  session
+		  */
+		else if (filename.contains(rxSession) ) {
+			qDebug("%s::%s() : Loading a session %s", metaObject()->className(),__FUNCTION__, qPrintable(filename));
+			launchSavedSession(filename);
+			return 0;
+		}
+
+		/**
+		  Recording
+		  */
+		else if (filename.contains(rxScenario)) {
+			qDebug("%s::%s() : Launching a recording file, %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
+			launchRecording(filename);
+			return 0;
+		}
+
+		/*!
+		  Ratko data
+		  */
+		else if (filename.contains(rxRatkoData) ) {
+			//loadSavedScenario(filename);
+			/*
+			QFuture<void> future = QtConcurrent::run(this, &GraphicsViewMain::loadSavedScenario, filename);
+			*/
+//			RatkoDataSimulator *rdsThread = new RatkoDataSimulator(filename);
+//			rdsThread->start();
+		}
+
+		else if ( QDir(filename).exists() ) {
+			qDebug("%s::%s() : DIRECTORY", metaObject()->className(), __FUNCTION__);
+			return launch(QDir(filename).entryList());
+		}
+		else {
+			qCritical("%s::%s() : Unrecognized file format", metaObject()->className(),__FUNCTION__);
+		}
+	}
+	return 0;
+}
+
 SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint64 uiclientid, const QString &name, const QColor &color) {
 
 	SAGENextPolygonArrow *pointer = 0;
@@ -391,8 +492,58 @@ SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint64 uiclientid, const
 	return pointer;
 }
 
-void SAGENextLauncher::launchScenario(const QString &scenarioFilename) {
+void SAGENextLauncher::launchSavedSession(const QString &sessionfilename) {
+	QFile f(sessionfilename);
+	if (!f.exists()) {
+		qDebug() << "launch session: file not exist" << sessionfilename;
+		return;
+	}
+	if(!f.open(QIODevice::ReadOnly)) {
+		qDebug() << "launch session: can't open file" << sessionfilename;
+		return;
+	}
+
+	qDebug() << "SAGENextLauncher::launchSavedSession() : Loading a session" << sessionfilename;
+
+	QDataStream in(&f);
+
+	int mtype;
+	QPointF scenepos;
+	QSizeF size;
+	qreal scale;
+	while (!f.atEnd()) {
+		in >> mtype >> scenepos >> size >> scale;
+
+		QString file;
+		QString user;
+		QString pass;
+		QString srcaddr;
+
+		BaseWidget *bw = 0;
+
+		if (mtype == MEDIA_TYPE_VNC) {
+			in >> srcaddr >> user >> pass;
+			bw = launch(user, pass, 0, srcaddr);
+		}
+		else {
+			in >> file;
+			bw = launch(mtype, file);
+		}
+
+		bw->resize(size);
+		bw->setScale(scale);
+
+		_scene->rootLayoutWidget()->addItem(bw, scenepos);
+
+//		qDebug() << mtype << file << srcaddr << user << pass << scenepos << size << scale;
+	}
+
+	f.close();
+}
+
+void SAGENextLauncher::launchRecording(const QString &scenarioFilename) {
 	ScenarioThread *thread = new ScenarioThread(this, scenarioFilename);
+	qDebug() << "\nSAGENextLauncher::launchScenario() : START  " << scenarioFilename;
 	thread->start();
 }
 

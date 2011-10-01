@@ -3,6 +3,7 @@
 
 #include "common/commonitem.h"
 #include "applications/base/basewidget.h"
+#include "applications/base/appinfo.h"
 #include "system/resourcemonitor.h"
 #include "uiserver/uiserver.h"
 
@@ -99,7 +100,6 @@ void SAGENextScene::addItemOnTheLayout(BaseWidget *bw, const QPointF &scenepos) 
 	_rootLayoutWidget->addItem(bw, scenepos);
 }
 
-
 void SAGENextScene::prepareClosing() {
 	if (_closeFlag) {
 		// close UiServer so that all the shared pointers can be deleted first
@@ -163,7 +163,6 @@ SAGENextScene::~SAGENextScene() {
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
 
-
 void SAGENextScene::closeAllUserApp() {
 	foreach (QGraphicsItem *item, items()) {
 		if (!item ) continue;
@@ -177,9 +176,68 @@ void SAGENextScene::closeAllUserApp() {
 	}
 }
 
+void SAGENextScene::saveSession() {
+	QString sessionFilename = QDir::homePath() + "/.sagenext/";
+	sessionFilename.append(QDateTime::currentDateTime().toString("hh:mm:ss_MM.dd.yyyy_")).append(".session");
+
+	QFile sessionfile(sessionFilename);
+	if(!sessionfile.open(QIODevice::ReadWrite)) {
+		qCritical() << "SAGENextScene::saveSession() : couldn't open the file" << sessionFilename;
+		return;
+	}
+	qDebug() << "SAGENextScene::saveSession() : save current layout to" << sessionFilename;
+
+	QDataStream out(&sessionfile);
+
+	//
+	// save layout states
+	//
 
 
 
+	//
+	// save widget states
+	//
+	foreach(QGraphicsItem *item, items()) {
+		if (!item || item->type() < QGraphicsItem::UserType + 12 ) continue;
+		BaseWidget *bw = static_cast<BaseWidget *>(item);
+		if (!bw) continue;
+
+		AppInfo *ai = bw->appInfo();
+
+		// common
+		out << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
+
+		// video, image, pdf, plugin, web have filename
+		if (ai->fileInfo().exists()) {
+			out << ai->mediaFilename();
+		}
+		// vnc doesn't have filename
+		else {
+			out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+		}
+
+		///
+		/// and application specific state can be followed
+		///
+	}
+	sessionfile.flush();
+	sessionfile.close();
+}
+
+/*
+QDataStream out(&sFile);
+
+foreach (QGraphicsItem *gi, scene()->items()) {
+	if (!gi) continue;
+
+	// only consider user application
+	if (gi->type() < QGraphicsItem::UserType + 12) continue;
+
+	BaseWidget *bw = static_cast<BaseWidget *>(gi);
+	out << bw->pos() << bw->scale() << bw->zValue();
+}
+*/
 
 
 
@@ -304,7 +362,15 @@ void SAGENextLayoutWidget::reparentWidgets(SAGENextLayoutWidget *newParent) {
 			// exclude PixmapButton
 			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget) continue;
 
+			//
+			// this item's pos() which is in this layoutWidget's coordinate to newParent's coordinate
+			//
+			QPointF newPos = mapToItem(newParent, item->pos());
+
+			// reparent
 			item->setParentItem(newParent);
+
+			item->setPos(newPos);
 		}
 	}
 }
@@ -326,13 +392,13 @@ void SAGENextLayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	//
 	emit resized();
 
+	QSizeF deltaSize = e->newSize() - e->oldSize();
+
 	//
 	// upon resizing, resize my child layout widgets as well
 	// Since I have the bar, I dont have any base widget as a child
 	//
 	if (_bar) {
-		QSizeF deltaSize = e->newSize() - e->oldSize();
-
 		if (_bar->orientation() == Qt::Horizontal) {
 			//
 			// bar is horizontal so my children is at TOP and BOTTOM
@@ -381,9 +447,28 @@ void SAGENextLayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 
 		}
 	}
+
+	//
+	// no _bar, so this layoutWidget contains child basewidgets
+	//
 	else {
 		// If growing, do nothing
 		// If shrinking, move child BaseWidgets accordingly
+
+		foreach(QGraphicsItem *item, childItems()) {
+			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget) {
+	//			qDebug() << "createChildlayout skipping myself, buttons and bar";
+				continue;
+			}
+
+			QGraphicsWidget *widget = static_cast<QGraphicsWidget *>(item);
+			Q_ASSERT(widget);
+
+			if (!rect().contains( widget->geometry() )) {
+				// this widget need to be moved
+
+			}
+		}
 	}
 }
 
@@ -428,23 +513,6 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 		firstlayoutchild = _leftWidget;
 		secondlayoutchild = _rightWidget;
 	}
-	//
-	// reparent child items to appropriate widget. I shouldn't have any child baseWidgets at this point
-	//
-	foreach(QGraphicsItem *item, childItems()) {
-		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget) {
-//			qDebug() << "createChildlayout skipping myself, buttons and bar";
-			continue;
-		}
-
-		QRectF intersectedWithFirst = first & mapRectFromItem(item, item->boundingRect());
-		if ( intersectedWithFirst.size().width() * intersectedWithFirst.size().height() >= 0.25 * item->boundingRect().size().width() * item->boundingRect().size().height()) {
-			item->setParentItem(firstlayoutchild);
-		}
-		else {
-			item->setParentItem(secondlayoutchild);
-		}
-	}
 
 	//
 	// if child widget is resized, then adjust my bar pos and length
@@ -459,9 +527,26 @@ void SAGENextLayoutWidget::createChildPartitions(Qt::Orientation dividerOrientat
 
 
 	//
-	// sets bar's pos and length
+	// reparent child items to appropriate widget. I shouldn't have any child baseWidgets at this point
 	//
-//	adjustBar();
+	foreach(QGraphicsItem *item, childItems()) {
+		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget) {
+//			qDebug() << "createChildlayout skipping myself, buttons and bar";
+			continue;
+		}
+
+		QPointF newPos;
+		QRectF intersectedWithFirst = first & mapRectFromItem(item, item->boundingRect());
+		if ( intersectedWithFirst.size().width() * intersectedWithFirst.size().height() >= 0.25 * item->boundingRect().size().width() * item->boundingRect().size().height()) {
+			newPos = mapToItem(firstlayoutchild, item->pos());
+			item->setParentItem(firstlayoutchild);
+		}
+		else {
+			newPos = mapToItem(secondlayoutchild, item->pos());
+			item->setParentItem(secondlayoutchild);
+		}
+		item->setPos(newPos);
+	}
 
 
 	//

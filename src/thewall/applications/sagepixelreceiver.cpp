@@ -164,7 +164,7 @@ void SagePixelReceiver::run() {
 #endif
 	}
 
-	int byteCount = appInfo->getFrameBytecount();
+	int byteCount = appInfo->frameSizeInByte();
 
 	unsigned char *bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
 
@@ -218,12 +218,12 @@ void SagePixelReceiver::run() {
 		// PRODUCER
 		while (totalread < byteCount ) {
 			// If remaining byte is smaller than user buffer length (which is groupSize)
-			if ( byteCount-totalread < appInfo->getNetworkUserBufferLength() ) {
+			if ( byteCount-totalread < appInfo->networkUserBufferLength() ) {
 				read = recv(socket, bufptr, byteCount-totalread , MSG_WAITALL);
 			}
 			// otherwise, always read groupSize bytes
 			else {
-				read = recv(socket, bufptr, appInfo->getNetworkUserBufferLength(), MSG_WAITALL);
+				read = recv(socket, bufptr, appInfo->networkUserBufferLength(), MSG_WAITALL);
 			}
 			if ( read == -1 ) {
                                 qCritical("SagePixelReceiver::run() : error while reading.");

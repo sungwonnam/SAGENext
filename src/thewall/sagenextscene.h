@@ -190,14 +190,6 @@ public:
 	QList<BaseWidget *> hoverAcceptingApps;
 
 
-
-	/**
-	  This must be called after scene rect has become valid
-	  */
-//	void setRootPartition();
-
-//	inline QGraphicsLinearLayout * rootLinearLayout() {return _rootLinearLayout;}
-
 private:
 	const QSettings *_settings;
 	UiServer *_uiserver;
@@ -230,6 +222,11 @@ public slots:
 	  kills UiServer, fsManager, ResourceMonitor
 	  */
 	void prepareClosing();
+
+	/**
+	  save current app layout
+	  */
+	void saveSession();
 };
 
 

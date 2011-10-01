@@ -5,18 +5,16 @@
 #include <QtGui>
 
 class SAGENextLauncher;
+class SAGENextScene;
 
 class SAGENextViewport : public QGraphicsView
 {
 	Q_OBJECT
 public:
-	explicit SAGENextViewport(int viewportId = 0, QWidget *parent = 0);
+	explicit SAGENextViewport(SAGENextScene *s, int viewportId = 0, SAGENextLauncher *l = 0, QWidget *parent = 0);
 	~SAGENextViewport();
 
 	inline int viewportId() const {return _viewportID;}
-
-	inline void setLauncher(SAGENextLauncher *l) {_launcher = l;}
-
 
 private:
 	/**
@@ -30,36 +28,31 @@ private:
 	  */
 	QFileDialog *_fdialog;
 
+	/**
+	  This action fires by CMD + o and connected to the open media slot
+	  */
 	QAction *_openMediaAction;
+
+	/**
+	  save session through SAGENextScene::saveSession slot
+	  */
+	QAction *_saveSessionAction;
+
+	/**
+	  CMD + SHIFT + w closes all baseWidget using SAGENextScene::closeAllUserApp() slot
+	  */
 	QAction *_closeAllAction;
 
 	SAGENextLauncher *_launcher;
 
-signals:
+	SAGENextScene *_sageNextScene;
 
 public slots:
 	/**
-	  CTRL + O will trigger file dialog
+	  This slot opens the file dialog
 	  */
 	void on_actionOpen_Media_triggered();
 
-	/**
-	  When a file is selected on the file dialog, trigger launcher to launch a widget
-	  */
-	void on_actionFilesSelected(const QStringList &selected);
-
-	/**
-	  CTRL + SHIFT + W  closes all user application
-	  */
-	void on_actionCloseAll_triggered();
-
-
-
-	/**
-	  Saves geometry info of all running user widgets.
-	  Currently it save only geometry infos
-	  */
-	void on_actionSaveSession_triggered();
 };
 
 #endif // SAGENEXTVIEWPORT_H
