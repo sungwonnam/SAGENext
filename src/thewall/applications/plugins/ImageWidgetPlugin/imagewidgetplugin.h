@@ -24,6 +24,7 @@ public:
           */
         QString name() const;
 
+
 		/*!
 		  QGraphicsProxyWidget *root is going to be null
 		  for the plugin that inherits BaseWdiget
@@ -39,11 +40,17 @@ protected:
           */
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
+
+		/**
+		  To intercept wheelEvent sent to label
+		  */
+		bool sceneEventFilter(QGraphicsItem *watched, QEvent *event);
+
         /**
           BaseWidget's wheelEvent resizes the entire window if item flag is Qt::Widget
 		  and nothing happens if Qt::Window
           */
-		void wheelEvent(QGraphicsSceneWheelEvent *event);
+//		void wheelEvent(QGraphicsSceneWheelEvent *event);
 
 //	void resizeEvent(QGraphicsSceneResizeEvent *event);
 
@@ -69,6 +76,8 @@ private:
           Example GUI components
           */
         QLabel *label;
+
+		QColor _currentColor;
 
         /*!
           Every GUI components requires QGraphicsProxyWidget to be functioning on QGraphics framework

@@ -290,6 +290,11 @@ protected:
 		  */
 		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
+		/**
+		  For Qt::Window
+		  */
+		void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
         /*!
           Derived class should implement paint()
           */

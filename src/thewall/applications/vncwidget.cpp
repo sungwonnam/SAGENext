@@ -76,13 +76,19 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
 	//qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
+
+	qreal left = settings->value("gui/framemarginleft", 0).toInt();
+	qreal right = settings->value("gui/framemarginright", 0).toInt();
+	qreal top = settings->value("gui/framemargintop", 0).toInt();
+	qreal bottom = settings->value("gui/framemarginbottom", 0).toInt();
+
 	/**
-	  This is important.
+	  Don't forget to call resize() once you know the size of image you're displaying.
 	  Also BaseWidget::resizeEvent() will call setTransformOriginPoint();
      */
-	resize(_image->size());
+	resize(_image->width()+left+right, _image->height()+top+bottom);
 
-	qDebug() << "vnc constructor" << boundingRect() << size();
+	qDebug() << "VNCClientWidget constructor" << boundingRect() << size();
 
 
 	setWidgetType(BaseWidget::Widget_RealTime);
@@ -134,7 +140,7 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 
 
 	if (!pixmap.isNull())
-		painter->drawPixmap(0, 0, pixmap); // Drawing QPixmap is much faster than QImage
+		painter->drawPixmap(settings->value("gui/framemarginleft", 0).toInt(), settings->value("gui/framemargintop", 0).toInt(), pixmap); // Drawing QPixmap is much faster than QImage
 
 
 	// if (_image && !_image->isNull()) {

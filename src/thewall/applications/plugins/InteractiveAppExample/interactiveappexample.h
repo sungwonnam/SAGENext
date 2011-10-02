@@ -33,6 +33,7 @@ public:
 	  */
 	QString name() const {return "QWidget";}
 
+
 	/*!
 	  You must provide pointer to your root widget. See constructor.
 	  */

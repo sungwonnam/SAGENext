@@ -56,7 +56,7 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
 	qreal l = settings->value("gui/framemarginleft", 6).toDouble();
 	qreal t = settings->value("gui/framemargintop", 6).toDouble();
 	qreal r = settings->value("gui/framemarginright", 6).toDouble();
-	qreal b = settings->value("gui/framemarginright", 6).toDouble();
+	qreal b = settings->value("gui/framemarginbottom", 6).toDouble();
 	if (isWindow()) {
 		// window frame is not interactible by shared pointers
 		setWindowFrameMargins(0, 0, 0, 0);
@@ -740,25 +740,26 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 //	painter->setPen(pen);
 //	painter->drawRect(windowFrameRect());
 	
-	/*
-	QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
-	if (isSelected()) {
- lg.setColorAt(0, QColor(250, 250, 0, 164));
-	lg.setColorAt(1, QColor(200, 0, 0, 164));
+
+	if (! isWindow()) {
+		QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
+		if (isSelected()) {
+			lg.setColorAt(0, QColor(250, 250, 0, 164));
+			lg.setColorAt(1, QColor(200, 0, 0, 164));
+		}
+		else {
+			lg.setColorAt(0, QColor(230, 230, 230, 164));
+			lg.setColorAt(1, QColor(20, 20, 20, 164));
+		}
+		QBrush brush(lg);
+
+		QPen pen;
+		pen.setWidth(6);
+		pen.setBrush(brush);
+
+		painter->setPen(pen);
+		painter->drawRect(boundingRect());
 	}
-	else {
- lg.setColorAt(0, QColor(230, 230, 230, 164));
-	lg.setColorAt(1, QColor(20, 20, 20, 164));
-	}
-	QBrush brush(lg);
-	
-	QPen pen;
-	pen.setWidth(6);
-	pen.setBrush(brush);
-	
-	painter->setPen(pen);
-	painter->drawRect(boundingRect());
-	*/
 
 
 
@@ -777,6 +778,30 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 		infoTextItem->hide();
 	}
 }
+
+
+void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
+//    qDebug() << "size" << size() << "boundingrect" << boundingRect() << "geometry" << geometry();
+
+    QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
+	if (isSelected()) {
+		lg.setColorAt(0, QColor(250, 250, 0, 164));
+		lg.setColorAt(1, QColor(200, 0, 0, 164));
+	}
+	else {
+		lg.setColorAt(0, QColor(230, 230, 230, 164));
+		lg.setColorAt(1, QColor(20, 20, 20, 164));
+	}
+	painter->setBrush(QBrush(lg));
+    painter->drawRect(windowFrameRect());
+
+	// I'm not using base implementation
+//    QGraphicsWidget::paintWindowFrame(painter, option, widget);
+}
+
 
 
 /**

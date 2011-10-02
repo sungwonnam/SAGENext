@@ -9,6 +9,11 @@ class DummyPluginInterface
 public:
 	virtual ~DummyPluginInterface() {}
 
+	/**
+	  Do whatever you have to initialize here
+	  */
+//	virtual void postInit() = 0;
+
 	virtual QString name() const = 0;
 	virtual QGraphicsProxyWidget * rootWidget() = 0;
 };

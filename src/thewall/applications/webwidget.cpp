@@ -13,6 +13,8 @@ WebWidget::WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem
 {
 	setWidgetType(BaseWidget::Widget_Web);
 
+	_appInfo->setMediaType(MEDIA_TYPE_WEBURL);
+
         /**
           When you create a child item, it is by default top most item (stacking on top of the parent)
           So, all the mouse/keyboard events are grabbed by the child item (because it's top most).
@@ -36,10 +38,11 @@ WebWidget::WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem
          **/
 	setFiltersChildEvents(true);
 
-        // more top for mouse handle
-        // default is 4, 25, 4, 4
-        // I have to do this because BaseWidget sets this
-	setWindowFrameMargins(4, 25, 4, 4); // left, top, right, bottom
+	// shared pointer won't be able to interact with window frames
+//	setWindowFrameMargins(0, 0, 0, 0); // left, top, right, bottom
+
+	// use this instead
+//	setContentsMargins(0, 0, 0, 0);
 
 
 //	connect(&futureWatcher, SIGNAL(finished()), this, SLOT(pageLoaded()));
@@ -85,6 +88,7 @@ WebWidget::WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem
 
 	linearLayout = new QGraphicsLinearLayout(Qt::Vertical, this);
 	linearLayout->setSpacing(4);
+	linearLayout->setContentsMargins(0,0,0,0);
 
 	// The layout takes ownership of these items.
 	linearLayout->addItem(urlboxproxy);
@@ -199,11 +203,6 @@ void WebWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	event->ignore();
 }
 
-bool WebWidget::windowFrameEvent(QEvent *e) {
-//	qDebug() << "frame event" << e << boundingRect() << frame->boundingRect();
-	return QGraphicsWidget::windowFrameEvent(e);
-}
-
 
 void WebWidget::pageLoaded() {
 	//	qDebug() << ";sfkja;fklasjdf;";
@@ -259,20 +258,3 @@ void WebWidget::urlChanged(const QUrl &url) {
 
 
 
-void WebWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-    Q_UNUSED(option);
-    Q_UNUSED(widget);
-
-//    qDebug() << "size" << size() << "boundingrect" << boundingRect() << "geometry" << geometry();
-
-    QLinearGradient lg;
-    lg.setFinalStop(0, 0);
-    lg.setStart(boundingRect().width(), boundingRect().height());
-    lg.setColorAt(0, QColor::fromRgbF(1, 1, 0, 1));
-    lg.setColorAt(1, QColor::fromRgbF(0, 0, 0, 0));
-    QBrush b(lg);
-
-    painter->setBrush(b);
-    painter->drawRect(windowFrameRect());
-//    QGraphicsWidget::paintWindowFrame(painter, option, widget);
-}

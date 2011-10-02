@@ -84,9 +84,15 @@ void PixmapWidget::start() {
 
 void PixmapWidget::callUpdate() {
 	if ( futureWatcher->result() ) {
-		resize(image->size());
+
+		qreal left = settings->value("gui/framemarginleft", 0).toInt();
+		qreal right = settings->value("gui/framemarginright", 0).toInt();
+		qreal top = settings->value("gui/framemargintop", 0).toInt();
+		qreal bottom = settings->value("gui/framemarginbottom", 0).toInt();
+
+		resize(image->width() + left + right , image->height() + top + bottom);
 //		qDebug() << "boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
-		_appInfo->setFrameSize(image->width(), image->height(), image->depth());
+		_appInfo->setFrameSize(image->width() + left + right, image->height() + top + bottom, image->depth());
 
 		/**
 		  set transform origin point to widget's center
@@ -129,14 +135,14 @@ void PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, Q
 	if (_perfMon)
 		_perfMon->getDrawTimer().start();
 
-	painter->setRenderHint(QPainter::SmoothPixmapTransform);
+//	painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
 	//why not using painter->scale() instead?
 	//painter->drawImage(0, 0, _image->scaled(contentSize.toSize(), Qt::KeepAspectRatio)); // shallow copy (Implicitly Shared mode)
 	//if ( scaleFactorX != 1.0 || scaleFactorY != 1.0 )
 	//painter->scale(scaleFactorX, scaleFactorX);
 	//painter->drawImage(QPointF(0,0), *image);
-	painter->drawPixmap(0, 0, *pixmap);
+	painter->drawPixmap(settings->value("gui/framemarginleft", 0).toInt(), settings->value("gui/framemargintop", 0).toInt(), *pixmap);
 
 	BaseWidget::paint(painter, o, w);
 

@@ -369,10 +369,10 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
 	ui->pointerFontSizeLineEdit->setInputMask("900");
 	ui->pointerFontSizeLineEdit->setText(_settings->value("gui/pointerfontsize", 20).toString());
 
-	ui->frameBorderLeftLineEdit->setText(_settings->value("gui/framemarginleft", 3).toString());
-	ui->frameBorderTopLineEdit->setText(_settings->value("gui/framemargintop", 3).toString());
-	ui->frameBorderRightLineEdit->setText(_settings->value("gui/framemarginright", 3).toString());
-	ui->frameBorderBottomLineEdit->setText(_settings->value("gui/framemarginbottom", 3).toString());
+	ui->frameBorderLeftLineEdit->setText(_settings->value("gui/framemarginleft", 6).toString());
+	ui->frameBorderTopLineEdit->setText(_settings->value("gui/framemargintop", 6).toString());
+	ui->frameBorderRightLineEdit->setText(_settings->value("gui/framemarginright", 6).toString());
+	ui->frameBorderBottomLineEdit->setText(_settings->value("gui/framemarginbottom", 6).toString());
 }
 void GuiSettingDialog::accept() {
 	_settings->setValue("gui/iconwidth", ui->iconWidth->text().toInt());

@@ -450,7 +450,7 @@ int main(int argc, char *argv[])
 
 
 		//launcher->launch("", "evl123", 0, "131.193.77.191", 24);
-//		launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
+	launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
 //		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
 //		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
@@ -522,10 +522,10 @@ void setViewAttr(SAGENextViewport *gvm, const QSettings &s) {
 	gvm->setDragMode(QGraphicsView::NoDrag); // NoDrag is default
 
 	///
-	/// GraphicsView will not protect the painter state when rendering.
+	/// GraphicsView will not protect the painter state when rendering. Changes in painter state (pen, brush,..) will remain changed if set true.
 	/// You can call QPainter::setPen() or setBrush() without restoring the state after painting
 	///
-	gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, true);
+	gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, false);
 }
 
 

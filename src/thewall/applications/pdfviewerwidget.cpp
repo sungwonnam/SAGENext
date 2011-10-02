@@ -101,7 +101,12 @@ void PDFViewerWidget::setCurrentPage(int pageNumber) {
 //	qint64 end = QDateTime::currentMSecsSinceEpoch();
 //	qDebug() << end - start << "msec for rendering";
 
-	resize(_pixmap.size());
+	qreal left = settings->value("gui/framemarginleft", 0).toInt();
+	qreal right = settings->value("gui/framemarginright", 0).toInt();
+	qreal top = settings->value("gui/framemargintop", 0).toInt();
+	qreal bottom = settings->value("gui/framemarginbottom", 0).toInt();
+
+	resize(_pixmap.width()+left+right, _pixmap.height()+top+bottom);
 	
 //	qDebug() << _currentPage->pageSizeF();
 //	QSizeF sizeinch = _currentPage->pageSizeF() / 72;
@@ -121,7 +126,7 @@ void PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 //	_currentPage->renderToPainter(painter); // with Arthur renderBackend
 
 	if (!_pixmap.isNull())
-		painter->drawPixmap(0, 0, _pixmap);
+		painter->drawPixmap(settings->value("gui/framemarginleft", 0).toInt(), settings->value("gui/framemargintop", 0).toInt(), _pixmap);
 
 
 	BaseWidget::paint(painter, option, widget);

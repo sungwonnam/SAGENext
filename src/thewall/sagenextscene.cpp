@@ -52,12 +52,10 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 //	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
 //	opacity->setOpacity(0.2);
 //	closeButton->setGraphicsEffect(opacity);
-	_closeButton->setOpacity(0.05);
-	_closeButton->setPos(sceneRect.width() - _closeButton->boundingRect().width() - 10, 10);
+	_closeButton->setOpacity(0.1);
+	_closeButton->setPos(sceneRect.width() - _closeButton->boundingRect().width() - 5, 10);
 //	_closeButton->setScale(0.5);
 	addItem(_closeButton);
-
-
 
 
 	//
@@ -210,7 +208,12 @@ void SAGENextScene::saveSession() {
 
 		// video, image, pdf, plugin, web have filename
 		if (ai->fileInfo().exists()) {
+			qDebug() << "Scene::saveSession() : " << ai->mediaFilename();
 			out << ai->mediaFilename();
+		}
+		else if (!ai->webUrl().isEmpty()) {
+			qDebug() << "Scene::saveSession() : " << ai->webUrl().toString();
+			out << ai->webUrl().toString();
 		}
 		// vnc doesn't have filename
 		else {
@@ -667,8 +670,8 @@ PartitionBar::PartitionBar(Qt::Orientation ori, SAGENextLayoutWidget *owner, QGr
 
 	QPen pen;
 	pen.setWidth(12);
-	pen.setStyle(Qt::DashDotLine);
-	pen.setColor(QColor(Qt::white));
+	pen.setStyle(Qt::DashLine);
+	pen.setColor(QColor(Qt::lightGray));
 	setPen(pen);
 }
 

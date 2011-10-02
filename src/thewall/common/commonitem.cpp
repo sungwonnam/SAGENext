@@ -356,11 +356,17 @@ void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton
 	if ( btn == Qt::RightButton) {
 		if (_basewidget) {
 			if ( _basewidget->isSelected() ) {
+				//
+				// unselect widget
+				//
 				_basewidget->setSelected(false);
 				// to be effective, turn off WA_OpaquePaintEvent or set setAutoFillBackground(true)
 				_basewidget->palette().setColor(QPalette::Window, QColor(100, 100, 100, 128));
 			}
 			else {
+				//
+				// select widget
+				//
 				_basewidget->setSelected(true);
 				_basewidget->palette().setColor(QPalette::Window, QColor(170, 170, 5, 164));
 			}
@@ -646,7 +652,6 @@ SAGENextPixmapButton::SAGENextPixmapButton(const QString &res, const QSize &size
 
 	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 	resize(p->pixmap().size());
-
 
 	if (!label.isNull() && !label.isEmpty()) {
 		_attachLabel(label, p);

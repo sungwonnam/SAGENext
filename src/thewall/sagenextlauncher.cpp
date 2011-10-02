@@ -315,9 +315,11 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 			w->setWindowFlags(Qt::Window);
 			w->setWindowFrameMargins(0, 0, 0, 0);
 		}
+		w->appInfo()->setMediaType(MEDIA_TYPE_PLUGIN);
+		w->appInfo()->setFileInfo(filename);
 
 		if (w) {
-			w->moveBy(10, 10);
+			w->moveBy(20, 50);
 		}
 		else {
 			qDebug() << "Failed to create widget from plugin object";
@@ -529,13 +531,15 @@ void SAGENextLauncher::launchSavedSession(const QString &sessionfilename) {
 			in >> file;
 			bw = launch(mtype, file);
 		}
+		if (!bw) {
+			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
+			continue;
+		}
 
 		bw->resize(size);
 		bw->setScale(scale);
 
 		_scene->rootLayoutWidget()->addItem(bw, scenepos);
-
-//		qDebug() << mtype << file << srcaddr << user << pass << scenepos << size << scale;
 	}
 
 	f.close();

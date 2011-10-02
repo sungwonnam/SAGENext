@@ -62,9 +62,9 @@ protected:
 
         void wheelEvent(QGraphicsSceneWheelEvent *event);
 
-        bool windowFrameEvent(QEvent *e);
 
-        void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+		// use BaseWidget's implementation
+//        void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
         /**
           * When this widget is being resized, gwebview should be resized accordingly

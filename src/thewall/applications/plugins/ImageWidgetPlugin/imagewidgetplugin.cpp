@@ -11,18 +11,23 @@ ExamplePlugin::ExamplePlugin()
     : BaseWidget(Qt::Window)
     , root(0)
 {
-
-	// Window will have title bar and window frame
+	//
+	// when resized, usually native application will set this
+	//
 	setWindowFlags(Qt::Window);
 
-
+	//
+	// I want to intercept wheelEvent sent to label and do something.
+	// It is sent to the label because label (child) is stacking above me (parent)
+	//
+	setFiltersChildEvents(true);
 
 	// create label
 	label = new QLabel();
 //	label->setPixmap(QPixmap(800,600));
 	label->setText("Hello World");
-	label->setFrameStyle(QFrame::Box);
-	label->setLineWidth(6);
+	label->setFrameStyle(QFrame::NoFrame);
+//	label->setLineWidth(6);
 	label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
 		//
@@ -64,23 +69,19 @@ ExamplePlugin::ExamplePlugin()
 //	mainLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::DefaultType);
 	mainLayout->setContentsMargins(0,0,0,0);
 
-
 	// add GUI components in it
 	mainLayout->addItem(labelProxy);
 	mainLayout->addItem(btnLayout);
-
 //	mainLayout->setItemSpacing(0, 2);
 
 	// set the main layout to be this application's root layout
 	// previous layout will be deleted by this
 	setLayout(mainLayout);
 
-
 	/*!
       Once you figure out your widget resolution, call this function. This is important.
       */
-	resize(800, 600);
-
+	resize(800, 400);
 
 //	_appInfo->setFrameSize(800, 600, 24);
 
@@ -101,7 +102,7 @@ ExamplePlugin::ExamplePlugin()
 	//qDebug() << "ImageWidgetPlugin content margins l, r, t, b" << l << r << t << b;
 
 	// Qt::Window might want to define mouse dragging. For that case, give more room to top margin so that window can be moved with shared pointers
-	setContentsMargins(4,24,4,4);
+	setContentsMargins(8,28,8,8);
 }
 
 
@@ -134,16 +135,6 @@ void ExamplePlugin::paint(QPainter * /*painter*/, const QStyleOptionGraphicsItem
         */
 }
 
-//void ExamplePlugin::resizeEvent(QGraphicsSceneResizeEvent *event) {
-//	qDebug() << "boundingRect" << boundingRect();
-//	qDebug() << "main layout geometry" << mainLayout->geometry();
-//	qDebug() << "main layout contect rect" << mainLayout->contentsRect();
-//	qDebug() << "window frame rect (local)" << windowFrameRect();
-//}
-
-
-
-
 ExamplePlugin::~ExamplePlugin() {
 }
 
@@ -165,29 +156,60 @@ QGraphicsProxyWidget * ExamplePlugin::rootWidget() {
 	return root;
 }
 
+
+bool ExamplePlugin::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
+	if (watched == labelProxy) {
+		if ( event->type() == QEvent::GraphicsSceneWheel) {
+
+			QGraphicsSceneWheelEvent *we = static_cast<QGraphicsSceneWheelEvent *>(event);
+			int numDegrees = we->delta() / 8;
+			int numTicks = numDegrees / 15;
+			qDebug() << numTicks;
+
+			QColor newcolor;
+			if (numTicks>0) {
+				newcolor  = _currentColor.lighter(101);
+			}
+			else {
+				newcolor = _currentColor.darker(101);
+			}
+
+			QPixmap pixmap(size().toSize());
+			pixmap.fill( _currentColor );
+			label->setPixmap(pixmap);
+
+			// event is not going to be forwarded to label
+			return true;
+		}
+	}
+
+	// everything else should be sent to proper child items
+	return false;
+}
+
+
 void ExamplePlugin::buttonR() {
 	QPixmap pixmap(size().toSize());
-	pixmap.fill(QColor(Qt::red));
+	label->setText("Red clicked");
+	_currentColor = QColor(Qt::red);
+	pixmap.fill( _currentColor );
 	label->setPixmap(pixmap);
 }
 void ExamplePlugin::buttonG() {
 	QPixmap pixmap(size().toSize());
-	pixmap.fill(QColor(Qt::green));
+	label->setText("Green clicked");
+	_currentColor = QColor(Qt::green);
+	pixmap.fill(_currentColor);
 	label->setPixmap(pixmap);
 }
 void ExamplePlugin::buttonB() {
+	label->setText("Blue clicked");
 	QPixmap pixmap(size().toSize());
-	pixmap.fill(QColor(Qt::blue));
+	_currentColor = QColor(Qt::blue);
+	pixmap.fill(_currentColor);
 	label->setPixmap(pixmap);
 }
 
-
-
-
-void ExamplePlugin::wheelEvent(QGraphicsSceneWheelEvent *event) {
-	Q_UNUSED(event);
-	// do something
-}
 
 Q_EXPORT_PLUGIN2(ImageWidgetPlugin, ExamplePlugin)
 
