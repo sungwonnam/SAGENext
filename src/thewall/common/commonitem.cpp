@@ -10,7 +10,7 @@ SelectionRectangle::SelectionRectangle(QGraphicsItem *parent)
 }
 
 
-SAGENextPolygonArrow::SAGENextPolygonArrow(const quint64 uicid, const QSettings *s, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
+SAGENextPolygonArrow::SAGENextPolygonArrow(const quint32 uicid, const QSettings *s, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
     , _uiclientid(uicid)
     , _settings(s)
@@ -55,7 +55,7 @@ SAGENextPolygonArrow::~SAGENextPolygonArrow() {
 	}
 	if (_scenarioFile) {
 		char buffer[64];
-		sprintf(buffer, "%lld %d %llu", QDateTime::currentMSecsSinceEpoch(), 11, _uiclientid);
+		sprintf(buffer, "%lld %d %u", QDateTime::currentMSecsSinceEpoch(), 11, _uiclientid);
 		_scenarioFile->write(buffer);
 		_scenarioFile->flush();
 	}
@@ -95,7 +95,7 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
 		int button = 0;
 		if (btnFlags & Qt::LeftButton) button = 1;
 		else if (btnFlags & Qt::RightButton) button = 2;
-		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 2, _uiclientid, _scenePos.toPoint().x(), _scenePos.toPoint().y(), button);
+		sprintf(record, "%lld %d %u %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 2, _uiclientid, _scenePos.toPoint().x(), _scenePos.toPoint().y(), button);
 		_scenarioFile->write(record);
 	}
 
@@ -223,7 +223,7 @@ void SAGENextPolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton
 	//
 	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
 		char record[64];
-		sprintf(record, "%lld %d %llu %d %d %d\n",QDateTime::currentMSecsSinceEpoch(), 3, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
+		sprintf(record, "%lld %d %u %d %d %d\n",QDateTime::currentMSecsSinceEpoch(), 3, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
 		_scenarioFile->write(record);
 	}
 
@@ -259,7 +259,7 @@ void SAGENextPolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButt
 	//
 	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
 		char record[64];
-		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 4, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), button);
+		sprintf(record, "%lld %d %u %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 4, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), button);
 		_scenarioFile->write(record);
 	}
 
@@ -342,7 +342,7 @@ void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton
 	//
 	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
 		char record[64];
-		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 5, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
+		sprintf(record, "%lld %d %u %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 5, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
 		_scenarioFile->write(record);
 	}
 
@@ -417,7 +417,7 @@ void SAGENextPolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::Mouse
 	//
 	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
 		char record[64];
-		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 6, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
+		sprintf(record, "%lld %d %u %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 6, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
 		_scenarioFile->write(record);
 	}
 
@@ -470,7 +470,7 @@ void SAGENextPolygonArrow::pointerWheel(const QPointF &scenePos, int delta, Qt::
 	//
 	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
 		char record[64];
-		sprintf(record, "%lld %d %llu %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 7, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), delta);
+		sprintf(record, "%lld %d %u %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 7, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), delta);
 		_scenarioFile->write(record);
 	}
 
@@ -508,7 +508,7 @@ bool SAGENextPolygonArrow::setAppUnderPointer(const QPointF scenePos) {
 			// User application (BaseWidget)
 			//
             _basewidget = static_cast<BaseWidget *>(item);
-            //qDebug("PolygonArrow::%s() : uiclientid %llu, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
+            //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
 			_item = 0;
             return true;
         }
@@ -530,7 +530,7 @@ bool SAGENextPolygonArrow::setAppUnderPointer(const QPointF scenePos) {
     _basewidget = 0; // reset
 	_item = 0;
 
-    //qDebug("PolygonArrow::%s() : uiclientid %llu, There's BaseGraphicsWidget type under pointer", __FUNCTION__, uiclientid);
+    //qDebug("PolygonArrow::%s() : uiclientid %u, There's BaseGraphicsWidget type under pointer", __FUNCTION__, uiclientid);
     return false;
 }
 

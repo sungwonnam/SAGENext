@@ -18,7 +18,7 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::ExternalGUIMain)
     , _settings(0)
-    , uiclientid(-1)
+    , uiclientid(0)
     , fileTransferPort(0)
     , ungrabMouseAction(0)
 //    , msgsock(0)
@@ -226,13 +226,13 @@ void ExternalGUIMain::doHandshaking() {
 
 	int x = 0;
 	int y = 0;
-	sscanf(buf.constData(), "%llu %d %d %d", &uiclientid, &x, &y, &fileTransferPort);
+	sscanf(buf.constData(), "%u %d %d %d", &uiclientid, &x, &y, &fileTransferPort);
 	wallSize.rwidth() = x;
 	wallSize.rheight() = y;
 	//qDebug("ExternalGUIMain::%s() : my uiClientId is %llu, wall resolution is %d x %d", __FUNCTION__, uiclientid, x,y);
 
 	QDesktopWidget *d = QApplication::desktop();
-	qDebug("My uiclientid is %llu, The wall size is %d x %d, my primary screen size %d x %d, fileServer port %d", uiclientid, x, y, d->screenGeometry().width(), d->screenGeometry().height(), fileTransferPort);
+	qDebug("My uiclientid is %u, The wall size is %d x %d, my primary screen size %d x %d, fileServer port %d", uiclientid, x, y, d->screenGeometry().width(), d->screenGeometry().height(), fileTransferPort);
 
 	/*!
       When I send my mouse movement to the wall, it's pos should be scaled with these values. ( == mapToWall)
@@ -261,7 +261,7 @@ void ExternalGUIMain::doHandshaking() {
 			qDebug() << "Connected to the File Server. Staring sendThread";
 			// send my uiclientid
 			char msg[EXTUI_MSG_SIZE];
-			::sprintf(msg, "%llu", uiclientid);
+			::sprintf(msg, "%u", uiclientid);
 			_tcpDataSock.write(msg, sizeof(msg));
 			sendThread->start();
 		}
@@ -350,7 +350,7 @@ void ExternalGUIMain::on_vncButton_clicked()
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %llu %s %d %s %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
+	sprintf(msg.data(), "%d %u %s %d %s %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
 
 	queueMsgToWall(msg);
 }
@@ -390,7 +390,7 @@ void ExternalGUIMain::hookMouse() {
 #endif
 			QByteArray msg(EXTUI_MSG_SIZE, 0);
 			// msgtype, uiclientid, pointer name, Red, Green, Blue
-			sprintf(msg.data(), "%d %llu %s %s", POINTER_SHARE, uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
+			sprintf(msg.data(), "%d %u %s %s", POINTER_SHARE, uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
 			queueMsgToWall(msg);
 		}
 		else {
@@ -415,7 +415,7 @@ void ExternalGUIMain::unhookMouse() {
 	// remove cursor on the wall
 	if (msgThread && msgThread->isRunning()) {
 		QByteArray msg(EXTUI_MSG_SIZE, 0);
-		sprintf(msg.data(), "%d %llu", POINTER_UNSHARE, uiclientid);
+		sprintf(msg.data(), "%d %u", POINTER_UNSHARE, uiclientid);
 		queueMsgToWall(msg);
 	}
 }
@@ -582,16 +582,16 @@ void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btn
 
 	if ( btns & Qt::LeftButton) {
 //		qDebug() << "send left dargging";
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_DRAGGING, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_DRAGGING, uiclientid, x, y);
 	}
 	else if (btns & Qt::RightButton) {
 //		qDebug() << "sendMouseMove() Rightbutton dragging";
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTDRAGGING, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTDRAGGING, uiclientid, x, y);
 	}
 	else {
 		// just move pointer
 //		qDebug() << "sendMouseMove() Moving" << globalPos;
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_MOVING, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_MOVING, uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -609,13 +609,13 @@ void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons bt
 		//
 		// this is needed to setPos of selection rectangle
 		//
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
 	}
 	else {
 		//
 		// will trigger setAppUnderPointer() which is needed for left mouse dragging
 		//
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_PRESS, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_PRESS, uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -631,11 +631,11 @@ void ExternalGUIMain::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons 
 
 	if (btns & Qt::RightButton) {
 		// will finish selection rectangle
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTRELEASE, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTRELEASE, uiclientid, x, y);
 	}
 	else {
 		// will pretend droping operation
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_RELEASE, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RELEASE, uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -647,10 +647,10 @@ void ExternalGUIMain::sendMouseClick(const QPoint globalPos, Qt::MouseButtons bt
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 	
 	if (btns & Qt::RightButton) {
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
 	}
 	else {
-		sprintf(msg.data(), "%d %llu %d %d", POINTER_CLICK, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_CLICK, uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -663,7 +663,7 @@ void ExternalGUIMain::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
-	sprintf(msg.data(), "%d %llu %d %d", POINTER_DOUBLECLICK, uiclientid, x, y);
+	sprintf(msg.data(), "%d %u %d %d", POINTER_DOUBLECLICK, uiclientid, x, y);
 	queueMsgToWall(msg);
 }
 
@@ -673,7 +673,7 @@ void ExternalGUIMain::sendMouseWheel(const QPoint globalPos, int delta) {
 	y = scaleToWallY * globalPos.y();
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 //	qDebug() << "sendMouseWheel" << delta;
-	sprintf(msg.data(), "%d %llu %d %d %d", POINTER_WHEEL, uiclientid, x, y, delta);
+	sprintf(msg.data(), "%d %u %d %d %d", POINTER_WHEEL, uiclientid, x, y, delta);
 	queueMsgToWall(msg);
 }
 

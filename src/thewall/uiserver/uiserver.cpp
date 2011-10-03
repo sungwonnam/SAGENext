@@ -69,9 +69,9 @@ void UiServer::incomingConnection(int sockfd) {
     char buf[EXTUI_MSG_SIZE]; memset(buf, '\0', EXTUI_MSG_SIZE);
 //    int filetransferport = fileRecvPortBase + uiClientId;
 	int filetransferport = settings->value("general/fileserverport", 46000).toInt();
-    sprintf(buf, "%llu %d %d %d", uiClientId, (int)scene->width(), (int)scene->height(), filetransferport);
+    sprintf(buf, "%u %d %d %d", uiClientId, (int)scene->width(), (int)scene->height(), filetransferport);
     ::send(sockfd, buf, 1280, 0);
-    qDebug("UiServer::%s() : The scene size %d x %d sent to ui %llu", __FUNCTION__, (int)scene->width(), (int)scene->height(), uiClientId);
+    qDebug("UiServer::%s() : The scene size %d x %d sent to ui %u", __FUNCTION__, (int)scene->width(), (int)scene->height(), uiClientId);
 
 
     /**
@@ -82,8 +82,10 @@ void UiServer::incomingConnection(int sockfd) {
 
     connect(this, SIGNAL(destroyed()), thread, SLOT(breakWhileLoop()));
     connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
-    connect(thread, SIGNAL(clientDisconnected(quint64)), this, SLOT(removeFinishedThread(quint64)));
-    connect(thread, SIGNAL(msgReceived(quint64, UiMsgThread *, QByteArray)), this, SLOT(handleMessage(const quint64, UiMsgThread *, const QByteArray)));
+    connect(thread, SIGNAL(clientDisconnected(quint32)), this, SLOT(removeFinishedThread(quint32)));
+	if (! connect(thread, SIGNAL(msgReceived(quint32, UiMsgThread *, QByteArray)), this, SLOT(handleMessage(const quint32, UiMsgThread *, const QByteArray))) ) {
+		qCritical("%s::%s() : connecting UiMsgThread::msgReceived() to UiServer::handleMessage() failed", metaObject()->className(), __FUNCTION__);
+	}
 
     thread->start();
 
@@ -97,10 +99,10 @@ void UiServer::incomingConnection(int sockfd) {
     // by default, ui client is not receiving app layout on the wall
 //    appLayoutFlagMap.insert(uiClientId, false);
 
-    qDebug("UiServer::%s() : ui client %llu has connected.", __FUNCTION__, uiClientId);
+    qDebug("UiServer::%s() : ui client %u has connected.", __FUNCTION__, uiClientId);
 }
 
-void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QByteArray msg) {
+void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QByteArray msg) {
 	Q_UNUSED(id);
 	Q_UNUSED(msgThread);
     //	if (!msg) return;
@@ -156,7 +158,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
     }
     case TOGGLE_APP_LAYOUT: {
         quint64 uid;
-        sscanf(msg.constData(), "%d %llu", &code, &uid);
+        sscanf(msg.constData(), "%d %u", &code, &uid);
 
         QMap<quint64,bool>::iterator it = appLayoutFlagMap.find(uid);
         if ( it != appLayoutFlagMap.end() ) {
@@ -178,13 +180,13 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 	***************/
 
     case VNC_SHARING: {
-        quint64 uiclientid;
+        quint32 uiclientid;
         char senderIP[128];
         int display = 0;
         int framerate = 24;
         char vncpass[64];
 		char username[64];
-        sscanf(msg.constData(), "%d %llu %s %d %s %s %d", &code, &uiclientid, senderIP, &display, username, vncpass, &framerate);
+        sscanf(msg.constData(), "%d %u %s %d %s %s %d", &code, &uiclientid, senderIP, &display, username, vncpass, &framerate);
 
 //		qDebug() << "uiserver" << QString(username) << QString(vncpass);
 
@@ -203,11 +205,11 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         /** shared pointer **/
     case POINTER_SHARE: {
 		char colorname[16];
-        quint64 uiclientid;
+        quint32 uiclientid;
         QByteArray pname(64, '\0');
-        sscanf(msg.constData(), "%d %llu %s %s", &code, &uiclientid, pname.data(), colorname);
+        sscanf(msg.constData(), "%d %u %s %s", &code, &uiclientid, pname.data(), colorname);
 
-        qDebug("UiServer::%s() : POINTER_SHARE from uiclient %llu, (%s, %s)",__FUNCTION__, uiclientid, pname.constData(), colorname);
+        qDebug("UiServer::%s() : POINTER_SHARE from uiclient %u, (%s, %s)",__FUNCTION__, uiclientid, pname.constData(), colorname);
 
         SAGENextPolygonArrow *pointerItem = 0;
 //		pointerItem = new SAGENextPolygonArrow(uiclientid, settings, QString(pname), QColor(QString(colorname)));
@@ -222,8 +224,8 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         break;
     }
     case POINTER_UNSHARE: {
-        quint64 uiclientid;
-        sscanf(msg.constData(), "%d %llu", &code, &uiclientid);
+        quint32 uiclientid;
+        sscanf(msg.constData(), "%d %u", &code, &uiclientid);
         // find the PixmapArrow associated with this uiClientId
         QGraphicsItem *pa = getSharedPointer(uiclientid);
         if (pa) {
@@ -240,9 +242,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
       Nothing special happens. just the Pointer item is going to move on the scene
      */
     case POINTER_MOVING: {
-        quint64 uiclientid;
+        quint32 uiclientid;
         int x,y;
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
 
         // find the PolygonArrow associated with this uiClientId
         SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
@@ -263,9 +265,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 //	case POINTER_RIGHTDRAGGING:
     case POINTER_DRAGGING:
 	{
-        quint64 uiclientid;
+        quint32 uiclientid;
         int x,y;
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
 
         SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
         if (pa) {
@@ -279,9 +281,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
         break;
 	}
 	case POINTER_RIGHTDRAGGING: {
-		quint64 uiclientid;
+		quint32 uiclientid;
 		int x,y;
-		sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+		sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
 
 		SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
 		if (pa) {
@@ -301,9 +303,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
     */
     case POINTER_PRESS:
 	{
-        quint64 uiclientid;
+        quint32 uiclientid;
         int x,y;
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
 //            qDebug("UiServer::%s() : POINTER_PRESS : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
@@ -322,9 +324,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 		/**
 	case POINTER_RIGHTPRESS:
 	{
-		quint64 uiclientid;
+		quint32 uiclientid;
         int x,y;
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
         PolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
             pa->pointerPress(QPointF(x,y), Qt::RightButton, Qt::NoButton | Qt::RightButton);
@@ -342,9 +344,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 		  */
 	case POINTER_RELEASE:
 	{
-		quint64 uiclientid;
+		quint32 uiclientid;
         int x,y;
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid);
 		if (pa) {
 			pa->pointerRelease(QPointF(x,y), Qt::LeftButton);
@@ -358,9 +360,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 		  */
 	case POINTER_RIGHTRELEASE:
 	{
-		quint64 uiclientid;
+		quint32 uiclientid;
         int x,y;
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid);
 		if (pa) {
 			pa->pointerRelease(QPointF(x,y), Qt::RightButton);
@@ -373,9 +375,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 	*/
     case POINTER_CLICK:
 	{
-        quint64 uiclientid;
+        quint32 uiclientid;
         int x,y; // x,y from ui clients is the scene position of the wall
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
 //            qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
@@ -396,9 +398,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 		  */
 	case POINTER_RIGHTCLICK:
 	{
-        quint64 uiclientid;
+        quint32 uiclientid;
         int x, y;
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
             pa->pointerClick(QPointF(x,y), Qt::RightButton);
@@ -414,9 +416,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 	  Always left button
 	  */
     case POINTER_DOUBLECLICK: {
-        quint64 uiclientid;
+        quint32 uiclientid;
         int x,y;
-        sscanf(msg.constData(), "%d %llu %d %d", &code, &uiclientid, &x, &y);
+        sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
         SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
             pa->pointerDoubleClick(QPointF(x, y), Qt::LeftButton);
@@ -429,9 +431,9 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
 
 
     case POINTER_WHEEL: {
-        quint64 uiclientid;
+        quint32 uiclientid;
         int x,y,tick;
-        sscanf(msg.constData(), "%d %llu %d %d %d", &code, &uiclientid, &x, &y, &tick);
+        sscanf(msg.constData(), "%d %u %d %d %d", &code, &uiclientid, &x, &y, &tick);
         SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
         if (pa) {
             //qDebug() << "UiServer:: wheel" << x << y << 120*tick;
@@ -446,7 +448,7 @@ void UiServer::handleMessage(const quint64 id, UiMsgThread *msgThread, const QBy
     } /* end of switch */
 }
 
-void UiServer::removeFinishedThread(quint64 uiclientid) {
+void UiServer::removeFinishedThread(quint32 uiclientid) {
     int removed = uiMsgThreadsMap.remove(uiclientid);
     if ( removed > 1 ) {
         qDebug("UiServer::%s() : %d entries deleted from uiThreadsMap. There were duplicate uiClientId", __FUNCTION__, removed);
@@ -546,7 +548,7 @@ void UiServer::updateAppLayout() {
 
 
     // for each UiMsgThread
-    QMap<quint64, UiMsgThread*>::const_iterator iter = uiMsgThreadsMap.constBegin();
+    QMap<quint32, UiMsgThread*>::const_iterator iter = uiMsgThreadsMap.constBegin();
     UiMsgThread *msgthr = 0;
 
     QMap<quint64, bool>::const_iterator flagiter;
@@ -569,15 +571,15 @@ void UiServer::updateAppLayout() {
 **/
 
 
-UiMsgThread * UiServer::getUiMsgThread(quint64 uiclientid) {
-    QMap<quint64, UiMsgThread*>::iterator it = uiMsgThreadsMap.find(uiclientid);
+UiMsgThread * UiServer::getUiMsgThread(quint32 uiclientid) {
+    QMap<quint32, UiMsgThread*>::iterator it = uiMsgThreadsMap.find(uiclientid);
     if ( it == uiMsgThreadsMap.end()) return 0;
     UiMsgThread *ret = it.value();
     return ret;
 }
 
-SAGENextPolygonArrow * UiServer::getSharedPointer(quint64 uiclientid) {
-    QMap<quint64, SAGENextPolygonArrow *>::iterator it = pointers.find(uiclientid);
+SAGENextPolygonArrow * UiServer::getSharedPointer(quint32 uiclientid) {
+    QMap<quint32, SAGENextPolygonArrow *>::iterator it = pointers.find(uiclientid);
     if ( it == pointers.end() ) return 0;
     return it.value();
 }

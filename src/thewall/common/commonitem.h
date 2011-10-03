@@ -25,7 +25,7 @@ public:
   */
 class SAGENextPolygonArrow : public QGraphicsPolygonItem {
 public:
-	SAGENextPolygonArrow(const quint64 uicid, const QSettings *, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
+	SAGENextPolygonArrow(const quint32 uicid, const QSettings *, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
 	~SAGENextPolygonArrow();
 
 	void setPointerName(const QString &text);
@@ -99,7 +99,7 @@ private:
         /**
           * The unique ID of UI client to which this pointer belongs
           */
-        const quint64 _uiclientid;
+        const quint32 _uiclientid;
 
 		/**
 		  The global settings

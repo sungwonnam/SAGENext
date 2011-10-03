@@ -8,21 +8,21 @@ class UiMsgThread : public QThread
 {
 	Q_OBJECT
 public:
-	explicit UiMsgThread(const quint64 uiclientid, int sockfd, QObject *parent = 0);
+	explicit UiMsgThread(const quint32 uiclientid, int sockfd, QObject *parent = 0);
 	~UiMsgThread();
 
 protected:
 	void run();
 
 private:
-	const quint64 uiClientId;
+	const quint32 uiClientId;
 	bool _end;
 	int sockfd;
 //	QTcpSocket *tcpSock;
 
 signals:
-	void msgReceived(quint64 myId, UiMsgThread *myself, QByteArray msg);
-	void clientDisconnected(quint64 uiclientid);
+	void msgReceived(quint32 myId, UiMsgThread *myself, QByteArray msg);
+	void clientDisconnected(quint32 uiclientid);
 
 public slots:
 	void breakWhileLoop();

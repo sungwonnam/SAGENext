@@ -62,19 +62,19 @@ private:
           * Each ui client has to have unique identifier
           This id will be set to 0 if fileRecvPortBase + id >= 65535
           */
-	quint64 uiClientId;
+	quint32 uiClientId;
 
         /*!
           * uiclientid as a key and corresponding msg thread
           */
-	QMap<quint64, UiMsgThread *> uiMsgThreadsMap;
+	QMap<quint32, UiMsgThread *> uiMsgThreadsMap;
 
-	QMap<quint64, FileReceivingTcpServer *> uiFileRecvRunnableMap;
+	QMap<quint32, FileReceivingTcpServer *> uiFileRecvRunnableMap;
 
         /*!
           * uiclientid and corresponding shared pointer
           */
-	QMap<quint64, SAGENextPolygonArrow *> pointers;
+	QMap<quint32, SAGENextPolygonArrow *> pointers;
 
         /*!
           uiclientid and corresponding app layout flag
@@ -94,9 +94,9 @@ private:
 
 	SAGENextLauncher *launcher;
 
-	UiMsgThread * getUiMsgThread(quint64 uiclientid);
+	UiMsgThread * getUiMsgThread(quint32 uiclientid);
 
-	SAGENextPolygonArrow * getSharedPointer(quint64 uiclientid);
+	SAGENextPolygonArrow * getSharedPointer(quint32 uiclientid);
 
         /**
           When a user drag and drop media file on the sagenextpointer, the launcher receives the file and fire corresponding widget.
@@ -113,13 +113,13 @@ signals:
 //        void registerApp(MEDIA_TYPE type, QString filename, qint64 filesize, QString senderIP, QString recvIP, quint16 recvPort);
 
 private slots:
-	void handleMessage(const quint64 id, UiMsgThread *, const QByteArray msg);
+	void handleMessage(const quint32 id, UiMsgThread *, const QByteArray msg);
 
         /**
           * invoked by the signal UiMsgThread::clientDisconnected()
           * update uiThreadsMap and remove PolygonArrow from the scene
           */
-	void removeFinishedThread(quint64);
+	void removeFinishedThread(quint32);
 };
 
 #endif // UISERVER_H

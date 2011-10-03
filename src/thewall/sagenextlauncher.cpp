@@ -643,14 +643,14 @@ void ScenarioThread::run() {
 			quint64 uiclientid;
 			char pname[128];
 			char color[16];
-			sscanf(line, "%lld %d %llu %s %s", &when, &type, &uiclientid, pname, color);
+			sscanf(line, "%lld %d %u %s %s", &when, &type, &uiclientid, pname, color);
 //			qDebug() << "NEW_POINTER" << uiclientid << pname << color;
 			_launcher->launchPointer(uiclientid, QString(pname), QColor(QString(color)));
 //			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(quint64, uiclientid), Q_ARG(QString, QString(pname)), Q_ARG(QColor, QColor(QString(color))));
 			break;
 		}
 		case 11: { // POINTER_UNSHARE
-			sscanf(line, "%lld %d %llu", &when, &type, &pointerid);
+			sscanf(line, "%lld %d %u", &when, &type, &pointerid);
 			pointer = _launcher->_pointerMap.value(pointerid);
 			delete pointer;
 			break;
@@ -662,7 +662,7 @@ void ScenarioThread::run() {
 		case 6: // dbl click
 		case 7: // wheel
 		{
-			sscanf(line, "%lld %d %llu %d %d %d", &when, &type, &pointerid, &x, &y, &button);
+			sscanf(line, "%lld %d %u %d %d %d", &when, &type, &pointerid, &x, &y, &button);
 			pointer = _launcher->_pointerMap.value(pointerid);
 			Q_ASSERT(pointer);
 

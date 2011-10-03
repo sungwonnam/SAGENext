@@ -14,7 +14,7 @@
 
 
 
-UiMsgThread::UiMsgThread(const quint64 id, int sockfd, QObject *parent) :
+UiMsgThread::UiMsgThread(const quint32 id, int sockfd, QObject *parent) :
 	QThread(parent), uiClientId(id), _end(false), sockfd(sockfd)
 {
 	int optval = 1;
@@ -40,7 +40,7 @@ UiMsgThread::~UiMsgThread() {
 	emit clientDisconnected(uiClientId);
 
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
-	sprintf(msg.data(), "%d %llu goodbye", WALL_IS_CLOSING, uiClientId);
+	sprintf(msg.data(), "%d %u goodbye", WALL_IS_CLOSING, uiClientId);
 
 	if (  ::shutdown(sockfd, SHUT_RDWR) != 0 ) {
 		qDebug("UiMsgThread::%s() : shutdown error", __FUNCTION__);
@@ -50,7 +50,7 @@ UiMsgThread::~UiMsgThread() {
 	}
 	wait();
 
-	qDebug("UiMsgThread::%s() : ui client %llu exiting", __FUNCTION__, uiClientId);
+	qDebug("UiMsgThread::%s() : ui client %u exiting", __FUNCTION__, uiClientId);
 }
 
 void UiMsgThread::sendMsg(const QByteArray &msgstr) {
@@ -61,31 +61,20 @@ void UiMsgThread::sendMsg(const QByteArray &msgstr) {
 }
 
 void UiMsgThread::run() {
-	qDebug("UiMsgThread::%s() : ui client thread %llu has started", __FUNCTION__, uiClientId);
+	qDebug("UiMsgThread::%s() : ui client thread %u has started", __FUNCTION__, uiClientId);
 
-//	QByteArray *msgStr = 0;
 	QByteArray msgStr(EXTUI_MSG_SIZE, '\0');
 	int read = 0;
 
-//	fd_set rset;
-
 	while(!_end) {
-		//msgStr = new QByteArray(EXTUI_MSG_SIZE, '\0');
 		msgStr.fill(0);
-
-		//		FD_ZERO(&rset);
-		//		FD_SET(sockfd, &rset);
-		//		selret = select(sockfd + 1, &rset, 0, 0, 0); // block
-		//		if ( selret > 0 && FD_ISSET(sockfd, &rset) ) {
 
 		if ( (read = recv(sockfd, (void *)msgStr.data(), EXTUI_MSG_SIZE, MSG_WAITALL)) == -1 ) {
 			qCritical("UiMsgThread::%s() : socket error", __FUNCTION__);
-			//				delete msgStr;
 			break;
 		}
 		else if ( read == 0 ) {
 			qDebug("UiMsgThread::%s() : socket disconnected", __FUNCTION__);
-			//				delete msgStr;
 			break;
 		}
 //		qDebug("UiMsgThread::%s() : received external UI msg [%s]", __FUNCTION__, msgStr.data());

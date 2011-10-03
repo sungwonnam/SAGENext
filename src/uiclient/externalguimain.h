@@ -107,7 +107,7 @@ private:
 
           This should be map data structure to support multiple wall connections
           */
-	quint64 uiclientid;
+	quint32 uiclientid;
 
 	/**
 	  receives this from UiServer upon connection.
@@ -294,17 +294,6 @@ private slots:
 
 
 
-
-
-
-
-class AppRect : public QGraphicsRectItem {
-public:
-        AppRect(QGraphicsItem *parent=0);
-
-protected:
-        QVariant itemChange(GraphicsItemChange change, const QVariant &value);
-};
 
 
 
