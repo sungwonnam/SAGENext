@@ -87,18 +87,18 @@ public slots:
         /**
           this is general launch function
           */
-        BaseWidget * launch(int mediatype, QString filename, qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
+		BaseWidget * launch(int mediatype, QString filename, const QPointF &scenepos = QPointF(), qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
 
         /**
           just for VNC widget
           */
-        BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10);
+        BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF());
 
         /**
           The widget is added to the scene in here.
           _globalAppId is incremented by 1 in here
           */
-        BaseWidget * launch(BaseWidget *);
+        BaseWidget * launch(BaseWidget *, const QPointF &scenepos = QPointF());
 
 		/**
 		  Only with filename, this slot launches all sorts of things (media, session, recording,..)
@@ -106,7 +106,7 @@ public slots:
 		BaseWidget * launch(const QStringList &fileList);
 
 
-		SAGENextPolygonArrow * launchPointer(quint64 uiclientid, const QString &name, const QColor &color);
+		SAGENextPolygonArrow * launchPointer(quint64 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
 
 		/**
 		  Load a saved session

@@ -118,14 +118,15 @@ BaseWidget * SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
 /**
   * UiServer triggers this slot
   */
-BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
-	//        qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
+BaseWidget * SAGENextLauncher::launch(int type, QString filename, const QPointF &scenepos/* = QPointF()*/, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
+	//qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
 
+	qDebug() << "Launcher::launch() :" << type << filename << scenepos;
 
 
 
 	//
-	// record event
+	// record event (WIDGET_NEW or POINTER_NEW)
 	//
 	if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
 		if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
@@ -161,7 +162,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 		//
 		else if ( !filename.isEmpty() ) {
 
-			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
+//			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			w = new PixmapWidget(filename, _globalAppId, _settings);
 		}
 		else
@@ -329,16 +330,16 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, qint64 fsize /
 
 	} // end switch
 
-	return launch(w);
+	return launch(w, scenepos);
 }
 
-BaseWidget * SAGENextLauncher::launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate) {
+BaseWidget * SAGENextLauncher::launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate, const QPointF &scenepos /*= QPointF()*/) {
 	//	qDebug() << "launch" << username << vncPasswd;
 	BaseWidget *w = new VNCClientWidget(_globalAppId, vncServerIP, display, username, vncPasswd, framerate, _settings);
-	return launch(w);
+	return launch(w, scenepos);
 }
 
-BaseWidget * SAGENextLauncher::launch(BaseWidget *w) {
+BaseWidget * SAGENextLauncher::launch(BaseWidget *w, const QPointF &scenepos /*= QPointF()*/) {
 	if ( w ) {
 
 		/**
@@ -349,7 +350,7 @@ BaseWidget * SAGENextLauncher::launch(BaseWidget *w) {
 		if ( w->isRegisteredForMouseHover() ) {
 			_scene->hoverAcceptingApps.push_back(w);
 		}
-		_scene->addItemOnTheLayout(w);
+		_scene->addItemOnTheLayout(w, scenepos);
 
 		//connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));
 		++_globalAppId; // increment only when widget is created successfully
@@ -462,7 +463,7 @@ BaseWidget * SAGENextLauncher::launch(const QStringList &fileList) {
 	return 0;
 }
 
-SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint64 uiclientid, const QString &name, const QColor &color) {
+SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint64 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos /*= QPointF()*/) {
 
 	SAGENextPolygonArrow *pointer = 0;
 
@@ -486,6 +487,9 @@ SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint64 uiclientid, const
 	}
 
 	_scene->addItem(pointer);
+	if(!scenepos.isNull()) {
+		pointer->setPos(scenepos);
+	}
 	pointer->setScale(1.3);
 
 	// temporary for scenario
@@ -515,6 +519,7 @@ void SAGENextLauncher::launchSavedSession(const QString &sessionfilename) {
 	qreal scale;
 	while (!f.atEnd()) {
 		in >> mtype >> scenepos >> size >> scale;
+//		qDebug() << "\tentry : " << mtype << scenepos << size << scale;
 
 		QString file;
 		QString user;
@@ -525,11 +530,11 @@ void SAGENextLauncher::launchSavedSession(const QString &sessionfilename) {
 
 		if (mtype == MEDIA_TYPE_VNC) {
 			in >> srcaddr >> user >> pass;
-			bw = launch(user, pass, 0, srcaddr);
+			bw = launch(user, pass, 0, srcaddr, 10, scenepos);
 		}
 		else {
 			in >> file;
-			bw = launch(mtype, file);
+			bw = launch(mtype, file, scenepos);
 		}
 		if (!bw) {
 			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
@@ -538,8 +543,6 @@ void SAGENextLauncher::launchSavedSession(const QString &sessionfilename) {
 
 		bw->resize(size);
 		bw->setScale(scale);
-
-		_scene->rootLayoutWidget()->addItem(bw, scenepos);
 	}
 
 	f.close();

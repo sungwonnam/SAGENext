@@ -183,7 +183,7 @@ void SAGENextScene::saveSession() {
 		qCritical() << "SAGENextScene::saveSession() : couldn't open the file" << sessionFilename;
 		return;
 	}
-	qDebug() << "SAGENextScene::saveSession() : save current layout to" << sessionFilename;
+	qWarning() << "\nSAGENextScene::saveSession() : save current layout to" << sessionFilename;
 
 	QDataStream out(&sessionfile);
 
@@ -308,7 +308,7 @@ void SAGENextLayoutWidget::setRectangle(const QRectF &r) {
 	setPos(r.topLeft()); // partitionRect.topLeft is in it's parent's coordinate
 }
 
-void SAGENextLayoutWidget::addItem(BaseWidget *bw, const QPointF &scenepos) {
+void SAGENextLayoutWidget::addItem(BaseWidget *bw, const QPointF &scenepos /* = 30,30*/) {
 	/**
 	  If _bar exist, that means this layoutWidget is just a container for child layoutwidgets.
 	  So this layoutWidget can't have any baseWidget as a child.
@@ -342,6 +342,7 @@ void SAGENextLayoutWidget::addItem(BaseWidget *bw, const QPointF &scenepos) {
 		  QGraphicsObject::parentChanged() will be emitted
 		  */
 		bw->setParentItem(this);
+		bw->setPos( mapFromScene(scenepos) );
 	}
 }
 
