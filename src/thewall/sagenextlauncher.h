@@ -65,6 +65,8 @@ private:
           */
         QList<SageStreamWidget *> _sageWidgetQueue;
 
+		QList<QPointF> _sageWidgetScenePosQueue;
+
         void createFsManager();
 
         ResourceMonitor *_rMonitor;

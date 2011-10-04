@@ -53,7 +53,7 @@ signals:
 	  *
 	  * port means streaming port that SageReceiver has to open for pixel receiving
 	  */
-	void sailConnected(const quint64 sageAppId, QString appName, int protocol, int port, const QRect rect);
+//	void sailConnected(const quint64 sageAppId, QString appName, int protocol, int port, const QRect rect);
 
 public slots:
 	/**

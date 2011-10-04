@@ -121,6 +121,9 @@ int SagePixelReceiver::receiveUdpPortNumber() {
 
 
 void SagePixelReceiver::run() {
+
+//	QDebug() << "SagePixelReceiver::run() : starting pixel receiving thread";
+
 	QThread::setTerminationEnabled(true);
 
 	/**

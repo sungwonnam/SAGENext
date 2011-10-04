@@ -253,9 +253,6 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                                    */
 
 
-
-
-
                         /** send SAIL_INIT_MSG to sender. It will trigger... **/
 
                         //sageNwConfig nwCfg;
@@ -315,30 +312,25 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                         QRect initRect(x, y, width, height);
 
                         Q_ASSERT(_sageWidget);
-                        QMetaObject::invokeMethod(_sageWidget, "initialize", Qt::QueuedConnection,
+
+                        QMetaObject::invokeMethod(_sageWidget, "doInitReceiver", Qt::QueuedConnection,
                                                                           Q_ARG(quint64, sageAppId),
                                                                           Q_ARG(QString, appName),
                                                                           Q_ARG(QRect, initRect),
                                                                           Q_ARG(int, protocol),
                                                                           Q_ARG(int, streamPort));
 
-
-
-                        /*
-
-                        emit sailConnected(sageAppId, appName,  protocol, streamPort, initRect);
-
-                        */
-
                         // wait a bit so that SageStreamWidget / SagePixelReceiver can be started
-                        /* If this is too short, sender could connect() before accept() is called at the sageStreamWidget */
+                        // If this is too short, sender could connect() before accept() is called at the sageStreamWidget
 //			QCoreApplication::sendPostedEvents();
                         QThread::yieldCurrentThread();
                         QThread::msleep(300);
 
 
 
-                        /** send SAIL_CONNECT_TO_RCV to sender **/
+                        /**
+                          * send SAIL_CONNECT_TO_RCV to sender
+                          */
                         //pixelStreamer->initNetworks(msgData)
                         // sail will send back SAIL_CONNECTED_TO_RCV
                         // [22000 1 131.193.78.140 0 ]

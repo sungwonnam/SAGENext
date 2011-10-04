@@ -60,6 +60,7 @@ void SAGENextLauncher::createFsManager() {
   */
 BaseWidget * SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
         SageStreamWidget *sw = 0;
+		QPointF scenepos;
 
         if (_sageWidgetQueue.isEmpty()) {
 			// This means the SAGE application was NOT started by the launcher but manually by a user.
@@ -76,6 +77,9 @@ BaseWidget * SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
                 // there's sageWidget waiting for SAIL connection
                 sw = _sageWidgetQueue.front();
                 _sageWidgetQueue.pop_front();
+
+				scenepos = _sageWidgetScenePosQueue.front();
+				_sageWidgetScenePosQueue.pop_front();
         }
 
         // give fsmThread to the sagewidget
@@ -111,7 +115,7 @@ BaseWidget * SAGENextLauncher::launch(fsManagerMsgThread *fsmThread) {
 //		resourceMonitor->updateAffInfo(sageWidget, -1, -1);
         }
 
-        return launch(sw);
+        return launch(sw, scenepos);
 }
 
 
@@ -184,6 +188,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, const QPointF 
 			// add widget to the queue for launch(fsmThread *)
 			//
 			_sageWidgetQueue.push_back(sws);
+			_sageWidgetScenePosQueue.push_back(scenepos);
 
 			// invoke sail remotely
 			QProcess *proc1 = new QProcess(this);
@@ -204,7 +209,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, const QPointF 
 			//
 			///
 			//// launch(w) will be called in launch(fsmMessageThread *)
-			///
+			///  Because of this, scenepos in savedSession has no effect !!!
 			//
 			return sws;
 		}
@@ -227,6 +232,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, const QPointF 
 		      add the widget to the queue
 			*/
 			_sageWidgetQueue.push_back(sws);
+			_sageWidgetScenePosQueue.push_back(scenepos);
 
 			/**
 	          initiate SAIL process
@@ -255,7 +261,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, const QPointF 
 			//
 			///
 			//// launch(w) will be called in launch(fsmMessageThread *)
-			///
+			//// Because of this, scenepos in savedSession has no effect !!! That's why _sageWidgetScenePosQueue has to be maintained
 			//
 			return sws;
 		}
@@ -393,7 +399,7 @@ BaseWidget * SAGENextLauncher::launch(const QStringList &fileList) {
 		QString filename = fileList.at(i);
 
 		if ( filename.contains(rxVideo) ) {
-			qDebug("%s::%s() : Opening a video file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+//			qDebug("%s::%s() : Opening a video file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
 
 //			w = new PhononWidget(filename, globalAppId, settings);
 //			QFuture<void> future = QtConcurrent::run(qobject_cast<PhononWidget *>(w), &PhononWidget::threadInit, filename);
@@ -405,7 +411,7 @@ BaseWidget * SAGENextLauncher::launch(const QStringList &fileList) {
 		  Image
 		  */
 		else if ( filename.contains(rxImage) ) {
-			qDebug("%s::%s() : Opening an image file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+//			qDebug("%s::%s() : Opening an image file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			return launch((int)MEDIA_TYPE_IMAGE, filename);
 		}
 
@@ -413,7 +419,7 @@ BaseWidget * SAGENextLauncher::launch(const QStringList &fileList) {
 		  PDF
 		  */
 		else if ( filename.contains(rxPdf) ) {
-			qDebug("%s::%s() : Opening a PDF file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+//			qDebug("%s::%s() : Opening a PDF file %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			return launch((int)MEDIA_TYPE_PDF, filename);
 		}
 
@@ -421,7 +427,7 @@ BaseWidget * SAGENextLauncher::launch(const QStringList &fileList) {
 		  * plugin
 		  */
 		else if (filename.contains(rxPlugin) ) {
-			qDebug("%s::%s() : Loading a plugin %s", metaObject()->className(),__FUNCTION__, qPrintable(filename));
+//			qDebug("%s::%s() : Loading a plugin %s", metaObject()->className(),__FUNCTION__, qPrintable(filename));
 			return launch((int)MEDIA_TYPE_PLUGIN, filename);
 		}
 
@@ -429,7 +435,7 @@ BaseWidget * SAGENextLauncher::launch(const QStringList &fileList) {
 		  session
 		  */
 		else if (filename.contains(rxSession) ) {
-			qDebug("%s::%s() : Loading a session %s", metaObject()->className(),__FUNCTION__, qPrintable(filename));
+//			qDebug("%s::%s() : Loading a session %s", metaObject()->className(),__FUNCTION__, qPrintable(filename));
 			launchSavedSession(filename);
 			return 0;
 		}
@@ -438,7 +444,7 @@ BaseWidget * SAGENextLauncher::launch(const QStringList &fileList) {
 		  Recording
 		  */
 		else if (filename.contains(rxScenario)) {
-			qDebug("%s::%s() : Launching a recording file, %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
+//			qDebug("%s::%s() : Launching a recording file, %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			launchRecording(filename);
 			return 0;
 		}

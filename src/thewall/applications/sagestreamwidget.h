@@ -15,7 +15,7 @@ class SagePixelReceiver;
 class AffinityInfo;
 class QProcess;
 
-//#include <QFutureWatcher>
+#include <QFutureWatcher>
 //#include <QWaitCondition>
 
 class SageStreamWidget : public RailawareWidget
@@ -47,6 +47,7 @@ protected:
 
 private:
 //	GLuint texhandle;
+	const QSettings *_settings;
 
 	fsManagerMsgThread *_fsmMsgThread;
 
@@ -111,6 +112,12 @@ private:
 	int createImageBuffer(int resx, int resy, sagePixFmt pixelFormat);
 
 
+	QFuture<int> _initReceiverFuture;
+	QFutureWatcher<int> _initReceiverWatcher;
+
+	int _streamProtocol;
+
+
 //	QMutex *mutex;
 //	QWaitCondition *wc;
 
@@ -146,11 +153,29 @@ public slots:
 
 	  receiverThread is created and started in here
 	  */
-	int initialize(quint64 sageappid, QString appname, QRect initrect, int protocol, int port);
+//	int initialize(quint64 sageappid, QString appname, QRect initrect, int protocol, int port);
+
+
+	/**
+	  This slot runs waitForPixelStreamerConnection in separate thread because ::accept() will block in that slot
+	  */
+	void doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port);
+
+	/**
+	  This slots blocking waits streamer's connection.
+	  Image double buffer is created upon connection
+	  */
+	int waitForPixelStreamerConnection(int protocol, int port, const QString &appname);
+
+	/**
+	  This slot starts pixel receiving thread and is called after waitForPixelStreamerConnection() finished
+	  */
+	void startReceivingThread();
 
 	/*!
-	  releases back buffer (consumes data) so that producer's swap buffer can return.
-	  It calls QGraphicsWidget::update()
+	  This slot is called (Qt::QueuedConnection) by pixel receiving thread whenever the thread received a frame.
+      In this slot, the back buffer is released (consumes data) after QImage is converted to QPixmap. (This delay is conversion latency)
+	  It calls then QGraphicsWidget::update()
 	  */
 	void scheduleUpdate();
 
