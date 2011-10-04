@@ -716,7 +716,7 @@ void BaseWidget::createActions()
 
 
 
-void BaseWidget::mouseDrag(const QPointF &scenePos, Qt::MouseButton, Qt::KeyboardModifier) {
+void BaseWidget::mouseDrag(const QPointF & /*scenePos*/, Qt::MouseButton, Qt::KeyboardModifier) {
 }
 
 

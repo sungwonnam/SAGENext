@@ -490,7 +490,10 @@ void SAGENextPolygonArrow::pointerWheel(const QPointF &scenePos, int delta, Qt::
 		int _delta = 0;
 		if ( delta > 0 )  _delta = 120;
 		else if (delta <0) _delta = -120;
-        if ( ! QApplication::sendEvent(gview->viewport(), & QWheelEvent(gview->mapFromScene(scenePos), /*gview->mapToGlobal(scenePos.toPoint()),*/ _delta, Qt::NoButton, Qt::NoModifier)) ) {
+
+		QWheelEvent we(gview->mapFromScene(scenePos), /*gview->mapToGlobal(scenePos.toPoint()),*/ _delta, Qt::NoButton, Qt::NoModifier);
+
+        if ( ! QApplication::sendEvent(gview->viewport(), &we) ) {
             qDebug("PolygonArrow::%s() : send wheelEvent failed", __FUNCTION__);
         }
         else {

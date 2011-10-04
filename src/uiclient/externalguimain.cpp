@@ -437,7 +437,7 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 	int state = 0; // pressed or released
 	int wheelvalue = 0; // -1 and 1
 	
-	QByteArray msg(64, '/0');
+	QByteArray msg(64, 0);
 	QTextStream in(&msg, QIODevice::ReadOnly);
 	while ( macCapture->readLine(msg.data(), msg.size()) > 0 ) {
 		in >> msgcode;
@@ -658,7 +658,7 @@ void ExternalGUIMain::sendMouseClick(const QPoint globalPos, Qt::MouseButtons bt
 /**
   Left button only
   */
-void ExternalGUIMain::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons btns /*= Qt::LeftButton | Qt::NoButton*/) {
+void ExternalGUIMain::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons /*btns*/ /*= Qt::LeftButton | Qt::NoButton*/) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();

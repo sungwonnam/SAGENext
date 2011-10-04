@@ -176,7 +176,7 @@ public:
 		inline void setRegisterForMouseHover(bool v = true) {_registerForMouseHover = v;}
 		inline bool isRegisteredForMouseHover() const {return _registerForMouseHover;}
 
-		virtual void toggleHover(SAGENextPolygonArrow *pointer, const QPointF &pointerPosOnMe, bool isHovering) {}
+		virtual void toggleHover(SAGENextPolygonArrow * /*pointer*/, const QPointF & /*pointerPosOnMe*/, bool /* isHovering */) {}
 		inline void removePointerFromPointerMap(SAGENextPolygonArrow *pointer) {
 			_pointerMap.remove(pointer);
 		}

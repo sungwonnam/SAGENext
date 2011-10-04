@@ -198,6 +198,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, const QPointF 
 			//
 			proc1->start("ssh",  args1);
 			sws->appInfo()->setExecutableName("ssh");
+			sws->appInfo()->setMediaType(MEDIA_TYPE_VIDEO);
 			sws->setSailAppProc(proc1);
 
 			//
@@ -246,8 +247,10 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, const QPointF 
 
 			proc->start("mplayer",  args);
 
+			sws->appInfo()->setMediaType(MEDIA_TYPE_LOCAL_VIDEO);
 			sws->appInfo()->setExecutableName("mplayer");
 			sws->setSailAppProc(proc);
+
 
 			//
 			///
@@ -463,7 +466,7 @@ BaseWidget * SAGENextLauncher::launch(const QStringList &fileList) {
 	return 0;
 }
 
-SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint64 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos /*= QPointF()*/) {
+SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint32 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos /*= QPointF()*/) {
 
 	SAGENextPolygonArrow *pointer = 0;
 
@@ -623,7 +626,7 @@ void ScenarioThread::run() {
 		if (sleep > 0) QThread::msleep((unsigned long)sleep);
 
 
-		quint64 pointerid;
+		quint32 pointerid;
 		int x,y;
 		int button;
 		SAGENextPolygonArrow *pointer = 0;
@@ -642,7 +645,7 @@ void ScenarioThread::run() {
 			break;
 		}
 		case 1: {
-			quint64 uiclientid;
+			quint32 uiclientid;
 			char pname[128];
 			char color[16];
 			sscanf(line, "%lld %d %u %s %s", &when, &type, &uiclientid, pname, color);

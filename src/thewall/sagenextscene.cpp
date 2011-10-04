@@ -25,7 +25,7 @@ SAGENextScene::SAGENextScene(const QRectF &sceneRect, const QSettings *s, QObjec
 
 
 //	QBrush brush(Qt::black, QPixmap(":/resources/evl-logo.png")); // 1920 x 725 pixels
-	setBackgroundBrush(Qt::black);
+	setBackgroundBrush(QColor(10,10,10));
 	/*
 	QGraphicsPixmapItem *pi = new QGraphicsPixmapItem(QPixmap(":/resources/evl-logo.png"));
 	pi->setFlag(QGraphicsItem::ItemIsMovable, false);

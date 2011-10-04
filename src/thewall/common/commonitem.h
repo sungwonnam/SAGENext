@@ -31,7 +31,7 @@ public:
 	void setPointerName(const QString &text);
 	inline QString name() const {return _textItem->text();}
 
-	inline quint64 id() const {return _uiclientid;}
+	inline quint32 id() const {return _uiclientid;}
 
 	inline QColor color() const {return _color;}
 

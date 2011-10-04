@@ -106,7 +106,7 @@ public slots:
 		BaseWidget * launch(const QStringList &fileList);
 
 
-		SAGENextPolygonArrow * launchPointer(quint64 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
+		SAGENextPolygonArrow * launchPointer(quint32 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
 
 		/**
 		  Load a saved session

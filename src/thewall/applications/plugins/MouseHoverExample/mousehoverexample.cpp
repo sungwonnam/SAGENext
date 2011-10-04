@@ -57,7 +57,7 @@ void MouseHoverExample::paint(QPainter *painter, const QStyleOptionGraphicsItem 
 	painter->fillRect(_marginleft, _margintop, size().width()-_marginleft-_marginright, size().height()-_margintop-_marginbottom, Qt::lightGray);
 }
 
-void MouseHoverExample::resizeEvent(QGraphicsSceneResizeEvent *e) {
+void MouseHoverExample::resizeEvent(QGraphicsSceneResizeEvent *) {
 //	_textItem->setPos(e->newSize().width()/2 - _textItem->boundingRect().size().width()/2
 //					  ,e->newSize().height()/2 - _textItem->boundingRect().size().height()/2);
 }

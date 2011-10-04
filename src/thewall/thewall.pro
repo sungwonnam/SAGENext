@@ -113,7 +113,7 @@ DESTDIR = ../../
 #CONFIG(release, debug|release):DESTDIR += release
 
 FORMS += \
-        settingdialog.ui \
+#        settingdialog.ui \
         applications/base/affinitycontroldialog.ui \
         system/resourcemonitorwidget.ui \
     settingstackeddialog.ui \
@@ -129,13 +129,14 @@ RESOURCES += ../resources.qrc
 
 SOURCES += \
         main.cpp \
-        settingdialog.cpp \
+#        settingdialog.cpp \
 #	graphicsviewmainwindow.cpp \
         common/commonitem.cpp \
-        common/thumbnailthread.cpp \
+#        common/thumbnailthread.cpp \
         common/imagedoublebuffer.cpp \
         uiserver/uiserver.cpp \
         uiserver/uimsgthread.cpp \
+		uiserver/fileserver.cpp \
         system/resourcemonitor.cpp \
         system/sagenextscheduler.cpp \
         system/resourcemonitorwidget.cpp \
@@ -147,6 +148,7 @@ SOURCES += \
         applications/sagestreamwidget.cpp \
         applications/sagepixelreceiver.cpp \
         applications/vncwidget.cpp \
+		applications/pdfviewerwidget.cpp \
         applications/base/perfmonitor.cpp \
         applications/base/appinfo.cpp \
         applications/base/basewidget.cpp \
@@ -156,21 +158,18 @@ SOURCES += \
         sagenextscene.cpp \
         sagenextviewport.cpp \
         sagenextlauncher.cpp \
-    applications/mediabrowser.cpp \
-    settingstackeddialog.cpp \
-    applications/pdfviewerwidget.cpp \
-    uiserver/fileserver.cpp
-#    common/filereceivingrunnable.cpp
+    	settingstackeddialog.cpp
 
 HEADERS += \
-        settingdialog.h \
+#        settingdialog.h \
 #	graphicsviewmainwindow.h \
         common/commonitem.h \
         common/commondefinitions.h \
         common/imagedoublebuffer.h \
-        common/thumbnailthread.h \
+#        common/thumbnailthread.h \
         uiserver/uiserver.h \
         uiserver/uimsgthread.h \
+		uiserver/fileserver.h \
         system/resourcemonitor.h \
         system/resourcemonitorwidget.h \
         system/sagenextscheduler.h \
@@ -182,6 +181,7 @@ HEADERS += \
         applications/sagestreamwidget.h \
         applications/sagepixelreceiver.h \
         applications/vncwidget.h \
+		applications/pdfviewerwidget.h \
         applications/base/appinfo.h \
         applications/base/perfmonitor.h \
         applications/base/affinityinfo.h \
@@ -191,10 +191,10 @@ HEADERS += \
         sagenextscene.h \
         sagenextviewport.h \
         sagenextlauncher.h \
-    applications/mediabrowser.h \
-    settingstackeddialog.h \
-    applications/pdfviewerwidget.h \
-    uiserver/fileserver.h
+#    applications/mediabrowser.h \
+    settingstackeddialog.h
+
+
 #    common/filereceivingrunnable.h
 
 
