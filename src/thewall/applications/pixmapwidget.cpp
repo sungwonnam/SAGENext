@@ -85,14 +85,11 @@ void PixmapWidget::start() {
 void PixmapWidget::callUpdate() {
 	if ( futureWatcher->result() ) {
 
-		qreal left = settings->value("gui/framemarginleft", 0).toInt();
-		qreal right = settings->value("gui/framemarginright", 0).toInt();
-		qreal top = settings->value("gui/framemargintop", 0).toInt();
-		qreal bottom = settings->value("gui/framemarginbottom", 0).toInt();
+		qreal fmargin = settings->value("gui/framemargin", 0).toInt();
 
-		resize(image->width() + left + right , image->height() + top + bottom);
+		resize(image->width() + fmargin * 2 , image->height() + fmargin * 2);
 //		qDebug() << "boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
-		_appInfo->setFrameSize(image->width() + left + right, image->height() + top + bottom, image->depth());
+		_appInfo->setFrameSize(image->width() + fmargin * 2, image->height() + fmargin*2, image->depth());
 
 		/**
 		  set transform origin point to widget's center
@@ -142,7 +139,7 @@ void PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, Q
 	//if ( scaleFactorX != 1.0 || scaleFactorY != 1.0 )
 	//painter->scale(scaleFactorX, scaleFactorX);
 	//painter->drawImage(QPointF(0,0), *image);
-	painter->drawPixmap(settings->value("gui/framemarginleft", 0).toInt(), settings->value("gui/framemargintop", 0).toInt(), *pixmap);
+	painter->drawPixmap(settings->value("gui/framemargin", 0).toInt(), settings->value("gui/framemargin", 0).toInt(), *pixmap);
 
 	BaseWidget::paint(painter, o, w);
 

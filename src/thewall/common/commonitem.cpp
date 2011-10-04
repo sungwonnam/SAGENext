@@ -146,15 +146,15 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
             if ( _basewidget->isWindow()  &&  _basewidget->resizeHandleSceneRect().contains(_scenePos)) {
 
                 // resize doesn't count window frame
-                qreal top, left, right, bottom;
-                _basewidget->getWindowFrameMargins(&left, &top, &right, &bottom);
+//                qreal top, left, right, bottom;
+//				_basewidget->getWindowFrameMargins(&left, &top, &right, &bottom);
 
-                _basewidget->resize(_basewidget->boundingRect().width()-left-right + deltax, _basewidget->boundingRect().height()-top-bottom + deltay); // should have more PIXEL : not scaling
+				_basewidget->resize(_basewidget->boundingRect().width() + deltax, _basewidget->boundingRect().height() + deltay); // should have more PIXEL : not scaling
             }
             else {
                 // move app widget under this pointer
-                _basewidget->moveBy(deltax, deltay);
-//				app->mouseDrag( _scenePos, Qt::LeftButton, modifier);
+//                _basewidget->moveBy(deltax, deltay);
+				_basewidget->mouseDrag( _scenePos, deltax, deltay, Qt::LeftButton, modifier);
             }
         }
 

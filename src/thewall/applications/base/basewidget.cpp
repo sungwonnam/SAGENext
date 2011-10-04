@@ -53,16 +53,13 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
 	, _registerForMouseHover(false)
 {
 	// This will affect boundingRect(), windowFrameRect() of the widget.
-	qreal l = settings->value("gui/framemarginleft", 6).toDouble();
-	qreal t = settings->value("gui/framemargintop", 6).toDouble();
-	qreal r = settings->value("gui/framemarginright", 6).toDouble();
-	qreal b = settings->value("gui/framemarginbottom", 6).toDouble();
+	qreal fmargin = settings->value("gui/framemargin", 8).toDouble();
 	if (isWindow()) {
 		// window frame is not interactible by shared pointers
 		setWindowFrameMargins(0, 0, 0, 0);
 		
 		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
-		setContentsMargins(l, t + 20, r, b); // by default, this is 0 0 0 0
+		setContentsMargins(fmargin, fmargin + 20, fmargin, fmargin); // by default, this is 0 0 0 0
 	}
 	else {
 		// setting frameMargins won't have any effect.. (Qt::Widget doesn't have frame)
@@ -716,7 +713,11 @@ void BaseWidget::createActions()
 
 
 
-void BaseWidget::mouseDrag(const QPointF & /*scenePos*/, Qt::MouseButton, Qt::KeyboardModifier) {
+void BaseWidget::mouseDrag(const QPointF & /*pointerScenePos*/, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
+
+	if (btn == Qt::LeftButton) {
+		moveBy(pointerDeltaX, pointerDeltaY);
+	}
 }
 
 
@@ -754,7 +755,7 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 		QBrush brush(lg);
 
 		QPen pen;
-		pen.setWidth(6);
+		pen.setWidth( settings->value("gui/framemargin",0).toInt() );
 		pen.setBrush(brush);
 
 		painter->setPen(pen);

@@ -161,7 +161,7 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 
 
 	if( !_pixmap.isNull()  &&  isVisible()  ) {
-		painter->drawPixmap(0, 0, _pixmap); // the best so far
+		painter->drawPixmap(_settings->value("gui/framemargin",0).toInt(), _settings->value("gui/framemargin",0).toInt(), _pixmap); // the best so far
 	}
 
 //	 if (!image2.isNull()  &&  isVisible())
@@ -463,7 +463,8 @@ int SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, con
     _perfMon->setExpectedFps( (qreal)framerate );
     _perfMon->setAdjustedFps( (qreal)framerate );
 
-    resize(resX, resY); // BaseWidget::ResizeEvent will call setTransforOriginPoint
+	int fmargin = _settings->value("gui/framemargin",0).toInt();
+    resize(resX + fmargin*2, resY + fmargin*2); // BaseWidget::ResizeEvent will call setTransforOriginPoint
 
 
     /* create double buffer */

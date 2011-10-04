@@ -369,20 +369,14 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
 	ui->pointerFontSizeLineEdit->setInputMask("900");
 	ui->pointerFontSizeLineEdit->setText(_settings->value("gui/pointerfontsize", 20).toString());
 
-	ui->frameBorderLeftLineEdit->setText(_settings->value("gui/framemarginleft", 6).toString());
-	ui->frameBorderTopLineEdit->setText(_settings->value("gui/framemargintop", 6).toString());
-	ui->frameBorderRightLineEdit->setText(_settings->value("gui/framemarginright", 6).toString());
-	ui->frameBorderBottomLineEdit->setText(_settings->value("gui/framemarginbottom", 6).toString());
+	ui->framemargin->setText(_settings->value("gui/framemargin", 8).toString());
 }
 void GuiSettingDialog::accept() {
 	_settings->setValue("gui/iconwidth", ui->iconWidth->text().toInt());
 	_settings->setValue("gui/fontpointsize", ui->fontSizeLineEdit->text().toInt());
 	_settings->setValue("gui/pointerfontsize", ui->pointerFontSizeLineEdit->text().toInt());
 	/* window frame margins */
-	_settings->setValue("gui/framemarginleft", ui->frameBorderLeftLineEdit->text().toInt());
-	_settings->setValue("gui/framemargintop", ui->frameBorderTopLineEdit->text().toInt());
-	_settings->setValue("gui/framemarginright", ui->frameBorderRightLineEdit->text().toInt());
-	_settings->setValue("gui/framemarginbottom", ui->frameBorderBottomLineEdit->text().toInt());
+	_settings->setValue("gui/framemargin", ui->framemargin->text().toInt());
 }
 GuiSettingDialog::~GuiSettingDialog() {delete ui;}
 
