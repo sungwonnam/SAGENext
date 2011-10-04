@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	bool popSettingsDialog = true;
 	QString recordingname; // null, empty string
 
-	while ((c = getopt(argc, argv, "c:r")) != -1) {
+	while ((c = getopt(argc, argv, "c:r:")) != -1) {
 		switch(c) {
 		case 'c': // config file
 		{

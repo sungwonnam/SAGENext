@@ -473,7 +473,7 @@ SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint64 uiclientid, const
 	if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
 		if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
 			char record[256];
-			sprintf(record, "%lld %d %llu %s %s\n",QDateTime::currentMSecsSinceEpoch(), 1, uiclientid, qPrintable(name), qPrintable(color.name()));
+			sprintf(record, "%lld %d %u %s %s\n",QDateTime::currentMSecsSinceEpoch(), 1, uiclientid, qPrintable(name), qPrintable(color.name()));
 			_scenarioFile->write(record);
 
 			pointer = new SAGENextPolygonArrow(uiclientid, _settings, name, color, _scenarioFile);
@@ -492,7 +492,9 @@ SAGENextPolygonArrow * SAGENextLauncher::launchPointer(quint64 uiclientid, const
 	}
 	pointer->setScale(1.3);
 
+	//
 	// temporary for scenario
+	//
 	_pointerMap.insert(uiclientid, pointer);
 
 	return pointer;
@@ -598,7 +600,7 @@ void ScenarioThread::run() {
 	sscanf(line, "%lld", &starttime);
 
 	qint64 offset = QDateTime::currentMSecsSinceEpoch() - starttime;
-	qDebug() << "Starting scenario, Time offset:" << offset << "msec";
+	qDebug() << "Playback a recording:" << _scenarioFile.fileName() << ", Time offset:" << offset << "msec";
 
 	forever {
 		char line[512];
@@ -652,7 +654,11 @@ void ScenarioThread::run() {
 		case 11: { // POINTER_UNSHARE
 			sscanf(line, "%lld %d %u", &when, &type, &pointerid);
 			pointer = _launcher->_pointerMap.value(pointerid);
-			delete pointer;
+			if (pointer) {
+				qDebug() << "POINTER_UNSHARE" << pointer->id() << pointer->name();
+				_launcher->_pointerMap.remove(pointerid);
+				delete pointer;
+			}
 			break;
 		}
 		case 2: // move

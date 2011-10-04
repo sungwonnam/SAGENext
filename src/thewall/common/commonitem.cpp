@@ -49,10 +49,17 @@ SAGENextPolygonArrow::SAGENextPolygonArrow(const quint32 uicid, const QSettings 
 }
 
 SAGENextPolygonArrow::~SAGENextPolygonArrow() {
+	//
+	// BaseWidget who registered for hoveraccept needs to know if a pointer is nolonger valid
+	//
 	SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
 	foreach(BaseWidget *bw, sc->hoverAcceptingApps) {
 		bw->removePointerFromPointerMap(this);
 	}
+
+	//
+	// for Recording, it needs to know when the pointer had been unshared
+	//
 	if (_scenarioFile) {
 		char buffer[64];
 		sprintf(buffer, "%lld %d %u", QDateTime::currentMSecsSinceEpoch(), 11, _uiclientid);
