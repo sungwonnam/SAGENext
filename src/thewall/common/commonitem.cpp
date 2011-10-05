@@ -25,7 +25,7 @@ SAGENextPolygonArrow::SAGENextPolygonArrow(const quint32 uicid, const QSettings 
 	///
 	/// will this help?
 	///
-	setCacheMode(QGraphicsItem::ItemCoordinateCache);
+	//setCacheMode(QGraphicsItem::ItemCoordinateCache);
 	
 	QPolygonF p;
 	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);

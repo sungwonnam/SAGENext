@@ -24,8 +24,9 @@ PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, co
 	_appInfo->setFileInfo(filename);
 	_appInfo->setMediaType(MEDIA_TYPE_PDF);
 
+
 	// this is slow
-//	_document->setRenderBackend(Poppler::Document::ArthurBackend); // qt4
+	//_document->setRenderBackend(Poppler::Document::ArthurBackend); // qt4
 
 	// faster..
 	_document->setRenderBackend(Poppler::Document::SplashBackend); // default
@@ -93,9 +94,9 @@ void PDFViewerWidget::setCurrentPage(int pageNumber) {
 //	qint64 start = QDateTime::currentMSecsSinceEpoch();
 
 #if QT_VERSION >= 0x040700
-	_pixmap.convertFromImage(_currentPage->renderToImage(250, 250));
+	_pixmap.convertFromImage(_currentPage->renderToImage(200, 200));
 #else
-	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(300, 300));
+	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(200, 200));
 #endif
 
 //	qint64 end = QDateTime::currentMSecsSinceEpoch();

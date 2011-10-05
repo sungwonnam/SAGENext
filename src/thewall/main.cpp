@@ -83,8 +83,8 @@ int main(int argc, char *argv[])
       QImage::Format_ARGB32_Premultiplied, QImage::Format_RGB32 or QImage::Format_RGB16
 	  And use QImage as a paintdevice
 	***/
-	QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
-//	QApplication::setGraphicsSystem( "raster" );
+	//QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
+	QApplication::setGraphicsSystem( "raster" );
 
 	QApplication a(argc, argv);
 
@@ -382,7 +382,8 @@ int main(int argc, char *argv[])
 	qDebug() << "Creating SAGENext Viewport";
 	SAGENextViewport *gvm = 0;
 
-	QGLFormat glFormat(QGL::DoubleBuffer | QGL::Rgba  | QGL::DepthBuffer | QGL::SampleBuffers);
+// this hurts performance !!
+	//QGLFormat glFormat(QGL::DoubleBuffer | QGL::Rgba  | QGL::DepthBuffer | QGL::SampleBuffers);
 
 	if (s.value("graphics/isxinerama").toBool()) {
 		gvm = new SAGENextViewport(scene, 0, launcher);
@@ -391,11 +392,15 @@ int main(int argc, char *argv[])
 			/**
 			  in linux, youtube isn't working with OpenGL viewport
 			  */
-			gvm->setViewport(new QGLWidget(glFormat));
+			//gvm->setViewport(new QGLWidget(glFormat));
+			gvm->setViewport(new QGLWidget);
 			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
-			gvm->setWindowState(Qt::WindowFullScreen);
-			qDebug() << "\n[ using QGLWidget as the viewport ]";
-			qDebug() << glFormat << "\n";
+//
+// with Xinerama, full screen won't work
+//
+			//gvm->setWindowState(Qt::WindowFullScreen);
+			qDebug() << "\n[ using QGLWidget as the viewport - Xinerama]";
+			//qDebug() << glFormat << "\n";
 		}
 		gvm->move(s.value("general/offsetx", 0).toInt(), s.value("general/offsety", 0).toInt());
         gvm->resize(scene->sceneRect().size().toSize());
@@ -415,11 +420,11 @@ int main(int argc, char *argv[])
 				/**
 				  in linux, youtube isn't working with OpenGL viewport
 				  */
-				gvm->setViewport(new QGLWidget(glFormat, dw->screen(i)));
+				gvm->setViewport(new QGLWidget(dw->screen(i)));
 				gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 				gvm->setWindowState(Qt::WindowFullScreen);
 				qDebug() << "\n[ using QGLWidget as the viewport ]";
-				qDebug() << glFormat << "\n";
+				//qDebug() << glFormat << "\n";
 
 			}
 			//
@@ -450,7 +455,7 @@ int main(int argc, char *argv[])
 
 
 		//launcher->launch("", "evl123", 0, "131.193.77.191", 24);
-//	launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
+	//launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
 //		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
 //		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
