@@ -80,6 +80,8 @@ public slots:
 	void accept();
 
 	void createLayoutGrid();
+private slots:
+	void on_openglviewportCheckBox_stateChanged(int arg1);
 };
 
 class ScreenLayoutDialog : public QDialog {

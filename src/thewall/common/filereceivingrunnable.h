@@ -4,7 +4,7 @@
 #include <QtCore>
 #include <QTcpServer>
 
-class SAGENextLauncher;
+class SN_Launcher;
 
 
 
@@ -12,7 +12,7 @@ class FileReceivingTcpServer : public QTcpServer
 {
     Q_OBJECT
 public:
-    explicit FileReceivingTcpServer(SAGENextLauncher *l, int recvport);
+    explicit FileReceivingTcpServer(SN_Launcher *l, int recvport);
 
     ~FileReceivingTcpServer();
 
@@ -25,7 +25,7 @@ protected:
 private:
     bool _end;
 
-    SAGENextLauncher *_launcher;
+    SN_Launcher *_launcher;
 
 //    QString _recvAddr;
     int _recvPort;

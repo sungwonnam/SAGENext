@@ -1,15 +1,12 @@
 #include "imagewidgetplugin.h"
 
 #include "../../../common/commonitem.h"
-#include "../../base/perfmonitor.h"
-#include "../../base/appinfo.h"
-
-#include <QtGui>
+//#include "../../base/perfmonitor.h"
+//#include "../../base/appinfo.h"
 
 
 ExamplePlugin::ExamplePlugin()
-    : BaseWidget(Qt::Window)
-    , root(0)
+    : SN_BaseWidget(Qt::Window)
 {
 	//
 	// when resized, usually native application will set this
@@ -138,23 +135,26 @@ void ExamplePlugin::paint(QPainter * /*painter*/, const QStyleOptionGraphicsItem
 ExamplePlugin::~ExamplePlugin() {
 }
 
-
-QString ExamplePlugin::name() const {
-	//
-    // Please return parent class name.
-    // Don't change this !!!
-	//
-	return "BaseWidget";
+SN_BaseWidget * ExamplePlugin::createInstance() {
+	return new ExamplePlugin;
 }
+
+//QString ExamplePlugin::name() const {
+//	//
+//    // Please return parent class name.
+//    // Don't change this !!!
+//	//
+//	return "BaseWidget";
+//}
 
 /*!
   THis plugin doesn't have to have proxy widget
   Because it reimplements paint() and manually draw everything.
   So you don't have to modify this function.
   */
-QGraphicsProxyWidget * ExamplePlugin::rootWidget() {
-	return root;
-}
+//QGraphicsProxyWidget * ExamplePlugin::rootWidget() {
+//	return root;
+//}
 
 
 bool ExamplePlugin::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
@@ -211,7 +211,7 @@ void ExamplePlugin::buttonB() {
 }
 
 
-Q_EXPORT_PLUGIN2(ImageWidgetPlugin, ExamplePlugin)
+Q_EXPORT_PLUGIN2(MouseClickExamplePlugin, ExamplePlugin)
 
 
 

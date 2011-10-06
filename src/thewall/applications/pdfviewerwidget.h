@@ -5,12 +5,12 @@
 
 #include <poppler-qt4.h>
 
-class PDFViewerWidget : public BaseWidget
+class SN_PDFViewerWidget : public SN_BaseWidget
 {
 	Q_OBJECT
 public:
-    PDFViewerWidget(const QString filename, quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
-	~PDFViewerWidget();
+    SN_PDFViewerWidget(const QString filename, quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+	~SN_PDFViewerWidget();
 
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);

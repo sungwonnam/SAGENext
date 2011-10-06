@@ -121,6 +121,9 @@ int SagePixelReceiver::receiveUdpPortNumber() {
 
 
 void SagePixelReceiver::run() {
+
+//	QDebug() << "SagePixelReceiver::run() : starting pixel receiving thread";
+
 	QThread::setTerminationEnabled(true);
 
 	/**
@@ -257,7 +260,9 @@ void SagePixelReceiver::run() {
 		//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "swapBuffer returned";
 
 //		perf->getConvTimer().start();
+
 		emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
+
 		//qDebug("%s() : signal emitted", __FUNCTION__);
 		//QMetaObject::invokeMethod(widget, "scheduleUpdate", Qt::QueuedConnection);
 

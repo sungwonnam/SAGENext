@@ -8,7 +8,7 @@
 class fsManagerMsgThread;
 class QSettings;
 class AffinityInfo;
-class SAGENextLauncher;
+class SN_Launcher;
 
 /*
 typedef struct {
@@ -32,7 +32,7 @@ class fsManager : public QTcpServer {
 	Q_OBJECT
 
 public:
-	fsManager(const QSettings *settings, SAGENextLauncher *l, QObject *parent = 0);
+	fsManager(const QSettings *settings, SN_Launcher *l, QObject *parent = 0);
 	~fsManager();
 	//void registerApp(quint64 appid, const QString &msgStr, fsManagerMsgThread const * thread);
 //	fsManagerParam* getFsManagerParam() { return &fsmParam; }
@@ -53,7 +53,7 @@ protected:
 private:
 	const QSettings *settings;
 
-	SAGENextLauncher *_launcher;
+	SN_Launcher *_launcher;
 
 	/**
 	  * reentrant (A reentrant function can be called simultaneously from multiple threads, but only if each invocation uses its own data.)

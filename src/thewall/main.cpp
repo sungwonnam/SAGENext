@@ -25,7 +25,7 @@ extern void qt_x11_set_global_double_buffer(bool);
 
 #include <unistd.h>
 
-void setViewAttr(SAGENextViewport *view, const QSettings &s);
+void setViewAttr(SN_Viewport *view, const QSettings &s);
 
 
 
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 	  And use QImage as a paintdevice
 	***/
 //	QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
-        QApplication::setGraphicsSystem( "raster" );
+	QApplication::setGraphicsSystem( "raster" );
 
 	QApplication a(argc, argv);
 
@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
       create the scene (This is a QObject)
       */
 	qDebug() << "Creating the SAGENextScene" << s.value("general/width").toDouble() << s.value("general/height").toDouble();
-	SAGENextScene *scene = new SAGENextScene(QRectF(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble()) ,  &s);
+	SN_TheScene *scene = new SN_TheScene(QRectF(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble()) ,  &s);
 
 
 
@@ -292,18 +292,18 @@ int main(int argc, char *argv[])
 	  ResourceMonitor , ResourceMonitorWidget
 	  Scheduler
       */
-	ResourceMonitor *resourceMonitor = 0;
+	SN_ResourceMonitor *resourceMonitor = 0;
 	int rMonitorTimerId = 0;
 	ResourceMonitorWidget *rMonitorWidget = 0;
-	SchedulerControl *schedcontrol = 0;
+	SN_SchedulerControl *schedcontrol = 0;
 	if ( s.value("system/resourcemonitor").toBool() ) {
 		qDebug() << "Creating ResourceMonitor";
-		resourceMonitor = new ResourceMonitor(&s);
+		resourceMonitor = new SN_ResourceMonitor(&s);
 
 		if ( s.value("system/scheduler").toBool() ) {
 			qDebug() << "Creating" << s.value("system/scheduler_type").toString() << "Scheduler";
 
-			schedcontrol = new SchedulerControl(resourceMonitor);
+			schedcontrol = new SN_SchedulerControl(resourceMonitor);
 
 			a.installEventFilter(schedcontrol); // scheduler will monitor(filter) qApp's event
 
@@ -331,14 +331,14 @@ int main(int argc, char *argv[])
 	}
 
 
-        /**
-          create the MediaStorage
-         */
-        MediaStorage *mediaStorage = new MediaStorage();
+	/**
+	  create the MediaStorage
+	*/
+        SN_MediaStorage *mediaStorage = new SN_MediaStorage();
 
 	/**
 	  create the launcher
-         */
+	*/
 	QFile *scenarioFile = 0;
 	if (s.value("misc/record_launcher", false).toBool() ||  s.value("misc/record_pointer", false).toBool()) {
 
@@ -358,27 +358,27 @@ int main(int argc, char *argv[])
 		sprintf(buffer, "%lld\n", time);
 		scenarioFile->write(buffer); // fill the first line
 	}
-        SAGENextLauncher *launcher = new SAGENextLauncher(&s, scene, mediaStorage, resourceMonitor, schedcontrol, scene); // scene is the parent
+	SN_Launcher *launcher = new SN_Launcher(&s, scene, mediaStorage, resourceMonitor, schedcontrol, scenarioFile, scene); // scene is the parent
 
 
 	/**
 	  create the UiServer
 	 */
-	UiServer *uiserver = new UiServer(&s, launcher, scene);
+	SN_UiServer *uiserver = new SN_UiServer(&s, launcher, scene);
 	scene->setUiServer(uiserver);
 
 
-        /**
-          create the initial MediaBrowser
-         */
-        MediaBrowser *mediaBrowser = new MediaBrowser(launcher,(quint64)-41, &s, mediaStorage);
-        launcher->launch(mediaBrowser);
+	/**
+	  create the initial MediaBrowser
+	*/
+        SN_MediaBrowser *mediaBrowser = new SN_MediaBrowser(launcher,(quint64)-41, &s, mediaStorage);
+	launcher->launch(mediaBrowser);
 
 
 	/**
 	  create the FileServer
 	 */
-	FileServer *fileServer = new FileServer(&s, launcher);
+	SN_FileServer *fileServer = new SN_FileServer(&s, launcher);
 	qDebug() << "FileServer is listening on" << fileServer->fileServerListenPort();
 
 
@@ -395,22 +395,26 @@ int main(int argc, char *argv[])
           create viewport widget (This is a QWidget)
           */
 	qDebug() << "Creating SAGENext Viewport";
-	SAGENextViewport *gvm = 0;
+	SN_Viewport *gvm = 0;
 
-	QGLFormat glFormat(QGL::DoubleBuffer | QGL::Rgba  | QGL::DepthBuffer | QGL::SampleBuffers);
+	// This hurts performance !!
+	// don't do this
+	//QGLFormat glFormat(QGL::DoubleBuffer | QGL::Rgba  | QGL::DepthBuffer | QGL::SampleBuffers);
 
 	if (s.value("graphics/isxinerama").toBool()) {
-		gvm = new SAGENextViewport(scene, 0, launcher);
+		gvm = new SN_Viewport(scene, 0, launcher);
 
 		if ( s.value("graphics/openglviewport").toBool() ) {
-			/**
-			  in linux, youtube isn't working with OpenGL viewport
-			  */
-			gvm->setViewport(new QGLWidget(glFormat));
+			//gvm->setViewport(new QGLWidget(glFormat));
+			gvm->setViewport(new QGLWidget);
 			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
-			gvm->setWindowState(Qt::WindowFullScreen);
-			qDebug() << "\n[ using QGLWidget as the viewport ]";
-			qDebug() << glFormat << "\n";
+
+			//
+			// with Xinerama, full screen won't work
+			//
+			//gvm->setWindowState(Qt::WindowFullScreen);
+
+			qDebug() << "\n[ using QGLWidget as the viewport - Xinerama]";
 		}
 		gvm->move(s.value("general/offsetx", 0).toInt(), s.value("general/offsety", 0).toInt());
         gvm->resize(scene->sceneRect().size().toSize());
@@ -424,17 +428,13 @@ int main(int argc, char *argv[])
 			//
 			// A viewport for each X screen
 			//
-			gvm = new SAGENextViewport(scene, i, launcher, dw->screen(i));
+			gvm = new SN_Viewport(scene, i, launcher, dw->screen(i));
 
 			if ( s.value("graphics/openglviewport").toBool() ) {
-				/**
-				  in linux, youtube isn't working with OpenGL viewport
-				  */
-				gvm->setViewport(new QGLWidget(glFormat, dw->screen(i)));
+				gvm->setViewport(new QGLWidget(dw->screen(i)));
 				gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 				gvm->setWindowState(Qt::WindowFullScreen);
 				qDebug() << "\n[ using QGLWidget as the viewport ]";
-				qDebug() << glFormat << "\n";
 
 			}
 			//
@@ -465,7 +465,7 @@ int main(int argc, char *argv[])
 
 
 		//launcher->launch("", "evl123", 0, "131.193.77.191", 24);
-//	launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
+	//launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
 //		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
 //		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
@@ -501,7 +501,7 @@ int main(int argc, char *argv[])
 
 
 
-void setViewAttr(SAGENextViewport *gvm, const QSettings &s) {
+void setViewAttr(SN_Viewport *gvm, const QSettings &s) {
 	//
 	// viewport update mode
 	//
@@ -511,6 +511,9 @@ void setViewAttr(SAGENextViewport *gvm, const QSettings &s) {
 		}
 		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "smart", Qt::CaseInsensitive) == 0 ) {
 			gvm->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+		}
+		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "full", Qt::CaseInsensitive) == 0 ) {
+			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 		}
 		else if ( QString::compare(s.value("graphics/viewportupdatemode").toString(), "no update", Qt::CaseInsensitive) == 0 ) {
 			gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);

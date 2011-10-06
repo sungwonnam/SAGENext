@@ -1,7 +1,7 @@
 #ifndef IMAGEWIDGETPLUGIN_H
 #define IMAGEWIDGETPLUGIN_H
 
-#include "../../base/dummyplugininterface.h"
+#include "../../base/SN_plugininterface.h"
 #include "../../base/basewidget.h"
 
 #include <QtGui>
@@ -9,42 +9,32 @@
 /*!
   A plugin example that inherits BaseWidget
   */
-class ExamplePlugin : public BaseWidget, DummyPluginInterface
+class ExamplePlugin : public SN_BaseWidget, SN_PluginInterface
 {
-        Q_OBJECT
-        Q_INTERFACES(DummyPluginInterface)
+	Q_OBJECT
+	Q_INTERFACES(SN_PluginInterface)
 
 public:
-        ExamplePlugin();
-        virtual ~ExamplePlugin();
+	ExamplePlugin();
+	virtual ~ExamplePlugin();
 
-        /*!
-          One must implement the interface (DummyPluginInterface)
-		  Return "BaseWidget" for the plugin that inherits BaseWidget
-          */
-        QString name() const;
-
-
-		/*!
-		  QGraphicsProxyWidget *root is going to be null
-		  for the plugin that inherits BaseWdiget
-		  */
-        QGraphicsProxyWidget * rootWidget();
+	SN_BaseWidget * createInstance();
 
 
 protected:
 
         /*!
-          Reimplement QGraphicsWidget::paint().
-          THis is where your pixels are drawn.
+          You can reimplement QGraphicsWidget::paint().
+          This is where your pixels are drawn on this widget.
+		  This won't affect child items.
           */
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 
 		/**
 		  To intercept wheelEvent sent to label
 		  */
-		bool sceneEventFilter(QGraphicsItem *watched, QEvent *event);
+	bool sceneEventFilter(QGraphicsItem *watched, QEvent *event);
 
         /**
           BaseWidget's wheelEvent resizes the entire window if item flag is Qt::Widget
@@ -58,7 +48,7 @@ private:
 		/*!
 		  This is null for the plugin that inherits BaseWidget
 		  */
-        QGraphicsProxyWidget *root;
+//        QGraphicsProxyWidget *root;
 
         /*!
           your paint device

@@ -8,7 +8,7 @@
 
 class QSettings;
 class AffinityInfo;
-class SageStreamWidget;
+class SN_SageStreamWidget;
 
 /**
   * represents control channel for an application
@@ -20,7 +20,7 @@ public:
 	fsManagerMsgThread(const quint64 sageAppId, int sockfd, const QSettings *settings, QObject *parent = 0);
 	~fsManagerMsgThread();
 
-	inline void setSageWidget(SageStreamWidget *s) {_sageWidget = s;}
+	inline void setSageWidget(SN_SageStreamWidget *s) {_sageWidget = s;}
 
 	/**
 	  * fsCore::checkClient()
@@ -32,7 +32,7 @@ public:
 private:
 	const QSettings *settings;
 
-	SageStreamWidget *_sageWidget;
+	SN_SageStreamWidget *_sageWidget;
 
 	int socket;
 	bool _end;
@@ -53,7 +53,7 @@ signals:
 	  *
 	  * port means streaming port that SageReceiver has to open for pixel receiving
 	  */
-	void sailConnected(const quint64 sageAppId, QString appName, int protocol, int port, const QRect rect);
+//	void sailConnected(const quint64 sageAppId, QString appName, int protocol, int port, const QRect rect);
 
 public slots:
 	/**

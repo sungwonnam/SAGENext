@@ -7,29 +7,29 @@
 
 typedef struct {
 	QFileInfo file;
-	MEDIA_TYPE mediaType;
+	SAGENext::MEDIA_TYPE mediaType;
 	QRectF geometry;
 	int scale;
 } SessionItemInfo;
 
 //class SettingDialog;
 //class SystemArch;
-class UiServer;
+class SN_UiServer;
 class fsManager;
 class AffinityInfo;
-class ResourceMonitor;
-class SchedulerControl;
+class SN_ResourceMonitor;
+class SN_SchedulerControl;
 
 
 class ResourceMonitorWidget;
 
-class BaseWidget;
+class SN_BaseWidget;
 
 /*!
   This is used in startSageApp() and loadSaveScenario()
   */
 typedef struct {
-	BaseWidget *bwPtr;
+	SN_BaseWidget *bwPtr;
 	quint64 gaid;
 } SageWidgetInfo;
 
@@ -43,7 +43,7 @@ class GraphicsViewMain : public QGraphicsView
 {
 	Q_OBJECT
 public:
-	GraphicsViewMain(const QSettings *s, ResourceMonitor *rm = 0, SchedulerControl *ss = 0);
+	GraphicsViewMain(const QSettings *s, SN_ResourceMonitor *rm = 0, SN_SchedulerControl *ss = 0);
 	~GraphicsViewMain();
 
 protected:
@@ -94,7 +94,7 @@ private:
 	  * It's TcpServer and fires a msg thread for each UI connection.
 	  * serialization of multiple UI msgs is done automatically by queued connection of signal/slots
 	  */
-	UiServer *extUiServer;
+	SN_UiServer *extUiServer;
 
 	/*!
 	  * when this class instantiate fsm,
@@ -111,17 +111,17 @@ private:
 
 
 	int paintingOnCpu;
-	SAGENextSimpleTextItem *textItem;
+	SN_SimpleTextItem *textItem;
 
 	/*!
 	  * Resource Monitor
 	  */
-	ResourceMonitor *resourceMonitor;
+	SN_ResourceMonitor *resourceMonitor;
 
 	/*!
 	  Scheduler
 	  */
-	SchedulerControl *scheduler;
+	SN_SchedulerControl *scheduler;
 
 
 	/*!
@@ -190,7 +190,7 @@ public slots:
 	  * connected to UiServer's registerApp signal.
 	  This slot is connected to fsManager::sailConnected(). Thus manually calling this slot will do nothing.
 	  */
-	void startApp(MEDIA_TYPE type, QString filename, qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
+	void startApp(SAGENext::MEDIA_TYPE type, QString filename, qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
 
 
 	/*!

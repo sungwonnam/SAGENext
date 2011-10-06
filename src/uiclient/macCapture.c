@@ -238,14 +238,14 @@ CGEventRef myCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef
 
 	if (captured) {
 	    // dont send too frequently...
-	    if (now - lastMsgTime >= (1.0/50.0)) {
-		lastMsgTime = now;
+	    if (now - lastMsgTime >= (1.0/30.0)) { // 30 Hz
+			lastMsgTime = now;
 
 		// this sends normalized coordinate for old SAGE
 		//sendMsgff(MOVE, x, y);
 
 		// this sends event global position
-		sendMsgii(MOVE, location.x, location.y);
+			sendMsgii(MOVE, location.x, location.y);
 
 	    }
 	    retVal = NULL;

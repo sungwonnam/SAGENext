@@ -6,11 +6,11 @@
 
 #include <QObject>
 
-class MediaStorage : public QObject
+class SN_MediaStorage : public QObject
 {
     Q_OBJECT
 public:
-    explicit MediaStorage(QObject *parent = 0);
+    explicit SN_MediaStorage(QObject *parent = 0);
 
     bool insertNewMediaToHash(const QString &key);
     bool checkForMediaInHash(const QString &key);

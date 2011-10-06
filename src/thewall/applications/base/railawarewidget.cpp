@@ -8,24 +8,24 @@
 #include "../../system/sagenextscheduler.h"
 
 
-RailawareWidget::RailawareWidget() :
+SN_RailawareWidget::SN_RailawareWidget() :
     affCtrlDialog(0),
     _affCtrlAction(0),
     _widgetClosed(false),
     _scheduled(false)
 {
-	setWidgetType(BaseWidget::Widget_RealTime);
+	setWidgetType(SN_BaseWidget::Widget_RealTime);
 	setCacheMode(QGraphicsItem::NoCache);
 }
 
-RailawareWidget::RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
-    : BaseWidget(globalappid, s, parent, wflags)
+SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
+    : SN_BaseWidget(globalappid, s, parent, wflags)
     , affCtrlDialog(0)
     , _affCtrlAction(0)
     , _widgetClosed(false)
     , _scheduled(false)
 {
-	setWidgetType(BaseWidget::Widget_RealTime);
+	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
 	failToSchedule = 0;
 
@@ -48,7 +48,7 @@ RailawareWidget::RailawareWidget(quint64 globalappid, const QSettings *s, QGraph
 
 
 
-int RailawareWidget::setQuality(qreal newQuality) {
+int SN_RailawareWidget::setQuality(qreal newQuality) {
 
 //	qDebug() << _globalAppId << "railwarewidget::setQuality" << newQuality;
 
@@ -69,7 +69,7 @@ int RailawareWidget::setQuality(qreal newQuality) {
         return -1;
 }
 
-qreal RailawareWidget::observedQuality() {
+qreal SN_RailawareWidget::observedQuality() {
         if (_perfMon) {
 //		qDebug() << _perfMon->getCurrRecvFps() << _perfMon->getExpetctedFps() << _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps();
                 return _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps(); // frame rate for now
@@ -77,14 +77,14 @@ qreal RailawareWidget::observedQuality() {
         else return -1;
 }
 
-qreal RailawareWidget::observedQualityAdjusted() {
+qreal SN_RailawareWidget::observedQualityAdjusted() {
         return _perfMon->getCurrRecvFps() / _perfMon->getAdjustedFps();
 }
 
 
 
 
-void RailawareWidget::createAffInstances()
+void SN_RailawareWidget::createAffInstances()
 {
 	if (!_affInfo)
 		_affInfo = new AffinityInfo(this);
@@ -107,7 +107,7 @@ void RailawareWidget::createAffInstances()
 }
 
 
-void RailawareWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
+void SN_RailawareWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
 	if ( _affInfo && _affCtrlAction ) {
 		_affCtrlAction->setEnabled(true);
@@ -121,7 +121,7 @@ void RailawareWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 }
 
 
-void RailawareWidget::showAffCtrlDialog() {
+void SN_RailawareWidget::showAffCtrlDialog() {
         if ( affCtrlDialog ) {
                 affCtrlDialog->updateInfo();
                 affCtrlDialog->show();
@@ -129,16 +129,16 @@ void RailawareWidget::showAffCtrlDialog() {
         }
 
         Q_ASSERT(_affInfo);
-        Q_ASSERT(settings);
+        Q_ASSERT(_settings);
         Q_ASSERT(globalAppId() > 0);
         /* will modify mask through affInfo pointer and sets the flag */
-        affCtrlDialog = new AffinityControlDialog(_globalAppId, _affInfo, settings);
+        affCtrlDialog = new AffinityControlDialog(_globalAppId, _affInfo, _settings);
         affCtrlDialog->show();
 }
 
 
 
-RailawareWidget::~RailawareWidget()
+SN_RailawareWidget::~SN_RailawareWidget()
 {
         if (_affInfo) delete _affInfo;
         if (affCtrlDialog) delete affCtrlDialog;

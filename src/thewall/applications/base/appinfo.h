@@ -22,8 +22,8 @@ public:
 	AppInfo(int width, int height, int bpp, const QString filename, const QString srcip);
 
 
-	inline void setMediaType(MEDIA_TYPE t) {_mtype = t;}
-	inline MEDIA_TYPE mediaType() const { return _mtype; }
+	inline void setMediaType(SAGENext::MEDIA_TYPE t) {_mtype = t;}
+	inline SAGENext::MEDIA_TYPE mediaType() const { return _mtype; }
 
 	inline void setFileInfo(const QString &absoluteFilePath) {_fileinfo.setFile(absoluteFilePath);}
 	inline QFileInfo fileInfo() const {return _fileinfo;}
@@ -90,7 +90,7 @@ public:
 	inline int networkUserBufferLength() const {return _networkUserBufferLength;}
 
 private:
-	MEDIA_TYPE _mtype;
+	SAGENext::MEDIA_TYPE _mtype;
 
 	/**
 	  * file information. If it's web then isNull

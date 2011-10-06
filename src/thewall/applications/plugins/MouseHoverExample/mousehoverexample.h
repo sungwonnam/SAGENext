@@ -2,7 +2,7 @@
 #define MOUSEHOVEREXAMPLE_H
 
 
-#include "../../base/dummyplugininterface.h"
+#include "../../base/SN_plugininterface.h"
 #include "../../base/basewidget.h"
 
 #include <QtGui>
@@ -17,27 +17,20 @@ protected:
 
 
 
-class MouseHoverExample : public BaseWidget, DummyPluginInterface
+class MouseHoverExample : public SN_BaseWidget, SN_PluginInterface
 {
     Q_OBJECT
-	Q_INTERFACES(DummyPluginInterface)
+	Q_INTERFACES(SN_PluginInterface)
 
 public:
     MouseHoverExample();
     ~MouseHoverExample();
 
-	/*!
-      One must implement the interface (DummyPluginInterface)
-	  Return "BaseWidget" for the plugin that inherits BaseWidget
-      */
-    QString name() const;
 
-
-	/*!
-	  QGraphicsProxyWidget *root is going to be null
-	  for the plugin that inherits BaseWdiget
+	/**
+	  Implementing pure virtual defined in SN_PluginInterface
 	  */
-    QGraphicsProxyWidget * rootWidget();
+	SN_BaseWidget * createInstance();
 
 
 	/**
@@ -46,7 +39,7 @@ public:
 
 	  pointerPosOnMe is in my local coordinate
 	  */
-	void toggleHover(SAGENextPolygonArrow *pointer, const QPointF &pointerPosOnMe, bool isHovering);
+	void handlePointerHover(SN_PolygonArrowPointer *pointer, const QPointF &pointerPosOnMe, bool isHovering);
 
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);

@@ -72,7 +72,7 @@ public:
 	  */
 	void reset();
 
-	inline void setWidgetType(BaseWidget::Widget_Type wt) {widgetType = wt;}
+	inline void setWidgetType(SN_BaseWidget::Widget_Type wt) {widgetType = wt;}
 
 
 
@@ -144,7 +144,7 @@ public:
 	inline long getEndMinflt() const {return ruend_minflt;}
 
 private:
-	BaseWidget::Widget_Type widgetType;
+	SN_BaseWidget::Widget_Type widgetType;
 
 	/*!
 	  A QTimer object to measure delay of recv() in stream receiver.

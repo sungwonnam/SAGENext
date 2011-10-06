@@ -22,107 +22,10 @@
 
 #include <QGLWidget>
 
-//#include <sys/time.h>
-//#include <sys/resource.h>
 
-
-//SageStreamWidget::SageStreamWidget(quint64 sageAppId, QString appName, int protocol, int port, const QRect initRect, const quint64 globalAppId, const QSettings *s, ResourceMonitor *rm, QGraphicsItem *parent/*0*/, Qt::WindowFlags wFlags/*0*/) :
-
-//	RailawareWidget(globalAppId, s, rm, parent, wFlags), // QSettings *s is const
-
-//	_fsmMsgThread(0),
-//	_sageAppId(sageAppId),
-//	receiverThread(0),
-//	image(0),
-//	doubleBuffer(new ImageDoubleBuffer),
-//	serversocket(0),
-//	streamsocket(0),
-//	imageSize(0),
-//	frameCounter(0)
-//{
-////	Q_UNUSED(appName);
-
-//	if ( port > 65535 ) {
-//		qCritical("SageStreamWidget::%s() : Invalid port number %d", __FUNCTION__, port);
-//		deleteLater();
-//	}
-
-//	/* receive regMsg from sail and create buffer */
-
-//	if ( initialize(protocol, port) != 0 ) {
-//		qCritical("SageStreamWidget::%s() : failed to initialize", __FUNCTION__);
-//		deleteLater();
-//	}
-//	else {
-//		// AffinityInfo is created in RailawareWidget
-//		/* when there's no resource monitor, affinityInfo isn't created */
-//		if(_affInfo)
-//			_affInfo->setWidgetID(sageAppId);
-
-//		Q_ASSERT(_appInfo);
-//		_appInfo->setFrameSize(image->width(), image->height(), image->depth()); // == _image->byteCount()
-
-////		qDebug("SageStreamWidget::%s() : sageappid %llu, groupsize %d, frameSize(SAIL) %d, frameSize(QImage) %d, expectedFps %.2f", __FUNCTION__, sageAppId, _appInfo->getNetworkUserBufferLength(), imageSize, _appInfo->getFrameBytecount(), _perfMon->getExpetctedFps());
-
-//		_appInfo->setExecutableName( appName );
-//		if ( appName == "imageviewer" ) {
-//			_appInfo->setMediaType(MEDIA_TYPE_IMAGE);
-//		}
-//		else {
-//			_appInfo->setMediaType(MEDIA_TYPE_VIDEO);
-//		}
-
-
-
-//		/* starting receiving thread */
-
-//		// image->bits() will do deep copy (detach)
-//		receiverThread = new SagePixelReceiver(protocol, streamsocket, /*image*/ doubleBuffer, _appInfo, _perfMon, _affInfo, /*this, mutex, wc,*/ settings);
-////		qDebug("SageStreamWidget::%s() : SagePixelReceiver thread has begun",  __FUNCTION__);
-
-//		connect(receiverThread, SIGNAL(finished()), this, SLOT(fadeOutClose())); // WA_Delete_on_close is defined
-
-//		// don't do below.
-////		connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));
-
-
-////		if (!scheduler) {
-//			// This is queued connection because receiverThread reside outside of the main thread
-//			if ( ! connect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
-//				qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleUpdate() slot", metaObject()->className(), __FUNCTION__);
-//			}
-//			else {
-////				qDebug("%s::%s() : frameReceived() -> scheduleUpdate() are connected", metaObject()->className(), __FUNCTION__);
-//			}
-////		}
-//		receiverThread->start();
-
-
-//		/*
-//		QFuture<void> future = QtConcurrent::run(this, &SageStreamWidget::pixelRecvThread);
-//		futureWatcher.setFuture(future);
-//		connect(&futureWatcher, SIGNAL(finished()), this, SLOT(close()));
-//		connect(this, SIGNAL(pauseThread()), &futureWatcher, SLOT(pause()));
-//		connect(this, SIGNAL(resumeThread()), &futureWatcher, SLOT(resume()));
-//		*/
-//		setPos(initRect.x(), initRect.y());
-//	}
-//}
-
-//void SageStreamWidget::stopPixelReceiver() {
-//	if ( ::shutdown(socket, SHUT_RDWR) != 0 )
-//		qDebug("SageStreamWidget::%s() : error while shutdown recv socket", __FUNCTION__);
-
-//	if (receiverThread && receiverThread->isRunning()) {
-//		QMetaObject::invokeMethod(receiverThread, "endReceiver",  Qt::QueuedConnection);
-//		qApp->sendPostedEvents();
-////		receiverThread->wait();
-//	}
-//}
-
-
-SageStreamWidget::SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
-    : RailawareWidget(globalappid, s, parent, wFlags)
+SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
+    : SN_RailawareWidget(globalappid, s, parent, wFlags)
+    , _settings(s)
     , _fsmMsgThread(0)
     , _sailAppProc(0)
     , _sageAppId(0)
@@ -134,17 +37,20 @@ SageStreamWidget::SageStreamWidget(QString filename, const quint64 globalappid, 
     , streamsocket(0)
     , imageSize(0)
     , frameCounter(0)
+    , _streamProtocol(0)
 {
     // this is defined in BaseWidget
     setRMonitor(rm);
 
 	_appInfo->setFileInfo(filename);
 	_appInfo->setSrcAddr(senderIP);
+
+	connect(&_initReceiverWatcher, SIGNAL(finished()), this, SLOT(startReceivingThread()));
 }
 
 
 
-SageStreamWidget::~SageStreamWidget()
+SN_SageStreamWidget::~SN_SageStreamWidget()
 {
 //    qDebug() << _globalAppId << "begin destructor" << QTime::currentTime().toString("hh:mm:ss.zzz");
 
@@ -223,18 +129,20 @@ SageStreamWidget::~SageStreamWidget()
     qDebug("SageStreamWidget::%s() ",  __FUNCTION__);
 }
 
-void SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
+void SN_SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
         _fsmMsgThread = thread;
         _fsmMsgThread->start();
 }
 
 
-void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
+void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 
 	if (_perfMon) {
 		_perfMon->getDrawTimer().start();
 		//perfMon->startPaintEvent();
 	}
+
+	SN_BaseWidget::paint(painter,o,w);
 
 
 	//	if ( currentScale != 1.0 ) painter->scale(currentScale, currentScale);
@@ -254,14 +162,11 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 
 
 	if( !_pixmap.isNull()  &&  isVisible()  ) {
-		painter->drawPixmap(0, 0, _pixmap); // the best so far
+		painter->drawPixmap(_settings->value("gui/framemargin",0).toInt(), _settings->value("gui/framemargin",0).toInt(), _pixmap); // the best so far
 	}
 
 //	 if (!image2.isNull()  &&  isVisible())
 //		 painter->drawImage(0, 0, image2);
-
-
-	BaseWidget::paint(painter,o,w);
 
 
 	if (_perfMon)
@@ -326,16 +231,16 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 
 
 
-void SageStreamWidget::scheduleReceive() {
+void SN_SageStreamWidget::scheduleReceive() {
 //	qDebug() << "widget wakeOne";
 //	if(wc) wc->wakeOne();
-        receiverThread->receivePixel();
+	receiverThread->receivePixel();
 }
 
 /**
   * this slot connected to the signal PixelReceiver::frameReceived()
   */
-void SageStreamWidget::scheduleUpdate() {
+void SN_SageStreamWidget::scheduleUpdate() {
     //	struct timeval s,e;
     //	gettimeofday(&s, 0);
     QImage *imgPtr = 0;
@@ -418,7 +323,181 @@ void SageStreamWidget::scheduleUpdate() {
 }
 
 
-int SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
+
+
+void SN_SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port) {
+//	qDebug() << "\nRunning waitForPixelStreamConnection";
+	_sageAppId = sageappid;
+	_initReceiverFuture = QtConcurrent::run(this, &SN_SageStreamWidget::waitForPixelStreamerConnection, protocol, port, appname);
+	_initReceiverWatcher.setFuture(_initReceiverFuture);
+}
+
+
+
+
+
+void SN_SageStreamWidget::startReceivingThread() {
+	Q_ASSERT(streamsocket > 0);
+	Q_ASSERT(doubleBuffer);
+
+	receiverThread = new SagePixelReceiver(_streamProtocol, streamsocket, /*image*/ doubleBuffer, _appInfo, _perfMon, _affInfo, /*this, mutex, wc,*/ _settings);
+
+
+    Q_ASSERT(receiverThread);
+
+    connect(receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
+
+    // don't do below.
+//		connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));
+
+
+//		if (!scheduler) {
+            // This is queued connection because receiverThread reside outside of the main thread
+            if ( ! connect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
+                    qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleUpdate() slot", metaObject()->className(), __FUNCTION__);
+                    return;
+            }
+            else {
+//				qDebug("%s::%s() : frameReceived() -> scheduleUpdate() are connected", metaObject()->className(), __FUNCTION__);
+            }
+//		}
+    receiverThread->start();
+}
+
+
+
+int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, const QString &appname) {
+	_streamProtocol = protocol;
+
+	/* accept connection from sageStreamer */
+    serversocket = ::socket(AF_INET, SOCK_STREAM, 0);
+    if ( serversocket == -1 ) {
+            qCritical("SageStreamWidget::%s() : couldn't create socket", __FUNCTION__);
+            return -1;
+    }
+
+    // setsockopt
+    int optval = 1;
+    if ( setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
+            qWarning("SageStreamWidget::%s() : setsockopt SO_REUSEADDR failed",  __FUNCTION__);
+    }
+
+    // bind to port
+    struct sockaddr_in localAddr, clientAddr;
+    memset(&localAddr, 0, sizeof(localAddr));
+    localAddr.sin_family = AF_INET;
+    localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    localAddr.sin_port = htons(protocol + port);
+
+    // bind
+    if( bind(serversocket, (struct sockaddr *)&localAddr, sizeof(struct sockaddr_in)) != 0) {
+            qCritical("SageStreamWidget::%s() : bind error",  __FUNCTION__);
+            return -1;
+    }
+
+    // put in listen mode
+    listen(serversocket, 15);
+
+    // accept
+    /** accept will BLOCK **/
+//	qDebug("SageStreamWidget::%s() : Blocking waiting for sender to connect to TCP port %d", __FUNCTION__,protocol+port);
+    memset(&clientAddr, 0, sizeof(clientAddr));
+    int addrLen = sizeof(struct sockaddr_in);
+    if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
+            qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
+            perror("accept");
+            return -1;
+    }
+
+//	struct hostent *he = gethostbyaddr( (void *)&clientAddr, addrLen, AF_INET);
+//	Q_ASSERT(he);
+//	qDebug("SageStreamWidget::%s() : %s", __FUNCTION__, he->h_name);
+
+    // read regMsg 1024Byte
+    /*char regMsg[REG_MSG_SIZE];
+              sprintf(regMsg, "%d %d %d %d %d %d %d %d %d %d %d",
+                              config.streamType, // HARD_SYNC
+                              config.frameRate,
+                              winID,
+                              config.groupSize,
+                              blockSize,
+                              config.nodeNum,
+                              (int)config.pixFmt,
+                              config.blockX,
+                              config.blockY,
+                              config.totalWidth,
+                              config.totalHeight);
+
+
+                               [103 60 1 131072 12416 1 5 64 64 400 400]
+              */
+
+
+    QByteArray regMsg(OldSage::REG_MSG_SIZE, '\0');
+    int read = recv(streamsocket, (void *)regMsg.data(), regMsg.size(), MSG_WAITALL);
+    if ( read == -1 ) {
+            qCritical("SageStreamWidget::%s() : error while reading regMsg. %s",__FUNCTION__, "");
+            return -1;
+    }
+    else if ( read == 0 ) {
+            qCritical("SageStreamWidget::%s() : sender disconnected, while reading 1KB regMsg",__FUNCTION__);
+            return -1;
+    }
+
+    QString regMsgStr(regMsg);
+    QStringList regMsgStrList = regMsgStr.split(" ", QString::SkipEmptyParts);
+    qDebug("SageStreamWidget::%s() : recved regMsg from sageStreamer::connectToRcv() [%s]",  __FUNCTION__, regMsg.constData());
+    int framerate = regMsgStrList.at(1).toInt();
+    int groupsize = regMsgStrList.at(3).toInt(); // this is going to be the network user buffer size
+
+    _appInfo->setNetworkUserBufferLength(groupsize);
+
+    int pixfmt = regMsgStrList.at(6).toInt();
+    int resX = regMsgStrList.at(9).toInt();
+    int resY = regMsgStrList.at(10).toInt();
+    Q_ASSERT(resX > 0 && resY > 0);
+
+//	qDebug() << "sd;fkljasdf;lkasjdf;    " << framerate << "\n";
+    _perfMon->setExpectedFps( (qreal)framerate );
+    _perfMon->setAdjustedFps( (qreal)framerate );
+
+	int fmargin = _settings->value("gui/framemargin",0).toInt();
+    resize(resX + fmargin*2, resY + fmargin*2); // BaseWidget::ResizeEvent will call setTransforOriginPoint
+
+
+    /* create double buffer */
+    if ( createImageBuffer(resX, resY, (sagePixFmt)pixfmt) != 0 ) {
+            qCritical("%s::%s() : imagedoublebuffer is not valid", metaObject()->className(), __FUNCTION__);
+            ::shutdown(streamsocket, SHUT_RDWR);
+            QMetaObject::invokeMethod(_fsmMsgThread, "sendSailShutdownMsg", Qt::QueuedConnection);
+            deleteLater();
+            return -1;
+    }
+
+
+    if(_affInfo)
+		_affInfo->setWidgetID(_sageAppId);
+
+    Q_ASSERT(_appInfo);
+    _appInfo->setFrameSize(image->width(), image->height(), image->depth()); // == _image->byteCount()
+
+//		qDebug("SageStreamWidget::%s() : sageappid %llu, groupsize %d, frameSize(SAIL) %d, frameSize(QImage) %d, expectedFps %.2f", __FUNCTION__, sageAppId, _appInfo->getNetworkUserBufferLength(), imageSize, _appInfo->getFrameBytecount(), _perfMon->getExpetctedFps());
+
+    _appInfo->setExecutableName( appname );
+    if ( appname == "imageviewer" ) {
+		_appInfo->setMediaType(SAGENext::MEDIA_TYPE_IMAGE);
+    }
+    else {
+		// this is done in the Launcher
+//                _appInfo->setMediaType(MEDIA_TYPE_VIDEO);
+    }
+
+//	qDebug() << "waitForStreamerConnection returning";
+	return streamsocket;
+}
+
+
+int SN_SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
     int bytePerPixel = getPixelSize(pixfmt);
     int memwidth = resX * bytePerPixel; //Byte (single row of frame)
 
@@ -490,181 +569,7 @@ int SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
 }
 
 
-
-int SageStreamWidget::initialize(quint64 sageappid, QString appname, QRect initrect, int protocol, int port) {
-
-        _sageAppId = sageappid;
-
-
-        /* accept connection from sageStreamer */
-        serversocket = ::socket(AF_INET, SOCK_STREAM, 0);
-        if ( serversocket == -1 ) {
-                qCritical("SageStreamWidget::%s() : couldn't create socket", __FUNCTION__);
-                return -1;
-        }
-
-        // setsockopt
-        int optval = 1;
-        if ( setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
-                qWarning("SageStreamWidget::%s() : setsockopt SO_REUSEADDR failed",  __FUNCTION__);
-        }
-
-        // bind to port
-        struct sockaddr_in localAddr, clientAddr;
-        memset(&localAddr, 0, sizeof(localAddr));
-        localAddr.sin_family = AF_INET;
-        localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-        localAddr.sin_port = htons(protocol + port);
-
-        // bind
-        if( bind(serversocket, (struct sockaddr *)&localAddr, sizeof(struct sockaddr_in)) != 0) {
-                qCritical("SageStreamWidget::%s() : bind error",  __FUNCTION__);
-                return -1;
-        }
-
-        // put in listen mode
-        listen(serversocket, 15);
-
-        // accept
-        /** accept will BLOCK **/
-//	qDebug("SageStreamWidget::%s() : Blocking waiting for sender to connect to TCP port %d", __FUNCTION__,protocol+port);
-        memset(&clientAddr, 0, sizeof(clientAddr));
-        int addrLen = sizeof(struct sockaddr_in);
-        if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
-                qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
-                perror("accept");
-                return -1;
-        }
-
-//	struct hostent *he = gethostbyaddr( (void *)&clientAddr, addrLen, AF_INET);
-//	Q_ASSERT(he);
-//	qDebug("SageStreamWidget::%s() : %s", __FUNCTION__, he->h_name);
-
-        // read regMsg 1024Byte
-        /*char regMsg[REG_MSG_SIZE];
-                  sprintf(regMsg, "%d %d %d %d %d %d %d %d %d %d %d",
-                                  config.streamType, // HARD_SYNC
-                                  config.frameRate,
-                                  winID,
-                                  config.groupSize,
-                                  blockSize,
-                                  config.nodeNum,
-                                  (int)config.pixFmt,
-                                  config.blockX,
-                                  config.blockY,
-                                  config.totalWidth,
-                                  config.totalHeight);
-
-
-                                   [103 60 1 131072 12416 1 5 64 64 400 400]
-                  */
-
-
-        QByteArray regMsg(OldSage::REG_MSG_SIZE, '\0');
-        int read = recv(streamsocket, (void *)regMsg.data(), regMsg.size(), MSG_WAITALL);
-        if ( read == -1 ) {
-                qCritical("SageStreamWidget::%s() : error while reading regMsg. %s",__FUNCTION__, "");
-                return -1;
-        }
-        else if ( read == 0 ) {
-                qCritical("SageStreamWidget::%s() : sender disconnected, while reading 1KB regMsg",__FUNCTION__);
-                return -1;
-        }
-
-        QString regMsgStr(regMsg);
-        QStringList regMsgStrList = regMsgStr.split(" ", QString::SkipEmptyParts);
-        qDebug("SageStreamWidget::%s() : recved regMsg from sageStreamer::connectToRcv() [%s]",  __FUNCTION__, regMsg.constData());
-        int framerate = regMsgStrList.at(1).toInt();
-        int groupsize = regMsgStrList.at(3).toInt(); // this is going to be the network user buffer size
-        _appInfo->setNetworkUserBufferLength(groupsize);
-        int pixfmt = regMsgStrList.at(6).toInt();
-        int resX = regMsgStrList.at(9).toInt();
-        int resY = regMsgStrList.at(10).toInt();
-        Q_ASSERT(resX > 0 && resY > 0);
-
-//	qDebug() << "sd;fkljasdf;lkasjdf;    " << framerate << "\n";
-        _perfMon->setExpectedFps( (qreal)framerate );
-        _perfMon->setAdjustedFps( (qreal)framerate );
-
-        resize(resX, resY); // BaseWidget::ResizeEvent will call setTransforOriginPoint
-
-        /**
-          set transform origin point to widget's center
-
-          **/
-//        setTransformOriginPoint( resX / 2.0 , resY / 2.0 );
-
-
-        /* create double buffer */
-        if ( createImageBuffer(resX, resY, (sagePixFmt)pixfmt) != 0 ) {
-                qCritical("%s::%s() : imagedoublebuffer is not valid", metaObject()->className(), __FUNCTION__);
-                ::shutdown(streamsocket, SHUT_RDWR);
-                QMetaObject::invokeMethod(_fsmMsgThread, "sendSailShutdownMsg", Qt::QueuedConnection);
-                deleteLater();
-                return -1;
-        }
-
-
-
-        if(_affInfo)
-                _affInfo->setWidgetID(_sageAppId);
-
-        Q_ASSERT(_appInfo);
-        _appInfo->setFrameSize(image->width(), image->height(), image->depth()); // == _image->byteCount()
-
-//		qDebug("SageStreamWidget::%s() : sageappid %llu, groupsize %d, frameSize(SAIL) %d, frameSize(QImage) %d, expectedFps %.2f", __FUNCTION__, sageAppId, _appInfo->getNetworkUserBufferLength(), imageSize, _appInfo->getFrameBytecount(), _perfMon->getExpetctedFps());
-
-        _appInfo->setExecutableName( appname );
-        if ( appname == "imageviewer" ) {
-                _appInfo->setMediaType(MEDIA_TYPE_IMAGE);
-        }
-        else {
-                _appInfo->setMediaType(MEDIA_TYPE_VIDEO);
-        }
-
-
-
-        /* starting receiving thread */
-
-        // image->bits() will do deep copy (detach)
-        receiverThread = new SagePixelReceiver(protocol, streamsocket, /*image*/ doubleBuffer, _appInfo, _perfMon, _affInfo, /*this, mutex, wc,*/ settings);
-//		qDebug("SageStreamWidget::%s() : SagePixelReceiver thread has begun",  __FUNCTION__);
-
-        Q_ASSERT(receiverThread);
-
-        connect(receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
-
-        // don't do below.
-//		connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));
-
-
-//		if (!scheduler) {
-                // This is queued connection because receiverThread reside outside of the main thread
-                if ( ! connect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
-                        qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleUpdate() slot", metaObject()->className(), __FUNCTION__);
-                        return -1;
-                }
-                else {
-//				qDebug("%s::%s() : frameReceived() -> scheduleUpdate() are connected", metaObject()->className(), __FUNCTION__);
-                }
-//		}
-        receiverThread->start();
-
-
-        /*
-        QFuture<void> future = QtConcurrent::run(this, &SageStreamWidget::pixelRecvThread);
-        futureWatcher.setFuture(future);
-        connect(&futureWatcher, SIGNAL(finished()), this, SLOT(close()));
-        connect(this, SIGNAL(pauseThread()), &futureWatcher, SLOT(pause()));
-        connect(this, SIGNAL(resumeThread()), &futureWatcher, SLOT(resume()));
-        */
-        setPos(initrect.x(), initrect.y());
-
-        return 0;
-}
-
-
-int SageStreamWidget::getPixelSize(sagePixFmt type)
+int SN_SageStreamWidget::getPixelSize(sagePixFmt type)
 {
    int bytesPerPixel = 0;
    switch(type) {
@@ -707,6 +612,149 @@ int SageStreamWidget::getPixelSize(sagePixFmt type)
 
 
 
+/*
+int SageStreamWidget::initialize(quint64 sageappid, QString appname, QRect initrect, int protocol, int port) {
+
+        _sageAppId = sageappid;
+
+        // accept connection from sageStreamer
+        serversocket = ::socket(AF_INET, SOCK_STREAM, 0);
+        if ( serversocket == -1 ) {
+                qCritical("SageStreamWidget::%s() : couldn't create socket", __FUNCTION__);
+                return -1;
+        }
+
+        // setsockopt
+        int optval = 1;
+        if ( setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
+                qWarning("SageStreamWidget::%s() : setsockopt SO_REUSEADDR failed",  __FUNCTION__);
+        }
+
+        // bind to port
+        struct sockaddr_in localAddr, clientAddr;
+        memset(&localAddr, 0, sizeof(localAddr));
+        localAddr.sin_family = AF_INET;
+        localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        localAddr.sin_port = htons(protocol + port);
+
+        // bind
+        if( bind(serversocket, (struct sockaddr *)&localAddr, sizeof(struct sockaddr_in)) != 0) {
+                qCritical("SageStreamWidget::%s() : bind error",  __FUNCTION__);
+                return -1;
+        }
+
+        // put in listen mode
+        listen(serversocket, 15);
+
+        // accept
+//	qDebug("SageStreamWidget::%s() : Blocking waiting for sender to connect to TCP port %d", __FUNCTION__,protocol+port);
+        memset(&clientAddr, 0, sizeof(clientAddr));
+        int addrLen = sizeof(struct sockaddr_in);
+        if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
+                qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
+                perror("accept");
+                return -1;
+        }
+
+
+
+        QByteArray regMsg(OldSage::REG_MSG_SIZE, '\0');
+        int read = recv(streamsocket, (void *)regMsg.data(), regMsg.size(), MSG_WAITALL);
+        if ( read == -1 ) {
+                qCritical("SageStreamWidget::%s() : error while reading regMsg. %s",__FUNCTION__, "");
+                return -1;
+        }
+        else if ( read == 0 ) {
+                qCritical("SageStreamWidget::%s() : sender disconnected, while reading 1KB regMsg",__FUNCTION__);
+                return -1;
+        }
+
+        QString regMsgStr(regMsg);
+        QStringList regMsgStrList = regMsgStr.split(" ", QString::SkipEmptyParts);
+        qDebug("SageStreamWidget::%s() : recved regMsg from sageStreamer::connectToRcv() [%s]",  __FUNCTION__, regMsg.constData());
+        int framerate = regMsgStrList.at(1).toInt();
+        int groupsize = regMsgStrList.at(3).toInt(); // this is going to be the network user buffer size
+        _appInfo->setNetworkUserBufferLength(groupsize);
+        int pixfmt = regMsgStrList.at(6).toInt();
+        int resX = regMsgStrList.at(9).toInt();
+        int resY = regMsgStrList.at(10).toInt();
+        Q_ASSERT(resX > 0 && resY > 0);
+
+//	qDebug() << "sd;fkljasdf;lkasjdf;    " << framerate << "\n";
+        _perfMon->setExpectedFps( (qreal)framerate );
+        _perfMon->setAdjustedFps( (qreal)framerate );
+
+        resize(resX, resY); // BaseWidget::ResizeEvent will call setTransforOriginPoint
+
+
+        // create double buffer
+        if ( createImageBuffer(resX, resY, (sagePixFmt)pixfmt) != 0 ) {
+                qCritical("%s::%s() : imagedoublebuffer is not valid", metaObject()->className(), __FUNCTION__);
+                ::shutdown(streamsocket, SHUT_RDWR);
+                QMetaObject::invokeMethod(_fsmMsgThread, "sendSailShutdownMsg", Qt::QueuedConnection);
+                deleteLater();
+                return -1;
+        }
+
+
+
+        if(_affInfo)
+                _affInfo->setWidgetID(_sageAppId);
+
+        Q_ASSERT(_appInfo);
+        _appInfo->setFrameSize(image->width(), image->height(), image->depth()); // == _image->byteCount()
+
+//		qDebug("SageStreamWidget::%s() : sageappid %llu, groupsize %d, frameSize(SAIL) %d, frameSize(QImage) %d, expectedFps %.2f", __FUNCTION__, sageAppId, _appInfo->getNetworkUserBufferLength(), imageSize, _appInfo->getFrameBytecount(), _perfMon->getExpetctedFps());
+
+        _appInfo->setExecutableName( appname );
+        if ( appname == "imageviewer" ) {
+                _appInfo->setMediaType(MEDIA_TYPE_IMAGE);
+        }
+        else {
+			// this is done in the Launcher
+//                _appInfo->setMediaType(MEDIA_TYPE_VIDEO);
+        }
+
+
+
+        // starting receiving thread
+
+        // image->bits() will do deep copy (detach)
+        receiverThread = new SagePixelReceiver(protocol, streamsocket, doubleBuffer, _appInfo, _perfMon, _affInfo,  settings);
+//		qDebug("SageStreamWidget::%s() : SagePixelReceiver thread has begun",  __FUNCTION__);
+
+        Q_ASSERT(receiverThread);
+
+        connect(receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
+
+        // don't do below.
+//		connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));
+
+
+//		if (!scheduler) {
+                // This is queued connection because receiverThread reside outside of the main thread
+                if ( ! connect(receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
+                        qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleUpdate() slot", metaObject()->className(), __FUNCTION__);
+                        return -1;
+                }
+                else {
+//				qDebug("%s::%s() : frameReceived() -> scheduleUpdate() are connected", metaObject()->className(), __FUNCTION__);
+                }
+//		}
+        receiverThread->start();
+
+
+
+
+		//
+		// I shouldnt do this here
+		// because Launcher will want to set pos when opening a session
+		//
+//        setPos(initrect.x(), initrect.y());
+
+        return 0;
+}
+*/
 
 
 //void SageStreamWidget::pixelRecvThread() {

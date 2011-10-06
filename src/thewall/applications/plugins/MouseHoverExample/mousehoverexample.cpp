@@ -1,7 +1,9 @@
 #include "mousehoverexample.h"
-#include "../../../common/commonitem.h"
 
-#include <QSettings>
+//
+// SAGENextPolygonArrow is defined in here
+//
+#include "../../../common/commonitem.h"
 
 
 TrackerItem::TrackerItem(qreal x, qreal y, qreal w, qreal h, QGraphicsItem *parent)
@@ -15,7 +17,7 @@ void TrackerItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWi
 }
 
 MouseHoverExample::MouseHoverExample()
-    : BaseWidget(Qt::Window)
+    : SN_BaseWidget(Qt::Window)
 	, _textItem(0)
 	, _hoverFlag(false)
 	, _marginleft(8)
@@ -45,13 +47,10 @@ MouseHoverExample::~MouseHoverExample()
 {
 }
 
-QString MouseHoverExample::name() const {
-	return "BaseWidget";
+SN_BaseWidget * MouseHoverExample::createInstance() {
+	return new MouseHoverExample;
 }
 
-QGraphicsProxyWidget * MouseHoverExample::rootWidget() {
-	return 0;
-}
 
 void MouseHoverExample::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 	painter->fillRect(_marginleft, _margintop, size().width()-_marginleft-_marginright, size().height()-_margintop-_marginbottom, Qt::lightGray);
@@ -62,14 +61,14 @@ void MouseHoverExample::resizeEvent(QGraphicsSceneResizeEvent *) {
 //					  ,e->newSize().height()/2 - _textItem->boundingRect().size().height()/2);
 }
 
-void MouseHoverExample::toggleHover(SAGENextPolygonArrow *pointer, const QPointF &pointerPosOnMe, bool isHovering) {
+void MouseHoverExample::handlePointerHover(SN_PolygonArrowPointer *pointer, const QPointF &pointerPosOnMe, bool isHovering) {
 
 	//
 	// update the map first
 	//
 	_pointerMap.insert(pointer, QPair<QPointF, bool>(pointerPosOnMe, isHovering));
 
-	QMap<SAGENextPolygonArrow *, QPair<QPointF, bool> >::const_iterator it = _pointerMap.constBegin();
+	QMap<SN_PolygonArrowPointer *, QPair<QPointF, bool> >::const_iterator it = _pointerMap.constBegin();
 
 	if ( isHovering ) {
 		// handle mouse hovering. For example,..

@@ -4,15 +4,15 @@
 #include <QGraphicsView>
 #include <QtGui>
 
-class SAGENextLauncher;
-class SAGENextScene;
+class SN_Launcher;
+class SN_TheScene;
 
-class SAGENextViewport : public QGraphicsView
+class SN_Viewport : public QGraphicsView
 {
 	Q_OBJECT
 public:
-	explicit SAGENextViewport(SAGENextScene *s, int viewportId = 0, SAGENextLauncher *l = 0, QWidget *parent = 0);
-	~SAGENextViewport();
+	explicit SN_Viewport(SN_TheScene *s, int viewportId = 0, SN_Launcher *l = 0, QWidget *parent = 0);
+	~SN_Viewport();
 
 	inline int viewportId() const {return _viewportID;}
 
@@ -43,9 +43,9 @@ private:
 	  */
 	QAction *_closeAllAction;
 
-	SAGENextLauncher *_launcher;
+	SN_Launcher *_launcher;
 
-	SAGENextScene *_sageNextScene;
+	SN_TheScene *_sageNextScene;
 
 public slots:
 	/**

@@ -12,11 +12,11 @@
 
 
 
-class VNCClientWidget : public RailawareWidget
+class SN_VNCClientWidget : public SN_RailawareWidget
 {
 public:
-        VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int framerate, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
-        ~VNCClientWidget();
+        SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int framerate, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+        ~SN_VNCClientWidget();
 
 protected:
         virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);

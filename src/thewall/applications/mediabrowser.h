@@ -6,8 +6,8 @@
 #include <QtGui>
 #include <QtCore>
 
-class SAGENextLauncher;
-class MediaStorage;
+class SN_Launcher;
+class SN_MediaStorage;
 
 /**
   pointer click will trigger SAGENextLaunch::launch()
@@ -31,12 +31,12 @@ protected:
 /**
   MediaBrowser will have MediaItem instances as its children
   */
-class MediaBrowser : public BaseWidget
+class SN_MediaBrowser : public SN_BaseWidget
 {
     Q_OBJECT
 public:
-    explicit MediaBrowser(SAGENextLauncher *launcher, quint64 globalappid, const QSettings *s, MediaStorage* mediaStorage, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = Qt::Window);
-    ~MediaBrowser();
+    explicit SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, const QSettings *s, SN_MediaStorage* mediaStorage, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = Qt::Window);
+    ~SN_MediaBrowser();
 
     /**
       This slot can be access by SAGENextLauncher when a user uploaded a new media file
@@ -44,7 +44,7 @@ public:
       */
     static int insertNewMediaToHash(const QString &key, QPixmap &pixmap);
 
-    inline SAGENextLauncher * launcher() {return _launcher;}
+    inline SN_Launcher * launcher() {return _launcher;}
 
 protected:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -57,8 +57,8 @@ private:
 
     QScrollBar *_VScrollBar;
 
-    SAGENextLauncher *_launcher;
-    MediaStorage* _mediaStorage;
+    SN_Launcher *_launcher;
+    SN_MediaStorage* _mediaStorage;
 
     /**
       how many thumbnails

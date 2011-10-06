@@ -4,7 +4,7 @@
 
 #include <QSettings>
 
-fsManager::fsManager(const QSettings *settings, SAGENextLauncher *l, QObject *parent) :
+fsManager::fsManager(const QSettings *settings, SN_Launcher *l, QObject *parent) :
 
 	QTcpServer(parent),
 

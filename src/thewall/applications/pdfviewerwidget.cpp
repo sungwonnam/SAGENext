@@ -7,8 +7,8 @@
 #include <QPushButton>
 #include <QGraphicsProxyWidget>
 
-PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
-	: BaseWidget(globalappid, s, parent, wflags)
+SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
+	: SN_BaseWidget(globalappid, s, parent, wflags)
 	, _pdfFileName(filename)
 	, _document(0)
 	, _currentPage(0)
@@ -22,10 +22,11 @@ PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, co
 	}
 
 	_appInfo->setFileInfo(filename);
-	_appInfo->setMediaType(MEDIA_TYPE_PDF);
+	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_PDF);
+
 
 	// this is slow
-//	_document->setRenderBackend(Poppler::Document::ArthurBackend); // qt4
+	//_document->setRenderBackend(Poppler::Document::ArthurBackend); // qt4
 
 	// faster..
 	_document->setRenderBackend(Poppler::Document::SplashBackend); // default
@@ -55,32 +56,32 @@ PDFViewerWidget::PDFViewerWidget(const QString filename, quint64 globalappid, co
 	rButton->setPos( 10, size().height() - rButton->size().height() );
 	*/
 
-	SAGENextPixmapButton *left = new SAGENextPixmapButton(":/resources/media-forward-rtl_128x128.png", 0, "", this);
-	SAGENextPixmapButton *right = new SAGENextPixmapButton(":/resources/media-forward-ltr_128x128.png", 0, "", this);
+	SN_PixmapButton *left = new SN_PixmapButton(":/resources/media-forward-rtl_128x128.png", 0, "", this);
+	SN_PixmapButton *right = new SN_PixmapButton(":/resources/media-forward-ltr_128x128.png", 0, "", this);
 	connect(left, SIGNAL(clicked()), this, SLOT(prevPage()));
 	connect(right, SIGNAL(clicked()), this, SLOT(nextPage()));
 	left->setPos(0, size().height()/2);
 	right->setPos(size().width() - right->size().width(), size().height()/2);
 }
 
-PDFViewerWidget::~PDFViewerWidget() {
+SN_PDFViewerWidget::~SN_PDFViewerWidget() {
 	if (_currentPage) delete _currentPage;
 	if (_document) delete _document;
 
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
 
-void PDFViewerWidget::prevPage() {
+void SN_PDFViewerWidget::prevPage() {
 	if ( _currentPageIndex == 0 ) return;
 	setCurrentPage(_currentPageIndex - 1);
 }
 
-void PDFViewerWidget::nextPage() {
+void SN_PDFViewerWidget::nextPage() {
 	if ( _currentPageIndex >= _document->numPages() - 1) return;
 	setCurrentPage(_currentPageIndex + 1);
 }
 
-void PDFViewerWidget::setCurrentPage(int pageNumber) {
+void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 	if (pageNumber < 0  || pageNumber >=  _document->numPages()) return;
 
 	if (_currentPage) {
@@ -93,32 +94,31 @@ void PDFViewerWidget::setCurrentPage(int pageNumber) {
 //	qint64 start = QDateTime::currentMSecsSinceEpoch();
 
 #if QT_VERSION >= 0x040700
-	_pixmap.convertFromImage(_currentPage->renderToImage(250, 250));
+	_pixmap.convertFromImage(_currentPage->renderToImage(200, 200));
 #else
-	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(300, 300));
+	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(200, 200));
 #endif
 
 //	qint64 end = QDateTime::currentMSecsSinceEpoch();
 //	qDebug() << end - start << "msec for rendering";
 
-	qreal left = settings->value("gui/framemarginleft", 0).toInt();
-	qreal right = settings->value("gui/framemarginright", 0).toInt();
-	qreal top = settings->value("gui/framemargintop", 0).toInt();
-	qreal bottom = settings->value("gui/framemarginbottom", 0).toInt();
+	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
 
-	resize(_pixmap.width()+left+right, _pixmap.height()+top+bottom);
+	resize(_pixmap.width() + fmargin*2, _pixmap.height() + fmargin*2);
 	
 //	qDebug() << _currentPage->pageSizeF();
 //	QSizeF sizeinch = _currentPage->pageSizeF() / 72;
 //	qDebug() << sizeinch * 250;
 }
 
-void PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+void SN_PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
 	if (!_currentPage) return;
 	painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
 	if (_perfMon)
 		_perfMon->getDrawTimer().start();
+
+	SN_BaseWidget::paint(painter, option, widget);
 
 	/**
 	  This is slow with Arthur backend
@@ -126,10 +126,8 @@ void PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 //	_currentPage->renderToPainter(painter); // with Arthur renderBackend
 
 	if (!_pixmap.isNull())
-		painter->drawPixmap(settings->value("gui/framemarginleft", 0).toInt(), settings->value("gui/framemargintop", 0).toInt(), _pixmap);
+		painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _pixmap);
 
-
-	BaseWidget::paint(painter, option, widget);
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.

@@ -7,12 +7,12 @@
 
 #include <QtGui>
 
-rfbBool VNCClientWidget::got_data = FALSE;
-QString VNCClientWidget::username = "";
-QString VNCClientWidget::vncpasswd = "evl123";
+rfbBool SN_VNCClientWidget::got_data = FALSE;
+QString SN_VNCClientWidget::username = "";
+QString SN_VNCClientWidget::vncpasswd = "evl123";
 
-VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int frate, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
-	: RailawareWidget(globalappid, s, parent, wflags)
+SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int frate, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
+	: SN_RailawareWidget(globalappid, s, parent, wflags)
 	, vncclient(0)
 	, serverPort(5900)
 	, _image(0)
@@ -21,10 +21,10 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 
 {
 	if ( username == "user" )
-		VNCClientWidget::username = "";
+		SN_VNCClientWidget::username = "";
 	else
-		VNCClientWidget::username = username;
-	VNCClientWidget::vncpasswd = passwd;
+		SN_VNCClientWidget::username = username;
+	SN_VNCClientWidget::vncpasswd = passwd;
 
 //	qDebug() << "vnc widget constructor " <<  username << passwd << VNCClientWidget::username << VNCClientWidget::vncpasswd;
 
@@ -35,16 +35,16 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 
 	vncclient->canHandleNewFBSize = false;
 	vncclient->appData.useRemoteCursor = true;
-	vncclient->MallocFrameBuffer = VNCClientWidget::resize_func;
-	vncclient->GotFrameBufferUpdate = VNCClientWidget::update_func;
-	vncclient->HandleCursorPos = VNCClientWidget::position_func;
-	vncclient->GetPassword = VNCClientWidget::password_func;
+	vncclient->MallocFrameBuffer = SN_VNCClientWidget::resize_func;
+	vncclient->GotFrameBufferUpdate = SN_VNCClientWidget::update_func;
+	vncclient->HandleCursorPos = SN_VNCClientWidget::position_func;
+	vncclient->GetPassword = SN_VNCClientWidget::password_func;
 
 	serverAddr.setAddress(senderIP);
 	_appInfo->setSrcAddr(senderIP);
 
-	if (!VNCClientWidget::username.isEmpty()  &&  !VNCClientWidget::vncpasswd.isEmpty()) {
-		vncclient->GetCredential = VNCClientWidget::getCredential;
+	if (!SN_VNCClientWidget::username.isEmpty()  &&  !SN_VNCClientWidget::vncpasswd.isEmpty()) {
+		vncclient->GetCredential = SN_VNCClientWidget::getCredential;
 		const uint32_t authSchemes[] = {rfbARD, rfbVncAuth, rfbNoAuth};
 		int numSchemes = 3;
 		SetClientAuthSchemes(vncclient, authSchemes, numSchemes);
@@ -55,7 +55,7 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 		SetClientAuthSchemes(vncclient, authSchemes, numSchemes);
 	}
 
-	vncclient->FinishedFrameBufferUpdate = VNCClientWidget::frame_func;
+	vncclient->FinishedFrameBufferUpdate = SN_VNCClientWidget::frame_func;
 
 	int margc = 2;
 	char *margv[2];
@@ -77,21 +77,19 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 	//qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
 
-	qreal left = settings->value("gui/framemarginleft", 0).toInt();
-	qreal right = settings->value("gui/framemarginright", 0).toInt();
-	qreal top = settings->value("gui/framemargintop", 0).toInt();
-	qreal bottom = settings->value("gui/framemarginbottom", 0).toInt();
+	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
 
 	/**
 	  Don't forget to call resize() once you know the size of image you're displaying.
 	  Also BaseWidget::resizeEvent() will call setTransformOriginPoint();
      */
-	resize(_image->width()+left+right, _image->height()+top+bottom);
+	resize(_image->width() + fmargin*2, _image->height() + fmargin*2);
+	_appInfo->setFrameSize(_image->width() + fmargin*2, _image->height() + fmargin*2, 24);
 
 	qDebug() << "VNCClientWidget constructor" << boundingRect() << size();
 
 
-	setWidgetType(BaseWidget::Widget_RealTime);
+	setWidgetType(SN_BaseWidget::Widget_RealTime);
 	if (_perfMon) {
 		_perfMon->setExpectedFps( (qreal)framerate );
 		_perfMon->setAdjustedFps( (qreal)framerate );
@@ -104,35 +102,37 @@ VNCClientWidget::VNCClientWidget(quint64 globalappid, const QString senderIP, in
 //	setTransformOriginPoint( _image->width() / 2.0 , _image->height() / 2.0 );
 
 	// starting thread.
-	future = QtConcurrent::run(this, &VNCClientWidget::receivingThread);
+	future = QtConcurrent::run(this, &SN_VNCClientWidget::receivingThread);
 }
 
-VNCClientWidget::~VNCClientWidget() {
+SN_VNCClientWidget::~SN_VNCClientWidget() {
 	_end = true;
 	future.cancel();
 	future.waitForFinished();
 	if (_image) delete _image;
 }
 
-rfbCredential * VNCClientWidget::getCredential(struct _rfbClient *client, int credentialType) {
+rfbCredential * SN_VNCClientWidget::getCredential(struct _rfbClient *client, int credentialType) {
 	Q_UNUSED(client);
 	Q_UNUSED(credentialType);
 	rfbCredential *res = (rfbCredential *)malloc(sizeof(rfbCredential));
-	if ( ! VNCClientWidget::username.isEmpty())
-		res->userCredential.username = strdup(qPrintable(VNCClientWidget::username));
+	if ( ! SN_VNCClientWidget::username.isEmpty())
+		res->userCredential.username = strdup(qPrintable(SN_VNCClientWidget::username));
 	else
 		res->userCredential.username = NULL;
-	if (! VNCClientWidget::vncpasswd.isEmpty())
-		res->userCredential.password = strdup(qPrintable(VNCClientWidget::vncpasswd));
+	if (! SN_VNCClientWidget::vncpasswd.isEmpty())
+		res->userCredential.password = strdup(qPrintable(SN_VNCClientWidget::vncpasswd));
 	else
 		res->userCredential.password = NULL;
 	return res;
 }
 
-void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
+void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 	if (_perfMon) {
 		_perfMon->getDrawTimer().start();
 	}
+
+	SN_BaseWidget::paint(painter, o, w);
 
 	//	painter->setRenderHint(QPainter::Antialiasing);
 	//	painter->setRenderHint(QPainter::HighQualityAntialiasing);
@@ -140,21 +140,19 @@ void VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 
 
 	if (!pixmap.isNull())
-		painter->drawPixmap(settings->value("gui/framemarginleft", 0).toInt(), settings->value("gui/framemargintop", 0).toInt(), pixmap); // Drawing QPixmap is much faster than QImage
+		painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), pixmap); // Drawing QPixmap is much faster than QImage
 
 
 	// if (_image && !_image->isNull()) {
 	//  painter->drawImage(0, 0, *_image);
 	//}
 
-	BaseWidget::paint(painter, o, w);
-
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
-void VNCClientWidget::scheduleUpdate() {
+void SN_VNCClientWidget::scheduleUpdate() {
 #if QT_VERSION < 0x040700
     pixmap = QPixmap::fromImage(*_image);
     if (pixmap.isNull()) {
@@ -171,7 +169,7 @@ void VNCClientWidget::scheduleUpdate() {
 	}
 }
 
-void VNCClientWidget::receivingThread() {
+void SN_VNCClientWidget::receivingThread() {
 
 	while (!_end) {
 		// sleep to ensure desired fps
@@ -253,12 +251,12 @@ void VNCClientWidget::receivingThread() {
 
 
 
-void VNCClientWidget::signal_handler(int signal)
+void SN_VNCClientWidget::signal_handler(int signal)
 {
 	rfbClientLog("Cleaning up.\n");
 }
 
-rfbBool VNCClientWidget::resize_func(rfbClient* client)
+rfbBool SN_VNCClientWidget::resize_func(rfbClient* client)
 {
         static rfbBool first = TRUE;
         if(!first) {
@@ -283,12 +281,12 @@ rfbBool VNCClientWidget::resize_func(rfbClient* client)
         return TRUE;
 }
 
-void VNCClientWidget::frame_func(rfbClient *)
+void SN_VNCClientWidget::frame_func(rfbClient *)
 {
 //        rfbClientLog("Received a frame\n");
 }
 
-rfbBool VNCClientWidget::position_func(rfbClient *, int x, int y)
+rfbBool SN_VNCClientWidget::position_func(rfbClient *, int x, int y)
 {
         Q_UNUSED(x);
         Q_UNUSED(y);
@@ -297,21 +295,21 @@ rfbBool VNCClientWidget::position_func(rfbClient *, int x, int y)
         return TRUE;
 }
 
-char * VNCClientWidget::password_func(rfbClient *)
+char * SN_VNCClientWidget::password_func(rfbClient *)
 {
         char *str = (char*)malloc(64);
         memset(str, 0, 64);
-        strncpy(str, qPrintable(VNCClientWidget::vncpasswd), 64);
+        strncpy(str, qPrintable(SN_VNCClientWidget::vncpasswd), 64);
         return str;
 }
 
-void VNCClientWidget::update_func(rfbClient* client,int x,int y,int w,int h)
+void SN_VNCClientWidget::update_func(rfbClient* client,int x,int y,int w,int h)
 {
         rfbPixelFormat* pf=&client->format;
         int bpp=pf->bitsPerPixel/8;
         int row_stride = client->width*bpp;
 
-        VNCClientWidget::got_data = TRUE;
+        SN_VNCClientWidget::got_data = TRUE;
 
         //rfbClientLog("Received an update for %d,%d,%d,%d.\n",x,y,w,h);
 }

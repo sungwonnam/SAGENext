@@ -20,7 +20,7 @@ int AffinityInfo::SwThread_Per_Cpu = 0;
 int AffinityInfo::Num_Cpus = 0;
 
 
-AffinityInfo::AffinityInfo(RailawareWidget *p) :
+AffinityInfo::AffinityInfo(SN_RailawareWidget *p) :
 		_widgetPtr(p)
 {
 	flag = false;

@@ -7,7 +7,7 @@
 #include <QWaitCondition>
 #include <QObject>
 
-class RailawareWidget;
+class SN_RailawareWidget;
 
 
 /*!
@@ -28,7 +28,7 @@ class AffinityInfo : public QObject
         Q_PROPERTY(int cpuOfMine READ cpuOfMine WRITE setCpuOfMine)
         Q_ENUMS(MASK_TYPE)
 public:
-        AffinityInfo(RailawareWidget *widget);
+        AffinityInfo(SN_RailawareWidget *widget);
         ~AffinityInfo();
 
         /*!
@@ -43,8 +43,8 @@ public:
 
         enum MASK_TYPE { NODE_MASK, CPU_MASK, MEM_MASK };
 
-        inline RailawareWidget * widgetPtr() {return _widgetPtr;}
-        inline void setWidgetPtr(RailawareWidget *w) { _widgetPtr = w;}
+        inline SN_RailawareWidget * widgetPtr() {return _widgetPtr;}
+        inline void setWidgetPtr(SN_RailawareWidget *w) { _widgetPtr = w;}
 
         /*!
           * These are called by BaseWidget to show info,and AffinityControlDialog to update text on QLabels.
@@ -139,7 +139,7 @@ private:
         /*!
           Pointer to the widget that has this object
           */
-        RailawareWidget *_widgetPtr;
+        SN_RailawareWidget *_widgetPtr;
 
         /*!
           * The cpu on which main() is running
@@ -225,7 +225,7 @@ signals:
           * This signal is connected to resourceMonitor::updateAffinityInfo() by GraphicsViewMain::startSageApp()
           * And is emitted in setCpuOfMine(), applyNewParameter()
           */
-        void cpuOfMineChanged(RailawareWidget *, int oldvalue, int newvalue);
+        void cpuOfMineChanged(SN_RailawareWidget *, int oldvalue, int newvalue);
 
         /*!
           This signal is to let fsManager sends sender's CPU affinity info chosen by a user through AffinityControlDialog

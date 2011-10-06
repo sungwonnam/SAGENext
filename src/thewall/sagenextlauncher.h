@@ -6,33 +6,34 @@
 
 #include "common/commondefinitions.h"
 
-class SAGENextScene;
-class fsManager;
-class fsManagerMsgThread;
 class QSettings;
-
-class ResourceMonitor;
-class SchedulerControl;
+class SN_TheScene;
 
 class QGraphicsItem;
+class SN_BaseWidget;
+class SN_PolygonArrowPointer;
+class SN_PluginInterface;
 
-class BaseWidget;
-class SageStreamWidget;
-class SAGENextPolygonArrow;
-class MediaStorage;
+class fsManager;
+class fsManagerMsgThread;
+class SN_SageStreamWidget;
 
-class SAGENextLauncher : public QObject
+class SN_ResourceMonitor;
+class SN_SchedulerControl;
+class SN_MediaStorage;
+
+class SN_Launcher : public QObject
 {
         Q_OBJECT
 public:
-        explicit SAGENextLauncher(const QSettings *s, SAGENextScene *scene, MediaStorage *mediaStorage, ResourceMonitor *rm = 0, SchedulerControl *sc = 0, QObject *parent = 0);
-        ~SAGENextLauncher();
+        explicit SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage *mediaStorage, SN_ResourceMonitor *rm = 0, SN_SchedulerControl *sc = 0, QFile *scenarioFile = 0, QObject *parent = 0);
+        ~SN_Launcher();
 
 	/**
 	  This is temporary for scenario stuff
 	  Use UiServer's container instead
 	  */
-	QMap<quint64, SAGENextPolygonArrow *> _pointerMap;
+	QMap<quint64, SN_PolygonArrowPointer *> _pointerMap;
 
 private:
         const QSettings *_settings;
@@ -45,12 +46,12 @@ private:
         /**
           The pointer to the scene
           */
-        SAGENextScene *_scene;
+        SN_TheScene *_scene;
 
         /**
-          Pointer to the mediastorage
+          The pointer to the media storage
           */
-        MediaStorage *_mediaStorage;
+        SN_MediaStorage *_mediaStorage;
 
         /**
           fsServer::checkClient()
@@ -69,13 +70,15 @@ private:
           This is because there's no way to co-relate sageWidget to SAIL connection...
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!
           */
-        QList<SageStreamWidget *> _sageWidgetQueue;
+        QList<SN_SageStreamWidget *> _sageWidgetQueue;
+
+		QList<QPointF> _sageWidgetScenePosQueue;
 
         void createFsManager();
 
-        ResourceMonitor *_rMonitor;
+        SN_ResourceMonitor *_rMonitor;
 
-        SchedulerControl *_schedCtrl;
+        SN_SchedulerControl *_schedCtrl;
 
 		/**
 		  To record new widget/pointer starts.
@@ -83,36 +86,40 @@ private:
 		  */
 		QFile *_scenarioFile;
 
+		QMap<QString, SN_PluginInterface *> _pluginMap;
+
+		void loadPlugins();
+
 
 public slots:
         /**
           This slot is invoked by the signal incomingSail in fsManager::incomingConnection
           */
-        BaseWidget * launch(fsManagerMsgThread *);
+        SN_BaseWidget * launch(fsManagerMsgThread *);
 
         /**
           this is general launch function
           */
-		BaseWidget * launch(int mediatype, QString filename, const QPointF &scenepos = QPointF(), qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
+		SN_BaseWidget * launch(int mediatype, QString filename, const QPointF &scenepos = QPointF(), qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
 
         /**
           just for VNC widget
           */
-        BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF());
+        SN_BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF());
 
         /**
           The widget is added to the scene in here.
           _globalAppId is incremented by 1 in here
           */
-        BaseWidget * launch(BaseWidget *, const QPointF &scenepos = QPointF());
+        SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &scenepos = QPointF());
 
 		/**
 		  Only with filename, this slot launches all sorts of things (media, session, recording,..)
 		  */
-		BaseWidget * launch(const QStringList &fileList);
+		SN_BaseWidget * launch(const QStringList &fileList);
 
 
-		SAGENextPolygonArrow * launchPointer(quint32 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
+		SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
 
 		/**
 		  Load a saved session
@@ -141,14 +148,14 @@ public slots:
 class ScenarioThread : public QThread {
 	Q_OBJECT
 public:
-	ScenarioThread(SAGENextLauncher *launcher, const QString &file, QObject *parent = 0);
+	ScenarioThread(SN_Launcher *launcher, const QString &file, QObject *parent = 0);
 	~ScenarioThread();
 
 protected:
 	void run();
 
 private:
-	SAGENextLauncher *_launcher;
+	SN_Launcher *_launcher;
 
 	QFile _scenarioFile;
 

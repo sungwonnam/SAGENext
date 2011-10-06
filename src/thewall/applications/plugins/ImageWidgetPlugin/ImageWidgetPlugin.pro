@@ -6,7 +6,7 @@
 
 QT       += core gui opengl
 
-TARGET = ImageWidgetPlugin
+TARGET = MouseClickExamplePlugin
 TEMPLATE = lib
 CONFIG += plugin
 DESTDIR = $$(HOME)/.sagenext/plugins
@@ -29,7 +29,7 @@ imagewidgetplugin.cpp \
 
 HEADERS  += \
 imagewidgetplugin.h \
-../../base/dummyplugininterface.h \
+../../base/SN_plugininterface.h \
 ../../base/basewidget.h \
 ../../base/appinfo.h \
 ../../base/perfmonitor.h \
