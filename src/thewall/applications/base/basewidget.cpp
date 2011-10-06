@@ -122,7 +122,7 @@ SN_BaseWidget::~SN_BaseWidget()
 	}
     //	if ( infoTextItem ) delete infoTextItem;
 
-    qDebug("BaseWidget::%s() : Removed widget %llu from scene.", __FUNCTION__, _globalAppId);
+	qDebug("%s::%s() : widget id %llu has been deleted\n",metaObject()->className(), __FUNCTION__, _globalAppId);
 }
 
 

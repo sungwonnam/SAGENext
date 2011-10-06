@@ -149,7 +149,7 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &scenepos/* = QPointF()*/, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
 	//qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
 
-	qDebug() << "Launcher::launch() :" << type << filename << scenepos;
+	qDebug() << "SN_Launcher::launch() :" << type << filename << scenepos;
 
 
 
@@ -159,7 +159,8 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 	if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
 		if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
 			char record[256];
-			sprintf(record, "%lld %d %d %s\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(filename));
+			// WIDGET_NEW 0
+			sprintf(record, "%lld %d %d %s %d %d\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(filename), scenepos.toPoint().x(), scenepos.toPoint().y());
 			_scenarioFile->write(record);
 		}
 		else {
@@ -242,7 +243,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 
 
 	case SAGENext::MEDIA_TYPE_LOCAL_VIDEO: {
-		qDebug("%s::%s() : MEDIA_TYPE_LOCAL_VIDEO %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
+//		qDebug("%s::%s() : MEDIA_TYPE_LOCAL_VIDEO %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 
 		if ( ! filename.isEmpty() ) {
 			/**
@@ -518,6 +519,20 @@ void SN_Launcher::launchSavedSession(const QString &sessionfilename) {
 
 	qDebug() << "SAGENextLauncher::launchSavedSession() : Loading a session" << sessionfilename;
 
+	/*
+	QGraphicsSimpleTextItem *text = new QGraphicsSimpleTextItem;
+	text->setText("Loading a session .. \n" + sessionfilename);
+	QFont font;
+	font.setStyleStrategy(QFont::OpenGLCompatible);
+	font.setBold(true);
+	font.setPointSize( _settings->value("gui/fontpointsize", 20).toInt() );
+	text->setFont(font);
+	text->setBrush(Qt::white);
+	text->setPos( (_scene->width()-text->boundingRect().width())/2 , (_scene->height()-text->boundingRect().height())/2 );
+	text->setZValue(999999);
+	_scene->addItem(text);
+	*/
+
 	QDataStream in(&f);
 
 	int mtype;
@@ -542,6 +557,10 @@ void SN_Launcher::launchSavedSession(const QString &sessionfilename) {
 		else {
 			in >> file;
 			bw = launch(mtype, file, scenepos);
+			if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
+				::usleep(200 * 1000);
+//				QThread::yieldCurrentThread();
+			}
 		}
 		if (!bw) {
 			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
@@ -551,6 +570,8 @@ void SN_Launcher::launchSavedSession(const QString &sessionfilename) {
 		bw->resize(size);
 		bw->setScale(scale);
 	}
+
+//	delete text;
 
 	f.close();
 }
@@ -637,13 +658,15 @@ void ScenarioThread::run() {
 
 		switch(type) {
 
-		case 0: {
+		case 0: // WIDGET_NEW
+		{
 			int mtype;
 			char filename[256];
-			sscanf(line, "%lld %d %d %s", &when, &type, &mtype, filename);
+			int x,y;
+			sscanf(line, "%lld %d %d %s %d %d", &when, &type, &mtype, filename, &x, &y);
 //			qDebug() << "NEW_WIDGET" << mtype << filename;
 //			_launcher->launch(mtype, QString(filename));
-			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(int, mtype), Q_ARG(QString, QString(filename)));
+			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(int, mtype), Q_ARG(QString, QString(filename)), Q_ARG(QPointF, QPointF(x,y)));
 			break;
 		}
 		case 1: {

@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 		sd.adjustSize();
 		sd.exec();
 	}
-	s.setValue("misc/printperfdataattheend", true);
+//	s.setValue("misc/printperfdataattheend", true);
 
 
         /**
@@ -337,7 +337,7 @@ int main(int argc, char *argv[])
 
 		recordingname.append( "__" + s.value("general/wallip").toString() );
 
-		QString filetimestr = QDateTime::currentDateTime().toString("hh:mm:ss.zzz_MM.dd.yyyy_");
+		QString filetimestr = QDateTime::currentDateTime().toString("__hh:mm:ss.zzz_MM.dd.yyyy_");
 		filetimestr.append(".recording");
 		recordingname.append(filetimestr);
 

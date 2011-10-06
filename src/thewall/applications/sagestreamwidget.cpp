@@ -123,10 +123,13 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 
 
 
+	if (_sailAppProc) {
+		_sailAppProc->kill();
+	}
 
 
 //    qDebug() << _globalAppId << "end destructor" << QTime::currentTime().toString("hh:mm:ss.zzz");
-    qDebug("SageStreamWidget::%s() ",  __FUNCTION__);
+    qDebug("%s::%s() ",metaObject()->className(),  __FUNCTION__);
 }
 
 void SN_SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {

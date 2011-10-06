@@ -477,7 +477,7 @@ void SettingStackedDialog::on_buttonBox_accepted()
 	_settings->setValue("network/mtu", 1450);
 
 
-	_settings->setValue("misc/printperfdataattheend", false);
+//	_settings->setValue("misc/printperfdataattheend", false);
 }
 
 void SettingStackedDialog::on_buttonBox_rejected()

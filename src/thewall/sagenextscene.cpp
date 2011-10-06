@@ -107,7 +107,7 @@ void SN_TheScene::prepareClosing() {
 	if (_closeFlag) {
 		// close UiServer so that all the shared pointers can be deleted first
 		if (_uiserver) {
-			qDebug() << "Scene is deleting UiServer";
+			qDebug() << "\n[ Scene is deleting UiServer ]\n";
 			delete _uiserver;
 		}
 
@@ -146,7 +146,9 @@ SN_TheScene::~SN_TheScene() {
 		if (!item) continue;
 		if (item->type() >= QGraphicsItem::UserType + 12) {
 			// this is user application
+
 			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+			qDebug() << "Scene is deleting an application id" << bw->globalAppId();
 //			bw->fadeOutClose();
 			bw->hide();
 			bw->close();
@@ -159,7 +161,7 @@ SN_TheScene::~SN_TheScene() {
 	/*
 	  close all views
 	  */
-	qDebug() << "\nScene is closing all views";
+	qDebug() << "\n[ Scene is closing all viewports ]\n";
 	foreach (QGraphicsView *view, views()) {
 		view->close(); // WA_DeleteOnClose is set
 	}
