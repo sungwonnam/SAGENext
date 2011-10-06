@@ -12,11 +12,11 @@
 
 #define EXTUI_MSG_SIZE 1280
 
-class SAGENextScene;
-class SAGENextLauncher;
+class SN_TheScene;
+class SN_Launcher;
 class QSettings;
 
-class FileReceivingTcpServer;
+//class FileReceivingTcpServer;
 
 
 /* transfer file / stream pixel / stream file */
@@ -26,12 +26,12 @@ enum EXTUI_TRANSFER_MODE { FILE_TRANSFER, FILE_STREAM, PIXEL_STREAM };
 /* types of messages between external UI and the wall */
 enum EXTUI_MSG_TYPE { MSG_NULL, REG_FROM_UI, ACK_FROM_WALL, DISCONNECT_FROM_WALL, WALL_IS_CLOSING, TOGGLE_APP_LAYOUT, RESPOND_APP_LAYOUT, VNC_SHARING, POINTER_PRESS, POINTER_RIGHTPRESS, POINTER_RELEASE, POINTER_RIGHTRELEASE, POINTER_CLICK, POINTER_RIGHTCLICK, POINTER_DOUBLECLICK, POINTER_DRAGGING, POINTER_RIGHTDRAGGING, POINTER_MOVING, POINTER_SHARE, POINTER_WHEEL, POINTER_UNSHARE};
 
-class UiServer : public QTcpServer
+class SN_UiServer : public QTcpServer
 {
 	Q_OBJECT
 public:
-	explicit UiServer(const QSettings *s, SAGENextLauncher *snl, SAGENextScene *sns);
-	~UiServer();
+	explicit SN_UiServer(const QSettings *s, SN_Launcher *snl, SN_TheScene *sns);
+	~SN_UiServer();
 
         /**
           * This function is called by the main process (GraphicsViewMain::TimerEvent()) every 1sec (TimerEvent of the main process)
@@ -51,30 +51,30 @@ protected:
 
 private:
         //QHostAddress uiServerIP;
-	const QSettings *settings;
+	const QSettings *_settings;
 
         /**
           TCP port number base for uiclient to connect to transfer a file
           */
-	int fileRecvPortBase;
+	int _fileRecvPortBase;
 
         /*!
           * Each ui client has to have unique identifier
           This id will be set to 0 if fileRecvPortBase + id >= 65535
           */
-	quint32 uiClientId;
+	quint32 _uiClientId;
 
         /*!
           * uiclientid as a key and corresponding msg thread
           */
-	QMap<quint32, UiMsgThread *> uiMsgThreadsMap;
+	QMap<quint32, UiMsgThread *> _uiMsgThreadsMap;
 
-	QMap<quint32, FileReceivingTcpServer *> uiFileRecvRunnableMap;
+//	QMap<quint32, FileReceivingTcpServer *> uiFileRecvRunnableMap;
 
         /*!
           * uiclientid and corresponding shared pointer
           */
-	QMap<quint32, SAGENextPolygonArrow *> pointers;
+	QMap<quint32, SN_PolygonArrowPointer *> _pointers;
 
         /*!
           uiclientid and corresponding app layout flag
@@ -90,13 +90,13 @@ private:
           */
 	QByteArray *appLayout;
 
-	SAGENextScene *scene;
+	SN_TheScene *_scene;
 
-	SAGENextLauncher *launcher;
+	SN_Launcher *_launcher;
 
 	UiMsgThread * getUiMsgThread(quint32 uiclientid);
 
-	SAGENextPolygonArrow * getSharedPointer(quint32 uiclientid);
+	SN_PolygonArrowPointer * getSharedPointer(quint32 uiclientid);
 
         /**
           When a user drag and drop media file on the sagenextpointer, the launcher receives the file and fire corresponding widget.

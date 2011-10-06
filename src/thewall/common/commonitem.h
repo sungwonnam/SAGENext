@@ -3,7 +3,7 @@
 
 #include <QtGui>
 
-class BaseWidget;
+class SN_BaseWidget;
 
 
 /**
@@ -23,10 +23,10 @@ public:
   When a user shares his pointer through ui client,
   This class is instantiated and added to the scene
   */
-class SAGENextPolygonArrow : public QGraphicsPolygonItem {
+class SN_PolygonArrowPointer : public QGraphicsPolygonItem {
 public:
-	SAGENextPolygonArrow(const quint32 uicid, const QSettings *, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
-	~SAGENextPolygonArrow();
+	SN_PolygonArrowPointer(const quint32 uicid, const QSettings *, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
+	~SN_PolygonArrowPointer();
 
 	void setPointerName(const QString &text);
 	inline QString name() const {return _textItem->text();}
@@ -43,7 +43,7 @@ public:
           */
         bool setAppUnderPointer(const QPointF scenePosOfPointer);
 
-        inline BaseWidget * appUnderPointer() {return _basewidget;}
+        inline SN_BaseWidget * appUnderPointer() {return _basewidget;}
 
         /**
           Moves pointer itself and ...
@@ -120,7 +120,7 @@ private:
           The app widget under this pointer
           This is set when pointerPress (left button) is called
           */
-        BaseWidget *_basewidget;
+        SN_BaseWidget *_basewidget;
 
 		/**
 		  The graphics item under this pointer. This is to keep track general items on the scene
@@ -157,26 +157,26 @@ private:
 /**
   * The general button pixmap that emits signal when clicked
   */
-class SAGENextPixmapButton : public QGraphicsWidget
+class SN_PixmapButton : public QGraphicsWidget
 {
 	Q_OBJECT
 public:
 	/**
 	  creates button with resource
 	  */
-	explicit SAGENextPixmapButton(const QString &res_normal, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent = 0);
+	explicit SN_PixmapButton(const QString &res_normal, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent = 0);
 
 	/**
 	  creates button with pixmap
 	  */
-	explicit SAGENextPixmapButton(const QPixmap &pixmap_normal, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent=0);
+	explicit SN_PixmapButton(const QPixmap &pixmap_normal, qreal desiredWidth = 0.0, const QString &label = QString(), QGraphicsItem *parent=0);
 
 	/**
 	  creates button with custom size
 	  */
-	explicit SAGENextPixmapButton(const QString &res_normal, const QSize &size = QSize(), const QString &label = QString(), QGraphicsItem *parent=0);
+	explicit SN_PixmapButton(const QString &res_normal, const QSize &size = QSize(), const QString &label = QString(), QGraphicsItem *parent=0);
 
-	~SAGENextPixmapButton();
+	~SN_PixmapButton();
 
 private:
 	QPixmap _normalPixmap;
@@ -202,11 +202,11 @@ signals:
 /**
   This is used to display text on gray rectangle
   */
-class SAGENextSimpleTextItem : public QGraphicsSimpleTextItem
+class SN_SimpleTextItem : public QGraphicsSimpleTextItem
 {
 public:
-	SAGENextSimpleTextItem(int pointSize=0, const QColor &fontcolor = QColor(Qt::black), const QColor &bgcolor = QColor(Qt::gray), QGraphicsItem *parent=0);
-	~SAGENextSimpleTextItem();
+	SN_SimpleTextItem(int pointSize=0, const QColor &fontcolor = QColor(Qt::black), const QColor &bgcolor = QColor(Qt::gray), QGraphicsItem *parent=0);
+	~SN_SimpleTextItem();
 
 private:
 	QColor _fontcolor;

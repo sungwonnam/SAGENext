@@ -8,7 +8,7 @@
 
 PerfMonitor::PerfMonitor(QObject *parent) :
 	QObject(parent),
-	widgetType(BaseWidget::Widget_Misc),
+	widgetType(SN_BaseWidget::Widget_Misc),
 
 	recvFrameCount(0),
 	currRecvLatency(0.0),
@@ -59,7 +59,7 @@ PerfMonitor::PerfMonitor(QObject *parent) :
 	ruend_maxrss(0),
 	ruend_minflt(0)
 {
-	if ( widgetType == BaseWidget::Widget_RealTime) {
+	if ( widgetType == SN_BaseWidget::Widget_RealTime) {
 		// set initial avgRecvLatency
 		avgRecvLatency = 1.0 / expectedFps; // second
 	}
@@ -514,7 +514,7 @@ void PerfMonitor::reset() {
 	avgEqDelay = 0.0;
 
 //	expectedFps = 0.0;
-	if (widgetType == BaseWidget::Widget_RealTime)
+	if (widgetType == SN_BaseWidget::Widget_RealTime)
 		adjustedFps = expectedFps;
 	currAbsDeviation = 0.0;
 	aggrAbsDeviation = 0.0;

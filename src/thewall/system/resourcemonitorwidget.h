@@ -12,9 +12,9 @@
 #include <qwt_plot_marker.h>
 */
 
-class ResourceMonitor;
-class SchedulerControl;
-class AbstractScheduler;
+class SN_ResourceMonitor;
+class SN_SchedulerControl;
+class SN_AbstractScheduler;
 
 class GraphicsViewMain;
 
@@ -73,7 +73,7 @@ class ResourceMonitorWidget : public QWidget
 {
 	Q_OBJECT
 public:
-	explicit ResourceMonitorWidget(ResourceMonitor *rm, SchedulerControl *sc, QWidget *parent = 0);
+	explicit ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, QWidget *parent = 0);
 	~ResourceMonitorWidget();
 
 	inline void setNumWidgets(int i) {_numWidgets=i;}
@@ -85,8 +85,8 @@ public:
 private:
 	Ui::ResourceMonitorWidget *ui;
 
-	ResourceMonitor *rMonitor;
-	SchedulerControl *schedcontrol;
+	SN_ResourceMonitor *rMonitor;
+	SN_SchedulerControl *schedcontrol;
 
 	/*!
 	  how many widgets do you want to load

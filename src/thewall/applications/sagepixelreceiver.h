@@ -5,8 +5,8 @@
 //#include "common/imagedoublebuffer.h"
 
 class ImageDoubleBuffer;
-class RailawareWidget;
-class SageStreamWidget;
+class SN_RailawareWidget;
+class SN_SageStreamWidget;
 class QImage;
 //class QPixmap;
 //class QSemaphore;

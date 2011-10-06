@@ -18,16 +18,16 @@ class QProcess;
 #include <QFutureWatcher>
 //#include <QWaitCondition>
 
-class SageStreamWidget : public RailawareWidget
+class SN_SageStreamWidget : public SN_RailawareWidget
 {
 	Q_OBJECT
 
 public:
 //	SageStreamWidget(const quint64 sageappid,QString appName, int protocol, int receiverPort, const QRect initRect, const quint64 globalAppId, const QSettings *s, ResourceMonitor *rm=0, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
 
-	SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP = "127.0.0.1", ResourceMonitor *rm = 0, QGraphicsItem *parent = 0, Qt::WindowFlags wFlags = 0);
+	SN_SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP = "127.0.0.1", SN_ResourceMonitor *rm = 0, QGraphicsItem *parent = 0, Qt::WindowFlags wFlags = 0);
 
-	~SageStreamWidget();
+	~SN_SageStreamWidget();
 
 //	quint16 getRatioToTheWall() const;
 

@@ -15,13 +15,13 @@
 #include <sys/time.h>
 #endif
 
-BaseWidget::BaseWidget(Qt::WindowFlags wflags)
+SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	: QGraphicsWidget(0, wflags)
 	, _globalAppId(-1)
-	, settings(0)
-	, _windowState(BaseWidget::W_NORMAL)
+	, _settings(0)
+	, _windowState(SN_BaseWidget::W_NORMAL)
 	, _appInfo(new AppInfo())
-	, showInfo(false)
+	, _showInfo(false)
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, infoTextItem(0)
@@ -29,19 +29,33 @@ BaseWidget::BaseWidget(Qt::WindowFlags wflags)
 	, _rMonitor(0)
 	, _quality(1.0)
 	, _contextMenu(0)
+    , _showInfoAction(0)
+    , _hideInfoAction(0)
+    , _minimizeAction(0)
+    , _restoreAction(0)
+    , _maximizeAction(0)
+    , _closeAction(0)
+
+    , pAnim_pos(0)
+    , pAnim_scale(0)
+    , pAnim_size(0)
+    , _parallelAnimGroup(0)
+    , pAnim_opacity(0)
+    , timerID(0)
 	, _priority(0.5)
 	, _registerForMouseHover(false)
+    , _priorityQuantized(0)
 {
 	init();
 }
 
-BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent /*0*/, Qt::WindowFlags wflags /*0*/)
+SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent /*0*/, Qt::WindowFlags wflags /*0*/)
 	: QGraphicsWidget(parent, wflags)
 	, _globalAppId(globalappid)
-	, settings(s)
-	, _windowState(BaseWidget::W_NORMAL)
+	, _settings(s)
+	, _windowState(SN_BaseWidget::W_NORMAL)
 	, _appInfo(new AppInfo())
-	, showInfo(false)
+	, _showInfo(false)
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, infoTextItem(0)
@@ -49,11 +63,25 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
 	, _rMonitor(0)
 	, _quality(1.0)
 	, _contextMenu(0)
+    , _showInfoAction(0)
+    , _hideInfoAction(0)
+    , _minimizeAction(0)
+    , _restoreAction(0)
+    , _maximizeAction(0)
+    , _closeAction(0)
+
+    , pAnim_pos(0)
+    , pAnim_scale(0)
+    , pAnim_size(0)
+    , _parallelAnimGroup(0)
+    , pAnim_opacity(0)
+    , timerID(0)
 	, _priority(0.5)
 	, _registerForMouseHover(false)
+    , _priorityQuantized(0)
 {
 	// This will affect boundingRect(), windowFrameRect() of the widget.
-	qreal fmargin = settings->value("gui/framemargin", 8).toDouble();
+	qreal fmargin = _settings->value("gui/framemargin", 8).toDouble();
 	if (isWindow()) {
 		// window frame is not interactible by shared pointers
 		setWindowFrameMargins(0, 0, 0, 0);
@@ -69,7 +97,7 @@ BaseWidget::BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *p
 	init();
 }
 
-BaseWidget::~BaseWidget()
+SN_BaseWidget::~SN_BaseWidget()
 {
     if ( scene() ) {
         scene()->removeItem(this);
@@ -87,7 +115,7 @@ BaseWidget::~BaseWidget()
 
     if ( _appInfo ) delete _appInfo;
 	if ( _perfMon ) {
-		if (settings->value("misc/printperfdataattheend",false).toBool()) {
+		if (_settings->value("misc/printperfdataattheend",false).toBool()) {
 			_perfMon->printData();
 		}
 		delete _perfMon;
@@ -98,30 +126,15 @@ BaseWidget::~BaseWidget()
 }
 
 
-void BaseWidget::setWidgetType(Widget_Type wt) {
+void SN_BaseWidget::setWidgetType(Widget_Type wt) {
     _widgetType = wt;
     if (_perfMon) {
         _perfMon->setWidgetType(wt);
     }
 }
 
-void BaseWidget::setProxyWidget(QGraphicsProxyWidget *proxyWidget)
-{
-    if(proxyWidget) {
 
-        QGraphicsLinearLayout *layout = new QGraphicsLinearLayout();
-
-        proxyWidget->setParentItem(this);
-        proxyWidget->setWindowFlags(Qt::FramelessWindowHint);
-        proxyWidget->setFlag(QGraphicsItem::ItemIsMovable, false);
-        proxyWidget->setFlag(QGraphicsItem::ItemIsSelectable, false);
-
-        layout->addItem( proxyWidget );
-        setLayout(layout);
-    }
-}
-
-void BaseWidget::init()
+void SN_BaseWidget::init()
 {
 	//
 	// Destructor will be called by close()
@@ -156,7 +169,7 @@ void BaseWidget::init()
 
 	//! drawInfo() will show this item
 	// Note that infoTextItem is child item of BaseWidget
-	infoTextItem = new SAGENextSimpleTextItem(0, QColor(Qt::black), QColor(128, 128, 128, 164), this);
+	infoTextItem = new SN_SimpleTextItem(0, QColor(Qt::black), QColor(128, 128, 128, 164), this);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
 	//infoTextItem = new SwSimpleTextItem(settings->value("general/fontpointsize").toInt(), this);
@@ -166,6 +179,7 @@ void BaseWidget::init()
 	/*!
 	  Define animation
 	  */
+	/****************
 	pAnim_pos = new QPropertyAnimation(this, "pos", this);
 	pAnim_pos->setDuration(300); // 300 msec : ~16 paint events
 	pAnim_pos->setEasingCurve(QEasingCurve::OutCubic);
@@ -184,16 +198,13 @@ void BaseWidget::init()
 		_parallelAnimGroup->addAnimation(pAnim_size);
 	else
 		_parallelAnimGroup->addAnimation(pAnim_scale);
+		************/
 
 	//
 	// Opacity effect when closing
 	pAnim_opacity = new QPropertyAnimation(this, "opacity", this);
 	pAnim_opacity->setEasingCurve(QEasingCurve::OutCubic);
 	connect(pAnim_opacity, SIGNAL(finished()), this, SLOT(close()));
-
-
-	_borderColor = QColor(100, 100, 100, 128);
-	_borderColorSelected = QColor(170, 170, 5, 128);
 
 
 
@@ -203,8 +214,6 @@ void BaseWidget::init()
 	// to erase the widget before generating paint events.
 	setAttribute(Qt::WA_OpaquePaintEvent, true);
 
-	// will be cleared with this color before paint()
-	palette().setColor(QPalette::Window, _borderColor);
 
 	//
 	// To be effective, unset WA_OpaquePaintEvent
@@ -222,7 +231,7 @@ void BaseWidget::init()
 }
 
 
-qreal BaseWidget::ratioToTheWall() const {
+qreal SN_BaseWidget::ratioToTheWall() const {
 	if(!scene()) return 0.0;
 
 	QSizeF sceneSize = scene()->sceneRect().size();
@@ -236,7 +245,7 @@ qreal BaseWidget::ratioToTheWall() const {
 	return currentArea / sceneArea;
 }
 
-QRegion BaseWidget::effectiveVisibleRegion() const {
+QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 	QRegion effectiveRegion;
 	if (!scene()) return effectiveRegion; // return empty region
 
@@ -256,7 +265,7 @@ QRegion BaseWidget::effectiveVisibleRegion() const {
 }
 
 
-qreal BaseWidget::priority(qint64 ctepoch /* 0 */) {
+qreal SN_BaseWidget::priority(qint64 ctepoch /* 0 */) {
         if (!scene()) return 0;
 
         /*******************
@@ -302,10 +311,10 @@ qreal BaseWidget::priority(qint64 ctepoch /* 0 */) {
 
 
 
-void BaseWidget::drawInfo()
+void SN_BaseWidget::drawInfo()
 {
-	if (!showInfo) {
-		showInfo = true;
+	if (!_showInfo) {
+		_showInfo = true;
 		_showInfoAction->setDisabled(true);
 		_hideInfoAction->setEnabled(true);
 		//update();
@@ -315,18 +324,18 @@ void BaseWidget::drawInfo()
 	}
 }
 
-void BaseWidget::hideInfo()
+void SN_BaseWidget::hideInfo()
 {
-	if (showInfo) {
+	if (_showInfo) {
 		killTimer(timerID);
-		showInfo = false;
+		_showInfo = false;
 		_hideInfoAction->setDisabled(true);
 		_showInfoAction->setEnabled(true);
 		update();
 	}
 }
 
-void BaseWidget::minimize()
+void SN_BaseWidget::minimize()
 {
 	if ( !_appInfo  ||  _windowState == W_MINIMIZED ) return;
 	// icon size must be defined somewhere based on scene rectangle
@@ -387,7 +396,7 @@ void BaseWidget::minimize()
 	_windowState = W_MINIMIZED;
 }
 
-void BaseWidget::maximize()
+void SN_BaseWidget::maximize()
 {
 	//	qDebug() << "BaseWidget::maximize()";
 	if ( _windowState == W_MAXIMIZED ) {
@@ -405,14 +414,26 @@ void BaseWidget::maximize()
 	_appInfo->setRecentScale(scale());
 
 	QSizeF s = size(); // current size of the widget. scaling won't change the size of the widget
-	qreal scaleFactorW = scene()->width() / s.width();
-	qreal scaleFactorH = scene()->height() / s.height();
+
+	qreal scaleFactorW = 0;
+	qreal scaleFactorH = 0;
+
+	if (parentWidget()) {
+		scaleFactorW = parentWidget()->size().width() / s.width();
+		scaleFactorH = parentWidget()->size().height() / s.height();
+	}
+	else {
+		// if there's no SN_LayoutWidget
+		scaleFactorW = scene()->width() / s.width();
+		scaleFactorH = scene()->height() / s.height();
+	}
 	qreal scaleFactor = 1.0;
 	(scaleFactorW < scaleFactorH) ? scaleFactor = scaleFactorW : scaleFactor = scaleFactorH;
 
 
 	if ( isWindow() ) {
 		if (pAnim_pos && pAnim_size && _parallelAnimGroup) {
+			/*
 			pAnim_size->setStartValue(size());
 			pAnim_size->setEndValue(scene()->sceneRect().size()  -  QSizeF(40, 60));
 
@@ -420,14 +441,22 @@ void BaseWidget::maximize()
 			pAnim_pos->setEndValue(scene()->sceneRect().topLeft() + QPointF(20, 40));
 
 			_parallelAnimGroup->start();
+			*/
 		}
 		else {
-			resize(scene()->sceneRect().size()  -  QSizeF(40, 60));
-			setPos(scene()->sceneRect().topLeft() + QPointF(20, 40));
+			if (parentWidget()) {
+				resize(parentWidget()->size() - QSizeF(40, 60));
+				setPos(parentWidget()->boundingRect().topLeft() + QPointF(20,40));
+			}
+			else {
+				resize(scene()->sceneRect().size()  -  QSizeF(40, 60));
+				setPos(scene()->sceneRect().topLeft() + QPointF(20, 40));
+			}
 		}
 	}
 	else {
 		if (pAnim_pos && pAnim_scale && _parallelAnimGroup) {
+			/*
 			pAnim_scale->setStartValue(scale());
 			pAnim_scale->setEndValue(scaleFactor);
 
@@ -435,16 +464,24 @@ void BaseWidget::maximize()
 			pAnim_pos->setEndValue( QPointF((scene()->width() - s.width())/2 ,(scene()->height() - s.height())/2) );
 
 			_parallelAnimGroup->start();
+			*/
 		}
 		else {
-			setPos(QPointF((scene()->width() - s.width())/2 ,(scene()->height() - s.height())/2));
+			if (parentWidget()) { // could be the SN_LayoutWidget or 0
+				qreal xoffset = (parentWidget()->size().width() - s.width())/2;
+				qreal yoffset = (parentWidget()->size().height() - s.height())/2;
+				setPos( parentWidget()->boundingRect().left() + xoffset , parentWidget()->boundingRect().top() + yoffset);
+			}
+			else {
+				setPos(QPointF((scene()->width() - s.width())/2 ,(scene()->height() - s.height())/2));
+			}
 			setScale(scaleFactor);
 		}
 	}
 	_windowState = W_MAXIMIZED;
 }
 
-void BaseWidget::restore()
+void SN_BaseWidget::restore()
 {
 	// qDebug() << "BaseWidget::restore()";
 	if ( _windowState == W_NORMAL ) return;
@@ -489,7 +526,7 @@ void BaseWidget::restore()
 	_windowState = W_NORMAL;
 }
 
-void BaseWidget::fadeOutClose()
+void SN_BaseWidget::fadeOutClose()
 {
 //    qDebug() << "BaseWidget::fadeOutClose()";
     //	if (perfMon) {
@@ -514,7 +551,7 @@ void BaseWidget::fadeOutClose()
     }
 }
 
-void BaseWidget::setTopmost()
+void SN_BaseWidget::setTopmost()
 {
 	if(!scene()) return;
 
@@ -568,7 +605,7 @@ void BaseWidget::setTopmost()
 
 
 
-void BaseWidget::reScale(int tick, qreal factor)
+void SN_BaseWidget::reScale(int tick, qreal factor)
 {
 	qreal currentScale = scale();
 
@@ -594,7 +631,7 @@ void BaseWidget::reScale(int tick, qreal factor)
 //	qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
 }
 
-QRectF BaseWidget::resizeHandleSceneRect()
+QRectF SN_BaseWidget::resizeHandleSceneRect()
 {
 	QSizeF size(100, 100);
 	QPointF pos( boundingRect().width() - size.width(), boundingRect().height() - size.height() );
@@ -603,7 +640,7 @@ QRectF BaseWidget::resizeHandleSceneRect()
 
 
 
-void BaseWidget::updateInfoTextItem()
+void SN_BaseWidget::updateInfoTextItem()
 {
 	if (!infoTextItem) return;
 
@@ -667,12 +704,12 @@ void BaseWidget::updateInfoTextItem()
 	}
 }
 
-void BaseWidget::createActions()
+void SN_BaseWidget::createActions()
 {
 	_showInfoAction = new QAction("Show Info", this);
 	_hideInfoAction = new QAction("Hide Info", this);
 
-	if ( showInfo ) {
+	if ( _showInfo ) {
 		_showInfoAction->setDisabled(true);
 	}
 	else {
@@ -713,7 +750,7 @@ void BaseWidget::createActions()
 
 
 
-void BaseWidget::mouseDrag(const QPointF & /*pointerScenePos*/, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
+void SN_BaseWidget::handlePointerDrag(const QPointF & /*pointerScenePos*/, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
 
 	if (btn == Qt::LeftButton) {
 		moveBy(pointerDeltaX, pointerDeltaY);
@@ -725,7 +762,7 @@ void BaseWidget::mouseDrag(const QPointF & /*pointerScenePos*/, qreal pointerDel
 
 
 
-void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
+void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 
 	/**
 	  changing painter state will hurt performance
@@ -742,6 +779,7 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 //	painter->drawRect(windowFrameRect());
 	
 
+
 	if (! isWindow()) {
 		QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
 		if (isSelected()) {
@@ -754,18 +792,34 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 		}
 		QBrush brush(lg);
 
+
+		/**********
+		  Below draws rectangle around widget's content (using boundingRect)
+		  Because of this, it has to set Pen (which chagens painter state)
+		  ********/
+		/*
 		QPen pen;
-		pen.setWidth( settings->value("gui/framemargin",0).toInt() );
+		pen.setWidth( _settings->value("gui/framemargin",0).toInt() );
 		pen.setBrush(brush);
 
 		painter->setPen(pen);
 		painter->drawRect(boundingRect());
+		*/
+
+
+		/***************
+		  Below fills rectangle (works as background) so it has to be called BEFORE any drawing code
+		  ***********/
+		painter->fillRect(boundingRect(), brush);
 	}
 
 
 
+
+
+
 	/* info overlay */
-	if ( showInfo  &&  !infoTextItem->isVisible() ) {
+	if ( _showInfo  &&  !infoTextItem->isVisible() ) {
 #if defined(Q_OS_LINUX)
 		_appInfo->setDrawingThreadCpu(sched_getcpu());
 #endif
@@ -774,14 +828,14 @@ void BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWid
 		//painter->drawRect(infoTextItem->boundingRect());
 		infoTextItem->show();
 	}
-	else if (!showInfo && infoTextItem->isVisible()){
+	else if (!_showInfo && infoTextItem->isVisible()){
 		Q_ASSERT(infoTextItem);
 		infoTextItem->hide();
 	}
 }
 
 
-void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
     Q_UNUSED(option);
     Q_UNUSED(widget);
 
@@ -808,7 +862,7 @@ void BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsI
 /**
   drawInfo() will start the timer
   */
-void BaseWidget::timerEvent(QTimerEvent *) {
+void SN_BaseWidget::timerEvent(QTimerEvent *) {
 //	qDebug("BaseWidget::%s()", __FUNCTION__);
 	updateInfoTextItem();
         /*
@@ -818,12 +872,12 @@ void BaseWidget::timerEvent(QTimerEvent *) {
         */
 }
 
-void BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
+void SN_BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	setTransformOriginPoint(e->newSize().width() / 2, e->newSize().height() / 2);
 //	setTransformOriginPoint(boundingRect().center());
 }
 
-void BaseWidget::setLastTouch() {
+void SN_BaseWidget::setLastTouch() {
 #if QT_VERSION < 0x040700
     struct timeval tv;
     gettimeofday(&tv, 0);
@@ -837,7 +891,7 @@ void BaseWidget::setLastTouch() {
 /*!
   reimplement this so the item can be the mousegrabber
   */
-void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
+void SN_BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 //	qDebug() << "BaseWidget::mousePressEvent() : buttons"<< event->button() << "pos:" << event->pos() << " ,scenePos:" << event->scenePos() << " ,screenPos:" << event->screenPos();
     if ( event->buttons() & Qt::LeftButton) {
         // refresh lastTouch
@@ -865,7 +919,7 @@ void BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 //    QGraphicsWidget::mousePressEvent(event);
 }
 
-void BaseWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
+void SN_BaseWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 
 	// If you keep the base implementation for console mouse interaction,
 	// it makes multiple item selection with shared pointer unavailable
@@ -873,18 +927,18 @@ void BaseWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 }
 
 
-void BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
+void SN_BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 //	Q_UNUSED(event);
 	//qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
 	if ( mapRectToScene(boundingRect()).contains(event->scenePos()) )
 		maximize();
 }
 
-void BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
+void SN_BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
 	_contextMenu->exec(event->screenPos());
 }
 
-void BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
+void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	// positive delta : rotated forward away from user
 	int numDegrees = event->delta() / 8;
 	int numTicks = numDegrees / 15;

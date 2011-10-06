@@ -56,7 +56,7 @@ void FileServerThread::run() {
 		::sscanf(header, "%d %s %lld", &mediatype, filename, &filesize);
 		qDebug() << "FileServerThread received header" << mediatype << filename << filesize << "Byte";
 
-		if (mediatype == MEDIA_TYPE_WEBURL) {
+		if (mediatype == SAGENext::MEDIA_TYPE_WEBURL) {
 			emit fileReceived(mediatype, QString(filename));
 			continue;
 		}
@@ -66,19 +66,19 @@ void FileServerThread::run() {
 		QString destdir = QDir::homePath().append("/.sagenext/");
 
 		switch(mediatype) {
-		case MEDIA_TYPE_IMAGE : {
+		case SAGENext::MEDIA_TYPE_IMAGE : {
 			destdir.append("media/image/");
 			break;
 		}
-		case MEDIA_TYPE_LOCAL_VIDEO : {
+		case SAGENext::MEDIA_TYPE_LOCAL_VIDEO : {
 			destdir.append("media/video/");
 			break;
 		}
-		case MEDIA_TYPE_PDF : {
+		case SAGENext::MEDIA_TYPE_PDF : {
 			destdir.append("media/pdf/");
 			break;
 		}
-		case MEDIA_TYPE_PLUGIN : {
+		case SAGENext::MEDIA_TYPE_PLUGIN : {
 			destdir.append("plugins/");
 			break;
 		}
@@ -120,7 +120,7 @@ void FileServerThread::run() {
 
 
 
-FileServer::FileServer(const QSettings *s, SAGENextLauncher *l, QObject *parent)
+SN_FileServer::SN_FileServer(const QSettings *s, SN_Launcher *l, QObject *parent)
     : QTcpServer(parent)
     , _settings(s)
     , _fileServerPort(0)
@@ -134,7 +134,7 @@ FileServer::FileServer(const QSettings *s, SAGENextLauncher *l, QObject *parent)
     }
 }
 
-FileServer::~FileServer() {
+SN_FileServer::~SN_FileServer() {
 	close(); // stop listening
 
 	foreach(FileServerThread *thread, _uiFileServerThreadMap.values()) {
@@ -154,7 +154,7 @@ FileServer::~FileServer() {
 	qDebug() << "~FileServer";
 }
 
-void FileServer::incomingConnection(int handle) {
+void SN_FileServer::incomingConnection(int handle) {
 
 	// receive uiclientid from the client
 	quint64 uiclientid = 0;
@@ -177,7 +177,7 @@ void FileServer::incomingConnection(int handle) {
 	thread->start();
 }
 
-void FileServer::threadFinished() {
+void SN_FileServer::threadFinished() {
 	foreach(const FileServerThread *thread, _uiFileServerThreadMap.values()) {
 		if (thread) {
 			if(thread->isFinished()) {

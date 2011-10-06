@@ -9,7 +9,7 @@
 #define EXTUI_MSG_SIZE 1280
 
 class QSettings;
-class SAGENextLauncher;
+class SN_Launcher;
 
 class FileServerThread : public QThread
 {
@@ -46,12 +46,12 @@ public slots:
 
 
 
-class FileServer : public QTcpServer
+class SN_FileServer : public QTcpServer
 {
     Q_OBJECT
 public:
-    explicit FileServer(const QSettings *s, SAGENextLauncher *l, QObject *parent = 0);
-	~FileServer();
+    explicit SN_FileServer(const QSettings *s, SN_Launcher *l, QObject *parent = 0);
+	~SN_FileServer();
 
 	inline int fileServerListenPort() const {return _fileServerPort;}
 
@@ -65,7 +65,7 @@ private:
 
 	int _fileServerPort;
 
-	SAGENextLauncher *_launcher;
+	SN_Launcher *_launcher;
 
 signals:
 

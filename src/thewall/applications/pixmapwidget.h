@@ -8,23 +8,23 @@
 
 #include <QFutureWatcher>
 
-class PixmapWidget : public BaseWidget
+class SN_PixmapWidget : public SN_BaseWidget
 {
 	Q_OBJECT
 public:
 	/*!
 	  * read the image file from local disk
 	  */
-	PixmapWidget(QString filename, const quint64 appid, const QSettings *s, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
+	SN_PixmapWidget(QString filename, const quint64 appid, const QSettings *s, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
 
 	/*!
 	  * image file is sent through network.
 	  * It will fire a receiving thread which is stateless (thread finishes and socket closed once file is delivered)
 	  * Receiving should be a separate thread to prevent MainWindow from unresponsive
 	  */
-	PixmapWidget(qint64 filesize, const QString &senderIP, const QString &recvIP, quint16 recvPort, const quint64 appid, const QSettings *s, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
+	SN_PixmapWidget(qint64 filesize, const QString &senderIP, const QString &recvIP, quint16 recvPort, const quint64 appid, const QSettings *s, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
 
-	~PixmapWidget();
+	~SN_PixmapWidget();
 
 
 	/*!
@@ -44,12 +44,12 @@ private:
 	/*!
 	  Image is stored here from recv thread
 	  */
-	QImage *image;
+	QImage *_imageTemp;
 
 	/*!
 	  image is converted to pixmap and drawn from pixmap to make paint() faster
 	  */
-	QPixmap *pixmap;
+	QPixmap *_pixmap;
 
 	/*!
 	  socket to accept connection from sender

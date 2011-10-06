@@ -10,7 +10,7 @@ SelectionRectangle::SelectionRectangle(QGraphicsItem *parent)
 }
 
 
-SAGENextPolygonArrow::SAGENextPolygonArrow(const quint32 uicid, const QSettings *s, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
+SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, const QSettings *s, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
     , _uiclientid(uicid)
     , _settings(s)
@@ -28,10 +28,11 @@ SAGENextPolygonArrow::SAGENextPolygonArrow(const quint32 uicid, const QSettings 
 	//setCacheMode(QGraphicsItem::ItemCoordinateCache);
 	
 	QPolygonF p;
-	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
+//	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
+	p << QPointF(0,0) << QPointF(128,110) << QPointF(67, 110) << QPointF(40,160) << QPointF(0,0);
 
 	QPen pen;
-	pen.setWidth(2); // 2 pixel
+	pen.setWidth(4); // 4 pixel
 	pen.setColor(Qt::white);
 	setPen(pen);
 
@@ -48,12 +49,12 @@ SAGENextPolygonArrow::SAGENextPolygonArrow(const quint32 uicid, const QSettings 
 		setPointerName(name);
 }
 
-SAGENextPolygonArrow::~SAGENextPolygonArrow() {
+SN_PolygonArrowPointer::~SN_PolygonArrowPointer() {
 	//
 	// BaseWidget who registered for hoveraccept needs to know if a pointer is nolonger valid
 	//
-	SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
-	foreach(BaseWidget *bw, sc->hoverAcceptingApps) {
+	SN_TheScene *sc = static_cast<SN_TheScene *>(scene());
+	foreach(SN_BaseWidget *bw, sc->hoverAcceptingApps) {
 		bw->removePointerFromPointerMap(this);
 	}
 
@@ -68,23 +69,28 @@ SAGENextPolygonArrow::~SAGENextPolygonArrow() {
 	}
 }
 
-void SAGENextPolygonArrow::setPointerName(const QString &text) {
+void SN_PolygonArrowPointer::setPointerName(const QString &text) {
+//	_nameBg = new QGraphicsRectItem(this);
+
 	_textItem = new QGraphicsSimpleTextItem(text, this);
 	_textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
 	_textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 
 	QFont f;
+	f.setStyleStrategy(QFont::OpenGLCompatible);
+//	f.setStyleStrategy(QFont::ForceOutline);
 	f.setPointSize(_settings->value("gui/pointerfontsize", 20).toInt());
 	f.setBold(true);
 	_textItem->setFont(f);
 
 	_textItem->setBrush(Qt::white);
-	_textItem->moveBy(0, boundingRect().height());
+	_textItem->moveBy(60, boundingRect().height() - 30);
+//	_nameBg->moveBy(60, boundingRect().height() - 15);
 
-//	_textItem->setPen(QColor(Qt::black));
+	_textItem->setPen(QColor(Qt::black));
 }
 
-void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
+void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
     qreal deltax = _scenePos.x() - scenePos().x();
     qreal deltay = _scenePos.y() - scenePos().y();
 
@@ -114,9 +120,9 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
 	// else
 	// unset hover flag
 	//
-	SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
+	SN_TheScene *sc = static_cast<SN_TheScene *>(scene());
 
-	foreach(BaseWidget *bw, sc->hoverAcceptingApps) {
+	foreach(SN_BaseWidget *bw, sc->hoverAcceptingApps) {
 		if (!bw) {
 			sc->hoverAcceptingApps.removeOne(bw);
 			continue;
@@ -124,10 +130,10 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
 
 		if (bw->contains( bw->mapFromScene(_scenePos) ) ) {
 //		if (collidesWithItem(bw, Qt::IntersectsItemBoundingRect)) {
-			bw->toggleHover(this, bw->mapFromScene(_scenePos), true);
+			bw->handlePointerHover(this, bw->mapFromScene(_scenePos), true);
 		}
 		else {
-			bw->toggleHover(this, QPointF(), false);
+			bw->handlePointerHover(this, QPointF(), false);
 		}
 	}
 
@@ -154,7 +160,7 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
             else {
                 // move app widget under this pointer
 //                _basewidget->moveBy(deltax, deltay);
-				_basewidget->mouseDrag( _scenePos, deltax, deltay, Qt::LeftButton, modifier);
+				_basewidget->handlePointerDrag( _scenePos, deltax, deltay, Qt::LeftButton, modifier);
             }
         }
 
@@ -163,27 +169,29 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
 		//
 		else if (_item) {
 //			QGraphicsLineItem *l = qgraphicsitem_cast<QGraphicsLineItem *>(_item);
-			PartitionBar *bar = dynamic_cast<PartitionBar *>(_item);
+			SN_WallPartitionBar *bar = dynamic_cast<SN_WallPartitionBar *>(_item);
 			if (bar) {
 //				qDebug() << "pointerMove bar" << deltax << deltay;
 				if ( bar->orientation() == Qt::Horizontal) {
 					//
 					// bar moves only up or down direction (y axis)
 
-					SAGENextLayoutWidget *top = bar->ownerNode()->topWidget();
-					SAGENextLayoutWidget *bottom = bar->ownerNode()->bottomWidget();
+					SN_LayoutWidget *top = bar->ownerNode()->topWidget();
+					SN_LayoutWidget *bottom = bar->ownerNode()->bottomWidget();
 					top->resize(      top->size().width(),    top->size().height() + deltay);
 					bottom->resize(bottom->size().width(), bottom->size().height() - deltay);
-					bottom->moveBy(0, deltay);
+					top->moveBy(0, deltay/2);
+					bottom->moveBy(0, deltay/2);
 				}
 				else {
 					// bar moves only left or right (x axis)
 
-					SAGENextLayoutWidget *left = bar->ownerNode()->leftWidget();
-					SAGENextLayoutWidget *right = bar->ownerNode()->rightWidget();
+					SN_LayoutWidget *left = bar->ownerNode()->leftWidget();
+					SN_LayoutWidget *right = bar->ownerNode()->rightWidget();
 					left->resize(  left->size().width() + deltax,  left->size().height());
 					right->resize(right->size().width() - deltax, right->size().height());
-					right->moveBy(deltax, 0);
+					left->moveBy(deltax/2, 0);
+					right->moveBy(deltax/2, 0);
 				}
 			}
 		}
@@ -222,7 +230,7 @@ void SAGENextPolygonArrow::pointerMove(const QPointF &_scenePos, Qt::MouseButton
 /**
   Mouse right press won't be sent from uiclient
   */
-void SAGENextPolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
+void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
 	Q_UNUSED(modifier);
 
 	//
@@ -258,7 +266,7 @@ void SAGENextPolygonArrow::pointerPress(const QPointF &scenePos, Qt::MouseButton
 }
 
 
-void SAGENextPolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
+void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
 	Q_UNUSED(modifier);
 
 	//
@@ -285,7 +293,7 @@ void SAGENextPolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButt
 
 
 			// I can close this app if removeButton on the scene contains released scenePos
-			SAGENextScene *sc = static_cast<SAGENextScene *>(scene());
+			SN_TheScene *sc = static_cast<SN_TheScene *>(scene());
 			if (sc->isOnAppRemoveButton(scenePos)) {
 				sc->hoverAcceptingApps.removeAll(_basewidget);
 				_basewidget->close();
@@ -311,7 +319,7 @@ void SAGENextPolygonArrow::pointerRelease(const QPointF &scenePos, Qt::MouseButt
 }
 
 
-void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
+void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
     /**
       Instead of generating mouse event,
       I can let each widget implement BaseWidget::mouseClick()
@@ -417,7 +425,7 @@ void SAGENextPolygonArrow::pointerClick(const QPointF &scenePos, Qt::MouseButton
 
 
 
-void SAGENextPolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
+void SN_PolygonArrowPointer::pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
 
 	//
 	// Record
@@ -470,7 +478,7 @@ void SAGENextPolygonArrow::pointerDoubleClick(const QPointF &scenePos, Qt::Mouse
 
 
 
-void SAGENextPolygonArrow::pointerWheel(const QPointF &scenePos, int delta, Qt::KeyboardModifier) {
+void SN_PolygonArrowPointer::pointerWheel(const QPointF &scenePos, int delta, Qt::KeyboardModifier) {
 
 	//
 	// Record
@@ -502,7 +510,7 @@ void SAGENextPolygonArrow::pointerWheel(const QPointF &scenePos, int delta, Qt::
     }
 }
 
-bool SAGENextPolygonArrow::setAppUnderPointer(const QPointF scenePos) {
+bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
     Q_ASSERT(scene());
     QList<QGraphicsItem *> list = scene()->items(scenePos, Qt::ContainsItemBoundingRect, Qt::DescendingOrder);
     //app = static_cast<BaseGraphicsWidget *>(scene()->itemAt(scenePosOfPointer, QTransform()));
@@ -517,7 +525,7 @@ bool SAGENextPolygonArrow::setAppUnderPointer(const QPointF scenePos) {
 			//
 			// User application (BaseWidget)
 			//
-            _basewidget = static_cast<BaseWidget *>(item);
+            _basewidget = static_cast<SN_BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
 			_item = 0;
             return true;
@@ -544,7 +552,7 @@ bool SAGENextPolygonArrow::setAppUnderPointer(const QPointF scenePos) {
     return false;
 }
 
-QGraphicsView * SAGENextPolygonArrow::eventReceivingViewport(const QPointF scenePos) {
+QGraphicsView * SN_PolygonArrowPointer::eventReceivingViewport(const QPointF scenePos) {
 	Q_ASSERT(scene());
     foreach(QGraphicsView *v, scene()->views()) {
 		if (!v) continue;
@@ -563,7 +571,7 @@ QGraphicsView * SAGENextPolygonArrow::eventReceivingViewport(const QPointF scene
 	return 0;
 }
 
-void SAGENextPolygonArrow::pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags) {
+void SN_PolygonArrowPointer::pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags) {
 	switch(opcode) {
 
 	// MOVE
@@ -612,7 +620,7 @@ void SAGENextPolygonArrow::pointerOperation(int opcode, const QPointF &scenepos,
 
 
 
-SAGENextPixmapButton::SAGENextPixmapButton(const QString &res, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
+SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
 {
 	QPixmap orgPixmap(res);
@@ -632,7 +640,7 @@ SAGENextPixmapButton::SAGENextPixmapButton(const QString &res, qreal desiredWidt
 		_attachLabel(label, p);
 	}
 }
-SAGENextPixmapButton::SAGENextPixmapButton(const QPixmap &pixmap, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
+SN_PixmapButton::SN_PixmapButton(const QPixmap &pixmap, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
 {
 	QGraphicsPixmapItem *p = 0;
@@ -654,7 +662,7 @@ SAGENextPixmapButton::SAGENextPixmapButton(const QPixmap &pixmap, qreal desiredW
 	}
 }
 
-SAGENextPixmapButton::SAGENextPixmapButton(const QString &res, const QSize &size, const QString &label, QGraphicsItem *parent)
+SN_PixmapButton::SN_PixmapButton(const QString &res, const QSize &size, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
 {
 	QPixmap pixmap(res);
@@ -668,10 +676,10 @@ SAGENextPixmapButton::SAGENextPixmapButton(const QString &res, const QSize &size
 	}
 }
 
-SAGENextPixmapButton::~SAGENextPixmapButton() {
+SN_PixmapButton::~SN_PixmapButton() {
 }
 
-void SAGENextPixmapButton::_attachLabel(const QString &labeltext, QGraphicsItem *parent) {
+void SN_PixmapButton::_attachLabel(const QString &labeltext, QGraphicsItem *parent) {
 	QGraphicsSimpleTextItem *t = new QGraphicsSimpleTextItem(labeltext, parent);
 //	t->setTransformOriginPoint(t->boundingRect().center());
 
@@ -686,10 +694,10 @@ void SAGENextPixmapButton::_attachLabel(const QString &labeltext, QGraphicsItem 
 	t->moveBy(center_delat.x(), center_delat.y());
 }
 
-void SAGENextPixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {
+void SN_PixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {
 //	setOpacity(1);
 }
-void SAGENextPixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
+void SN_PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 //	setOpacity(0.5);
 //	qDebug() << "pixmapbutton emitting signal";
 	emit clicked();
@@ -709,7 +717,7 @@ void SAGENextPixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 
 
 
-SAGENextSimpleTextItem::SAGENextSimpleTextItem(int ps, const QColor &fontcolor, const QColor &bgcolor, QGraphicsItem *parent)
+SN_SimpleTextItem::SN_SimpleTextItem(int ps, const QColor &fontcolor, const QColor &bgcolor, QGraphicsItem *parent)
 	: QGraphicsSimpleTextItem(parent)
     , _fontcolor(fontcolor)
     , _bgcolor(bgcolor)
@@ -723,9 +731,9 @@ SAGENextSimpleTextItem::SAGENextSimpleTextItem(int ps, const QColor &fontcolor, 
 //	setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
 }
 
-SAGENextSimpleTextItem::~SAGENextSimpleTextItem() {
+SN_SimpleTextItem::~SN_SimpleTextItem() {
 }
-void SAGENextSimpleTextItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
+void SN_SimpleTextItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	int numDegrees = event->delta() / 8;
 	int numTicks = numDegrees / 15;
 	//	qDebug("SwSimpleTextItem::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
@@ -741,7 +749,7 @@ void SAGENextSimpleTextItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	setScale(s);
 }
 
-void SAGENextSimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+void SN_SimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
 

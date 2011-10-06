@@ -7,12 +7,12 @@
 class AffinityInfo;
 class AffinityControlDialog;
 
-class SchedulerControl;
+class SN_SchedulerControl;
 
 class QMutex;
 class QWaitCondition;
 
-class RailawareWidget : public BaseWidget
+class SN_RailawareWidget : public SN_BaseWidget
 {
         Q_OBJECT
 //	Q_PROPERTY(qreal priority READ priority WRITE setPriority)
@@ -21,14 +21,14 @@ public:
         /*!
           It is user's responsibility to create Affinity related object by calling createAffInstances() when using default constructor
           */
-        RailawareWidget();
+        SN_RailawareWidget();
 
         /*!
           It is higly recommended to you this constructor instead of default one
           */
-        RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+        SN_RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
 
-        virtual ~RailawareWidget();
+        virtual ~SN_RailawareWidget();
 
         /*!
           Resource Monitor may want this to reschedule an app

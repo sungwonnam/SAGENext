@@ -12,27 +12,27 @@
 
 #include <QSettings>
 
-ProcessorNode::ProcessorNode(int type, int i) :
+SN_ProcessorNode::SN_ProcessorNode(int type, int i) :
                 nodeType(type),
                 id(i),
                 cpuUsage(0.0), bandwidth(0.0)
 {
-        _appList = new QList<RailawareWidget *>();
+        _appList = new QList<SN_RailawareWidget *>();
         _appList->clear();
 }
 
-ProcessorNode::~ProcessorNode() {
+SN_ProcessorNode::~SN_ProcessorNode() {
         if (_appList) {
                 delete _appList;
         }
 //	qDebug("ProcessorNode::%s() : proc node %d", __FUNCTION__, id);
 }
 
-int ProcessorNode::getNumWidgets() const {
+int SN_ProcessorNode::getNumWidgets() const {
         return _appList->size();
 }
 
-void ProcessorNode::addApp(RailawareWidget *app) {
+void SN_ProcessorNode::addApp(SN_RailawareWidget *app) {
         if ( _appList && !_appList->contains(app) ) {
 //		appList->push_back(app);
 //		qDebug("ProcessorNode::%s() : app %llu has added to ProcessorNode %d", __FUNCTION__, app->getWidgetPtr()->getGlobalAppId(), id);
@@ -61,10 +61,10 @@ void ProcessorNode::addApp(RailawareWidget *app) {
         }
 }
 
-bool ProcessorNode::removeApp(quint64 appid) {
+bool SN_ProcessorNode::removeApp(quint64 appid) {
     if(!_appList) return false;
 
-    RailawareWidget *rw = 0;
+    SN_RailawareWidget *rw = 0;
     for ( int i=0; i<_appList->size(); ++i) {
         rw = _appList->at(i);
 
@@ -77,7 +77,7 @@ bool ProcessorNode::removeApp(quint64 appid) {
     return false;
 }
 
-bool ProcessorNode::removeApp(RailawareWidget *rw) {
+bool SN_ProcessorNode::removeApp(SN_RailawareWidget *rw) {
     if ( !_appList || _appList->isEmpty())
         return false;
     else {
@@ -89,11 +89,11 @@ bool ProcessorNode::removeApp(RailawareWidget *rw) {
     return false;
 }
 
-void ProcessorNode::refresh() {
+void SN_ProcessorNode::refresh() {
     /* iterator over appList and add cpuUsage, bandwidth */
     //	const AffinityInfo *aff = 0;
     const PerfMonitor *perf = 0;
-    RailawareWidget *rw = 0;
+    SN_RailawareWidget *rw = 0;
 
     // reset
     cpuUsage = 0.0;
@@ -125,11 +125,11 @@ void ProcessorNode::refresh() {
 //	setText(QString(text));
 }
 
-int ProcessorNode::prioritySum() const {
+int SN_ProcessorNode::prioritySum() const {
         int sum = 0;
 
         for (int i=0; i<_appList->size(); ++i) {
-                RailawareWidget *rw = _appList->at(i);
+                SN_RailawareWidget *rw = _appList->at(i);
                 if (!rw) continue;
 
                 /*!
@@ -140,10 +140,10 @@ int ProcessorNode::prioritySum() const {
         return sum;
 }
 
-void ProcessorNode::printOverhead() const {
+void SN_ProcessorNode::printOverhead() const {
 //	const AffinityInfo *aff = 0;
         const PerfMonitor *perf = 0;
-        RailawareWidget *widget = 0;
+        SN_RailawareWidget *widget = 0;
 
         if (_appList->size() == 0) {
                 qDebug("ProcessorNode::%s() : There's no app on this processor %d", __FUNCTION__, id);
@@ -177,7 +177,7 @@ void ProcessorNode::printOverhead() const {
 
 
 
-ResourceMonitor::ResourceMonitor(const QSettings *s) :
+SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s) :
         procVec(0),
         settings(s),
         schedcontrol(0),
@@ -209,7 +209,7 @@ ResourceMonitor::ResourceMonitor(const QSettings *s) :
         widgetListRWlock.unlock();
 }
 
-void ResourceMonitor::timerEvent(QTimerEvent *) {
+void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 //	qDebug() << "timerEvent at resourceMonitor";
         refresh(); // update all data
         if (_rMonWidget && _rMonWidget->isVisible()) _rMonWidget->refresh();
@@ -219,7 +219,7 @@ void ResourceMonitor::timerEvent(QTimerEvent *) {
         }
 }
 
-void ResourceMonitor::addSchedulableWidget(RailawareWidget *rw) {
+void SN_ResourceMonitor::addSchedulableWidget(SN_RailawareWidget *rw) {
         widgetListRWlock.lockForWrite();
         /* shouldn't allow duplicate item */
 
@@ -237,7 +237,7 @@ void ResourceMonitor::addSchedulableWidget(RailawareWidget *rw) {
         widgetListRWlock.unlock();
 }
 
-void ResourceMonitor::removeSchedulableWidget(RailawareWidget *rw) {
+void SN_ResourceMonitor::removeSchedulableWidget(SN_RailawareWidget *rw) {
         widgetListRWlock.lockForWrite();
         if(rw) {
 //		if ( widgetMultiMap.remove(rw->priority(), rw) != 1 ) {
@@ -261,16 +261,16 @@ void ResourceMonitor::removeSchedulableWidget(RailawareWidget *rw) {
 //	rwlock.unlock();
 //}
 
-RailawareWidget * ResourceMonitor::getEarliestDeadlineWidget() {
+SN_RailawareWidget * SN_ResourceMonitor::getEarliestDeadlineWidget() {
         widgetListRWlock.lockForRead();
         qreal temp = -1;
-        RailawareWidget *result = 0;
+        SN_RailawareWidget *result = 0;
 //	QMultiMap<int, RailawareWidget *>::iterator it;
-        QList<RailawareWidget *>::iterator it;
+        QList<SN_RailawareWidget *>::iterator it;
 //	for(it=widgetMultiMap.begin(); it!=widgetMultiMap.end(); it++) {
         for(it=widgetList.begin(); it!=widgetList.end(); it++) {
 //		RailawareWidget *r = it.value();
-                RailawareWidget *r = *it;
+                SN_RailawareWidget *r = *it;
                 if ( temp == -1 || temp > r->perfMon()->ts_nextframe() ) {
                         temp = r->perfMon()->ts_nextframe();
                         result = r;
@@ -282,7 +282,7 @@ RailawareWidget * ResourceMonitor::getEarliestDeadlineWidget() {
 }
 
 
-ResourceMonitor::~ResourceMonitor() {
+SN_ResourceMonitor::~SN_ResourceMonitor() {
 	//	if (procTree) delete procTree;
 
 	if (schedcontrol) {
@@ -291,7 +291,7 @@ ResourceMonitor::~ResourceMonitor() {
 	}
 
 	if (procVec) {
-		ProcessorNode *pn =0;
+		SN_ProcessorNode *pn =0;
 		for (int i=0; i<procVec->size(); ++i) {
 			pn = procVec->at(i);
 			if(pn) {
@@ -326,13 +326,13 @@ ResourceMonitor::~ResourceMonitor() {
 //
 //}
 
-void ResourceMonitor::refresh() {
+void SN_ResourceMonitor::refresh() {
 	//	QString infoText = "Per CPU stat\n(# threads, B/W, CPU usage)\n";
 
 	/* per processor info */
 	if (procVec) {
 		//	QByteArray str(128, '\0');
-		ProcessorNode *pn = 0;
+		SN_ProcessorNode *pn = 0;
 		for (int i=0; i<procVec->size(); ++i) {
 			pn = procVec->at(i);
 			pn->refresh();
@@ -359,7 +359,7 @@ void ResourceMonitor::refresh() {
 //}
 
 
-void ResourceMonitor::printPrelimDataHeader() {
+void SN_ResourceMonitor::printPrelimDataHeader() {
         QDir::setCurrent(QDir::homePath() + "/.sagenext");
 #if QT_VERSION >= 0x040700
         _dataFile.setFileName( QString::number(QDateTime::currentMSecsSinceEpoch()) + ".data" );
@@ -371,7 +371,7 @@ void ResourceMonitor::printPrelimDataHeader() {
         }
         QString dataHeader = "";
         if ( schedcontrol && schedcontrol->isRunning() ) {
-                SelfAdjustingScheduler *sas = static_cast<SelfAdjustingScheduler *>(schedcontrol->scheduler());
+                SN_SelfAdjustingScheduler *sas = static_cast<SN_SelfAdjustingScheduler *>(schedcontrol->scheduler());
                 dataHeader.append("Scheduler (");
                 // freq, sensitivity, aggression, greediness
                 dataHeader.append("Frequency: " + QString::number(schedcontrol->scheduler()->frequency()) );
@@ -397,7 +397,7 @@ void ResourceMonitor::printPrelimDataHeader() {
 /*!
   This function should be called at every time slice
   */
-void ResourceMonitor::printPrelimData() {
+void SN_ResourceMonitor::printPrelimData() {
 
 //	QString filename_date(filename);
 //	filename_date.append( QString::number(QDateTime::currentMSecsSinceEpoch()));
@@ -419,14 +419,14 @@ void ResourceMonitor::printPrelimData() {
 
         // cpu usage aggregate
         qreal cpuUsageSum = 0.0;
-        foreach (RailawareWidget *rw, widgetList) {
+        foreach (SN_RailawareWidget *rw, widgetList) {
                 cpuUsageSum += rw->perfMon()->getCpuUsage();
         }
         cpuUsageSum *= 100; // convert to percentage
         _dataFile.write( qPrintable(QString::number(cpuUsageSum)) );
         _dataFile.write(",");
 
-        foreach (RailawareWidget *rw, widgetList) {
+        foreach (SN_RailawareWidget *rw, widgetList) {
                 ++count;
                 // time slice is implicit (each row = single time slice)
 
@@ -447,9 +447,9 @@ void ResourceMonitor::printPrelimData() {
 }
 
 
-void ResourceMonitor::removeApp(RailawareWidget *rw) {
+void SN_ResourceMonitor::removeApp(SN_RailawareWidget *rw) {
     //	AffinityInfo *aff = static_cast<AffinityInfo *>(obj);
-    ProcessorNode *pn = 0;
+    SN_ProcessorNode *pn = 0;
     Q_ASSERT(procVec);
     for ( int i=0; i<procVec->size(); ++i) {
         pn = procVec->at(i);
@@ -465,13 +465,13 @@ void ResourceMonitor::removeApp(RailawareWidget *rw) {
 /*!
   this slot connected to AffinityInfo::cpuOfMineChanged signal
   */
-void ResourceMonitor::updateAffInfo(RailawareWidget *rw, int oldproc, int newproc) {
+void SN_ResourceMonitor::updateAffInfo(SN_RailawareWidget *rw, int oldproc, int newproc) {
 //	affinf->getGlobalAppId();
 //	affinf->getCpuOfMine();
 
         if ( !procVec ) return;
 
-        ProcessorNode *pn = 0;
+        SN_ProcessorNode *pn = 0;
 
         // O(1)
         if ( oldproc >= 0 && newproc >= 0 ) {
@@ -556,17 +556,17 @@ void ResourceMonitor::buildProcTree() {
 **/
 
 
-void ResourceMonitor::buildProcVector() {
+void SN_ResourceMonitor::buildProcVector() {
         int totalCpu = settings->value("system/numcpus").toInt();
 
         Q_ASSERT(!procVec);
-        procVec = new QVector<ProcessorNode *>();
+        procVec = new QVector<SN_ProcessorNode *>();
 
-        ProcessorNode *pn = 0;
+        SN_ProcessorNode *pn = 0;
         for (int i=0; i<totalCpu; ++i) {
-                pn = new ProcessorNode(ProcessorNode::PHY_CORE, i);
+                pn = new SN_ProcessorNode(SN_ProcessorNode::PHY_CORE, i);
                                 if ( settings->value("system/threadpercpu").toInt() > 1 ) {
-                                        pn->setNodeType(ProcessorNode::SMT_CORE);
+                                        pn->setNodeType(SN_ProcessorNode::SMT_CORE);
 
                                         /******
                                           only works in venom (two intel quad core smt cpus)
@@ -585,9 +585,9 @@ void ResourceMonitor::buildProcVector() {
 }
 
 
-ProcessorNode * ResourceMonitor::getMostUnderloadedProcessor() {
-        ProcessorNode *pn = 0;
-        ProcessorNode *result = 0;
+SN_ProcessorNode * SN_ResourceMonitor::getMostUnderloadedProcessor() {
+        SN_ProcessorNode *pn = 0;
+        SN_ProcessorNode *result = 0;
         qreal temp = INT_MAX;
         for (int i=0; i<procVec->size(); ++i) {
                 pn = procVec->at(i);
@@ -603,7 +603,7 @@ ProcessorNode * ResourceMonitor::getMostUnderloadedProcessor() {
 }
 
 
-int ResourceMonitor::assignProcessor(RailawareWidget *rw, ProcessorNode *pn) {
+int SN_ResourceMonitor::assignProcessor(SN_RailawareWidget *rw, SN_ProcessorNode *pn) {
         if (!rw || !rw->affInfo()) return -1;
         if (!pn) return -1;
 
@@ -629,10 +629,10 @@ int ResourceMonitor::assignProcessor(RailawareWidget *rw, ProcessorNode *pn) {
         */
 }
 
-int ResourceMonitor::assignProcessor(RailawareWidget *rw) {
+int SN_ResourceMonitor::assignProcessor(SN_RailawareWidget *rw) {
         if (!rw || !rw->affInfo()) return -1;
 
-        ProcessorNode *pn = getMostUnderloadedProcessor();
+        SN_ProcessorNode *pn = getMostUnderloadedProcessor();
         if (!pn) return -1;
 
         return assignProcessor(rw, pn);
@@ -641,16 +641,16 @@ int ResourceMonitor::assignProcessor(RailawareWidget *rw) {
 /*!
   Re assign rail for all processes
   */
-int ResourceMonitor::assignProcessor() {
+int SN_ResourceMonitor::assignProcessor() {
 
         /* pause scheduler */
         if(schedcontrol) {
                 schedcontrol->killScheduler();
         }
 
-        foreach (RailawareWidget *w, widgetList) {
+        foreach (SN_RailawareWidget *w, widgetList) {
                 /* disconnect signal/slot connection for now */
-                if (!disconnect(w->affInfo(), SIGNAL(cpuOfMineChanged(RailawareWidget*,int,int)), this, SLOT(updateAffInfo(RailawareWidget*,int,int))) ) {
+                if (!disconnect(w->affInfo(), SIGNAL(cpuOfMineChanged(SN_RailawareWidget*,int,int)), this, SLOT(updateAffInfo(SN_RailawareWidget*,int,int))) ) {
                         qDebug() << "disconnect() failed";
                 }
 
@@ -661,15 +661,15 @@ int ResourceMonitor::assignProcessor() {
         //	qApp->sendPostedEvents();
 
         for (int i=0; i<procVec->size(); ++i) {
-                ProcessorNode *pn = procVec->at(i);
+                SN_ProcessorNode *pn = procVec->at(i);
                 pn->setBW(0);
                 pn->setCpuUsage(0);
         }
 
 //	sleep(1);
 
-        QList<RailawareWidget *>::iterator it;
-        RailawareWidget *rw = 0;
+        QList<SN_RailawareWidget *>::iterator it;
+        SN_RailawareWidget *rw = 0;
         int count = 0;
 
         for(it=widgetList.begin(); it!=widgetList.end();  it++) {
@@ -688,7 +688,7 @@ int ResourceMonitor::assignProcessor() {
                 //                rw->perfMon()->reset();
 
                 // reconnect
-                connect(rw->affInfo(), SIGNAL(cpuOfMineChanged(RailawareWidget*,int,int)), this, SLOT(updateAffInfo(RailawareWidget*,int,int)));
+                connect(rw->affInfo(), SIGNAL(cpuOfMineChanged(SN_RailawareWidget*,int,int)), this, SLOT(updateAffInfo(SN_RailawareWidget*,int,int)));
         }
 
 
@@ -704,14 +704,14 @@ int ResourceMonitor::assignProcessor() {
         return count;
 }
 
-void ResourceMonitor::resetProcessorAllocation(RailawareWidget *rw) {
+void SN_ResourceMonitor::resetProcessorAllocation(SN_RailawareWidget *rw) {
         if (rw && rw->affInfo())
                 rw->affInfo()->setAllReadyBit();
 }
 
-void ResourceMonitor::resetProcessorAllocation() {
-        QList<RailawareWidget *>::iterator it;
-        RailawareWidget *rw = 0;
+void SN_ResourceMonitor::resetProcessorAllocation() {
+        QList<SN_RailawareWidget *>::iterator it;
+        SN_RailawareWidget *rw = 0;
 
         widgetListRWlock.lockForRead();
         for(it=widgetList.begin(); it!=widgetList.end();  it++) {
@@ -723,7 +723,7 @@ void ResourceMonitor::resetProcessorAllocation() {
 }
 
 
-ProcessorNode * ResourceMonitor::processor(int pid) {
+SN_ProcessorNode * SN_ResourceMonitor::processor(int pid) {
         if (!procVec) {
                 qCritical("%s::%s() : procVec is null", metaObject()->className(), __FUNCTION__);
                 return 0;
@@ -734,9 +734,9 @@ ProcessorNode * ResourceMonitor::processor(int pid) {
 }
 
 
-void ResourceMonitor::loadBalance() {
+void SN_ResourceMonitor::loadBalance() {
         // find the most overloaded processor
-        ProcessorNode *pn_high = 0, *pn_low=0;
+        SN_ProcessorNode *pn_high = 0, *pn_low=0;
         qreal loadhigh = 0.0, loadlow = 100.0;
 
         if (!procVec || procVec->isEmpty()) return;
@@ -744,7 +744,7 @@ void ResourceMonitor::loadBalance() {
 
         // for each processor
         for (int i=0; i<procVec->size(); ++i) {
-                ProcessorNode *tmp = procVec->at(i);
+                SN_ProcessorNode *tmp = procVec->at(i);
 
                 if (tmp->getCpuUsage() > loadhigh) {
                         loadhigh = tmp->getCpuUsage();
@@ -776,10 +776,10 @@ void ResourceMonitor::loadBalance() {
 
         // for now, find the lowest priority widget from heavily loaded processor
         int priority = INT_MAX;
-        RailawareWidget *rw = 0;
-        QList<RailawareWidget *> *wlist = pn_high->appList();
+        SN_RailawareWidget *rw = 0;
+        QList<SN_RailawareWidget *> *wlist = pn_high->appList();
         for (int i=0; i<wlist->size(); ++i) {
-                RailawareWidget *w = wlist->at(i);
+                SN_RailawareWidget *w = wlist->at(i);
                 if (!w) continue;
                 if ( w->priority() < priority ) {
                         priority = w->priority();

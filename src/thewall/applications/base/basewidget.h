@@ -6,16 +6,17 @@
 class QSettings;
 class QPropertyAnimation;
 class QParallelAnimationGroup;
-class QGraphicsProxyWidget;
+//class QGraphicsProxyWidget;
 
-class ResourceMonitor;
+class SN_ResourceMonitor;
 class AppInfo;
 class PerfMonitor;
 class AffinityInfo;
-class SAGENextSimpleTextItem;
-class SAGENextPolygonArrow;
 
-class BaseWidget : public QGraphicsWidget
+class SN_SimpleTextItem;
+class SN_PolygonArrowPointer;
+
+class SN_BaseWidget : public QGraphicsWidget
 {
         Q_OBJECT
 //	Q_PROPERTY(qreal priority READ priority WRITE setPriority NOTIFY priorityChanged)
@@ -28,13 +29,13 @@ class BaseWidget : public QGraphicsWidget
 public:
         /*!
           Required for plugin to instantiate
-          Don't forget to set _globalAppId, settings, rMonitor
+          Don't forget to set _globalAppId, settings, in SN_Launcher
           */
-        BaseWidget(Qt::WindowFlags wflags = Qt::Window);
+        SN_BaseWidget(Qt::WindowFlags wflags = Qt::Window);
 
-        BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+        SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
 
-        virtual ~BaseWidget();
+        virtual ~SN_BaseWidget();
 
         /*!
           Only a user application will have this type number
@@ -53,15 +54,16 @@ public:
 
         inline Widget_Type widgetType() const {return _widgetType;}
 
-        inline void setSettings(const QSettings *s) {settings = s;}
+        inline void setSettings(const QSettings *s) {_settings = s;}
 
-        inline void setRMonitor(ResourceMonitor *rm) {_rMonitor = rm;}
+        inline void setRMonitor(SN_ResourceMonitor *rm) {_rMonitor = rm;}
 
         /*!
           AnimationWidget will create affInfo when this function is called
           */
         inline virtual void setGlobalAppId(quint64 gaid) {_globalAppId=gaid;}
         inline quint64 globalAppId() const {return _globalAppId;}
+
 
         inline AppInfo * appInfo() const {return _appInfo;}
 
@@ -111,17 +113,12 @@ public:
 //        virtual void mouseClick(const QPointF &, Qt::MouseButton); // this is taken care of in shared pointer
 
 
-        /*!
-          Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to weird behavior. So this should be implemented in child class manually.
-          */
-        virtual void mouseDrag(const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
-
 
         /*!
           Sets the proxyWidget as a child widget.
           When a plugin isn't BaseWidget type (it didn't inherit BaseWidget) then create BaseWidget for the plugin
           */
-        virtual void setProxyWidget(QGraphicsProxyWidget *proxyWidget);
+//        virtual void setProxyWidget(QGraphicsProxyWidget *proxyWidget);
 
 
         /*!
@@ -161,7 +158,7 @@ public:
         virtual qreal observedQuality() {return _quality;}
 
 
-        inline QParallelAnimationGroup *animGroup() {return _parallelAnimGroup;}
+//        inline QParallelAnimationGroup *animGroup() {return _parallelAnimGroup;}
 
 
         /*!
@@ -173,18 +170,40 @@ public:
 
 
 
+		/**
+		  If your application needs pointer hovering feature, set this
+		  */
 		inline void setRegisterForMouseHover(bool v = true) {_registerForMouseHover = v;}
+
+		/**
+		  A pointer calls this function to know if this widget is listening for hovering
+		  */
 		inline bool isRegisteredForMouseHover() const {return _registerForMouseHover;}
 
-		virtual void toggleHover(SAGENextPolygonArrow * /*pointer*/, const QPointF & /*pointerPosOnMe*/, bool /* isHovering */) {}
-		inline void removePointerFromPointerMap(SAGENextPolygonArrow *pointer) {
+
+		/**
+		  If SN_BaseWidget is registered for hover listener widget, (by settings setRegisterForMouseHover())
+		  a pointer will call this function if it's on this widget's area
+		  */
+		virtual void handlePointerHover(SN_PolygonArrowPointer * /*pointer*/, const QPointF & /*pointerPosOnMe*/, bool /* isHovering */) {}
+
+		/*!
+          Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to weird behavior. So this should be implemented in child class manually.
+          */
+        virtual void handlePointerDrag(const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
+
+
+		/**
+		  When a pointer is leaving (being deleted) it has to remove itself from the map that this widget monitors
+		  */
+		inline void removePointerFromPointerMap(SN_PolygonArrowPointer *pointer) {
 			_pointerMap.remove(pointer);
 		}
 
 protected:
         quint64 _globalAppId; /**< Unique identifier */
 
-        const QSettings *settings; /**< Global configuration parameters */
+        const QSettings *_settings; /**< Global configuration parameters */
 
         Window_State _windowState; /**< app wnidow state */
 
@@ -196,7 +215,7 @@ protected:
          */
         AppInfo *_appInfo; /**< app name, frame dimension, rect */
 
-        bool showInfo; /**< flag to toggle show/hide info item */
+        bool _showInfo; /**< flag to toggle show/hide info item */
 
 
         /*!
@@ -214,7 +233,7 @@ protected:
         /*!
           To display information in appInfo, perfMonitor, and affInfo
           */
-        SAGENextSimpleTextItem *infoTextItem;
+        SN_SimpleTextItem *infoTextItem;
 
 
         /*!
@@ -240,7 +259,7 @@ protected:
         qint64 _lastTouch; // long long int
 
 
-        ResourceMonitor *_rMonitor; /**< A pointer to the global resource monitor object */
+        SN_ResourceMonitor *_rMonitor; /**< A pointer to the global resource monitor object */
 
         /*!
           0 <= quality <= 1.0
@@ -251,7 +270,8 @@ protected:
 
         /*!
           mouse right click on widget opens context menu provided by Qt
-          This is protected because derived class could want to add its own actions
+          This is protected because derived class could want to add its own actions.
+		  This is not used with shared pointers (needs console mouse)
           */
         QMenu *_contextMenu;
 
@@ -263,14 +283,10 @@ protected:
         QAction *_closeAction; /**< fadeOutClose() */
 
 
-		QColor _borderColor;
-		QColor _borderColorSelected;
-
 
         inline void setWindowState(Window_State ws) {_windowState = ws;}
 
         void setWidgetType(Widget_Type wt);
-
 
 
         void init();
@@ -280,13 +296,13 @@ protected:
 		/**
 		  This is to know if any pointer is currently hovering on my boundingRect()
 		  */
-		QMap<SAGENextPolygonArrow *, QPair<QPointF, bool> > _pointerMap;
+		QMap<SN_PolygonArrowPointer *, QPair<QPointF, bool> > _pointerMap;
 
 
 
 
 		/**
-		  This will draw infoTextItem followed by resize rectangle
+		  This will draw infoTextItem followed by window border
 		  */
 		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 

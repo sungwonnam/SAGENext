@@ -11,7 +11,7 @@
 
 #include <sys/time.h>
 
-ResourceMonitorWidget::ResourceMonitorWidget(ResourceMonitor *rm, SchedulerControl *sc, QWidget *parent) :
+ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, QWidget *parent) :
 	QWidget(parent),
 	ui(new Ui::ResourceMonitorWidget),
 	rMonitor(rm),
@@ -91,7 +91,7 @@ void ResourceMonitorWidget::refresh() {
    ***/
 	if (schedcontrol && schedcontrol->scheduler()) {
 		ui->label_schedparam_freq->setNum(schedcontrol->scheduler()->frequency());
-		SelfAdjustingScheduler *sas = qobject_cast<SelfAdjustingScheduler *>(schedcontrol->scheduler());
+		SN_SelfAdjustingScheduler *sas = qobject_cast<SN_SelfAdjustingScheduler *>(schedcontrol->scheduler());
 		if (sas) {
 			ui->label_schedparam_sens->setNum( sas->getQTH() );
 			ui->label_schedparam_greed->setNum( sas->getIncF() );
@@ -102,8 +102,8 @@ void ResourceMonitorWidget::refresh() {
 	/*****
 	  per CPU bandwidth and load
 	  ****/
-	QVector<ProcessorNode *> *pv = rMonitor->getProcVec();
-	foreach(ProcessorNode *pn , *pv) {
+	QVector<SN_ProcessorNode *> *pv = rMonitor->getProcVec();
+	foreach(SN_ProcessorNode *pn , *pv) {
 		QLayoutItem *li = ui->vLayout_percpu->itemAt(1 + pn->getID()); // offset with 1 to skip header hlayout
 		QLayout *l = li->layout(); // this is HBoxLayout for each row
 		QLabel *lb = 0;
@@ -134,7 +134,7 @@ void ResourceMonitorWidget::refresh() {
 	int currentRow = 0;
 
 	// An widget per row
-	foreach(RailawareWidget *rw, rMonitor->getWidgetList()) {
+	foreach(SN_RailawareWidget *rw, rMonitor->getWidgetList()) {
 		if (!rw) continue;
 
 		// fill data for each column on current row
@@ -259,7 +259,7 @@ void ResourceMonitorWidget::populatePerfDataPerPriorityRank() {
 }
 
 void ResourceMonitorWidget::buildPerCpuHLayouts() {
-	QVector<ProcessorNode *> *pv = rMonitor->getProcVec();
+	QVector<SN_ProcessorNode *> *pv = rMonitor->getProcVec();
 //	int numproc = pv->size();
 
 	/* header label */
@@ -273,7 +273,7 @@ void ResourceMonitorWidget::buildPerCpuHLayouts() {
 	ui->vLayout_percpu->addLayout(hl);
 
 	/* data */
-	foreach(ProcessorNode *pn , *pv) {
+	foreach(SN_ProcessorNode *pn , *pv) {
 		QHBoxLayout *hl = new QHBoxLayout();
 
 		hl->addSpacerItem(new QSpacerItem(20, 20, QSizePolicy::Minimum, QSizePolicy::Minimum));

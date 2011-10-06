@@ -15,33 +15,33 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-UiServer::UiServer(const QSettings *s, SAGENextLauncher *snl, SAGENextScene *sns)
+SN_UiServer::SN_UiServer(const QSettings *s, SN_Launcher *snl, SN_TheScene *sns)
     : QTcpServer(0)
-    , settings(s)
-    , fileRecvPortBase(0)
-    , uiClientId(0)
-    , scene(sns)
-    , launcher(snl)
+    , _settings(s)
+    , _fileRecvPortBase(0)
+    , _uiClientId(0)
+    , _scene(sns)
+    , _launcher(snl)
 {
-    uiMsgThreadsMap.clear();
-    uiFileRecvRunnableMap.clear();
+    _uiMsgThreadsMap.clear();
+//    uiFileRecvRunnableMap.clear();
 
-    if ( ! listen(QHostAddress::Any, settings->value("general/wallport", 30003).toInt() ) ) {
+    if ( ! listen(QHostAddress::Any, _settings->value("general/wallport", 30003).toInt() ) ) {
         qCritical("UiServer::%s() : listen failed", __FUNCTION__);
         deleteLater();
     }
 
     appLayout = new QByteArray(EXTUI_MSG_SIZE, '\0');
 
-    fileRecvPortBase = 10000 + s->value("general/wallport", 30003).toInt();
+    _fileRecvPortBase = 10000 + s->value("general/wallport", 30003).toInt();
 
     qDebug("UiServer::%s() : UI Server has started on %s:%u", __FUNCTION__, qPrintable(serverAddress().toString()), serverPort());
 }
 
-UiServer::~UiServer() {
+SN_UiServer::~SN_UiServer() {
     close();
 
-	foreach (SAGENextPolygonArrow *pa, pointers) {
+	foreach (SN_PolygonArrowPointer *pa, _pointers) {
 		delete pa;
 	}
 
@@ -57,9 +57,9 @@ UiServer::~UiServer() {
     qDebug("UiServer::%s()", __FUNCTION__);
 }
 
-void UiServer::incomingConnection(int sockfd) {
+void SN_UiServer::incomingConnection(int sockfd) {
 
-    ++uiClientId;
+    ++_uiClientId;
 
     //	QGraphicsScene *scene = gview->scene(); // Returns a pointer to the scene that is currently visualized in the view. If no scene is currently visualized, 0 is returned.
 
@@ -68,17 +68,17 @@ void UiServer::incomingConnection(int sockfd) {
         */
     char buf[EXTUI_MSG_SIZE]; memset(buf, '\0', EXTUI_MSG_SIZE);
 //    int filetransferport = fileRecvPortBase + uiClientId;
-	int filetransferport = settings->value("general/fileserverport", 46000).toInt();
-    sprintf(buf, "%u %d %d %d", uiClientId, (int)scene->width(), (int)scene->height(), filetransferport);
+	int filetransferport = _settings->value("general/fileserverport", 46000).toInt();
+    sprintf(buf, "%u %d %d %d", _uiClientId, (int)_scene->width(), (int)_scene->height(), filetransferport);
     ::send(sockfd, buf, 1280, 0);
-    qDebug("UiServer::%s() : The scene size %d x %d sent to ui %u", __FUNCTION__, (int)scene->width(), (int)scene->height(), uiClientId);
+    qDebug("UiServer::%s() : The scene size %d x %d sent to ui %u", __FUNCTION__, (int)_scene->width(), (int)_scene->height(), _uiClientId);
 
 
     /**
           create a msg thread
           */
-    UiMsgThread *thread = new UiMsgThread(uiClientId, sockfd, this);
-    uiMsgThreadsMap.insert(uiClientId, thread);
+    UiMsgThread *thread = new UiMsgThread(_uiClientId, sockfd, this);
+    _uiMsgThreadsMap.insert(_uiClientId, thread);
 
     connect(this, SIGNAL(destroyed()), thread, SLOT(breakWhileLoop()));
     connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
@@ -99,10 +99,10 @@ void UiServer::incomingConnection(int sockfd) {
     // by default, ui client is not receiving app layout on the wall
 //    appLayoutFlagMap.insert(uiClientId, false);
 
-    qDebug("UiServer::%s() : ui client %u has connected.", __FUNCTION__, uiClientId);
+    qDebug("UiServer::%s() : ui client %u has connected.", __FUNCTION__, _uiClientId);
 }
 
-void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QByteArray msg) {
+void SN_UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QByteArray msg) {
 	Q_UNUSED(id);
 	Q_UNUSED(msgThread);
     //	if (!msg) return;
@@ -191,7 +191,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
 //		qDebug() << "uiserver" << QString(username) << QString(vncpass);
 
         // This isn't elegant way of invoking vnc widget. :(
-        QMetaObject::invokeMethod(launcher, "launch", Qt::QueuedConnection,
+        QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection,
 		                          Q_ARG(QString, QString(username)),
                                   Q_ARG(QString, QString(vncpass)),
                                   Q_ARG(int, display),
@@ -211,15 +211,15 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
 
         qDebug("UiServer::%s() : POINTER_SHARE from uiclient %u, (%s, %s)",__FUNCTION__, uiclientid, pname.constData(), colorname);
 
-        SAGENextPolygonArrow *pointerItem = 0;
+        SN_PolygonArrowPointer *pointerItem = 0;
 //		pointerItem = new SAGENextPolygonArrow(uiclientid, settings, QString(pname), QColor(QString(colorname)));
 //        Q_ASSERT(pointerItem);
 //        Q_ASSERT(scene);
 //		pointerItem->setScale(1.3);
 //        scene->addItem(pointerItem);
-		pointerItem = launcher->launchPointer(uiclientid, QString(pname), QColor(QString(colorname)));
+		pointerItem = _launcher->launchPointer(uiclientid, QString(pname), QColor(QString(colorname)));
 
-        pointers.insert(uiclientid, pointerItem);
+        _pointers.insert(uiclientid, pointerItem);
 
         break;
     }
@@ -230,7 +230,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
         QGraphicsItem *pa = getSharedPointer(uiclientid);
         if (pa) {
             delete pa;
-            pointers.remove(uiclientid);
+            _pointers.remove(uiclientid);
         }
         else {
             qDebug("UiServer::%s() : POINTER_UNSHARE can't find pointer object", __FUNCTION__);
@@ -247,7 +247,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
 
         // find the PolygonArrow associated with this uiClientId
-        SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
+        SN_PolygonArrowPointer *pa = getSharedPointer(uiclientid);
         if (pa) {
             //pa->setPos(x,y);
             pa->pointerMove(QPointF(x,y), Qt::NoButton); // just move pointer graphics item
@@ -269,7 +269,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
         int x,y;
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
 
-        SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
+        SN_PolygonArrowPointer *pa = getSharedPointer(uiclientid);
         if (pa) {
             // direct widget manipulation instead of posting mouse event
             pa->pointerMove(QPointF(x,y), Qt::LeftButton);
@@ -285,7 +285,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
 		int x,y;
 		sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
 
-		SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
+		SN_PolygonArrowPointer *pa = getSharedPointer(uiclientid);
 		if (pa) {
 			// direct widget manipulation instead of posting mouse event
 			pa->pointerMove(QPointF(x,y), Qt::RightButton);
@@ -306,7 +306,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
         quint32 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
-        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        SN_PolygonArrowPointer *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
 //            qDebug("UiServer::%s() : POINTER_PRESS : pointer's pos %.0f, %.0f", __FUNCTION__, pa->x(), pa->y());
 
@@ -316,27 +316,28 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
             //pa->setAppUnderPointer(QPointF(x,y));
         }
         else {
-            qDebug("UiServer::%s() : POINTER_PRESS can't find pointer object", __FUNCTION__);
+            qDebug("%s::%s() : POINTER_PRESS can't find pointer object", metaObject()->className(), __FUNCTION__);
         }
         break;
     }
 
-		/**
+		/*
+	     Pointer will set the widget if there is one (QGraphicsItem::UserType + 2) under it
+	     */
 	case POINTER_RIGHTPRESS:
 	{
 		quint32 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
-        PolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        SN_PolygonArrowPointer *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
-            pa->pointerPress(QPointF(x,y), Qt::RightButton, Qt::NoButton | Qt::RightButton);
+            pa->pointerPress(QPointF(x,y), Qt::RightButton);
         }
         else {
-            qDebug("UiServer::%s() : POINTER_RIGHTPRESS can't find pointer object", __FUNCTION__);
+            qDebug("%s::%s() : POINTER_RIGHTPRESS can't find pointer object",metaObject()->className(), __FUNCTION__);
         }
 		break;
 	}
-	**/
 
 		/*
 		  This doesn't trigger pointer click. Don't use this to fire pointerClick()
@@ -347,7 +348,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
 		quint32 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
-        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid);
+        SN_PolygonArrowPointer *pa =  getSharedPointer(uiclientid);
 		if (pa) {
 			pa->pointerRelease(QPointF(x,y), Qt::LeftButton);
 		}
@@ -363,7 +364,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
 		quint32 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
-        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid);
+        SN_PolygonArrowPointer *pa =  getSharedPointer(uiclientid);
 		if (pa) {
 			pa->pointerRelease(QPointF(x,y), Qt::RightButton);
 		}
@@ -378,7 +379,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
         quint32 uiclientid;
         int x,y; // x,y from ui clients is the scene position of the wall
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
-        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        SN_PolygonArrowPointer *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
 //            qDebug("UiServer::%s() : POINTER_CLICK : pointer clicked position (%.0f, %.0f)", __FUNCTION__, pa->x(), pa->y());
             pa->pointerClick(QPointF(x,y), Qt::LeftButton);
@@ -388,7 +389,7 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
 //			if ( pa->appUnderPointer() ) pa->appUnderPointer()->mouseClick(QPointF(x, y), Qt::LeftButton);
         }
         else {
-            qDebug("UiServer::%s() : POINTER_CLICK can't find pointer object", __FUNCTION__);
+            qDebug("%s::%s() : POINTER_CLICK can't find pointer object",metaObject()->className(), __FUNCTION__);
         }
         break;
     }
@@ -401,12 +402,12 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
         quint32 uiclientid;
         int x, y;
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
-        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        SN_PolygonArrowPointer *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
             pa->pointerClick(QPointF(x,y), Qt::RightButton);
         }
         else {
-            qDebug("UiServer::%s() : POINTER_RIGHTCLICK can't find pointer object", __FUNCTION__);
+            qDebug("%s::%s() : POINTER_RIGHTCLICK can't find pointer object",metaObject()->className(), __FUNCTION__);
         }
         break;
     }
@@ -419,12 +420,12 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
         quint32 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
-        SAGENextPolygonArrow *pa =  getSharedPointer(uiclientid) ;
+        SN_PolygonArrowPointer *pa =  getSharedPointer(uiclientid) ;
         if (pa) {
             pa->pointerDoubleClick(QPointF(x, y), Qt::LeftButton);
         }
 		else {
-            qDebug("UiServer::%s() : POINTER_DOUBLECLICK  can't find pointer object", __FUNCTION__);
+            qDebug("%s::%s() : POINTER_DOUBLECLICK  can't find pointer object",metaObject()->className(), __FUNCTION__);
         }
         break;
     }
@@ -434,13 +435,13 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
         quint32 uiclientid;
         int x,y,tick;
         sscanf(msg.constData(), "%d %u %d %d %d", &code, &uiclientid, &x, &y, &tick);
-        SAGENextPolygonArrow *pa = getSharedPointer(uiclientid);
+        SN_PolygonArrowPointer *pa = getSharedPointer(uiclientid);
         if (pa) {
             //qDebug() << "UiServer:: wheel" << x << y << 120*tick;
             pa->pointerWheel(QPointF(x, y),  tick);
         }
 		else {
-            qDebug("UiServer::%s() : POINTER_WHEEL  can't find pointer object", __FUNCTION__);
+            qDebug("%s::%s() : POINTER_WHEEL  can't find pointer object",metaObject()->className(), __FUNCTION__);
         }
         break;
     }
@@ -448,8 +449,8 @@ void UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QBy
     } /* end of switch */
 }
 
-void UiServer::removeFinishedThread(quint32 uiclientid) {
-    int removed = uiMsgThreadsMap.remove(uiclientid);
+void SN_UiServer::removeFinishedThread(quint32 uiclientid) {
+    int removed = _uiMsgThreadsMap.remove(uiclientid);
     if ( removed > 1 ) {
         qDebug("UiServer::%s() : %d entries deleted from uiThreadsMap. There were duplicate uiClientId", __FUNCTION__, removed);
     }
@@ -457,13 +458,13 @@ void UiServer::removeFinishedThread(quint32 uiclientid) {
         qDebug("UiServer::%s() : No such uiClientId", __FUNCTION__);
     }
 
-    removed = uiFileRecvRunnableMap.remove(uiclientid);
-    if ( removed > 1 ) {
-        qDebug("UiServer::%s() : %d entries deleted from uiFileRecvThreadsMap. There were duplicate uiClientId", __FUNCTION__, removed);
-    }
-    else if ( removed == 0 ) {
-        qDebug("UiServer::%s() : No such uiClientId", __FUNCTION__);
-    }
+//    removed = uiFileRecvRunnableMap.remove(uiclientid);
+//    if ( removed > 1 ) {
+//        qDebug("UiServer::%s() : %d entries deleted from uiFileRecvThreadsMap. There were duplicate uiClientId", __FUNCTION__, removed);
+//    }
+//    else if ( removed == 0 ) {
+//        qDebug("UiServer::%s() : No such uiClientId", __FUNCTION__);
+//    }
 
 	/*
     removed = appLayoutFlagMap.remove(uiclientid);
@@ -478,10 +479,10 @@ void UiServer::removeFinishedThread(quint32 uiclientid) {
     /* delete shared pointer */
     QGraphicsItem *pa = getSharedPointer(uiclientid);
     if (pa) {
-        if (scene) scene->removeItem(pa);
+        if (_scene) _scene->removeItem(pa);
         delete pa;
 
-        removed = pointers.remove(uiclientid);
+        removed = _pointers.remove(uiclientid);
         if ( removed > 1 ) {
             qDebug("UiServer::%s() : %d entries deleted. There were duplicate uiClientId", __FUNCTION__, removed);
         }
@@ -571,16 +572,16 @@ void UiServer::updateAppLayout() {
 **/
 
 
-UiMsgThread * UiServer::getUiMsgThread(quint32 uiclientid) {
-    QMap<quint32, UiMsgThread*>::iterator it = uiMsgThreadsMap.find(uiclientid);
-    if ( it == uiMsgThreadsMap.end()) return 0;
+UiMsgThread * SN_UiServer::getUiMsgThread(quint32 uiclientid) {
+    QMap<quint32, UiMsgThread*>::iterator it = _uiMsgThreadsMap.find(uiclientid);
+    if ( it == _uiMsgThreadsMap.end()) return 0;
     UiMsgThread *ret = it.value();
     return ret;
 }
 
-SAGENextPolygonArrow * UiServer::getSharedPointer(quint32 uiclientid) {
-    QMap<quint32, SAGENextPolygonArrow *>::iterator it = pointers.find(uiclientid);
-    if ( it == pointers.end() ) return 0;
+SN_PolygonArrowPointer * SN_UiServer::getSharedPointer(quint32 uiclientid) {
+    QMap<quint32, SN_PolygonArrowPointer *>::iterator it = _pointers.find(uiclientid);
+    if ( it == _pointers.end() ) return 0;
     return it.value();
 }
 

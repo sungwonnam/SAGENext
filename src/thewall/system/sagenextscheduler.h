@@ -12,12 +12,12 @@
 #include <QReadWriteLock>
 
 class QEvent;
-class RailawareWidget;
+class SN_RailawareWidget;
 class QGraphicsView;
 class QGraphicsScene;
-class ResourceMonitor;
-class ProcessorNode;
-class AbstractScheduler;
+class SN_ResourceMonitor;
+class SN_ProcessorNode;
+class SN_AbstractScheduler;
 
 /*!
   General key concepts in multimedia scheduling includes
@@ -31,15 +31,15 @@ class AbstractScheduler;
   allocating multiple processing units to task group
   and applying EDF, proportional sharing algorithm for each group
   */
-class SchedulerControl : public QObject
+class SN_SchedulerControl : public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(bool scheduleEnd READ scheduleEnd WRITE setScheduleEnd)
 	Q_ENUMS(Scheduler_Type)
 
 public:
-	explicit SchedulerControl(ResourceMonitor *rm, QObject *parent = 0);
-	~SchedulerControl();
+	explicit SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent = 0);
+	~SN_SchedulerControl();
 
 	/*!
 	  qApp installs this eventFilter  using qApp->installEventFileter(SagenextScheduler *)
@@ -54,9 +54,9 @@ public:
 
 	enum Scheduler_Type {DividerWidget, SelfAdjusting, DelayDistribution, SMART};
 
-	inline void setSchedulerType(SchedulerControl::Scheduler_Type st) {schedType = st;}
+	inline void setSchedulerType(SN_SchedulerControl::Scheduler_Type st) {schedType = st;}
 
-	int launchScheduler(SchedulerControl::Scheduler_Type st, int msec=1000);
+	int launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec=1000);
 	int launchScheduler(const QString &str, int msec=1000);
 	int launchScheduler();
 
@@ -64,11 +64,11 @@ public:
 
 	inline bool isRunning() const {return _isRunning;}
 
-	inline AbstractScheduler * scheduler() {return _scheduler;}
+	inline SN_AbstractScheduler * scheduler() {return _scheduler;}
 
 private:
 	QGraphicsView *gview;
-	ResourceMonitor *resourceMonitor;
+	SN_ResourceMonitor *resourceMonitor;
 
 	bool _scheduleEnd;
 
@@ -84,7 +84,7 @@ private:
 	/*!
 	  scheduler
 	  */
-	AbstractScheduler *_scheduler;
+	SN_AbstractScheduler *_scheduler;
 
 	bool _isRunning;
 
@@ -103,13 +103,13 @@ public slots:
 /*!
   Abstract scheduler class
   */
-class AbstractScheduler : public QThread {
+class SN_AbstractScheduler : public QThread {
 	Q_OBJECT
 //	Q_PROPERTY(bool end READ isEnd WRITE setEnd)
 
 public:
-	explicit AbstractScheduler(ResourceMonitor *rmon, int granularity=2, QObject *parent=0) : QThread(parent), proc(0), rMonitor(rmon), _granularity(granularity) {  }
-	virtual ~AbstractScheduler();
+	explicit SN_AbstractScheduler(SN_ResourceMonitor *rmon, int granularity=2, QObject *parent=0) : QThread(parent), proc(0), rMonitor(rmon), _granularity(granularity) {  }
+	virtual ~SN_AbstractScheduler();
 
 //	inline bool isEnd() const {return _end;}
 //	void setEnd(bool b = true);
@@ -127,21 +127,21 @@ protected:
 	/*!
 	  rail configuration
 	  */
-	virtual int configureRail(RailawareWidget *rw, ProcessorNode *pn);
+	virtual int configureRail(SN_RailawareWidget *rw, SN_ProcessorNode *pn);
 
-	virtual int configureRail(RailawareWidget *rw);
+	virtual int configureRail(SN_RailawareWidget *rw);
 
 	virtual int configureRail();
 
 	/*!
 	  used for per processor scheduler
 	  */
-	ProcessorNode *proc;
+	SN_ProcessorNode *proc;
 
 	/*!
 	  pointer to resource monitor
 	  */
-	ResourceMonitor *rMonitor;
+	SN_ResourceMonitor *rMonitor;
 //	bool _end;
 
 	int _granularity; // in microsecond
@@ -162,10 +162,10 @@ private slots:
 /*!
   Partial implementation of SMART scheduler [Nieh and Lam 2003]
   */
-class SMART_EventScheduler : public AbstractScheduler {
+class SMART_EventScheduler : public SN_AbstractScheduler {
 	Q_OBJECT
 public:
-	explicit SMART_EventScheduler(ResourceMonitor *r, int granularity=2, QObject *parent=0);
+	explicit SMART_EventScheduler(SN_ResourceMonitor *r, int granularity=2, QObject *parent=0);
 //	~SMART_EventScheduler();
 
 protected:
@@ -176,14 +176,14 @@ private:
 	  Scheduler always schedule from workingSet->top() until it isn't empty().
 	  Item in this container is sorted by deadline (ascending order)
 	  */
-	QList<RailawareWidget *> workingSet;
+	QList<SN_RailawareWidget *> workingSet;
 
 	/*!
 	  From the candidate set (processorNode->appList()) which is sorted by importance (priority, BVFT tuple),
 	  a new job (a new event) is inserted into working set in ascending earlist deadline order
 	  only when the new job wouldn't make more important jobs already in the working set miss their deadlines
 	  */
-	int insertIntoWorkingSet(RailawareWidget *, qreal now);
+	int insertIntoWorkingSet(SN_RailawareWidget *, qreal now);
 
 private slots:
 	/*!
@@ -196,10 +196,10 @@ private slots:
 /*!
   Resources are taken away from widget that has lower pirority than the fiducial widget
   */
-class DividerWidgetScheduler : public AbstractScheduler {
+class DividerWidgetScheduler : public SN_AbstractScheduler {
 	Q_OBJECT
 public:
-	explicit DividerWidgetScheduler(ResourceMonitor *r, int granularity = 1000, QObject *parent=0);
+	explicit DividerWidgetScheduler(SN_ResourceMonitor *r, int granularity = 1000, QObject *parent=0);
 
 private:
 	/*!
@@ -226,7 +226,7 @@ private:
 	qreal totalRedundantResource;
 
 
-	RailawareWidget *fiducialWidget;
+	SN_RailawareWidget *fiducialWidget;
 
 public:
 	void setQHighest(qreal qh) ;
@@ -253,10 +253,10 @@ private slots:
   ***************************************************
 
   */
-class SelfAdjustingScheduler : public AbstractScheduler {
+class SN_SelfAdjustingScheduler : public SN_AbstractScheduler {
 	Q_OBJECT
 public:
-	explicit SelfAdjustingScheduler(ResourceMonitor *r, int granularity = 500, QObject *parent=0);
+	explicit SN_SelfAdjustingScheduler(SN_ResourceMonitor *r, int granularity = 500, QObject *parent=0);
 
 	inline qreal getQTH() const {return qualityThreshold;}
 	inline qreal getDecF() const {return decreasingFactor;}
@@ -332,10 +332,10 @@ private slots:
 
   Quality * weight / SUM(weight);
   */
-class DelayDistributionScheduler : public AbstractScheduler {
+class DelayDistributionScheduler : public SN_AbstractScheduler {
 	Q_OBJECT
 public:
-	explicit DelayDistributionScheduler(ResourceMonitor *r, int granularity = 1000, QObject *parent=0);
+	explicit DelayDistributionScheduler(SN_ResourceMonitor *r, int granularity = 1000, QObject *parent=0);
 
 private slots:
 	void doSchedule();

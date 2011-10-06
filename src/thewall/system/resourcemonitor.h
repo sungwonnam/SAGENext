@@ -11,10 +11,10 @@
 
 class QSettings;
 class AffinityInfo;
-class SAGENextSimpleTextItem;
-class BaseWidget;
-class RailawareWidget;
-class SchedulerControl;
+class SN_SimpleTextItem;
+class SN_BaseWidget;
+class SN_RailawareWidget;
+class SN_SchedulerControl;
 //class GraphicsViewMain;
 class ResourceMonitorWidget;
 
@@ -38,11 +38,11 @@ typedef struct {
 /*!
   ProcessorNode class maintains a list of pointers to railaware widgets on a processor that this class represents
   */
-class ProcessorNode
+class SN_ProcessorNode
 {
 public:
-	ProcessorNode(int type, int id);
-	~ProcessorNode();
+	SN_ProcessorNode(int type, int id);
+	~SN_ProcessorNode();
 
 	inline void setNodeType(int t) {nodeType = t;}
 	inline void setID(int i) {id = i;}
@@ -64,11 +64,11 @@ public:
 
 	int getNumWidgets() const;
 
-	inline QList<RailawareWidget *> * appList() {return _appList;}
+	inline QList<SN_RailawareWidget *> * appList() {return _appList;}
 
-	void addApp(RailawareWidget *app);
+	void addApp(SN_RailawareWidget *app);
 	bool removeApp(quint64 appid);
-	bool removeApp(RailawareWidget *);
+	bool removeApp(SN_RailawareWidget *);
 
 	void refresh();
 
@@ -101,7 +101,7 @@ private:
 		/*!
 	  * list of apps running on this cpu
 	  */
-	QList<RailawareWidget *> *_appList;
+	QList<SN_RailawareWidget *> *_appList;
 
 	/*!
 	  ::refresh() updates below members with perf->curr____()
@@ -142,15 +142,15 @@ protected:
 /*!
   ResourceMonitor has list of ProcessorNode classes and responsible for updating widget's processor affinity info.
   */
-class ResourceMonitor : public QObject
+class SN_ResourceMonitor : public QObject
 {
 	Q_OBJECT
 public:
 //	explicit ResourceMonitor( const quint64 gaid,const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wf = 0);
-	explicit ResourceMonitor(const QSettings *s);
-	~ResourceMonitor();
+	explicit SN_ResourceMonitor(const QSettings *s);
+	~SN_ResourceMonitor();
 
-	inline QVector<ProcessorNode *> * getProcVec() const {return procVec;}
+	inline QVector<SN_ProcessorNode *> * getProcVec() const {return procVec;}
 	inline Numa_Info * getNumaInfo() const {return numaInfo;}
 
 	inline void addROIRectF(ROIRectF *f) {roiRectFs.push_back(f);}
@@ -166,32 +166,32 @@ public:
 	/*!
 	  returns current most underloaded processor
 	  */
-	ProcessorNode * getMostUnderloadedProcessor();
+	SN_ProcessorNode * getMostUnderloadedProcessor();
 
-	ProcessorNode * processor(int pid);
-
-	/*!
-	  writer's lock
-	  */
-	void addSchedulableWidget(RailawareWidget *rw);
+	SN_ProcessorNode * processor(int pid);
 
 	/*!
 	  writer's lock
 	  */
-	void removeSchedulableWidget(RailawareWidget *rw);
+	void addSchedulableWidget(SN_RailawareWidget *rw);
+
+	/*!
+	  writer's lock
+	  */
+	void removeSchedulableWidget(SN_RailawareWidget *rw);
 
 	/*!
 	  return a widget with earliest deadline in the list
 	  reader's lock
 	  */
-	RailawareWidget * getEarliestDeadlineWidget();
+	SN_RailawareWidget * getEarliestDeadlineWidget();
 
 	/*!
 	  returns a copy of list
 	  */
-	inline QList<RailawareWidget *> getWidgetList() {return widgetList;}
+	inline QList<SN_RailawareWidget *> getWidgetList() {return widgetList;}
 
-	inline void setScheduler(SchedulerControl *sc) {schedcontrol = sc;}
+	inline void setScheduler(SN_SchedulerControl *sc) {schedcontrol = sc;}
 
 	inline void setRMonWidget(ResourceMonitorWidget *rmw) {_rMonWidget = rmw;}
 	inline ResourceMonitorWidget * rMonWidget() {return _rMonWidget;}
@@ -207,14 +207,14 @@ private:
 	/*!
 	  A list of processors (seen by OS) in this system. Initialized by buildProcVector()
 	  */
-	QVector<ProcessorNode *> *procVec;
+	QVector<SN_ProcessorNode *> *procVec;
 
 	const QSettings *settings;
 
 	/*!
 	  A pointer to the scheduler control object
 	  */
-	SchedulerControl *schedcontrol;
+	SN_SchedulerControl *schedcontrol;
 
 
 //	ProcessorNode * findNode(quint64 appid);
@@ -234,7 +234,7 @@ private:
 	  A list of all schedulable widgets.
 	  Accessing to this list is protected by rwlock
 	  */
-	QList<RailawareWidget *> widgetList;
+	QList<SN_RailawareWidget *> widgetList;
 
 	/*!
 	  read/write lock for accessing widgetList
@@ -277,7 +277,7 @@ public slots:
 	  This function is called at RailawareWidget::fadeOutClose(), it calls ProcessorNode::removeApp()
 	  The signal appRemoved(int) is emitted in this function
 	  */
-	void removeApp(RailawareWidget *);
+	void removeApp(SN_RailawareWidget *);
 
 	/*!
 	  AffinityInfo class has functions that will emit affInfoChanged signal. AffinityInfo::setCpuOfMine(), AffinityInfo::applyNewParameter()
@@ -285,7 +285,7 @@ public slots:
 
 	  Using the affinity info an app passed, app pointer is added/removed to/from processorNode object
 	  */
-	void updateAffInfo(RailawareWidget *, int oldvalue, int newvalue);
+	void updateAffInfo(SN_RailawareWidget *, int oldvalue, int newvalue);
 
 
 	/*!
@@ -296,13 +296,13 @@ public slots:
 	/*!
 	  Assign a processor pn to rw
 	  */
-	int assignProcessor(RailawareWidget *rw, ProcessorNode *pn);
+	int assignProcessor(SN_RailawareWidget *rw, SN_ProcessorNode *pn);
 
 	/*!
 	  Assign the most under loaded processor to rw.
 	  returns assigned processor id, -1 on error.
 	  */
-	int assignProcessor(RailawareWidget *rw);
+	int assignProcessor(SN_RailawareWidget *rw);
 
 	/*!
 	  overloaded function.
@@ -315,7 +315,7 @@ public slots:
 	/*!
 	  set processor affinity for rw to FFFFFFFFF
 	  */
-	void resetProcessorAllocation(RailawareWidget *rw);
+	void resetProcessorAllocation(SN_RailawareWidget *rw);
 
 	/*!
 	  overloaded function.

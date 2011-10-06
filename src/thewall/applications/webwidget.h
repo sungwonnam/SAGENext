@@ -14,7 +14,7 @@ class QGraphicsLinearLayout;
 /**
   * flash video (youtube for example) doesn't work with OpenGL viewport
   */
-class WebWidget : public BaseWidget
+class SN_WebWidget : public SN_BaseWidget
 {
         Q_OBJECT
 
@@ -23,8 +23,8 @@ public:
           * Qt::Window flag is very important in WebWidget
           * Because it enables resizing through widget frames. So there must be some windowFrameMargin
           */
-        WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = Qt::Window);
-        ~WebWidget();
+        SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = Qt::Window);
+        ~SN_WebWidget();
 
 
         /*!

@@ -25,7 +25,7 @@ SOURCES += mousehoverexample.cpp \
 ../../../common/commonitem.cpp
 
 HEADERS  += mousehoverexample.h \
-../../base/dummyplugininterface.h \
+../../base/SN_plugininterface.h \
 ../../base/basewidget.h \
 ../../base/appinfo.h \
 ../../base/perfmonitor.h \

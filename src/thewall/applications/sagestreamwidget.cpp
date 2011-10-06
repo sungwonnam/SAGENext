@@ -23,8 +23,8 @@
 #include <QGLWidget>
 
 
-SageStreamWidget::SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
-    : RailawareWidget(globalappid, s, parent, wFlags)
+SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
+    : SN_RailawareWidget(globalappid, s, parent, wFlags)
     , _settings(s)
     , _fsmMsgThread(0)
     , _sailAppProc(0)
@@ -45,13 +45,12 @@ SageStreamWidget::SageStreamWidget(QString filename, const quint64 globalappid, 
 	_appInfo->setFileInfo(filename);
 	_appInfo->setSrcAddr(senderIP);
 
-
 	connect(&_initReceiverWatcher, SIGNAL(finished()), this, SLOT(startReceivingThread()));
 }
 
 
 
-SageStreamWidget::~SageStreamWidget()
+SN_SageStreamWidget::~SN_SageStreamWidget()
 {
 //    qDebug() << _globalAppId << "begin destructor" << QTime::currentTime().toString("hh:mm:ss.zzz");
 
@@ -130,18 +129,20 @@ SageStreamWidget::~SageStreamWidget()
     qDebug("SageStreamWidget::%s() ",  __FUNCTION__);
 }
 
-void SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
+void SN_SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
         _fsmMsgThread = thread;
         _fsmMsgThread->start();
 }
 
 
-void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
+void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 
 	if (_perfMon) {
 		_perfMon->getDrawTimer().start();
 		//perfMon->startPaintEvent();
 	}
+
+	SN_BaseWidget::paint(painter,o,w);
 
 
 	//	if ( currentScale != 1.0 ) painter->scale(currentScale, currentScale);
@@ -166,9 +167,6 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 
 //	 if (!image2.isNull()  &&  isVisible())
 //		 painter->drawImage(0, 0, image2);
-
-
-	BaseWidget::paint(painter,o,w);
 
 
 	if (_perfMon)
@@ -233,7 +231,7 @@ void SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 
 
 
-void SageStreamWidget::scheduleReceive() {
+void SN_SageStreamWidget::scheduleReceive() {
 //	qDebug() << "widget wakeOne";
 //	if(wc) wc->wakeOne();
 	receiverThread->receivePixel();
@@ -242,7 +240,7 @@ void SageStreamWidget::scheduleReceive() {
 /**
   * this slot connected to the signal PixelReceiver::frameReceived()
   */
-void SageStreamWidget::scheduleUpdate() {
+void SN_SageStreamWidget::scheduleUpdate() {
     //	struct timeval s,e;
     //	gettimeofday(&s, 0);
     QImage *imgPtr = 0;
@@ -327,10 +325,10 @@ void SageStreamWidget::scheduleUpdate() {
 
 
 
-void SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port) {
+void SN_SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port) {
 //	qDebug() << "\nRunning waitForPixelStreamConnection";
 	_sageAppId = sageappid;
-	_initReceiverFuture = QtConcurrent::run(this, &SageStreamWidget::waitForPixelStreamerConnection, protocol, port, appname);
+	_initReceiverFuture = QtConcurrent::run(this, &SN_SageStreamWidget::waitForPixelStreamerConnection, protocol, port, appname);
 	_initReceiverWatcher.setFuture(_initReceiverFuture);
 }
 
@@ -338,7 +336,7 @@ void SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appname,
 
 
 
-void SageStreamWidget::startReceivingThread() {
+void SN_SageStreamWidget::startReceivingThread() {
 	Q_ASSERT(streamsocket > 0);
 	Q_ASSERT(doubleBuffer);
 
@@ -368,7 +366,7 @@ void SageStreamWidget::startReceivingThread() {
 
 
 
-int SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, const QString &appname) {
+int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, const QString &appname) {
 	_streamProtocol = protocol;
 
 	/* accept connection from sageStreamer */
@@ -487,7 +485,7 @@ int SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, con
 
     _appInfo->setExecutableName( appname );
     if ( appname == "imageviewer" ) {
-		_appInfo->setMediaType(MEDIA_TYPE_IMAGE);
+		_appInfo->setMediaType(SAGENext::MEDIA_TYPE_IMAGE);
     }
     else {
 		// this is done in the Launcher
@@ -499,7 +497,7 @@ int SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, con
 }
 
 
-int SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
+int SN_SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
     int bytePerPixel = getPixelSize(pixfmt);
     int memwidth = resX * bytePerPixel; //Byte (single row of frame)
 
@@ -571,7 +569,7 @@ int SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
 }
 
 
-int SageStreamWidget::getPixelSize(sagePixFmt type)
+int SN_SageStreamWidget::getPixelSize(sagePixFmt type)
 {
    int bytesPerPixel = 0;
    switch(type) {

@@ -3,7 +3,7 @@
 #include "sagenextscene.h"
 #include "applications/base/basewidget.h"
 
-SAGENextViewport::SAGENextViewport(SAGENextScene *s, int viewportId, SAGENextLauncher *l, QWidget *parent) :
+SN_Viewport::SN_Viewport(SN_TheScene *s, int viewportId, SN_Launcher *l, QWidget *parent) :
     QGraphicsView(s, parent),
     _viewportID(viewportId),
     _fdialog(0),
@@ -39,11 +39,11 @@ SAGENextViewport::SAGENextViewport(SAGENextScene *s, int viewportId, SAGENextLau
 	}
 }
 
-SAGENextViewport::~SAGENextViewport() {
+SN_Viewport::~SN_Viewport() {
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
 
-void SAGENextViewport::on_actionOpen_Media_triggered()
+void SN_Viewport::on_actionOpen_Media_triggered()
 {
 	if ( _fdialog && _fdialog->isHidden())
 		_fdialog->show();

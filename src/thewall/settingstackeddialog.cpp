@@ -250,6 +250,18 @@ void GraphicsSettingDialog::accept() {
 	_settings->setValue("graphics/viewportupdatemode", ui->viewportUpdateComboBox->currentText());
 }
 
+
+void GraphicsSettingDialog::on_openglviewportCheckBox_stateChanged(int)
+{
+	if ( ui->openglviewportCheckBox->isChecked() ) {
+		ui->viewportUpdateComboBox->setEnabled(false);
+		ui->viewportUpdateComboBox->setCurrentIndex( ui->viewportUpdateComboBox->findText("full") );
+	}
+	else {
+		ui->viewportUpdateComboBox->setEnabled(true);
+	}
+}
+
 GraphicsSettingDialog::~GraphicsSettingDialog() {delete ui;}
 
 
@@ -472,5 +484,6 @@ void SettingStackedDialog::on_buttonBox_rejected()
 {
 	::exit(1);
 }
+
 
 

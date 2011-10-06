@@ -4,16 +4,16 @@
 #include <QtGui>
 #include <QtWebKit>
 
-WebWidget::WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent /*0*/, Qt::WindowFlags wFlags/* Qt::Window */)
-    : BaseWidget(gaid, setting, parent, wFlags)
+SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent /*0*/, Qt::WindowFlags wFlags/* Qt::Window */)
+    : SN_BaseWidget(gaid, setting, parent, wFlags)
     , linearLayout(0)
     , gwebview(0)
     , urlbox(0)
     , urlboxproxy(0)
 {
-	setWidgetType(BaseWidget::Widget_Web);
+	setWidgetType(SN_BaseWidget::Widget_Web);
 
-	_appInfo->setMediaType(MEDIA_TYPE_WEBURL);
+	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_WEBURL);
 
         /**
           When you create a child item, it is by default top most item (stacking on top of the parent)
@@ -103,7 +103,7 @@ WebWidget::WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem
 }
 
 
-WebWidget::~WebWidget() {
+SN_WebWidget::~SN_WebWidget() {
 //	if ( gwebview ) delete gwebview;
 //	delete urlbox;
 
@@ -122,7 +122,7 @@ WebWidget::~WebWidget() {
   Because what this function does is intercepting events delivered to its children, the events must be delivered to the children.
   Therefore, this function won't work if childs are stacked behind the parent (WebWidget)
  */
-bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
+bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 
 	//
 	// I'll only filter events delivered to the gwebview
@@ -134,7 +134,7 @@ bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 		if ( event->type() == QEvent::GraphicsSceneContextMenu) {
 			QGraphicsSceneContextMenuEvent *e = static_cast<QGraphicsSceneContextMenuEvent *>(event);
 
-			BaseWidget::contextMenuEvent(e);
+			SN_BaseWidget::contextMenuEvent(e);
 
 			//
 			// Don't forward this event to gwebview
@@ -148,7 +148,7 @@ bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 			//
 			// First, deliver this event to BaseWidget to keep the behaviors defined in the BaseWidget
 			//
-			BaseWidget::mousePressEvent((QGraphicsSceneMouseEvent *)event);
+			SN_BaseWidget::mousePressEvent((QGraphicsSceneMouseEvent *)event);
 
 			//
 			// The press event should reach to gwebview otherwise no mouse click can be done on gwebview.
@@ -159,7 +159,7 @@ bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 
 		else if (event->type() == QEvent::GraphicsSceneMouseDoubleClick) {
 //			qDebug() << "webwidget received doubleClick event";
-			BaseWidget::mouseDoubleClickEvent((QGraphicsSceneMouseEvent *)event);
+			SN_BaseWidget::mouseDoubleClickEvent((QGraphicsSceneMouseEvent *)event);
 
 			//
 			// gwebview will not handle doubleclick
@@ -186,7 +186,7 @@ bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 
 	if (watched == urlboxproxy) {
 		if (event->type() == QEvent::GraphicsSceneMousePress)
-			BaseWidget::setTopmost();
+			SN_BaseWidget::setTopmost();
 	}
 
 	return false; // All other events won't be filtered by WebWidget
@@ -197,14 +197,14 @@ bool WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 /**
  If mouse wheel events are occuring on gwebview then below won't be called anyway
  */
-void WebWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
+void SN_WebWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
         // WebWidget will not respond to this event.
         // shouldn't do anything..
 	event->ignore();
 }
 
 
-void WebWidget::pageLoaded() {
+void SN_WebWidget::pageLoaded() {
 	//	qDebug() << ";sfkja;fklasjdf;";
 	//	gwebview->setContent( gwebview->page()->mainFrame()->toHtml().toAscii() );
 
@@ -214,7 +214,7 @@ void WebWidget::pageLoaded() {
 	update(); // schedule paint()
 }
 
-void WebWidget::setUrl(const QString &u) {
+void SN_WebWidget::setUrl(const QString &u) {
 	QUrl url;
 	if ( u.startsWith("http://", Qt::CaseInsensitive) || u.startsWith("https://", Qt::CaseInsensitive) ) {
 		url.setUrl(u, QUrl::TolerantMode);
@@ -248,11 +248,11 @@ void WebWidget::setUrl(const QString &u) {
 	}
 }
 
-void WebWidget::setUrlFromLineEdit() {
+void SN_WebWidget::setUrlFromLineEdit() {
 	setUrl(urlbox->text());
 }
 
-void WebWidget::urlChanged(const QUrl &url) {
+void SN_WebWidget::urlChanged(const QUrl &url) {
 	urlbox->setText( url.toString());
 }
 

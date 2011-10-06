@@ -15,10 +15,10 @@ namespace Ui {
   Note that this class inherits QWidget not the BaseWidget.
   Also, proxywidget performs bad in QGraphics framework.
   */
-class InteractiveAppExample : public QWidget, DummyPluginInterface
+class InteractiveAppExample : public QWidget, SN_PluginInterface
 {
 	Q_OBJECT
-	Q_INTERFACES(DummyPluginInterface)
+	Q_INTERFACES(SN_PluginInterface)
 
 public:
 	/*!
