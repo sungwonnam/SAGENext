@@ -19,12 +19,13 @@ class QGraphicsItem;
 class BaseWidget;
 class SageStreamWidget;
 class SAGENextPolygonArrow;
+class MediaStorage;
 
 class SAGENextLauncher : public QObject
 {
         Q_OBJECT
 public:
-        explicit SAGENextLauncher(const QSettings *s, SAGENextScene *scene, ResourceMonitor *rm = 0, SchedulerControl *sc = 0, QFile *scenarioFile = 0, QObject *parent = 0);
+        explicit SAGENextLauncher(const QSettings *s, SAGENextScene *scene, MediaStorage *mediaStorage, ResourceMonitor *rm = 0, SchedulerControl *sc = 0, QObject *parent = 0);
         ~SAGENextLauncher();
 
 	/**
@@ -45,6 +46,11 @@ private:
           The pointer to the scene
           */
         SAGENextScene *_scene;
+
+        /**
+          Pointer to the mediastorage
+          */
+        MediaStorage *_mediaStorage;
 
         /**
           fsServer::checkClient()

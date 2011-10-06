@@ -1,4 +1,5 @@
 #include "mediabrowser.h"
+#include "mediastorage.h"
 #include "../sagenextlauncher.h"
 
 
@@ -31,18 +32,23 @@ void MediaItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 
 
 
-MediaBrowser::MediaBrowser(SAGENextLauncher *launcher, quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
+MediaBrowser::MediaBrowser(SAGENextLauncher *launcher, quint64 globalappid, const QSettings *s, MediaStorage* mediaStorage, QGraphicsItem *parent, Qt::WindowFlags wflags)
 
     : BaseWidget(globalappid, s, parent, wflags)
     , _HScrollBar(new QScrollBar(Qt::Horizontal))
     , _VScrollBar(new QScrollBar(Qt::Vertical))
     , _launcher(launcher)
+    , _mediaStorage(mediaStorage)
     , _numRow(10)
     , _numCol(10)
 {
     setWidgetType(BaseWidget::Widget_Misc);
 
+    qDebug("%s::%s() : called.", metaObject()->className(), __FUNCTION__);
+
     _currentDirectory.setPath(QDir::homePath().append("/.sagenext"));
+
+    connect( _mediaStorage, SIGNAL(newMediaAdded()), this, SLOT(mediaStorageHasNewMedia()) );
 }
 
 MediaBrowser::~MediaBrowser() {
@@ -67,19 +73,31 @@ void MediaBrowser::attachItems() {
 
 
     MediaBrowser::mediaHashRWLock.lockForRead();
+    mediaHash = _mediaStorage->getMediaHash();
+    QHashIterator<QString, QPixmap> i(mediaHash);
+    int count = 0;
+    while (i.hasNext()) {
+        i.next();
+        qDebug() << i.key();
+        QPixmap pm = MediaBrowser::mediaHash.value(i.key());
 
-    foreach (QFileInfo fileinfo, _currentDirectory.entryInfoList(QDir::Files | QDir::Dirs)) {
-
-        if (fileinfo.isDir()) {
-            // directory icon
-        }
-        else if (fileinfo.isFile()) {
-            QPixmap pm = MediaBrowser::mediaHash.value(fileinfo.absoluteFilePath());
-            MediaItem *item = new MediaItem(fileinfo.absoluteFilePath(), pm.scaled(256, 256), this);
-//            item->moveBy(x, y);
-        }
-
+        MediaItem *item = new MediaItem(i.key(), pm.scaled(256, 256), this);
+        item->moveBy(256 * count, 0);
+        count++;
     }
+
+//    foreach (QFileInfo fileinfo, _currentDirectory.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDot)) {
+
+//        if (fileinfo.isDir()) {
+//            // directory icon
+//        }
+//        else if (fileinfo.isFile()) {
+//            QPixmap pm = MediaBrowser::mediaHash.value(fileinfo.absoluteFilePath());
+//            MediaItem *item = new MediaItem(fileinfo.absoluteFilePath(), pm.scaled(256, 256), this);
+////            item->moveBy(x, y);
+//        }
+
+//    }
 
     MediaBrowser::mediaHashRWLock.unlock();
 }
@@ -87,4 +105,14 @@ void MediaBrowser::attachItems() {
 void MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
 
     // paint will just draw windows border for users to move/resize window
+}
+
+/*!
+  Slot called when MediaStorage has new media.
+  MediaBrowser will then update itself to account for new media.
+  TODO: Specify by user if there are multiple MediaBrowsers?
+ */
+void MediaBrowser::mediaStorageHasNewMedia(){
+    qDebug() << "MediaBrowser has been informed of changes to MediaStorage";
+    attachItems();
 }

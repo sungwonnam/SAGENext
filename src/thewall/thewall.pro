@@ -131,6 +131,7 @@ SOURCES += \
         main.cpp \
 #        settingdialog.cpp \
 #	graphicsviewmainwindow.cpp \
+        mediastorage.cpp \
         common/commonitem.cpp \
 #        common/thumbnailthread.cpp \
         common/imagedoublebuffer.cpp \
@@ -147,6 +148,7 @@ SOURCES += \
         applications/pixmapwidget.cpp \
         applications/sagestreamwidget.cpp \
         applications/sagepixelreceiver.cpp \
+        applications/mediabrowser.cpp \
         applications/vncwidget.cpp \
 		applications/pdfviewerwidget.cpp \
         applications/base/perfmonitor.cpp \
@@ -158,7 +160,7 @@ SOURCES += \
         sagenextscene.cpp \
         sagenextviewport.cpp \
         sagenextlauncher.cpp \
-    	settingstackeddialog.cpp
+        settingstackeddialog.cpp
 
 HEADERS += \
 #        settingdialog.h \
@@ -191,7 +193,8 @@ HEADERS += \
         sagenextscene.h \
         sagenextviewport.h \
         sagenextlauncher.h \
-#    applications/mediabrowser.h \
+        mediastorage.h \
+    applications/mediabrowser.h \
     settingstackeddialog.h
 
 

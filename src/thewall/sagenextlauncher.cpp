@@ -1,5 +1,6 @@
 #include "sagenextlauncher.h"
 #include "sagenextscene.h"
+#include "mediastorage.h"
 
 #include "common/commonitem.h"
 
@@ -21,14 +22,14 @@
 #include "applications/base/dummyplugininterface.h"
 
 
-SAGENextLauncher::SAGENextLauncher(const QSettings *s, SAGENextScene *scene, ResourceMonitor *rm /*= 0*/, SchedulerControl *sc /* = 0*/, QFile *scenarioFile, QObject *parent /*0*/)
+SAGENextLauncher::SAGENextLauncher(const QSettings *s, SAGENextScene *scene, MediaStorage *mediaStorage, ResourceMonitor *rm /*= 0*/, SchedulerControl *sc /* = 0*/, QObject *parent /*0*/)
 	: QObject(parent)
 	, _settings(s)
 	, _globalAppId(1)
 	, _scene(scene)
+        , _mediaStorage(mediaStorage)
 	, _rMonitor(rm)
 	, _schedCtrl(sc)
-	, _scenarioFile(scenarioFile)
 {
 	Q_ASSERT(_settings);
 	Q_ASSERT(_scene);
@@ -155,6 +156,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, const QPointF 
 			//QFuture<bool> future = QtConcurrent::run(this, &SAGENextLauncher::fileReceivingFunction, type, filename, fsize, senderIP, recvIP, recvPort);
 
 			w = new PixmapWidget(fsize, senderIP, recvIP, recvPort, _globalAppId, _settings);
+                        _mediaStorage->insertNewMediaToHash(filename);
 		}
 
 		//
@@ -164,6 +166,7 @@ BaseWidget * SAGENextLauncher::launch(int type, QString filename, const QPointF 
 
 //			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			w = new PixmapWidget(filename, _globalAppId, _settings);
+                        _mediaStorage->insertNewMediaToHash(filename);
 		}
 		else
 			qCritical("%s::%s() : MEDIA_TYPE_IMAGE can't open", metaObject()->className(), __FUNCTION__);

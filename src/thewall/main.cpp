@@ -6,11 +6,13 @@
 #include "sagenextscene.h"
 #include "sagenextviewport.h"
 #include "sagenextlauncher.h"
+#include "mediastorage.h"
 
 #include "uiserver/uiserver.h"
 #include "uiserver/fileserver.h"
 
 #include "applications/base/affinityinfo.h"
+#include "applications/mediabrowser.h"
 
 #include "system/sagenextscheduler.h"
 #include "system/resourcemonitor.h"
@@ -83,8 +85,8 @@ int main(int argc, char *argv[])
       QImage::Format_ARGB32_Premultiplied, QImage::Format_RGB32 or QImage::Format_RGB16
 	  And use QImage as a paintdevice
 	***/
-	QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
-//	QApplication::setGraphicsSystem( "raster" );
+//	QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
+        QApplication::setGraphicsSystem( "raster" );
 
 	QApplication a(argc, argv);
 
@@ -329,9 +331,14 @@ int main(int argc, char *argv[])
 	}
 
 
+        /**
+          create the MediaStorage
+         */
+        MediaStorage *mediaStorage = new MediaStorage();
+
 	/**
 	  create the launcher
-      */
+         */
 	QFile *scenarioFile = 0;
 	if (s.value("misc/record_launcher", false).toBool() ||  s.value("misc/record_pointer", false).toBool()) {
 
@@ -351,7 +358,7 @@ int main(int argc, char *argv[])
 		sprintf(buffer, "%lld\n", time);
 		scenarioFile->write(buffer); // fill the first line
 	}
-	SAGENextLauncher *launcher = new SAGENextLauncher(&s, scene, resourceMonitor, schedcontrol, scenarioFile, scene); // scene is the parent
+        SAGENextLauncher *launcher = new SAGENextLauncher(&s, scene, mediaStorage, resourceMonitor, schedcontrol, scene); // scene is the parent
 
 
 	/**
@@ -359,6 +366,14 @@ int main(int argc, char *argv[])
 	 */
 	UiServer *uiserver = new UiServer(&s, launcher, scene);
 	scene->setUiServer(uiserver);
+
+
+        /**
+          create the initial MediaBrowser
+         */
+        MediaBrowser *mediaBrowser = new MediaBrowser(launcher,(quint64)-41, &s, mediaStorage);
+        launcher->launch(mediaBrowser);
+
 
 	/**
 	  create the FileServer

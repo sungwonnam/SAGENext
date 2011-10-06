@@ -7,7 +7,7 @@
 #include <QtCore>
 
 class SAGENextLauncher;
-
+class MediaStorage;
 
 /**
   pointer click will trigger SAGENextLaunch::launch()
@@ -35,7 +35,7 @@ class MediaBrowser : public BaseWidget
 {
     Q_OBJECT
 public:
-    explicit MediaBrowser(SAGENextLauncher *launcher, quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = Qt::Window);
+    explicit MediaBrowser(SAGENextLauncher *launcher, quint64 globalappid, const QSettings *s, MediaStorage* mediaStorage, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = Qt::Window);
     ~MediaBrowser();
 
     /**
@@ -58,6 +58,7 @@ private:
     QScrollBar *_VScrollBar;
 
     SAGENextLauncher *_launcher;
+    MediaStorage* _mediaStorage;
 
     /**
       how many thumbnails
@@ -76,7 +77,7 @@ private:
     void attachItems();
 
 public slots:
-
+    void mediaStorageHasNewMedia();
 
 };
 
