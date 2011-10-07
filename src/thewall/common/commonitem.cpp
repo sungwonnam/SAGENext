@@ -761,7 +761,28 @@ void SN_SimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem 
 
 
 
+SN_SimpleTextWidget::SN_SimpleTextWidget(int pointSize, const QColor &fontcolor, const QColor &bgcolor, QGraphicsItem *parent)
+	: QGraphicsWidget(parent, Qt::Widget)
+	, _textItem(0)
+{
+	setAttribute(Qt::WA_DeleteOnClose, true);
 
+	setFlag(QGraphicsItem::ItemIsSelectable, false);
+	setFlag(QGraphicsItem::ItemIsMovable, false);
+	setFlag(QGraphicsItem::ItemHasNoContents, true);
+
+	setAcceptedMouseButtons(0);
+
+	_textItem = new SN_SimpleTextItem(pointSize, fontcolor, bgcolor, this);
+//	resize(_textItem->boundingRect().size());
+}
+
+void SN_SimpleTextWidget::setText(const QString &text) {
+	if (_textItem) {
+		_textItem->setText(text);
+		resize(_textItem->boundingRect().size());
+	}
+}
 
 
 

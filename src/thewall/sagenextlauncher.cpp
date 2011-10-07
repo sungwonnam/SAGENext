@@ -538,6 +538,19 @@ void SN_Launcher::launchSavedSession(const QString &sessionfilename) {
 	_scene->loadSession(in, this);
 
 	f.close();
+
+	SN_SimpleTextWidget *text = new SN_SimpleTextWidget(_settings->value("gui/fontpointsize",20).toInt() * 4, QColor(Qt::white), QColor(64, 64, 64, 128));
+	text->setText("Saved session\n" + sessionfilename + "\nhas loaded");
+	QPropertyAnimation *anim = new QPropertyAnimation(text, "opacity", text);
+	anim->setStartValue(1.0);
+	anim->setEndValue(0.0);
+	anim->setEasingCurve(QEasingCurve::InExpo);
+	anim->setDuration(1500);
+	connect(anim, SIGNAL(finished()), text, SLOT(close()));
+
+	_scene->addItem(text);
+	text->setPos( (_scene->width()-text->size().width())/2 , (_scene->height()-text->size().height())/2 );
+	anim->start();
 }
 
 void SN_Launcher::launchRecording(const QString &scenarioFilename) {
