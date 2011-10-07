@@ -73,7 +73,8 @@ void SN_PixmapWidget::start() {
         QThreadPool::globalInstance()->start(static_cast<QRunnable *>(this));
         **/
 
-	setCacheMode(QGraphicsItem::ItemCoordinateCache);
+	// this is the best in E8400 (raster backend, opengl viewport (Xinerama))
+	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
 
 	futureWatcher = new QFutureWatcher<bool>(this);

@@ -38,6 +38,18 @@ public:
     explicit SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, const QSettings *s, SN_MediaStorage* mediaStorage, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = Qt::Window);
     ~SN_MediaBrowser();
 
+
+	/**
+	  This is to distinguish user application from other items in the scene.
+	  User applications have UserType + 12
+
+	  Items reside between UserType < x < UserType + 12 are items that inherits SN_BaseWidget but not a user application.
+	  */
+	enum { Type = QGraphicsItem::UserType + 11 };
+    virtual int type() const { return Type;}
+
+
+
     /**
       This slot can be access by SAGENextLauncher when a user uploaded a new media file
       There can be multiple mediaBrowsers so use rwlock to access hash.

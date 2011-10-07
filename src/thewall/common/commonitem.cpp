@@ -523,7 +523,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
 
         if ( item->type() >= QGraphicsItem::UserType + 12) {
 			//
-			// User application (BaseWidget)
+			// User application (SN_BaseWidget)
 			//
             _basewidget = static_cast<SN_BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
@@ -532,12 +532,13 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
         }
 		else if (item->type() > QGraphicsItem::UserType) {
 			//
-			// custom type. So this custom type should be less than UserType + 12
+			// custom item that inherits SN_BaseWidget. (SN_MediaBrowser is UserType + 11)
+			// So this custom type should be less than UserType + 12
 			//
 		}
 		else {
 			//
-			// regualar graphics items, All the PixmapButton, PartitionBar
+			// regualar graphics items, All the SN_PixmapButton, SN_WallPartitionBar
 			//
 			_item = item;
 //			qDebug() << _item;

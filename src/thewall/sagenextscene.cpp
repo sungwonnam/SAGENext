@@ -201,7 +201,10 @@ void SN_TheScene::saveSession() {
 		// just save widget states
 		//
 		foreach(QGraphicsItem *item, items()) {
+
+			// only consider user application
 			if (!item || item->type() < QGraphicsItem::UserType + 12 ) continue;
+
 			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 			if (!bw) continue;
 
@@ -212,16 +215,17 @@ void SN_TheScene::saveSession() {
 
 			// video, image, pdf, plugin, web have filename
 			if (ai->fileInfo().exists()) {
-				qDebug() << "SN_TheScene::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->mediaFilename();
 				out << ai->mediaFilename();
+				qDebug() << "SN_TheScene::saveSession() : " << QString("ITEM") << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->mediaFilename();
 			}
 			else if (!ai->webUrl().isEmpty()) {
-				qDebug() << "SN_TheScene::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->webUrl().toString();
 				out << ai->webUrl().toString();
+				qDebug() << "SN_TheScene::saveSession() : " << QString("ITEM") << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->webUrl().toString();
 			}
 			// vnc doesn't have filename
 			else {
 				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+				qDebug() << "SN_TheScene::saveSession() : " << QString("ITEM") << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
 			}
 
 			///
@@ -238,13 +242,16 @@ void SN_TheScene::loadSession(QDataStream &in, SN_Launcher *launcher) {
 		_rootLayoutWidget->loadSession(in, launcher);
 	}
 	else {
-		QString header;
+		QString header; /// ITEM
 		int mtype;
 		QPointF scenepos;
 		QSizeF size;
 		qreal scale;
 		while (!in.atEnd()) {
-			in >> header >> mtype >> scenepos >> size >> scale;
+			in >> header;
+			if (header != "ITEM") continue;
+
+			in >> mtype >> scenepos >> size >> scale;
 	//		qDebug() << "\tentry : " << mtype << scenepos << size << scale;
 
 			QString file;
@@ -476,6 +483,32 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	}
 }
 
+void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) {
+//	QGraphicsLinearLayout *linear = new QGraphicsLinearLayout(orientation);
+//	linear->setContentsMargins(0, 0, 0, 0);
+
+	QRectF first;
+	QRectF second;
+
+	QRectF br = boundingRect();
+	if (dividerOrientation == Qt::Horizontal) {
+		//
+		// bar is horizontal, partition is Top and Bottom (same X pos)
+		//
+		first = QRectF(br.topLeft(), QSizeF(br.width(), br.height()/2));
+		second = QRectF(br.left(), 0, br.width(), br.height()/2);
+	}
+	else {
+		//
+		// bar is vertical, partition is Left and Right (same Y pos)
+		//
+		first = QRectF(br.topLeft(), QSizeF(br.width()/2, br.height()));
+		second = QRectF(0, br.top(), br.width()/2, br.height());
+	}
+
+	createChildPartitions(dividerOrientation, first, second);
+}
+
 void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, const QRectF &first, const QRectF &second) {
 	// create PartitionBar child item
 	_bar = new SN_WallPartitionBar(dividerOrientation, this, this);
@@ -527,31 +560,7 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 	if (_xButton) _xButton->hide();
 }
 
-void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) {
-//	QGraphicsLinearLayout *linear = new QGraphicsLinearLayout(orientation);
-//	linear->setContentsMargins(0, 0, 0, 0);
 
-	QRectF first;
-	QRectF second;
-
-	QRectF br = boundingRect();
-	if (dividerOrientation == Qt::Horizontal) {
-		//
-		// bar is horizontal, partition is Top and Bottom (same X pos)
-		//
-		first = QRectF(br.topLeft(), QSizeF(br.width(), br.height()/2));
-		second = QRectF(br.left(), 0, br.width(), br.height()/2);
-	}
-	else {
-		//
-		// bar is vertical, partition is Left and Right (same Y pos)
-		//
-		first = QRectF(br.topLeft(), QSizeF(br.width()/2, br.height()));
-		second = QRectF(0, br.top(), br.width()/2, br.height());
-	}
-
-	createChildPartitions(dividerOrientation, first, second);
-}
 
 void SN_LayoutWidget::adjustBar() {
 	Q_ASSERT(_bar);
@@ -631,10 +640,116 @@ void SN_LayoutWidget::setButtonPos() {
 
 void SN_LayoutWidget::saveSession(QDataStream &out) {
 
+	if (_bar) {
+		out << QString("LAYOUT");
+		if (_bar->orientation() == Qt::Horizontal)
+			out << 0;
+		else
+			out << 1;
+
+		out << _firstChildLayout->pos() << _firstChildLayout->size() << _secondChildLayout->pos() << _secondChildLayout->size();
+		_firstChildLayout->saveSession(out);
+		_secondChildLayout->saveSession(out);
+	}
+	else {
+		foreach(QGraphicsItem *item, childItems()) {
+			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _firstChildLayout || item == _secondChildLayout) {
+				continue;
+			}
+
+			// only consider user application
+			if (item->type() < QGraphicsItem::UserType + 12 ) continue;
+
+			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+			if (!bw) continue;
+
+			AppInfo *ai = bw->appInfo();
+			out << QString("ITEM");
+			//
+			// item's pos() is saved. not the scenePos()
+			//
+			out << (int)ai->mediaType() << bw->pos() << bw->size() << bw->scale();
+
+			// video, image, pdf, plugin, web have filename
+			if (ai->fileInfo().exists()) {
+				out << ai->mediaFilename();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->mediaFilename();
+			}
+			else if (!ai->webUrl().isEmpty()) {
+				out << ai->webUrl().toString();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->webUrl().toString();
+			}
+			// vnc doesn't have filename
+			else {
+				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+			}
+		}
+		out << QString("RETURN");
+	}
 }
 
 void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
+	QString header;
+	in >> header;
 
+	if (header == "LAYOUT") {
+		int orien;
+		in >> orien;
+
+		QPointF pos1, pos2;
+		QSizeF size1, size2;
+		in >> pos1 >> size1 >> pos2 >> size2;
+
+		if (orien==0)
+			createChildPartitions(Qt::Horizontal, QRectF(pos1, size1), QRectF(pos2, size2));
+		else
+			createChildPartitions(Qt::Vertical, QRectF(pos1, size1), QRectF(pos2, size2));
+
+		_firstChildLayout->loadSession(in, launcher);
+		_secondChildLayout->loadSession(in, launcher);
+	}
+	else if (header == "ITEM") {
+		int mtype;
+		QPointF pos;
+		QSizeF size;
+		qreal scale;
+
+
+		in >> mtype >> pos >> size >> scale;
+		//qDebug() << "\tentry : " << mtype << scenepos << size << scale;
+
+		QString file;
+		QString user;
+		QString pass;
+		QString srcaddr;
+
+		SN_BaseWidget *bw = 0;
+
+		if (mtype == SAGENext::MEDIA_TYPE_VNC) {
+			in >> srcaddr >> user >> pass;
+			bw = launcher->launch(user, pass, 0, srcaddr, 10, pos);
+		}
+		else {
+			in >> file;
+			bw = launcher->launch(mtype, file, pos);
+		}
+		if (!bw) {
+			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << pos << size << scale;
+		}
+		else {
+			bw->resize(size);
+			bw->setScale(scale);
+		}
+
+		loadSession(in, launcher);
+	}
+	else if (header == "RETURN") {
+		qDebug("%s::%s() : RETURN", metaObject()->className(), __FUNCTION__);
+	}
+	else {
+		qDebug("%s::%s() : Unknown entry", metaObject()->className(), __FUNCTION__);
+	}
 }
 
 QRectF SN_LayoutWidget::boundingRect() const {
