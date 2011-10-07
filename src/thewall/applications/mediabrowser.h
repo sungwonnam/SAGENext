@@ -64,7 +64,7 @@ public:
       This slot can be access by SAGENextLauncher when a user uploaded a new media file
       There can be multiple mediaBrowsers so use rwlock to access hash.
       */
-    static int insertNewMediaToHash(const QString &key, QPixmap &pixmap);
+    static void insertNewMediaToHash(const QString &key, QPixmap &pixmap);
 
     inline SN_Launcher * launcher() {return _launcher;}
 

@@ -75,7 +75,7 @@ SN_MediaBrowser::~SN_MediaBrowser() {
 
 }
 
-int SN_MediaBrowser::insertNewMediaToHash(const QString &key, QPixmap &pixmap) {
+void SN_MediaBrowser::insertNewMediaToHash(const QString &key, QPixmap &pixmap) {
     SN_MediaBrowser::mediaHashRWLock.lockForWrite();
     SN_MediaBrowser::mediaHash.insert(key, pixmap);
     SN_MediaBrowser::mediaHashRWLock.unlock();
@@ -93,7 +93,7 @@ void SN_MediaBrowser::attachItems() {
 
 
     SN_MediaBrowser::mediaHashRWLock.lockForRead();
-    mediaHash = _mediaStorage->getMediaHash();
+    mediaHash = _mediaStorage->getMediaHashForRead();
     QHashIterator<QString, QPixmap> i(mediaHash);
     int count = 0;
     while (i.hasNext()) {

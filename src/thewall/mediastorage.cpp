@@ -9,6 +9,19 @@ SN_MediaStorage::SN_MediaStorage(const QSettings *s, QObject *parent)
     : QObject(parent)
     , _settings(s)
 {
+
+	int nummedia = initMediaHash();
+	qWarning() << "SN_MediaStorage : initialized" << nummedia << "items";
+}
+
+int SN_MediaStorage::initMediaHash() {
+	int numread = 0;
+
+	// iterate over $(HOME)/.sagenext/media and build hash
+
+	// also iterate over $(HOME)/.sagenext/sessions and build hash for the saved sessions too
+
+	return numread;
 }
 
 bool SN_MediaStorage::insertNewMediaToHash(const QString &key) {
@@ -62,11 +75,4 @@ QPixmap SN_MediaStorage::readImage(const QString &filename) {
 	return pixmap;
 }
 
-QHash<QString, QPixmap> SN_MediaStorage::getMediaHash(){
-    QHash<QString, QPixmap> mediaHashOut;
-    SN_MediaStorage::mediaHashRWLock.lockForWrite();
-    mediaHashOut = SN_MediaStorage::mediaHash;
-    SN_MediaStorage::mediaHashRWLock.unlock();
 
-    return mediaHashOut;
-}

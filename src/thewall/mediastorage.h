@@ -16,13 +16,21 @@ public:
 
     bool insertNewMediaToHash(const QString &key);
     bool checkForMediaInHash(const QString &key);
-    QHash<QString, QPixmap> getMediaHash();
+
+	inline QHash<QString, QPixmap> & getMediaHashForRead() const {return mediaHash;}
+
 private:
 	const QSettings *_settings;
 
     static QHash<QString, QPixmap> mediaHash;
     static QReadWriteLock mediaHashRWLock;
     QPixmap readImage(const QString &filename);
+
+	/**
+	  Read media directory recursively and build initial media hash
+	  */
+	int initMediaHash();
+
 signals:
     void newMediaAdded();
 public slots:
