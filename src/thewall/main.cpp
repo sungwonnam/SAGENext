@@ -254,7 +254,6 @@ int main(int argc, char *argv[])
 		sd.adjustSize();
 		sd.exec();
 	}
-	s.setValue("misc/printperfdataattheend", true);
 
 
         /**

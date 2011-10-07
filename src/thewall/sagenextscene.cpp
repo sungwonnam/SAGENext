@@ -108,7 +108,7 @@ void SN_TheScene::prepareClosing() {
 	if (_closeFlag) {
 		// close UiServer so that all the shared pointers can be deleted first
 		if (_uiserver) {
-			qDebug() << "Scene is deleting UiServer";
+			qDebug() << "\n[ Scene is deleting UiServer ]";
 			delete _uiserver;
 		}
 
@@ -268,6 +268,9 @@ void SN_TheScene::loadSession(QDataStream &in, SN_Launcher *launcher) {
 			else {
 				in >> file;
 				bw = launcher->launch(mtype, file, scenepos);
+				if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO || mtype == SAGENext::MEDIA_TYPE_VIDEO) {
+					::usleep(300 * 1000);
+				}
 			}
 			if (!bw) {
 				qDebug() << "SN_TheScene::loadSession() : Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
@@ -828,6 +831,9 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 		else {
 			in >> file;
 			bw = launcher->launch(mtype, file, pos);
+			if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO || mtype == SAGENext::MEDIA_TYPE_VIDEO) {
+				::usleep(300 * 1000);
+			}
 		}
 		if (!bw) {
 			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << pos << size << scale;
