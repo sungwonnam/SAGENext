@@ -1,6 +1,7 @@
 #include "sagenextscene.h"
 #include <QGraphicsItem>
 
+#include "sagenextlauncher.h"
 #include "common/commonitem.h"
 #include "applications/base/basewidget.h"
 #include "applications/base/appinfo.h"
@@ -192,45 +193,84 @@ void SN_TheScene::saveSession() {
 
 	QDataStream out(&sessionfile);
 
-	//
-	// save layout states
-	//
+	if (_rootLayoutWidget) {
+		_rootLayoutWidget->saveSession(out);
+	}
+	else {
+		//
+		// just save widget states
+		//
+		foreach(QGraphicsItem *item, items()) {
+			if (!item || item->type() < QGraphicsItem::UserType + 12 ) continue;
+			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+			if (!bw) continue;
 
+			AppInfo *ai = bw->appInfo();
 
+			// common
+			out << QString("ITEM") << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
 
-	//
-	// save widget states
-	//
-	foreach(QGraphicsItem *item, items()) {
-		if (!item || item->type() < QGraphicsItem::UserType + 12 ) continue;
-		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
-		if (!bw) continue;
+			// video, image, pdf, plugin, web have filename
+			if (ai->fileInfo().exists()) {
+				qDebug() << "SN_TheScene::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->mediaFilename();
+				out << ai->mediaFilename();
+			}
+			else if (!ai->webUrl().isEmpty()) {
+				qDebug() << "SN_TheScene::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->webUrl().toString();
+				out << ai->webUrl().toString();
+			}
+			// vnc doesn't have filename
+			else {
+				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+			}
 
-		AppInfo *ai = bw->appInfo();
-
-		// common
-		out << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
-
-		// video, image, pdf, plugin, web have filename
-		if (ai->fileInfo().exists()) {
-			qDebug() << "Scene::saveSession() : " << ai->mediaFilename();
-			out << ai->mediaFilename();
+			///
+			/// and application specific state can be followed
+			///
 		}
-		else if (!ai->webUrl().isEmpty()) {
-			qDebug() << "Scene::saveSession() : " << ai->webUrl().toString();
-			out << ai->webUrl().toString();
-		}
-		// vnc doesn't have filename
-		else {
-			out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
-		}
-
-		///
-		/// and application specific state can be followed
-		///
 	}
 	sessionfile.flush();
 	sessionfile.close();
+}
+
+void SN_TheScene::loadSession(QDataStream &in, SN_Launcher *launcher) {
+	if (_rootLayoutWidget) {
+		_rootLayoutWidget->loadSession(in, launcher);
+	}
+	else {
+		QString header;
+		int mtype;
+		QPointF scenepos;
+		QSizeF size;
+		qreal scale;
+		while (!in.atEnd()) {
+			in >> header >> mtype >> scenepos >> size >> scale;
+	//		qDebug() << "\tentry : " << mtype << scenepos << size << scale;
+
+			QString file;
+			QString user;
+			QString pass;
+			QString srcaddr;
+
+			SN_BaseWidget *bw = 0;
+
+			if (mtype == SAGENext::MEDIA_TYPE_VNC) {
+				in >> srcaddr >> user >> pass;
+				bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos);
+			}
+			else {
+				in >> file;
+				bw = launcher->launch(mtype, file, scenepos);
+			}
+			if (!bw) {
+				qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
+				continue;
+			}
+
+			bw->resize(size);
+			bw->setScale(scale);
+		}
+	}
 }
 
 /*
@@ -257,10 +297,12 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
     : QGraphicsWidget(parent)
     , _settings(s)
     , _parentLayoutWidget(parentWidget)
-    , _leftWidget(0)
-    , _rightWidget(0)
-    , _topWidget(0)
-    , _bottomWidget(0)
+//    , _leftWidget(0)
+//    , _rightWidget(0)
+//    , _topWidget(0)
+//    , _bottomWidget(0)
+	, _firstChildLayout(0)
+	, _secondChildLayout(0)
     , _bar(0)
     , _tileButton(0)
     , _hButton(0)
@@ -313,27 +355,17 @@ void SN_LayoutWidget::setRectangle(const QRectF &r) {
 	setPos(r.center()); // partitionRect.topLeft is in it's parent's coordinate
 }
 
-void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &scenepos /* = 30,30*/) {
+void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/) {
 	/**
 	  If _bar exist, that means this layoutWidget is just a container for child layoutwidgets.
 	  So this layoutWidget can't have any baseWidget as a child.
 	  */
 	if (_bar) {
-		if (_bar->orientation() == Qt::Horizontal) {
-			if ( _topWidget->rect().contains( _topWidget->mapFromScene(scenepos))) {
-				_topWidget->addItem(bw, scenepos);
-			}
-			else {
-				_bottomWidget->addItem(bw, scenepos);
-			}
+		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromScene(pos))) {
+			_firstChildLayout->addItem(bw, pos);
 		}
 		else {
-			if (_leftWidget->rect().contains(_leftWidget->mapFromScene(scenepos))) {
-				_leftWidget->addItem(bw, scenepos);
-			}
-			else {
-				_rightWidget->addItem(bw, scenepos);
-			}
+			_secondChildLayout->addItem(bw, pos);
 		}
 	}
 	/**
@@ -347,7 +379,7 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &scenepos /* = 30
 		  QGraphicsObject::parentChanged() will be emitted
 		  */
 		bw->setParentItem(this);
-		bw->setPos( mapFromScene(scenepos) );
+		bw->setPos(pos);
 	}
 }
 
@@ -356,20 +388,14 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &scenepos /* = 30
   */
 void SN_LayoutWidget::reparentWidgets(SN_LayoutWidget *newParent) {
 	if (_bar) {
-		if (_bar->orientation() == Qt::Horizontal) {
-			_topWidget->reparentWidgets(newParent);
-			_bottomWidget->reparentWidgets(newParent);
-		}
-		else {
-			_leftWidget->reparentWidgets(newParent);
-			_rightWidget->reparentWidgets(newParent);
-		}
+		_firstChildLayout->reparentWidgets(newParent);
+		_secondChildLayout->reparentWidgets(newParent);
 	}
 	else {
 		foreach(QGraphicsItem *item, childItems()) {
 			// exclude PartitionBar
 			// exclude PixmapButton
-			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget) continue;
+			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item==_firstChildLayout || item==_secondChildLayout) continue;
 
 			//
 			// this item's pos() which is in this layoutWidget's coordinate to newParent's coordinate
@@ -409,24 +435,21 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	//
 	if (_bar) {
 		QRectF br = boundingRect();
+		QRectF first, second;
 
 		if (_bar->orientation() == Qt::Horizontal) {
 			//
 			// bar is horizontal so my children is at TOP and BOTTOM
 			//
-			QRectF first(br.topLeft(), QSizeF(br.width(), _bar->line().y1() - br.top()));
-			QRectF second(br.left(), _bar->line().y1(), br.width(), br.bottom() - _bar->line().y1());
-
-			_topWidget->setRectangle(first);
-			_bottomWidget->setRectangle(second);
+			first = QRectF(br.topLeft(), QSizeF(br.width(), _bar->line().y1() - br.top()));
+			second = QRectF(br.left(), _bar->line().y1(), br.width(), br.bottom() - _bar->line().y1());
 		}
 		else {
-			QRectF first(br.topLeft(), QSizeF(_bar->line().x1() - br.left(), br.height()));
-			QRectF second(_bar->line().x1(), br.top(), br.right() - _bar->line().x1(), br.height());
-
-			_leftWidget->setRectangle(first);
-			_rightWidget->setRectangle(second);
+			first = QRectF(br.topLeft(), QSizeF(_bar->line().x1() - br.left(), br.height()));
+			second = QRectF(_bar->line().x1(), br.top(), br.right() - _bar->line().x1(), br.height());
 		}
+		_firstChildLayout->setRectangle(first);
+		_secondChildLayout->setRectangle(second);
 	}
 
 	//
@@ -437,7 +460,7 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 		// If shrinking, move child BaseWidgets accordingly
 
 		foreach(QGraphicsItem *item, childItems()) {
-			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget) {
+			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ||  item==_firstChildLayout || item==_secondChildLayout) {
 	//			qDebug() << "createChildlayout skipping myself, buttons and bar";
 				continue;
 			}
@@ -453,57 +476,22 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	}
 }
 
-void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) {
-//	QGraphicsLinearLayout *linear = new QGraphicsLinearLayout(orientation);
-//	linear->setContentsMargins(0, 0, 0, 0);
-
-	QRectF first;
-	QRectF second;
-	SN_LayoutWidget *firstlayoutchild = 0;
-	SN_LayoutWidget *secondlayoutchild = 0;
-//	QSizePolicy sp(QSizePolicy::Fixed, QSizePolicy::Fixed);
-//	linear->setSizePolicy(sp);
-
+void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, const QRectF &first, const QRectF &second) {
 	// create PartitionBar child item
 	_bar = new SN_WallPartitionBar(dividerOrientation, this, this);
 
-	QRectF br = boundingRect();
-	if (dividerOrientation == Qt::Horizontal) {
-		//
-		// bar is horizontal, partition is Top and Bottom (same X pos)
-		//
-		first = QRectF(br.topLeft(), QSizeF(br.width(), br.height()/2));
-		second = QRectF(br.left(), 0, br.width(), br.height()/2);
-
-		_topWidget = new SN_LayoutWidget("top",  this, _settings, this);
-		_bottomWidget = new SN_LayoutWidget("bottom",  this, _settings, this);
-
-		firstlayoutchild = _topWidget;
-		secondlayoutchild = _bottomWidget;
-	}
-	else {
-		//
-		// bar is vertical, partition is Left and Right (same Y pos)
-		//
-		first = QRectF(br.topLeft(), QSizeF(br.width()/2, br.height()));
-		second = QRectF(0, br.top(), br.width()/2, br.height());
-
-		_leftWidget = new SN_LayoutWidget("left",  this, _settings, this);
-		_rightWidget = new SN_LayoutWidget("right",  this, _settings, this);
-
-		firstlayoutchild = _leftWidget;
-		secondlayoutchild = _rightWidget;
-	}
+	_firstChildLayout = new SN_LayoutWidget("first", this, _settings, this);
+	_secondChildLayout = new SN_LayoutWidget("second", this, _settings, this);
 
 	//
 	// if child widget is resized, then adjust my bar pos and length
 	//
-	connect(firstlayoutchild, SIGNAL(resized()), this, SLOT(adjustBar()));
+	connect(_firstChildLayout, SIGNAL(resized()), this, SLOT(adjustBar()));
 
 
 	// will invoke resize()
-	firstlayoutchild->setRectangle(first);
-	secondlayoutchild->setRectangle(second);
+	_firstChildLayout->setRectangle(first);
+	_secondChildLayout->setRectangle(second);
 //	qDebug() << "createchild result" << rect() << firstlayoutchild->geometry() << secondlayoutchild->geometry();
 
 
@@ -511,7 +499,7 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) 
 	// reparent child items to appropriate widget. I shouldn't have any child baseWidgets at this point
 	//
 	foreach(QGraphicsItem *item, childItems()) {
-		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget) {
+		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ||  item==_firstChildLayout || item==_secondChildLayout ) {
 //			qDebug() << "createChildlayout skipping myself, buttons and bar";
 			continue;
 		}
@@ -519,12 +507,12 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) 
 		QPointF newPos;
 		QRectF intersectedWithFirst = first & mapRectFromItem(item, item->boundingRect());
 		if ( intersectedWithFirst.size().width() * intersectedWithFirst.size().height() >= 0.25 * item->boundingRect().size().width() * item->boundingRect().size().height()) {
-			newPos = mapToItem(firstlayoutchild, item->pos());
-			item->setParentItem(firstlayoutchild);
+			newPos = mapToItem(_firstChildLayout, item->pos());
+			item->setParentItem(_firstChildLayout);
 		}
 		else {
-			newPos = mapToItem(secondlayoutchild, item->pos());
-			item->setParentItem(secondlayoutchild);
+			newPos = mapToItem(_secondChildLayout, item->pos());
+			item->setParentItem(_secondChildLayout);
 		}
 		item->setPos(newPos);
 	}
@@ -539,17 +527,43 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) 
 	if (_xButton) _xButton->hide();
 }
 
+void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) {
+//	QGraphicsLinearLayout *linear = new QGraphicsLinearLayout(orientation);
+//	linear->setContentsMargins(0, 0, 0, 0);
+
+	QRectF first;
+	QRectF second;
+
+	QRectF br = boundingRect();
+	if (dividerOrientation == Qt::Horizontal) {
+		//
+		// bar is horizontal, partition is Top and Bottom (same X pos)
+		//
+		first = QRectF(br.topLeft(), QSizeF(br.width(), br.height()/2));
+		second = QRectF(br.left(), 0, br.width(), br.height()/2);
+	}
+	else {
+		//
+		// bar is vertical, partition is Left and Right (same Y pos)
+		//
+		first = QRectF(br.topLeft(), QSizeF(br.width()/2, br.height()));
+		second = QRectF(0, br.top(), br.width()/2, br.height());
+	}
+
+	createChildPartitions(dividerOrientation, first, second);
+}
+
 void SN_LayoutWidget::adjustBar() {
 	Q_ASSERT(_bar);
 	if ( _bar->orientation() == Qt::Horizontal ) {
 		// my children is top and bottom widgets
-		qreal newY = boundingRect().top() + _topWidget->size().height();
+		qreal newY = boundingRect().top() + _firstChildLayout->size().height();
 		QLineF line(boundingRect().left(), newY, boundingRect().right(), newY);
 		_bar->setLine(line);
 	}
 	else {
 		// my children is left and right widgets
-		qreal newX = boundingRect().left() + _leftWidget->size().width();
+		qreal newX = boundingRect().left() + _firstChildLayout->size().width();
 		QLineF line(newX, boundingRect().top(), newX, boundingRect().bottom());
 		_bar->setLine(line);
 	}
@@ -561,20 +575,11 @@ void SN_LayoutWidget::deleteChildPartitions() {
 	//
 	// reparent all basewidgets of my child layouts to me
 	//
-	if ( _bar->orientation() == Qt::Horizontal) {
-		_topWidget->reparentWidgets(this);
-		_bottomWidget->reparentWidgets(this);
+	_firstChildLayout->reparentWidgets(this);
+	_secondChildLayout->reparentWidgets(this);
+	delete _firstChildLayout;
+	delete _secondChildLayout;
 
-		delete _topWidget;
-		delete _bottomWidget;
-	}
-	else {
-		_leftWidget->reparentWidgets(this);
-		_rightWidget->reparentWidgets(this);
-
-		delete _leftWidget;
-		delete _rightWidget;
-	}
 	delete _bar;
 	_bar = 0; // do I need this?
 
@@ -597,7 +602,8 @@ void SN_LayoutWidget::doTile() {
 	foreach(QGraphicsItem *item, childItems()) {
 		// exclude PartitionBar
 		// exclude PixmapButton
-		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item == _leftWidget || item == _rightWidget || item == _topWidget || item == _bottomWidget ) continue;
+		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item==_firstChildLayout || item==_secondChildLayout )
+			continue;
 
 	}
 }
@@ -623,7 +629,11 @@ void SN_LayoutWidget::setButtonPos() {
 	}
 }
 
-void SN_LayoutWidget::saveCurrentSession() {
+void SN_LayoutWidget::saveSession(QDataStream &out) {
+
+}
+
+void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 
 }
 

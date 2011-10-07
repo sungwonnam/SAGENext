@@ -176,8 +176,8 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 					//
 					// bar moves only up or down direction (y axis)
 
-					SN_LayoutWidget *top = bar->ownerNode()->topWidget();
-					SN_LayoutWidget *bottom = bar->ownerNode()->bottomWidget();
+					SN_LayoutWidget *top = bar->ownerNode()->firstChildLayout();
+					SN_LayoutWidget *bottom = bar->ownerNode()->secondChildLayout();
 					top->resize(      top->size().width(),    top->size().height() + deltay);
 					bottom->resize(bottom->size().width(), bottom->size().height() - deltay);
 					top->moveBy(0, deltay/2);
@@ -186,8 +186,8 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 				else {
 					// bar moves only left or right (x axis)
 
-					SN_LayoutWidget *left = bar->ownerNode()->leftWidget();
-					SN_LayoutWidget *right = bar->ownerNode()->rightWidget();
+					SN_LayoutWidget *left = bar->ownerNode()->firstChildLayout();
+					SN_LayoutWidget *right = bar->ownerNode()->secondChildLayout();
 					left->resize(  left->size().width() + deltax,  left->size().height());
 					right->resize(right->size().width() - deltax, right->size().height());
 					left->moveBy(deltax/2, 0);

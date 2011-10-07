@@ -20,6 +20,7 @@ class SN_SchedulerControl;
 class SN_LayoutWidget;
 class SN_BaseWidget;
 
+class SN_Launcher;
 
 //class PartitionBar : public QGraphicsLineItem {
 //public:
@@ -65,16 +66,19 @@ public:
 	SN_LayoutWidget(const QString &posStr, SN_LayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent=0);
 	~SN_LayoutWidget();
 
-	inline SN_LayoutWidget * leftWidget() {return _leftWidget;}
-	inline SN_LayoutWidget * rightWidget() {return _rightWidget;}
+//	inline SN_LayoutWidget * leftWidget() {return _leftWidget;}
+//	inline SN_LayoutWidget * rightWidget() {return _rightWidget;}
 
-	inline SN_LayoutWidget * topWidget() {return _topWidget;}
-	inline SN_LayoutWidget * bottomWidget() {return _bottomWidget;}
+//	inline SN_LayoutWidget * topWidget() {return _topWidget;}
+//	inline SN_LayoutWidget * bottomWidget() {return _bottomWidget;}
+
+	inline SN_LayoutWidget * firstChildLayout() {return _firstChildLayout;}
+	inline SN_LayoutWidget * secondChildLayout() {return _secondChildLayout;}
 
 	/**
 	  Add widget as my child. This will automatically add widget to the scene
 	  */
-	void addItem(SN_BaseWidget *bw, const QPointF &scenepos = QPointF(30, 30));
+	void addItem(SN_BaseWidget *bw, const QPointF &pos = QPointF(30, 30));
 
 	/**
 	  Reparent all the basewidgets to the new layoutWidget
@@ -104,14 +108,17 @@ private:
 	/**
 	  If this widget has Vertical bar
 	  */
-	SN_LayoutWidget *_leftWidget;
-	SN_LayoutWidget *_rightWidget;
+//	SN_LayoutWidget *_leftWidget;
+//	SN_LayoutWidget *_rightWidget;
 
 	/**
 	  If this widget has Horizontal bar
 	  */
-	SN_LayoutWidget *_topWidget;
-	SN_LayoutWidget *_bottomWidget;
+//	SN_LayoutWidget *_topWidget;
+//	SN_LayoutWidget *_bottomWidget;
+
+	SN_LayoutWidget *_firstChildLayout;
+	SN_LayoutWidget *_secondChildLayout;
 
 	SN_WallPartitionBar *_bar;
 	SN_PixmapButton *_tileButton;
@@ -127,6 +134,8 @@ private:
 	  left , right, top, or bottom
 	  */
 	QString _position;
+
+	void createChildPartitions(Qt::Orientation barOrientation, const QRectF &first, const QRectF &second);
 
 	void createChildPartitions(Qt::Orientation barOrientation);
 
@@ -158,7 +167,9 @@ public slots:
 
 	/**
 	  */
-	void saveCurrentSession();
+	void saveSession(QDataStream &out);
+
+	void loadSession(QDataStream &in, SN_Launcher *launcher);
 };
 
 
@@ -233,6 +244,8 @@ public slots:
 	  save current app layout
 	  */
 	void saveSession();
+
+	void loadSession(QDataStream &in, SN_Launcher *launcher);
 };
 
 

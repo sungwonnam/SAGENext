@@ -520,41 +520,11 @@ void SN_Launcher::launchSavedSession(const QString &sessionfilename) {
 		return;
 	}
 
-	qDebug() << "SAGENextLauncher::launchSavedSession() : Loading a session" << sessionfilename;
+//	qDebug() << "SAGENextLauncher::launchSavedSession() : Loading a session" << sessionfilename;
 
 	QDataStream in(&f);
 
-	int mtype;
-	QPointF scenepos;
-	QSizeF size;
-	qreal scale;
-	while (!f.atEnd()) {
-		in >> mtype >> scenepos >> size >> scale;
-//		qDebug() << "\tentry : " << mtype << scenepos << size << scale;
-
-		QString file;
-		QString user;
-		QString pass;
-		QString srcaddr;
-
-		SN_BaseWidget *bw = 0;
-
-		if (mtype == SAGENext::MEDIA_TYPE_VNC) {
-			in >> srcaddr >> user >> pass;
-			bw = launch(user, pass, 0, srcaddr, 10, scenepos);
-		}
-		else {
-			in >> file;
-			bw = launch(mtype, file, scenepos);
-		}
-		if (!bw) {
-			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
-			continue;
-		}
-
-		bw->resize(size);
-		bw->setScale(scale);
-	}
+	_scene->loadSession(in, this);
 
 	f.close();
 }
