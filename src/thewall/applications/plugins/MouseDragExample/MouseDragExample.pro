@@ -9,7 +9,7 @@ QT       += core gui
 TARGET = MouseDragExamplePlugin
 TEMPLATE = lib
 CONFIG += plugin
-DESTDIR = $$(HOME)/.sagenext/plugins
+DESTDIR = $$(HOME)/.sagenext/media/plugins
 
 SAGENEXT_DIR = $$(HOME)/SAGENext
 

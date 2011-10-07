@@ -51,7 +51,7 @@ SN_Launcher::~SN_Launcher() {
 
 void SN_Launcher::loadPlugins() {
 
-	QDir pluginDir(QDir::homePath() + "/.sagenext/plugins");
+	QDir pluginDir(QDir::homePath() + "/.sagenext/media/plugins");
 
 	foreach (QString filename, pluginDir.entryList(QDir::Files)) {
 		QPluginLoader loader(pluginDir.absoluteFilePath(filename));

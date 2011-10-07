@@ -9,7 +9,7 @@ QT       += core gui
 TARGET = MouseHoverExamplePlugin
 TEMPLATE = lib
 CONFIG += plugin
-DESTDIR = $$(HOME)/.sagenext/plugins
+DESTDIR = $$(HOME)/.sagenext/media/plugins
 
 BUILD_DIR = build
 !exists($$BUILD_DIR) {

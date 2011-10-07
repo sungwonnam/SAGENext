@@ -183,7 +183,7 @@ void SN_TheScene::closeAllUserApp() {
 }
 
 void SN_TheScene::saveSession() {
-	QString sessionFilename = QDir::homePath() + "/.sagenext/";
+	QString sessionFilename = QDir::homePath() + "/.sagenext/sessions/";
 	sessionFilename.append(QDateTime::currentDateTime().toString("hh.mm.ss_MM.dd.yyyy_")).append(".session");
 
 	QFile sessionfile(sessionFilename);
