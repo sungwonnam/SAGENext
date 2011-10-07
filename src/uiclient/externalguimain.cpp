@@ -28,9 +28,10 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
     , sendThread(0)
 	, isMouseCapturing(false)
     , mediaDropFrame(0)
+    , _sharingEdge(QString("top"))
 	, macCapture(0)
 	, mouseBtnPressed(0)
-	, _sharingEdge(QString("top"))
+
 {
 	ui->setupUi(this);
 
@@ -126,7 +127,7 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 	_wallAddress = cd.address();
 	_pointerName = cd.pointerName();
 	_pointerColor = cd.pointerColor();
-	_myIpAddress = cd.myAddress();
+//	_myIpAddress = cd.myAddress();
 	_vncUsername = cd.vncUsername();
 	_vncPasswd = cd.vncPasswd();
 	_sharingEdge = cd.sharingEdge();
@@ -200,7 +201,7 @@ void ExternalGUIMain::doHandshaking() {
 	ui->isConnectedLabel->setText("Connected to the wall");
 	ui->isConnectedLabel->show();
 
-	_tcpMsgSock.setSocketOption(QAbstractSocket::LowDelayOption, true); // disable Nagle's algorithm
+	_tcpMsgSock.setSocketOption(QAbstractSocket::LowDelayOption, 1); // disable Nagle's algorithm
 
 	/*!
 	  receive scene size and my uiclientid
@@ -279,7 +280,7 @@ void ExternalGUIMain::doHandshaking() {
 	}
 
 	msgThread->setUiClientId(uiclientid);
-	msgThread->setMyIpAddr(_myIpAddress);
+//	msgThread->setMyIpAddr(_myIpAddress);
 
 	if ( ! msgThread->setSocketFD(_tcpMsgSock.socketDescriptor()) ) {
 		QMessageBox::critical(this, "socket error", "setting socket descriptor failed");
@@ -350,7 +351,7 @@ void ExternalGUIMain::on_vncButton_clicked()
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %u %s %d %s %s %d", VNC_SHARING, uiclientid, qPrintable(_myIpAddress), 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
+	sprintf(msg.data(), "%d %u %d %s %s %d", VNC_SHARING, uiclientid, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
 
 	queueMsgToWall(msg);
 }
@@ -990,6 +991,7 @@ void DropFrame::dropEvent(QDropEvent *e) {
 
 	if ( e->mimeData()->hasHtml() || e->mimeData()->hasUrls()) {
 		emit mediaDropped(e->mimeData()->urls());
+		e->acceptProposedAction();
 	}
 }
 
@@ -1012,7 +1014,8 @@ ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
 
         ui->ipaddr->setText( _settings->value("walladdr", "127.0.0.1").toString() );
 
-//        ui->myaddrLineEdit->setText( _settings->value("myaddr", "127.0.0.1").toString() );
+
+		/**
 		QList<QHostAddress> myiplist = QNetworkInterface::allAddresses();
 		for (int i=0; i<myiplist.size(); ++i) {
 			if (myiplist.at(i).toIPv4Address()) {
@@ -1021,6 +1024,9 @@ ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
 		}
 		int currentIdx = ui->myAddrCB->findText( _settings->value("myaddr", "127.0.0.1").toString() );
 		ui->myAddrCB->setCurrentIndex(currentIdx);
+		**/
+
+
 
         ui->port->setText( _settings->value("wallport", 30003).toString() );
 		ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
@@ -1055,7 +1061,7 @@ void ConnectionDialog::on_buttonBox_accepted()
 {
 	addr = ui->ipaddr->text();
 	portnum = ui->port->text().toInt();
-	myaddr = ui->myAddrCB->currentText();
+//	myaddr = ui->myAddrCB->currentText();
 	pName = ui->pointerNameLineEdit->text();
 	vncusername = ui->vncUsername->text();
 	vncpass = ui->vncpasswd->text();
@@ -1063,7 +1069,7 @@ void ConnectionDialog::on_buttonBox_accepted()
 	
 	_settings->setValue("walladdr", addr);
 	_settings->setValue("wallport", portnum);
-	_settings->setValue("myaddr", myaddr);
+//	_settings->setValue("myaddr", myaddr);
 	_settings->setValue("pointername", pName);
 	_settings->setValue("pointercolor", pColor);
 	_settings->setValue("vncusername", vncusername);

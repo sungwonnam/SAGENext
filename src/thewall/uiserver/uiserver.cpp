@@ -35,7 +35,7 @@ SN_UiServer::SN_UiServer(const QSettings *s, SN_Launcher *snl, SN_TheScene *sns)
 
     _fileRecvPortBase = 10000 + s->value("general/wallport", 30003).toInt();
 
-    qDebug("UiServer::%s() : UI Server has started on %s:%u", __FUNCTION__, qPrintable(serverAddress().toString()), serverPort());
+    qDebug("SN_UiServer::%s() : UI Server has started on %s:%u", __FUNCTION__, qPrintable(serverAddress().toString()), serverPort());
 }
 
 SN_UiServer::~SN_UiServer() {
@@ -54,7 +54,7 @@ SN_UiServer::~SN_UiServer() {
     //		}
     //	}
 
-    qDebug("UiServer::%s()", __FUNCTION__);
+    qDebug("SN_UiServer::%s()", __FUNCTION__);
 }
 
 void SN_UiServer::incomingConnection(int sockfd) {
@@ -64,26 +64,26 @@ void SN_UiServer::incomingConnection(int sockfd) {
     //	QGraphicsScene *scene = gview->scene(); // Returns a pointer to the scene that is currently visualized in the view. If no scene is currently visualized, 0 is returned.
 
     /*
-         send uiclientid and scene size
-        */
+     send uiclientid and scene size
+     */
     char buf[EXTUI_MSG_SIZE]; memset(buf, '\0', EXTUI_MSG_SIZE);
 //    int filetransferport = fileRecvPortBase + uiClientId;
 	int filetransferport = _settings->value("general/fileserverport", 46000).toInt();
     sprintf(buf, "%u %d %d %d", _uiClientId, (int)_scene->width(), (int)_scene->height(), filetransferport);
     ::send(sockfd, buf, 1280, 0);
-    qDebug("UiServer::%s() : The scene size %d x %d sent to ui %u", __FUNCTION__, (int)_scene->width(), (int)_scene->height(), _uiClientId);
+//    qDebug("UiServer::%s() : The scene size %d x %d sent to ui %u", __FUNCTION__, (int)_scene->width(), (int)_scene->height(), _uiClientId);
 
 
     /**
-          create a msg thread
-          */
+      create a msg thread
+      */
     UiMsgThread *thread = new UiMsgThread(_uiClientId, sockfd, this);
     _uiMsgThreadsMap.insert(_uiClientId, thread);
 
-    connect(this, SIGNAL(destroyed()), thread, SLOT(breakWhileLoop()));
+	connect(this, SIGNAL(destroyed()), thread, SLOT(endThread()));
     connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
     connect(thread, SIGNAL(clientDisconnected(quint32)), this, SLOT(removeFinishedThread(quint32)));
-	if (! connect(thread, SIGNAL(msgReceived(quint32, UiMsgThread *, QByteArray)), this, SLOT(handleMessage(const quint32, UiMsgThread *, const QByteArray))) ) {
+	if (! connect(thread, SIGNAL(msgReceived(QByteArray)), this, SLOT(handleMessage(const QByteArray))) ) {
 		qCritical("%s::%s() : connecting UiMsgThread::msgReceived() to UiServer::handleMessage() failed", metaObject()->className(), __FUNCTION__);
 	}
 
@@ -99,14 +99,12 @@ void SN_UiServer::incomingConnection(int sockfd) {
     // by default, ui client is not receiving app layout on the wall
 //    appLayoutFlagMap.insert(uiClientId, false);
 
-    qDebug("UiServer::%s() : ui client %u has connected.", __FUNCTION__, _uiClientId);
+    qDebug("SN_UiServer::%s() : ui client %u has connected.", __FUNCTION__, _uiClientId);
 }
 
-void SN_UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const QByteArray msg) {
-	Q_UNUSED(id);
-	Q_UNUSED(msgThread);
-    //	if (!msg) return;
-//    QByteArray buffer(EXTUI_MSG_SIZE, '\0');
+void SN_UiServer::handleMessage(const QByteArray msg) {
+
+	UiMsgThread *msgThread = static_cast<UiMsgThread *>(sender());
 
     // "msgcode data"
     int code = 0;
@@ -181,12 +179,12 @@ void SN_UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const 
 
     case VNC_SHARING: {
         quint32 uiclientid;
-        char senderIP[128];
+//        char senderIP[128];
         int display = 0;
         int framerate = 24;
         char vncpass[64];
 		char username[64];
-        sscanf(msg.constData(), "%d %u %s %d %s %s %d", &code, &uiclientid, senderIP, &display, username, vncpass, &framerate);
+        sscanf(msg.constData(), "%d %u %d %s %s %d", &code, &uiclientid, &display, username, vncpass, &framerate);
 
 //		qDebug() << "uiserver" << QString(username) << QString(vncpass);
 
@@ -195,7 +193,7 @@ void SN_UiServer::handleMessage(const quint32 id, UiMsgThread *msgThread, const 
 		                          Q_ARG(QString, QString(username)),
                                   Q_ARG(QString, QString(vncpass)),
                                   Q_ARG(int, display),
-                                  Q_ARG(QString, QString(senderIP)),
+                                  Q_ARG(QString, msgThread->peerAddress().toString()),
                                   Q_ARG(int, framerate));
         //		gviewMain->startApp(MEDIA_TYPE_VNC, QString(vncpass), display, QString(senderIP), "", framerate);
         break;

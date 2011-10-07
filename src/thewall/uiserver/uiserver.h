@@ -113,7 +113,7 @@ signals:
 //        void registerApp(MEDIA_TYPE type, QString filename, qint64 filesize, QString senderIP, QString recvIP, quint16 recvPort);
 
 private slots:
-	void handleMessage(const quint32 id, UiMsgThread *, const QByteArray msg);
+	void handleMessage(const QByteArray msg);
 
         /**
           * invoked by the signal UiMsgThread::clientDisconnected()

@@ -3,6 +3,7 @@
 
 #include <QThread>
 #include <QTcpSocket>
+#include <QHostAddress>
 
 class UiMsgThread : public QThread
 {
@@ -11,22 +12,32 @@ public:
 	explicit UiMsgThread(const quint32 uiclientid, int sockfd, QObject *parent = 0);
 	~UiMsgThread();
 
+	QHostAddress peerAddress() const {return _peerAddress;}
+
 protected:
 	void run();
 
 private:
-	const quint32 uiClientId;
-	bool _end;
-	int sockfd;
-//	QTcpSocket *tcpSock;
+	const quint32 _uiClientId;
+
+	QTcpSocket _tcpSocket;
+
+	QHostAddress _peerAddress;
+
+
 
 signals:
-	void msgReceived(quint32 myId, UiMsgThread *myself, QByteArray msg);
+	void msgReceived(const QByteArray msg);
+
 	void clientDisconnected(quint32 uiclientid);
 
 public slots:
-	void breakWhileLoop();
 	void sendMsg(const QByteArray &msgstr);
+	void recvMsg();
+
+	void endThread();
+
+	void handleSocketError(QAbstractSocket::SocketError);
 };
 
 #endif // UIMSGTHREAD_H

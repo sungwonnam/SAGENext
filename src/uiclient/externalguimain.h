@@ -187,7 +187,7 @@ private:
 
 	QString _pointerColor;
 
-	QString _myIpAddress;
+//	QString _myIpAddress;
 
 	QString _vncUsername;
 
@@ -307,7 +307,7 @@ public:
 
         inline QString address() const {return addr;}
         inline int port() const {return portnum;}
-        inline QString myAddress() const {return myaddr;}
+//        inline QString myAddress() const {return myaddr;}
         inline QString pointerName() const {return pName;}
 		inline QString pointerColor() const {return pColor;}
 		inline QString vncUsername() const {return vncusername;}
@@ -331,7 +331,7 @@ private:
         /**
           my ip address
           */
-        QString myaddr;
+//        QString myaddr;
 
 		QString vncusername;
 

@@ -22,7 +22,7 @@ public:
 	
 	inline void setUiClientId(quint64 i) {uiclientid = i;}
 	
-	inline void setMyIpAddr(const QString ip) {myipaddr = ip;}
+//	inline void setMyIpAddr(const QString ip) {myipaddr = ip;}
 
 protected:
 	void run();
@@ -49,7 +49,7 @@ private:
           */
 	quint64 uiclientid;
 
-	QString myipaddr;
+//	QString myipaddr;
 
 signals:
 	void ackReceived(const QString &ipaddr, int port);

@@ -32,7 +32,7 @@ void FileServerThread::endThread() {
 
 
 void FileServerThread::run() {
-	qDebug() << "FileServerThread is running for uiclient" << _uiclientid;
+//	qDebug() << "FileServerThread is running for uiclient" << _uiclientid;
 
 	// always receive filename, filesize, media type first
 	char header[EXTUI_MSG_SIZE];
