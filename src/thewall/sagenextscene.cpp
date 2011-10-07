@@ -184,7 +184,13 @@ void SN_TheScene::closeAllUserApp() {
 
 void SN_TheScene::saveSession() {
 	QString sessionFilename = QDir::homePath() + "/.sagenext/sessions/";
-	sessionFilename.append(QDateTime::currentDateTime().toString("hh.mm.ss_MM.dd.yyyy_")).append(".session");
+
+	sessionFilename.append(QDateTime::currentDateTime().toString("hh.mm.ss_MM.dd.yyyy_"));
+
+	QString screenshotFilename = sessionFilename;
+	screenshotFilename.append(".jpg");
+
+	sessionFilename.append(".session");
 
 	QFile sessionfile(sessionFilename);
 	if(!sessionfile.open(QIODevice::ReadWrite)) {
@@ -192,6 +198,16 @@ void SN_TheScene::saveSession() {
 		return;
 	}
 	qWarning() << "\nSN_TheScene::saveSession() : save current layout to" << sessionFilename;
+
+
+	////
+	// create snapshot
+	////
+	QPixmap screenshot(sceneRect().size().toSize());
+	QPainter painter(&screenshot);
+	render(&painter);
+	screenshot.save(screenshotFilename, "jpg", 100);
+
 
 	QDataStream out(&sessionfile);
 
