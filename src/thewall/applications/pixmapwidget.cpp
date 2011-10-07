@@ -73,7 +73,8 @@ void SN_PixmapWidget::start() {
         QThreadPool::globalInstance()->start(static_cast<QRunnable *>(this));
         **/
 
-	setCacheMode(QGraphicsItem::ItemCoordinateCache);
+	// this is the best in E8400 (raster backend, opengl viewport (Xinerama))
+	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
 
 	futureWatcher = new QFutureWatcher<bool>(this);
@@ -102,7 +103,7 @@ void SN_PixmapWidget::callUpdate() {
 		update();
 	}
 	else {
-		qCritical() << "PixmapWidget read thread finished with error";
+		qCritical() << "SN_PixmapWidget read thread finished with error";
 	}
 
         /*
@@ -215,10 +216,10 @@ bool SN_PixmapWidget::readImage() {
 		/*! close data channel network connection */
 		::shutdown(socket, SHUT_RDWR);
 		if ( ::close(socket) != 0 ) {
-			perror("PixmapWidget::run() : close socket");
+			perror("SN_PixmapWidget::run() : close socket");
 		}
 		if ( ::close(serverSock) != 0 ) {
-			perror("PixmapWidget::run() : close serverSock");
+			perror("SN_PixmapWidget::run() : close serverSock");
 		}
 
 		break;

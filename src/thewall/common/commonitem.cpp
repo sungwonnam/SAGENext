@@ -176,8 +176,8 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 					//
 					// bar moves only up or down direction (y axis)
 
-					SN_LayoutWidget *top = bar->ownerNode()->topWidget();
-					SN_LayoutWidget *bottom = bar->ownerNode()->bottomWidget();
+					SN_LayoutWidget *top = bar->ownerNode()->firstChildLayout();
+					SN_LayoutWidget *bottom = bar->ownerNode()->secondChildLayout();
 					top->resize(      top->size().width(),    top->size().height() + deltay);
 					bottom->resize(bottom->size().width(), bottom->size().height() - deltay);
 					top->moveBy(0, deltay/2);
@@ -186,8 +186,8 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 				else {
 					// bar moves only left or right (x axis)
 
-					SN_LayoutWidget *left = bar->ownerNode()->leftWidget();
-					SN_LayoutWidget *right = bar->ownerNode()->rightWidget();
+					SN_LayoutWidget *left = bar->ownerNode()->firstChildLayout();
+					SN_LayoutWidget *right = bar->ownerNode()->secondChildLayout();
 					left->resize(  left->size().width() + deltax,  left->size().height());
 					right->resize(right->size().width() - deltax, right->size().height());
 					left->moveBy(deltax/2, 0);
@@ -523,7 +523,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
 
         if ( item->type() >= QGraphicsItem::UserType + 12) {
 			//
-			// User application (BaseWidget)
+			// User application (SN_BaseWidget)
 			//
             _basewidget = static_cast<SN_BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
@@ -532,12 +532,13 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
         }
 		else if (item->type() > QGraphicsItem::UserType) {
 			//
-			// custom type. So this custom type should be less than UserType + 12
+			// custom item that inherits SN_BaseWidget. (SN_MediaBrowser is UserType + 11)
+			// So this custom type should be less than UserType + 12
 			//
 		}
 		else {
 			//
-			// regualar graphics items, All the PixmapButton, PartitionBar
+			// regualar graphics items, All the SN_PixmapButton, SN_WallPartitionBar
 			//
 			_item = item;
 //			qDebug() << _item;
@@ -760,7 +761,28 @@ void SN_SimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem 
 
 
 
+SN_SimpleTextWidget::SN_SimpleTextWidget(int pointSize, const QColor &fontcolor, const QColor &bgcolor, QGraphicsItem *parent)
+	: QGraphicsWidget(parent, Qt::Widget)
+	, _textItem(0)
+{
+	setAttribute(Qt::WA_DeleteOnClose, true);
 
+	setFlag(QGraphicsItem::ItemIsSelectable, false);
+	setFlag(QGraphicsItem::ItemIsMovable, false);
+	setFlag(QGraphicsItem::ItemHasNoContents, true);
+
+	setAcceptedMouseButtons(0);
+
+	_textItem = new SN_SimpleTextItem(pointSize, fontcolor, bgcolor, this);
+//	resize(_textItem->boundingRect().size());
+}
+
+void SN_SimpleTextWidget::setText(const QString &text) {
+	if (_textItem) {
+		_textItem->setText(text);
+		resize(_textItem->boundingRect().size());
+	}
+}
 
 
 

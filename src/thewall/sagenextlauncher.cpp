@@ -1,5 +1,6 @@
 #include "sagenextlauncher.h"
 #include "sagenextscene.h"
+#include "mediastorage.h"
 
 #include "common/commonitem.h"
 
@@ -21,11 +22,12 @@
 #include "applications/base/SN_plugininterface.h"
 
 
-SN_Launcher::SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_ResourceMonitor *rm /*= 0*/, SN_SchedulerControl *sc /* = 0*/, QFile *scenarioFile, QObject *parent /*0*/)
+SN_Launcher::SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage *mediaStorage, SN_ResourceMonitor *rm /*= 0*/, SN_SchedulerControl *sc /* = 0*/, QFile *scenarioFile, QObject *parent /*0*/)
 	: QObject(parent)
 	, _settings(s)
 	, _globalAppId(1)
 	, _scene(scene)
+	, _mediaStorage(mediaStorage)
 	, _rMonitor(rm)
 	, _schedCtrl(sc)
 	, _scenarioFile(scenarioFile)
@@ -84,7 +86,7 @@ void SN_Launcher::createFsManager() {
   */
 SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
         SN_SageStreamWidget *sw = 0;
-		QPointF scenepos;
+		QPointF pos;
 
         if (_sageWidgetQueue.isEmpty()) {
 			// This means the SAGE application was NOT started by the launcher but manually by a user.
@@ -102,8 +104,8 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
                 sw = _sageWidgetQueue.front();
                 _sageWidgetQueue.pop_front();
 
-				scenepos = _sageWidgetScenePosQueue.front();
-				_sageWidgetScenePosQueue.pop_front();
+				pos = _sageWidgetPosQueue.front();
+				_sageWidgetPosQueue.pop_front();
         }
 
         // give fsmThread to the sagewidget
@@ -139,34 +141,35 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 //		resourceMonitor->updateAffInfo(sageWidget, -1, -1);
         }
 
-        return launch(sw, scenepos);
+        return launch(sw, pos);
 }
 
 
 /**
   * UiServer triggers this slot
   */
-SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &scenepos/* = QPointF()*/, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
+SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &pos/* = QPointF()*/, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
 	//qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
 
-	qDebug() << "SN_Launcher::launch() :" << type << filename << scenepos;
+	qDebug() << "SN_Launcher::launch() :" << type << filename << pos;
 
 
-
+	////////////////////////////////////////
 	//
-	// record event (WIDGET_NEW or POINTER_NEW)
+	// record event (WIDGET_NEW : 0)
 	//
 	if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
 		if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
 			char record[256];
-			// WIDGET_NEW 0
-			sprintf(record, "%lld %d %d %s %d %d\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(filename), scenepos.toPoint().x(), scenepos.toPoint().y());
+			sprintf(record, "%lld %d %d %s %d %d\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(filename), pos.toPoint().x(), pos.toPoint().y());
 			_scenarioFile->write(record);
 		}
 		else {
-			qDebug() << "Launcher::launch() : can't write the launching event";
+			qDebug() << "SN_Launcher::launch() : can't write the launching event";
 		}
 	}
+	//
+	//////////////////////////////////////////
 
 
 
@@ -176,7 +179,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 	switch(type) {
 	case SAGENext::MEDIA_TYPE_IMAGE: {
 		//
-		// streaming from ui client
+		// streaming from ui client. This isn't used.
 		//
 		if ( fsize > 0 && !recvIP.isEmpty() && recvPort > 0) {
 
@@ -184,6 +187,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 			//QFuture<bool> future = QtConcurrent::run(this, &SAGENextLauncher::fileReceivingFunction, type, filename, fsize, senderIP, recvIP, recvPort);
 
 			w = new SN_PixmapWidget(fsize, senderIP, recvIP, recvPort, _globalAppId, _settings);
+			_mediaStorage->insertNewMediaToHash(filename);
 		}
 
 		//
@@ -193,6 +197,8 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 
 //			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			w = new SN_PixmapWidget(filename, _globalAppId, _settings);
+
+			_mediaStorage->insertNewMediaToHash(filename);
 		}
 		else
 			qCritical("%s::%s() : MEDIA_TYPE_IMAGE can't open", metaObject()->className(), __FUNCTION__);
@@ -200,9 +206,10 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 		break;
 	}
 
-	case SAGENext::MEDIA_TYPE_VIDEO: {
-
+	case SAGENext::MEDIA_TYPE_VIDEO:
+	{
 		// Assumes that the remote side (senderIP) has maplyer (compiled with SAIL) already
+		// So, this is the case where media file is not in local disk
 
 		if (!filename.isEmpty() && !senderIP.isEmpty()) {
 			SN_SageStreamWidget *sws = new SN_SageStreamWidget(filename, _globalAppId, _settings, senderIP, _rMonitor);
@@ -213,7 +220,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 			// add widget to the queue for launch(fsmThread *)
 			//
 			_sageWidgetQueue.push_back(sws);
-			_sageWidgetScenePosQueue.push_back(scenepos);
+			_sageWidgetPosQueue.push_back(pos);
 
 			// invoke sail remotely
 			QProcess *proc1 = new QProcess(this);
@@ -242,7 +249,10 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 	}
 
 
-	case SAGENext::MEDIA_TYPE_LOCAL_VIDEO: {
+	case SAGENext::MEDIA_TYPE_LOCAL_VIDEO:
+	{
+		// media file is in my disk
+		// mplayer is running in this machine
 //		qDebug("%s::%s() : MEDIA_TYPE_LOCAL_VIDEO %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 
 		if ( ! filename.isEmpty() ) {
@@ -257,7 +267,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 		      add the widget to the queue
 			*/
 			_sageWidgetQueue.push_back(sws);
-			_sageWidgetScenePosQueue.push_back(scenepos);
+			_sageWidgetPosQueue.push_back(pos);
 
 			/**
 	          initiate SAIL process
@@ -276,12 +286,16 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 			//
 //			qDebug() << proc->environment();
 
+
+//			proc->setWorkingDirectory(qApp->applicationDirPath());
+//			qDebug() << qApp->applicationDirPath();
+//			qDebug() << proc->workingDirectory();
+
 			proc->start("mplayer",  args);
 
 			sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_LOCAL_VIDEO);
 			sws->appInfo()->setExecutableName("mplayer");
 			sws->setSailAppProc(proc);
-
 
 			//
 			///
@@ -290,12 +304,13 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 			//
 			return sws;
 		}
-
 		break;
 	}
 
 	case SAGENext::MEDIA_TYPE_WEBURL: {
-		// filename is url string
+		//
+		// filename is web url string
+		//
 		SN_WebWidget *ww = new SN_WebWidget(_globalAppId, _settings, 0, Qt::Window);
 		w = ww;
 		ww->setUrl( filename );
@@ -315,7 +330,6 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 		break;
 	}
 
-
 	case SAGENext::MEDIA_TYPE_PLUGIN: {
 //		qDebug() << "MEDIA_TYPE_PLUGIN" << filename;
 		SN_PluginInterface *dpi = _pluginMap.value(filename);
@@ -329,7 +343,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 			w->appInfo()->setFileInfo(filename);
 		}
 		else {
-			qDebug() << "dpi is null";
+			qDebug() << "SN_Launcher::launch() : MEDIA_TYPE_PLUGIN : dpi is null";
 		}
 
 		break;
@@ -337,7 +351,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 
 	} // end switch
 
-	return launch(w, scenepos);
+	return launch(w, pos);
 }
 
 SN_BaseWidget * SN_Launcher::launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate, const QPointF &scenepos /*= QPointF()*/) {
@@ -346,7 +360,7 @@ SN_BaseWidget * SN_Launcher::launch(QString username, QString vncPasswd, int dis
 	return launch(w, scenepos);
 }
 
-SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &scenepos /*= QPointF()*/) {
+SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &pos /*= QPointF()*/) {
 	if ( w ) {
 
 		/**
@@ -357,7 +371,7 @@ SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &scenepos /*
 		if ( w->isRegisteredForMouseHover() ) {
 			_scene->hoverAcceptingApps.push_back(w);
 		}
-		_scene->addItemOnTheLayout(w, scenepos);
+		_scene->addItemOnTheLayout(w, pos);
 
 		//connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));
 		++_globalAppId; // increment only when widget is created successfully
@@ -474,8 +488,9 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, const QS
 
 	SN_PolygonArrowPointer *pointer = 0;
 
+	////////////////////////////////////////
 	//
-	// record NEW_POINTER
+	// record event NEW_POINTER : 1
 	//
 	if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
 		if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
@@ -489,19 +504,20 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, const QS
 			qDebug() << "Launcher::launchPointer() : Can't write";
 		}
 	}
+	//
+	///////////////////////////////////////
+
 	else {
 		pointer = new SN_PolygonArrowPointer(uiclientid, _settings, name, color);
 	}
 
+	//
+	// pointer is added directly to the scene, not in the SN_LayoutWidget
+	//
 	_scene->addItem(pointer);
 	if(!scenepos.isNull()) {
 		pointer->setPos(scenepos);
 	}
-
-	//
-	// temporary for scenario
-	//
-	_pointerMap.insert(uiclientid, pointer);
 
 	return pointer;
 }
@@ -509,76 +525,39 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, const QS
 void SN_Launcher::launchSavedSession(const QString &sessionfilename) {
 	QFile f(sessionfilename);
 	if (!f.exists()) {
-		qDebug() << "launch session: file not exist" << sessionfilename;
+		qDebug() << "SN_Launcher::launch session: file not exist" << sessionfilename;
 		return;
 	}
 	if(!f.open(QIODevice::ReadOnly)) {
-		qDebug() << "launch session: can't open file" << sessionfilename;
+		qDebug() << "SN_Launcher::launch session: can't open file" << sessionfilename;
 		return;
 	}
 
-	qDebug() << "SAGENextLauncher::launchSavedSession() : Loading a session" << sessionfilename;
-
-	/*
-	QGraphicsSimpleTextItem *text = new QGraphicsSimpleTextItem;
-	text->setText("Loading a session .. \n" + sessionfilename);
-	QFont font;
-	font.setStyleStrategy(QFont::OpenGLCompatible);
-	font.setBold(true);
-	font.setPointSize( _settings->value("gui/fontpointsize", 20).toInt() );
-	text->setFont(font);
-	text->setBrush(Qt::white);
-	text->setPos( (_scene->width()-text->boundingRect().width())/2 , (_scene->height()-text->boundingRect().height())/2 );
-	text->setZValue(999999);
-	_scene->addItem(text);
-	*/
-
 	QDataStream in(&f);
 
-	int mtype;
-	QPointF scenepos;
-	QSizeF size;
-	qreal scale;
-	while (!f.atEnd()) {
-		in >> mtype >> scenepos >> size >> scale;
-//		qDebug() << "\tentry : " << mtype << scenepos << size << scale;
-
-		QString file;
-		QString user;
-		QString pass;
-		QString srcaddr;
-
-		SN_BaseWidget *bw = 0;
-
-		if (mtype == SAGENext::MEDIA_TYPE_VNC) {
-			in >> srcaddr >> user >> pass;
-			bw = launch(user, pass, 0, srcaddr, 10, scenepos);
-		}
-		else {
-			in >> file;
-			bw = launch(mtype, file, scenepos);
-			if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
-				::usleep(200 * 1000);
-//				QThread::yieldCurrentThread();
-			}
-		}
-		if (!bw) {
-			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
-			continue;
-		}
-
-		bw->resize(size);
-		bw->setScale(scale);
-	}
+	_scene->loadSession(in, this);
 
 //	delete text;
 
 	f.close();
+
+	SN_SimpleTextWidget *text = new SN_SimpleTextWidget(_settings->value("gui/fontpointsize",20).toInt() * 4, QColor(Qt::white), QColor(64, 64, 64, 128));
+	text->setText("Saved session\n" + sessionfilename + "\nhas loaded");
+	QPropertyAnimation *anim = new QPropertyAnimation(text, "opacity", text);
+	anim->setStartValue(1.0);
+	anim->setEndValue(0.0);
+	anim->setEasingCurve(QEasingCurve::InExpo);
+	anim->setDuration(1500);
+	connect(anim, SIGNAL(finished()), text, SLOT(close()));
+
+	_scene->addItem(text);
+	text->setPos( (_scene->width()-text->size().width())/2 , (_scene->height()-text->size().height())/2 );
+	anim->start();
 }
 
 void SN_Launcher::launchRecording(const QString &scenarioFilename) {
 	ScenarioThread *thread = new ScenarioThread(this, scenarioFilename);
-	qDebug() << "\nSAGENextLauncher::launchScenario() : START  " << scenarioFilename;
+	qDebug() << "\nSN_Launcher::launchRecording() : START  " << scenarioFilename;
 	thread->start();
 }
 
@@ -658,7 +637,7 @@ void ScenarioThread::run() {
 
 		switch(type) {
 
-		case 0: // WIDGET_NEW
+		case 0: // NEW WIDGET
 		{
 			int mtype;
 			char filename[256];
@@ -669,13 +648,15 @@ void ScenarioThread::run() {
 			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(int, mtype), Q_ARG(QString, QString(filename)), Q_ARG(QPointF, QPointF(x,y)));
 			break;
 		}
-		case 1: {
+		case 1: // NEW POINTER
+		{
 			quint32 uiclientid;
 			char pname[128];
 			char color[16];
 			sscanf(line, "%lld %d %u %s %s", &when, &type, &uiclientid, pname, color);
-//			qDebug() << "NEW_POINTER" << uiclientid << pname << color;
-			_launcher->launchPointer(uiclientid, QString(pname), QColor(QString(color)));
+			qDebug() << "NEW_POINTER" << uiclientid << pname << color;
+			SN_PolygonArrowPointer *pointer = _launcher->launchPointer(uiclientid, QString(pname), QColor(QString(color)));
+			_launcher->_pointerMap.insert(uiclientid, pointer);
 //			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(quint64, uiclientid), Q_ARG(QString, QString(pname)), Q_ARG(QColor, QColor(QString(color))));
 			break;
 		}
@@ -714,8 +695,7 @@ void ScenarioThread::run() {
 		} // end of switch
 	}
 
-	qDebug() << "Scenario Thread finished";
+	qDebug() << "Scenario Thread finished. \n";
 }
-
 
 

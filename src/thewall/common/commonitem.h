@@ -215,7 +215,19 @@ private:
 protected:
 	void wheelEvent(QGraphicsSceneWheelEvent * event);
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+};
 
+
+class SN_SimpleTextWidget : public QGraphicsWidget
+{
+	Q_OBJECT
+public:
+	SN_SimpleTextWidget(int pointSize=0, const QColor &fontcolor = QColor(Qt::black), const QColor &bgcolor = QColor(Qt::gray), QGraphicsItem *parent=0);
+
+	void setText(const QString &text);
+
+private:
+	SN_SimpleTextItem *_textItem;
 };
 
 

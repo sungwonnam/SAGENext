@@ -1,9 +1,10 @@
 #include "mediabrowser.h"
+#include "mediastorage.h"
 #include "../sagenextlauncher.h"
 
 
-QReadWriteLock MediaBrowser::mediaHashRWLock;
-QHash<QString,QPixmap> MediaBrowser::mediaHash;
+QReadWriteLock SN_MediaBrowser::mediaHashRWLock;
+QHash<QString,QPixmap> SN_MediaBrowser::mediaHash;
 
 
 
@@ -19,10 +20,10 @@ void MediaItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 }
 
 void MediaItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
-    MediaBrowser *browser = static_cast<MediaBrowser *>(parentWidget());
+    SN_MediaBrowser *browser = static_cast<SN_MediaBrowser *>(parentWidget());
     Q_ASSERT(browser);
     Q_ASSERT(browser->launcher());
-    browser->launcher()->launch(MEDIA_TYPE_IMAGE, _filename);
+    browser->launcher()->launch(SAGENext::MEDIA_TYPE_IMAGE, _filename);
 }
 
 
@@ -31,31 +32,37 @@ void MediaItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 
 
 
-MediaBrowser::MediaBrowser(SAGENextLauncher *launcher, quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
 
-    : BaseWidget(globalappid, s, parent, wflags)
+SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, const QSettings *s, SN_MediaStorage* mediaStorage, QGraphicsItem *parent, Qt::WindowFlags wflags)
+
+    : SN_BaseWidget(globalappid, s, parent, wflags)
     , _HScrollBar(new QScrollBar(Qt::Horizontal))
     , _VScrollBar(new QScrollBar(Qt::Vertical))
     , _launcher(launcher)
+    , _mediaStorage(mediaStorage)
     , _numRow(10)
     , _numCol(10)
 {
-    setWidgetType(BaseWidget::Widget_Misc);
+    setWidgetType(SN_BaseWidget::Widget_Misc);
+
+    qDebug("%s::%s() : called.", metaObject()->className(), __FUNCTION__);
 
     _currentDirectory.setPath(QDir::homePath().append("/.sagenext"));
+
+    connect( _mediaStorage, SIGNAL(newMediaAdded()), this, SLOT(mediaStorageHasNewMedia()) );
 }
 
-MediaBrowser::~MediaBrowser() {
+SN_MediaBrowser::~SN_MediaBrowser() {
 
 }
 
-int MediaBrowser::insertNewMediaToHash(const QString &key, QPixmap &pixmap) {
-    MediaBrowser::mediaHashRWLock.lockForWrite();
-    MediaBrowser::mediaHash.insert(key, pixmap);
-    MediaBrowser::mediaHashRWLock.unlock();
+int SN_MediaBrowser::insertNewMediaToHash(const QString &key, QPixmap &pixmap) {
+    SN_MediaBrowser::mediaHashRWLock.lockForWrite();
+    SN_MediaBrowser::mediaHash.insert(key, pixmap);
+    SN_MediaBrowser::mediaHashRWLock.unlock();
 }
 
-void MediaBrowser::attachItems() {
+void SN_MediaBrowser::attachItems() {
 
     // detach all media items
     foreach (QGraphicsItem *item, childItems()) {
@@ -66,25 +73,47 @@ void MediaBrowser::attachItems() {
     }
 
 
-    MediaBrowser::mediaHashRWLock.lockForRead();
+    SN_MediaBrowser::mediaHashRWLock.lockForRead();
+    mediaHash = _mediaStorage->getMediaHash();
+    QHashIterator<QString, QPixmap> i(mediaHash);
+    int count = 0;
+    while (i.hasNext()) {
+        i.next();
+        qDebug() << i.key();
+        QPixmap pm = SN_MediaBrowser::mediaHash.value(i.key());
 
-    foreach (QFileInfo fileinfo, _currentDirectory.entryInfoList(QDir::Files | QDir::Dirs)) {
-
-        if (fileinfo.isDir()) {
-            // directory icon
-        }
-        else if (fileinfo.isFile()) {
-            QPixmap pm = MediaBrowser::mediaHash.value(fileinfo.absoluteFilePath());
-            MediaItem *item = new MediaItem(fileinfo.absoluteFilePath(), pm.scaled(256, 256), this);
-//            item->moveBy(x, y);
-        }
-
+        MediaItem *item = new MediaItem(i.key(), pm.scaled(256, 256), this);
+        item->moveBy(256 * count, 0);
+        count++;
     }
 
-    MediaBrowser::mediaHashRWLock.unlock();
+//    foreach (QFileInfo fileinfo, _currentDirectory.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDot)) {
+
+//        if (fileinfo.isDir()) {
+//            // directory icon
+//        }
+//        else if (fileinfo.isFile()) {
+//            QPixmap pm = MediaBrowser::mediaHash.value(fileinfo.absoluteFilePath());
+//            MediaItem *item = new MediaItem(fileinfo.absoluteFilePath(), pm.scaled(256, 256), this);
+////            item->moveBy(x, y);
+//        }
+
+//    }
+
+    SN_MediaBrowser::mediaHashRWLock.unlock();
 }
 
-void MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+void SN_MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
 
     // paint will just draw windows border for users to move/resize window
+}
+
+/*!
+  Slot called when MediaStorage has new media.
+  MediaBrowser will then update itself to account for new media.
+  TODO: Specify by user if there are multiple MediaBrowsers?
+ */
+void SN_MediaBrowser::mediaStorageHasNewMedia(){
+    qDebug() << "MediaBrowser has been informed of changes to MediaStorage";
+    attachItems();
 }
