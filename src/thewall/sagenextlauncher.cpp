@@ -161,7 +161,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &p
 	if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
 		if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
 			char record[256];
-			sprintf(record, "%lld %d %d %s\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(filename));
+			sprintf(record, "%lld %d %d %s %d %d\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(filename), pos.toPoint().x(), pos.toPoint().y());
 			_scenarioFile->write(record);
 		}
 		else {
@@ -286,6 +286,11 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &p
 			//
 //			qDebug() << proc->environment();
 
+
+//			proc->setWorkingDirectory(qApp->applicationDirPath());
+//			qDebug() << qApp->applicationDirPath();
+//			qDebug() << proc->workingDirectory();
+
 			proc->start("mplayer",  args);
 
 			sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_LOCAL_VIDEO);
@@ -355,7 +360,7 @@ SN_BaseWidget * SN_Launcher::launch(QString username, QString vncPasswd, int dis
 	return launch(w, scenepos);
 }
 
-SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &scenepos /*= QPointF()*/) {
+SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &pos /*= QPointF()*/) {
 	if ( w ) {
 
 		/**
@@ -366,7 +371,7 @@ SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &scenepos /*
 		if ( w->isRegisteredForMouseHover() ) {
 			_scene->hoverAcceptingApps.push_back(w);
 		}
-		_scene->addItemOnTheLayout(w, scenepos);
+		_scene->addItemOnTheLayout(w, pos);
 
 		//connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));
 		++_globalAppId; // increment only when widget is created successfully
@@ -498,11 +503,6 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, const QS
 		else {
 			qDebug() << "Launcher::launchPointer() : Can't write";
 		}
-
-		//
-		// temporary for record/playback
-		//
-		_pointerMap.insert(uiclientid, pointer);
 	}
 	//
 	///////////////////////////////////////
@@ -635,22 +635,26 @@ void ScenarioThread::run() {
 
 		switch(type) {
 
-		case 0: {
+		case 0: // NEW WIDGET
+		{
 			int mtype;
 			char filename[256];
-			sscanf(line, "%lld %d %d %s", &when, &type, &mtype, filename);
+			int x,y;
+			sscanf(line, "%lld %d %d %s %d %d", &when, &type, &mtype, filename, &x, &y);
 //			qDebug() << "NEW_WIDGET" << mtype << filename;
 //			_launcher->launch(mtype, QString(filename));
-			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(int, mtype), Q_ARG(QString, QString(filename)));
+			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(int, mtype), Q_ARG(QString, QString(filename)), Q_ARG(QPointF, QPointF(x,y)));
 			break;
 		}
-		case 1: {
+		case 1: // NEW POINTER
+		{
 			quint32 uiclientid;
 			char pname[128];
 			char color[16];
 			sscanf(line, "%lld %d %u %s %s", &when, &type, &uiclientid, pname, color);
-//			qDebug() << "NEW_POINTER" << uiclientid << pname << color;
-			_launcher->launchPointer(uiclientid, QString(pname), QColor(QString(color)));
+			qDebug() << "NEW_POINTER" << uiclientid << pname << color;
+			SN_PolygonArrowPointer *pointer = _launcher->launchPointer(uiclientid, QString(pname), QColor(QString(color)));
+			_launcher->_pointerMap.insert(uiclientid, pointer);
 //			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(quint64, uiclientid), Q_ARG(QString, QString(pname)), Q_ARG(QColor, QColor(QString(color))));
 			break;
 		}
@@ -689,7 +693,7 @@ void ScenarioThread::run() {
 		} // end of switch
 	}
 
-	qDebug() << "Scenario Thread finished";
+	qDebug() << "Scenario Thread finished. \n";
 }
 
 

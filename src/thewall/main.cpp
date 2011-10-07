@@ -344,7 +344,7 @@ int main(int argc, char *argv[])
 
 		recordingname.append( "__" + s.value("general/wallip").toString() );
 
-		QString filetimestr = QDateTime::currentDateTime().toString("hh.mm.ss_MM.dd.yyyy_");
+		QString filetimestr = QDateTime::currentDateTime().toString("__hh.mm.ss_MM.dd.yyyy_");
 		filetimestr.append(".recording");
 		recordingname.append(filetimestr);
 
