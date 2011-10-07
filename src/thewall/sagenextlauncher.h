@@ -72,8 +72,11 @@ private:
           */
         QList<SN_SageStreamWidget *> _sageWidgetQueue;
 
-		QList<QPointF> _sageWidgetScenePosQueue;
+		QList<QPointF> _sageWidgetPosQueue;
 
+		/**
+		  This is called once in the Constructor. It starts fsManager (QTcpServer)
+		  */
         void createFsManager();
 
         SN_ResourceMonitor *_rMonitor;
@@ -88,6 +91,10 @@ private:
 
 		QMap<QString, SN_PluginInterface *> _pluginMap;
 
+		/**
+		  This is called once in the constructor.
+		  To launch an actual instance, call SN_PluginInterface::createInstance()
+		  */
 		void loadPlugins();
 
 

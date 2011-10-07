@@ -147,7 +147,6 @@ void SN_BaseWidget::init()
 	/* When enabled, the item's paint() function will be called only once for each call to update(); for any subsequent repaint requests, the Graphics View framework will redraw from the cache. */
 	/* Turn cache off for streaming application */
 	//
-	// Enabling this will make PixmapWidget insanely slow
 	//
 //	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 

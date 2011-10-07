@@ -94,7 +94,7 @@ public:
 	/**
 	  widget's center is (0,0)
 	  */
-	QRectF boundingRect() const;
+//	QRectF boundingRect() const;
 
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);

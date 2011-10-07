@@ -339,26 +339,26 @@ int main(int argc, char *argv[])
 	/**
 	  create the launcher
 	*/
-	QFile *scenarioFile = 0;
+	QFile *recordingFile = 0;
 	if (s.value("misc/record_launcher", false).toBool() ||  s.value("misc/record_pointer", false).toBool()) {
 
 		recordingname.append( "__" + s.value("general/wallip").toString() );
 
-		QString filetimestr = QDateTime::currentDateTime().toString("hh:mm:ss.zzz_MM.dd.yyyy_");
+		QString filetimestr = QDateTime::currentDateTime().toString("hh.mm.ss_MM.dd.yyyy_");
 		filetimestr.append(".recording");
 		recordingname.append(filetimestr);
 
 		qDebug() << "SAGENext will record events to" << recordingname;
 
-		scenarioFile = new QFile(QDir::homePath() + "/.sagenext/" + recordingname);
-		scenarioFile->open(QIODevice::ReadWrite);
+		recordingFile = new QFile(QDir::homePath() + "/.sagenext/" + recordingname);
+		recordingFile->open(QIODevice::ReadWrite);
 
 		qint64 time = QDateTime::currentMSecsSinceEpoch();
 		char buffer[64];
 		sprintf(buffer, "%lld\n", time);
-		scenarioFile->write(buffer); // fill the first line
+		recordingFile->write(buffer); // fill the first line
 	}
-	SN_Launcher *launcher = new SN_Launcher(&s, scene, mediaStorage, resourceMonitor, schedcontrol, scenarioFile, scene); // scene is the parent
+	SN_Launcher *launcher = new SN_Launcher(&s, scene, mediaStorage, resourceMonitor, schedcontrol, recordingFile, scene); // scene is the parent
 
 
 	/**
@@ -369,9 +369,9 @@ int main(int argc, char *argv[])
 
 
 	/**
-	  create the initial MediaBrowser
+	  create the initial MediaBrowser.
 	*/
-        SN_MediaBrowser *mediaBrowser = new SN_MediaBrowser(launcher,(quint64)-41, &s, mediaStorage);
+	SN_MediaBrowser *mediaBrowser = new SN_MediaBrowser(launcher, 0, &s, mediaStorage);
 	launcher->launch(mediaBrowser);
 
 
@@ -477,9 +477,9 @@ int main(int argc, char *argv[])
 	int ret = a.exec();
 
 
-	if (scenarioFile) {
-		scenarioFile->flush();
-		scenarioFile->close();
+	if (recordingFile) {
+		recordingFile->flush();
+		recordingFile->close();
 	}
 
 
