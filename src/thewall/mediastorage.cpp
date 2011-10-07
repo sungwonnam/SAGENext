@@ -1,10 +1,13 @@
 #include "mediastorage.h"
 
-QReadWriteLock SN_MediaStorage::mediaHashRWLock;
-QHash<QString,QPixmap> SN_MediaStorage::mediaHash;
+#include <QSettings>
 
-SN_MediaStorage::SN_MediaStorage(QObject *parent) :
-    QObject(parent)
+QReadWriteLock SN_MediaStorage::mediaHashRWLock;
+QHash<QString, QPixmap> SN_MediaStorage::mediaHash;
+
+SN_MediaStorage::SN_MediaStorage(const QSettings *s, QObject *parent)
+    : QObject(parent)
+    , _settings(s)
 {
 }
 
@@ -35,19 +38,32 @@ bool SN_MediaStorage::checkForMediaInHash(const QString &key) {
 }
 
 QPixmap SN_MediaStorage::readImage(const QString &filename) {
-        QImage image;
-        QPixmap pixmap;
+//        QImage image;
+	QPixmap pixmap(filename);
+		/*
         if (image.load(filename)) {
                 pixmap.convertFromImage(image);
                 return pixmap;
         }
-        else qWarning("%s::%s() : QImage::load(%s) failed !",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+		*/
+	if ( ! pixmap.isNull() ) {
+		//
+		// for better drawing performance, thumbnail shouldn't be large
+		//
+		return pixmap.scaled(
+		            _settings->value("gui/mediathumbnailwidth", 256).toInt()
+		            ,_settings->value("gui/mediathumbnailwidth",256).toInt()
+		            ,Qt::IgnoreAspectRatio
+		            ,Qt::FastTransformation);
+	}
 
-        return false;
+	else qWarning("%s::%s() : Couldn't create the thumbnail for %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+
+	return pixmap;
 }
 
-QHash<QString,QPixmap> SN_MediaStorage::getMediaHash(){
-    QHash<QString,QPixmap> mediaHashOut;
+QHash<QString, QPixmap> SN_MediaStorage::getMediaHash(){
+    QHash<QString, QPixmap> mediaHashOut;
     SN_MediaStorage::mediaHashRWLock.lockForWrite();
     mediaHashOut = SN_MediaStorage::mediaHash;
     SN_MediaStorage::mediaHashRWLock.unlock();

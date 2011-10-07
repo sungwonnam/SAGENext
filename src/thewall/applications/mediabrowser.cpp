@@ -11,19 +11,36 @@ QHash<QString,QPixmap> SN_MediaBrowser::mediaHash;
 
 
 MediaItem::MediaItem(const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent)
-    : QGraphicsPixmapItem(pixmap, parent)
+    : QGraphicsWidget(parent)
     , _filename(filename)
+    , _thumbnail(0)
 {
+	setFlag(QGraphicsItem::ItemIsSelectable, false);
+	setFlag(QGraphicsItem::ItemIsMovable, false);
+
+	_thumbnail = new QGraphicsPixmapItem(pixmap, this);
+
+	Q_ASSERT(_thumbnail);
+
+	//
+	// because MediaItem should receive mouse event not the thumbnail
+	//
+	_thumbnail->setFlag(QGraphicsItem::ItemStacksBehindParent);
+
+	resize(_thumbnail->boundingRect().size());
 }
 
-void MediaItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {
+void MediaItem::mousePressEvent(QGraphicsSceneMouseEvent *) {
 }
 
-void MediaItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
+void MediaItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
+	/*
     SN_MediaBrowser *browser = static_cast<SN_MediaBrowser *>(parentWidget());
     Q_ASSERT(browser);
     Q_ASSERT(browser->launcher());
     browser->launcher()->launch(SAGENext::MEDIA_TYPE_IMAGE, _filename);
+	*/
+	emit thumbnailClicked(SAGENext::MEDIA_TYPE_IMAGE, _filename);
 }
 
 
@@ -50,6 +67,8 @@ SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, con
     _currentDirectory.setPath(QDir::homePath().append("/.sagenext"));
 
     connect( _mediaStorage, SIGNAL(newMediaAdded()), this, SLOT(mediaStorageHasNewMedia()) );
+
+	setContentsMargins(1,1,1,1);
 }
 
 SN_MediaBrowser::~SN_MediaBrowser() {
@@ -82,8 +101,14 @@ void SN_MediaBrowser::attachItems() {
         qDebug() << i.key();
         QPixmap pm = SN_MediaBrowser::mediaHash.value(i.key());
 
-        MediaItem *item = new MediaItem(i.key(), pm.scaled(256, 256), this);
-        item->moveBy(256 * count, 0);
+        MediaItem *item = new MediaItem(i.key(), pm, this);
+
+		if ( ! QObject::connect(item, SIGNAL(thumbnailClicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString))) ) {
+			qCritical("\n%s::%s() : signal thumbnailClicked is not connected to the slot launchMedia\n", metaObject()->className(), __FUNCTION__);
+		}
+
+		item->moveBy(_settings->value("gui/mediathumbnailwidth",256).toInt() * count, 0);
+
         count++;
     }
 
@@ -103,9 +128,11 @@ void SN_MediaBrowser::attachItems() {
     SN_MediaBrowser::mediaHashRWLock.unlock();
 }
 
-void SN_MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+void SN_MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 
     // paint will just draw windows border for users to move/resize window
+
+	// To be able to do that, resize() must be called with correct value
 }
 
 /*!
@@ -116,4 +143,9 @@ void SN_MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 void SN_MediaBrowser::mediaStorageHasNewMedia(){
     qDebug() << "MediaBrowser has been informed of changes to MediaStorage";
     attachItems();
+}
+
+void SN_MediaBrowser::launchMedia(SAGENext::MEDIA_TYPE mtype, const QString &filename) {
+	Q_ASSERT(_launcher);
+	_launcher->launch(mtype, filename);
 }

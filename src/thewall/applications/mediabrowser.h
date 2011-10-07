@@ -2,6 +2,7 @@
 #define MEDIABROWSER_H
 
 #include "base/basewidget.h"
+#include "../common/commondefinitions.h"
 
 #include <QtGui>
 #include <QtCore>
@@ -10,19 +11,28 @@ class SN_Launcher;
 class SN_MediaStorage;
 
 /**
-  pointer click will trigger SAGENextLaunch::launch()
+  pointer click will trigger SN_Launcher::launch()
   */
-class MediaItem : public QGraphicsPixmapItem {
+class MediaItem : public QGraphicsWidget
+{
+	Q_OBJECT
+
 public:
     MediaItem(const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent=0);
 
 private:
+	SAGENext::MEDIA_TYPE _mediaType;
+
     QString _filename;
+
+	QGraphicsPixmapItem *_thumbnail;
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
+signals:
+	void thumbnailClicked(SAGENext::MEDIA_TYPE mediatype, const QString &filename);
 };
 
 
@@ -70,6 +80,7 @@ private:
     QScrollBar *_VScrollBar;
 
     SN_Launcher *_launcher;
+
     SN_MediaStorage* _mediaStorage;
 
     /**
@@ -90,6 +101,8 @@ private:
 
 public slots:
     void mediaStorageHasNewMedia();
+
+	void launchMedia(SAGENext::MEDIA_TYPE, const QString &filename);
 
 };
 

@@ -333,7 +333,7 @@ int main(int argc, char *argv[])
 	/**
 	  create the MediaStorage
 	*/
-        SN_MediaStorage *mediaStorage = new SN_MediaStorage();
+	SN_MediaStorage *mediaStorage = new SN_MediaStorage(&s);
 
 	/**
 	  create the launcher
