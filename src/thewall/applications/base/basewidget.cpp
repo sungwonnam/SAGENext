@@ -83,11 +83,8 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	// This will affect boundingRect(), windowFrameRect() of the widget.
 	qreal fmargin = _settings->value("gui/framemargin", 8).toDouble();
 	if (isWindow()) {
-		// window frame is not interactible by shared pointers
-		setWindowFrameMargins(0, 0, 0, 0);
-		
 		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
-		setContentsMargins(fmargin, fmargin + 20, fmargin, fmargin); // by default, this is 0 0 0 0
+		setContentsMargins(fmargin, fmargin + 40, fmargin, fmargin); // by default, this is 0 0 0 0
 	}
 	else {
 		// setting frameMargins won't have any effect.. (Qt::Widget doesn't have frame)
@@ -151,7 +148,8 @@ void SN_BaseWidget::init()
 //	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
 	//qDebug() << "BaseWidget::init() : boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
-	//getWindowFrameMargins(&frameMarginLeft, &frameMarginTop, &frameMarginRight, &frameMarginBottom);
+	// window frame is not interactible by shared pointers
+	setWindowFrameMargins(0, 0, 0, 0);
 
 	/*!
 	  Define QActions

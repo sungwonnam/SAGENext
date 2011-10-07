@@ -16,31 +16,26 @@ void TrackerItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWi
 	painter->drawEllipse(boundingRect());
 }
 
+
+
 MouseHoverExample::MouseHoverExample()
     : SN_BaseWidget(Qt::Window)
-	, _textItem(0)
 	, _hoverFlag(false)
-	, _marginleft(8)
-	, _marginright(8)
-	, _margintop(28)
-	, _marginbottom(8)
+	, _marginleft(10)
+	, _marginright(10)
+	, _margintop(40)
+	, _marginbottom(10)
 {
-//	_textItem = new QGraphicsSimpleTextItem("Pointer hovering\n", this);
-//	QBrush brush(Qt::white);
-//	_textItem->setBrush(brush);
+	setContentsMargins(_marginleft, _margintop, _marginright, _marginbottom);
+
 
 	//
 	// register myself to the hoveraccepting app list of the scene
 	//
 	setRegisterForMouseHover(true);
 
-	resize(800, 600);
 
-//	_textItem->hide();
-
-//	setWindowFrameMargins(0, 0, 0, 0);
-	setContentsMargins(_marginleft, _margintop, _marginright, _marginbottom);
-//	qDebug() << boundingRect();
+	resize(1024, 768);
 }
 
 MouseHoverExample::~MouseHoverExample()
@@ -56,11 +51,6 @@ void MouseHoverExample::paint(QPainter *painter, const QStyleOptionGraphicsItem 
 	painter->fillRect(_marginleft, _margintop, size().width()-_marginleft-_marginright, size().height()-_margintop-_marginbottom, Qt::lightGray);
 }
 
-void MouseHoverExample::resizeEvent(QGraphicsSceneResizeEvent *) {
-//	_textItem->setPos(e->newSize().width()/2 - _textItem->boundingRect().size().width()/2
-//					  ,e->newSize().height()/2 - _textItem->boundingRect().size().height()/2);
-}
-
 void MouseHoverExample::handlePointerHover(SN_PolygonArrowPointer *pointer, const QPointF &pointerPosOnMe, bool isHovering) {
 
 	//
@@ -71,44 +61,61 @@ void MouseHoverExample::handlePointerHover(SN_PolygonArrowPointer *pointer, cons
 	QMap<SN_PolygonArrowPointer *, QPair<QPointF, bool> >::const_iterator it = _pointerMap.constBegin();
 
 	if ( isHovering ) {
+		//
+		// Something is hovering on me !
+		//
+
+
 		// handle mouse hovering. For example,..
 		_hoverFlag = true;
-//		_textItem->show();
-//		update(); // to schedule paint(). If you don't need to repaint then don't call update()
 
 		//
 		// find out where the pointers are hovering to handle each pointer's hovering separately
 		//
 		for (; it!=_pointerMap.constEnd(); it++) {
+
+			//
+			// if a pointer is hovering on me now
+			//
 			if (it.value().second == true) {
 //				qDebug() << "pointer id" << it.key()->id() << "is hovering on" << it.value().first << "in my local coordinate";
 
+				// a tracker item for each pointer
 				TrackerItem *tracker = 0;
 				if ( ! (tracker = _hoverTrackerItemList.value(pointer->id(), 0)) ) {
 					 tracker = new TrackerItem(0,0,64,64, this);
 //					 tracker->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 					_hoverTrackerItemList.insert(pointer->id(), tracker);
 				}
+
+				//
+				// stalking the pointer
+				//
 				tracker->setPos( pointerPosOnMe.x() - 32 , pointerPosOnMe.y() - 32 );
 			}
 		}
 	}
 	else {
 		//
-		// find any pointer who is still hovering on me
+		// Something informed that it doesn't hover anymore.
+		// But we still need to check because there still can be other pointers hovering on me. (Multiuser interaction !!)
+		//
+
+		//
+		// So, find any pointer who is still hovering on me
 		//
 		for (; it!=_pointerMap.constEnd(); it++) {
 			if ( it.value().second == true ) {
-				// there still is a pointer hovering on me, so do nothing and just return
+				// Found one!
+				// so do nothing, return
 				return;
 			}
 		}
 
-		// if control reaches here then nothing is hovering on me
-		// handle hover leave
+		//
+		// if control reaches here then I'm sure that nothing is hovering on me
+		//
 		_hoverFlag = false;
-//		_textItem->hide();
-//		update(); // to schedule paint(). If you don't need to repaint then don't call update()
 	}
 }
 

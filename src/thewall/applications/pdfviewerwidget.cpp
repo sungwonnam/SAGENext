@@ -47,6 +47,8 @@ SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalapp
 
 	setCurrentPage(0);
 
+//	setCacheMode(QGraphicsItem::ItemCoordinateCache);
+
 /**
 	QPushButton *_rbtn = new QPushButton(QIcon(":/resources/rightbox.png"), "");
 	connect(_rbtn, SIGNAL(clicked()), this, SLOT(nextPage()));

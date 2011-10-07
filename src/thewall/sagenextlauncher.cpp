@@ -35,6 +35,7 @@ SN_Launcher::SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage
 	Q_ASSERT(_settings);
 	Q_ASSERT(_scene);
 
+	qDebug() << "\nSN_Launcher : Loading plugins";
 	loadPlugins();
 
 	// start listening for sage message
@@ -61,7 +62,7 @@ void SN_Launcher::loadPlugins() {
 				qCritical() << "qobject_cast<SN_PluginInterface *>(plugin) failed for" << filename;
 			}
 			else {
-				qDebug() << filename << "has added";
+				qDebug() << "SN_Launcher::loadPlugins() : " << filename << "has added";
 				_pluginMap.insert(pluginDir.absoluteFilePath(filename), dpi);
 			}
 		}

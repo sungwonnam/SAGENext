@@ -94,14 +94,18 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
     qreal deltax = _scenePos.x() - scenePos().x();
     qreal deltay = _scenePos.y() - scenePos().y();
 
+
+
 	//
     // move pointer itself
     // Sets the position of the item to pos, which is in parent coordinates. For items with no parent, pos is in scene coordinates.
 	//
     setPos(_scenePos);
 
+
+	////////////////////////////
 	//
-	// Record
+	// Record pointer move (2)
 	//
 	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
 		char record[64];
@@ -111,6 +115,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		sprintf(record, "%lld %d %u %d %d %d\n", QDateTime::currentMSecsSinceEpoch(), 2, _uiclientid, _scenePos.toPoint().x(), _scenePos.toPoint().y(), button);
 		_scenarioFile->write(record);
 	}
+	//////////////////////////////
 
 
 	//

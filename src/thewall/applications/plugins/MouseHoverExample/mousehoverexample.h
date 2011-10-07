@@ -1,11 +1,11 @@
 #ifndef MOUSEHOVEREXAMPLE_H
 #define MOUSEHOVEREXAMPLE_H
 
+#include <QtGui>
 
 #include "../../base/SN_plugininterface.h"
 #include "../../base/basewidget.h"
 
-#include <QtGui>
 
 class TrackerItem : public QGraphicsEllipseItem
 {
@@ -44,14 +44,7 @@ public:
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
-	/**
-	  to move _textItem properly
-	  */
-	void resizeEvent(QGraphicsSceneResizeEvent *event);
-
 private:
-	QGraphicsSimpleTextItem *_textItem;
-
 	/**
 	  true if there is a pointer on this widget
 	  */

@@ -46,6 +46,8 @@ private:
 	  */
 	QImage *_imageTemp;
 
+//	QImage _myImage;
+
 	/*!
 	  image is converted to pixmap and drawn from pixmap to make paint() faster
 	  */

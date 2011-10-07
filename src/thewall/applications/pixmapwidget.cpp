@@ -74,6 +74,7 @@ void SN_PixmapWidget::start() {
         **/
 
 	// this is the best in E8400 (raster backend, opengl viewport (Xinerama))
+	// and the same in render1 (raster backend, opengl viewport, GTX 460)
 	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
 
@@ -98,6 +99,8 @@ void SN_PixmapWidget::callUpdate() {
 
 		delete _imageTemp;
 		_imageTemp = 0;
+
+//		_myImage = _imageTemp->convertToFormat(QImage::Format_RGB32);
 
 		isImageReady = true;
 		update();
@@ -140,7 +143,8 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 	//if ( scaleFactorX != 1.0 || scaleFactorY != 1.0 )
 	//painter->scale(scaleFactorX, scaleFactorX);
 
-//	painter->drawImage(settings->value("gui/framemargin", 0).toInt(), settings->value("gui/framemargin", 0).toInt(), *image);
+//	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_imageTemp);
+//	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _myImage);
 	painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_pixmap);
 
 
