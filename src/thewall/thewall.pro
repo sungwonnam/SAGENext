@@ -90,11 +90,14 @@ message("Your media root directory : $$MEDIA_ROOT_DIR")
 IMAGE_DIR = $$MEDIA_ROOT_DIR/image
 VIDEO_DIR = $$MEDIA_ROOT_DIR/video
 PDF_DIR = $$MEDIA_ROOT_DIR/pdf
+PLUGIN_DIR = $$MEDIA_ROOT_DIR/plugins
+
 !exists($$MEDIA_ROOT_DIR) {
     message("Creating media directories")
     system(mkdir $$MEDIA_ROOT_DIR)
     system(mkdir $$IMAGE_DIR)
     system(mkdir $$VIDEO_DIR)
+    system(mkdir $$PLUGIN_DIR)
 }
 !exists($$IMAGE_DIR) {
     system(mkdir $$IMAGE_DIR)
@@ -104,6 +107,14 @@ PDF_DIR = $$MEDIA_ROOT_DIR/pdf
 }
 !exists($$PDF_DIR) {
 	system(mkdir $$PDF_DIR)
+}
+!exists($$PLUGIN_DIR) {
+    system(mkdir $$PLUGIN_DIR)
+}
+
+SESSIONS_DIR = $$(HOME)/.sagenext/sessions
+!exists($$SESSIONS_DIR) {
+    system(mkdir $$SESSIONS_DIR)
 }
 
 

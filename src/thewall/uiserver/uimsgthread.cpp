@@ -22,7 +22,7 @@ UiMsgThread::UiMsgThread(const quint32 uiclientid, int sockfd, QObject *parent)
 //		qCritical("%s::%s() : failed to connect readyRead and recvMsg", metaObject()->className(), __FUNCTION__);
 //	}
 
-	QObject::connect(&_tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
+//	QObject::connect(&_tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
 
 	start();
 }
@@ -38,9 +38,16 @@ void UiMsgThread::run() {
 	
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 	while(!_end) {
+		if (_tcpSocket.state() != QAbstractSocket::ConnectedState) break;
+
 		_tcpSocket.waitForReadyRead(-1);
-		if ( _tcpSocket.read(msg.data(), msg.size()) <= 0 ) {
+		qint64 read = _tcpSocket.read(msg.data(), msg.size());
+		if ( read < 0 ) {
+			qDebug() << "UiMsgThread::run() : read error";
 			break;
+		}
+		else if ( read == 0) {
+			qDebug() << "UiMsgThread::run() : no more data is available";
 		}
 		else {
 			emit msgReceived(msg);

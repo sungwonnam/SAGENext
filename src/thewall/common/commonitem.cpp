@@ -10,8 +10,9 @@ SelectionRectangle::SelectionRectangle(QGraphicsItem *parent)
 }
 
 
-SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, const QSettings *s, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
+SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, const QSettings *s, SN_TheScene *scene, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
+    , _scene(scene)
     , _uiclientid(uicid)
     , _settings(s)
     , _textItem(0)
@@ -26,7 +27,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, const QSetti
 	/// will this help?
 	///
 	//setCacheMode(QGraphicsItem::ItemCoordinateCache);
-	
+
 	QPolygonF p;
 //	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
 	p << QPointF(0,0) << QPointF(128,110) << QPointF(67, 110) << QPointF(40,160) << QPointF(0,0);
@@ -53,8 +54,7 @@ SN_PolygonArrowPointer::~SN_PolygonArrowPointer() {
 	//
 	// BaseWidget who registered for hoveraccept needs to know if a pointer is nolonger valid
 	//
-	SN_TheScene *sc = static_cast<SN_TheScene *>(scene());
-	foreach(SN_BaseWidget *bw, sc->hoverAcceptingApps) {
+	foreach(SN_BaseWidget *bw, _scene->hoverAcceptingApps) {
 		bw->removePointerFromPointerMap(this);
 	}
 
@@ -125,11 +125,9 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	// else
 	// unset hover flag
 	//
-	SN_TheScene *sc = static_cast<SN_TheScene *>(scene());
-
-	foreach(SN_BaseWidget *bw, sc->hoverAcceptingApps) {
+	foreach(SN_BaseWidget *bw, _scene->hoverAcceptingApps) {
 		if (!bw) {
-			sc->hoverAcceptingApps.removeOne(bw);
+			_scene->hoverAcceptingApps.removeOne(bw);
 			continue;
 		}
 
@@ -185,8 +183,16 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 					SN_LayoutWidget *bottom = bar->ownerNode()->secondChildLayout();
 					top->resize(      top->size().width(),    top->size().height() + deltay);
 					bottom->resize(bottom->size().width(), bottom->size().height() - deltay);
+
+					bottom->moveBy(0, deltay);
+
+					/*********
+					  ***
+					  ** when the SN_LayoutWidget's 0,0 is the center
 					top->moveBy(0, deltay/2);
 					bottom->moveBy(0, deltay/2);
+					***
+					**/
 				}
 				else {
 					// bar moves only left or right (x axis)
@@ -195,8 +201,16 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 					SN_LayoutWidget *right = bar->ownerNode()->secondChildLayout();
 					left->resize(  left->size().width() + deltax,  left->size().height());
 					right->resize(right->size().width() - deltax, right->size().height());
+
+					right->moveBy(deltax, 0);
+
+					/*********
+					  ***
+					  ** when the SN_LayoutWidget's 0,0 is the center
 					left->moveBy(deltax/2, 0);
 					right->moveBy(deltax/2, 0);
+	                   ***
+                      **/
 				}
 			}
 		}
@@ -290,17 +304,16 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 	if (button == Qt::LeftButton) {
 		if (_basewidget) {
 
-
-			// I can move this app to SAGENextLayoutWidget that contains released scenePos
+			// I can move this app to SN_LayoutWidget that contains released scenePos
+//			_scene->addItemOnTheLayout(_basewidget, _scene->rootLayoutWidget()->mapFromScene(_basewidget->scenePos()));
 
 
 			// I can minimize this app if it's on the minimize rectangle
 
 
 			// I can close this app if removeButton on the scene contains released scenePos
-			SN_TheScene *sc = static_cast<SN_TheScene *>(scene());
-			if (sc->isOnAppRemoveButton(scenePos)) {
-				sc->hoverAcceptingApps.removeAll(_basewidget);
+			if (_scene->isOnAppRemoveButton(scenePos)) {
+				_scene->hoverAcceptingApps.removeAll(_basewidget);
 				_basewidget->close();
 
 //				if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {

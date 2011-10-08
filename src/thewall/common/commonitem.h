@@ -4,7 +4,7 @@
 #include <QtGui>
 
 class SN_BaseWidget;
-
+class SN_TheScene;
 
 /**
   A selection rectangle when the pointer selects a set of basewidget with dragging
@@ -25,7 +25,7 @@ public:
   */
 class SN_PolygonArrowPointer : public QGraphicsPolygonItem {
 public:
-	SN_PolygonArrowPointer(const quint32 uicid, const QSettings *, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
+	SN_PolygonArrowPointer(const quint32 uicid, const QSettings *, SN_TheScene *scene, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
 	~SN_PolygonArrowPointer();
 
 	void setPointerName(const QString &text);
@@ -96,6 +96,8 @@ public:
         virtual void pointerWheel(const QPointF &scenePos, int delta = 120, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 private:
+		SN_TheScene *_scene;
+
         /**
           * The unique ID of UI client to which this pointer belongs
           */

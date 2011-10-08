@@ -94,13 +94,15 @@ bool SN_TheScene::isOnAppRemoveButton(const QPointF &scenepos) {
 	return _appRemoveButton->geometry().contains(scenepos);
 }
 
-void SN_TheScene::addItemOnTheLayout(SN_BaseWidget *bw, const QPointF &scenepos) {
+void SN_TheScene::addItemOnTheLayout(SN_BaseWidget *bw, const QPointF &pos) {
 	if(_rootLayoutWidget) {
-		_rootLayoutWidget->addItem(bw, scenepos);
+
+		// pos must be in _rootLayoutWidget's coordinate (which is same with scene coordinate)
+		_rootLayoutWidget->addItem(bw, pos);
 	}
 	else {
 		addItem(bw);
-		bw->setPos(scenepos);
+		bw->setPos(pos);
 	}
 }
 
@@ -394,11 +396,11 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 	  So this layoutWidget can't have any baseWidget as a child.
 	  */
 	if (_bar) {
-		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromScene(pos))) {
-			_firstChildLayout->addItem(bw, pos);
+		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromParent(pos)) ) {
+			_firstChildLayout->addItem(bw, _firstChildLayout->mapFromParent(pos));
 		}
 		else {
-			_secondChildLayout->addItem(bw, pos);
+			_secondChildLayout->addItem(bw, _secondChildLayout->mapFromParent(pos));
 		}
 	}
 	/**
@@ -426,9 +428,9 @@ void SN_LayoutWidget::reparentWidgets(SN_LayoutWidget *newParent) {
 	}
 	else {
 		foreach(QGraphicsItem *item, childItems()) {
-			// exclude PartitionBar
-			// exclude PixmapButton
-			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item==_firstChildLayout || item==_secondChildLayout) continue;
+			// exclude all the child but user application
+//			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item==_firstChildLayout || item==_secondChildLayout) continue;
+			if (item->type() < QGraphicsItem::UserType + 12) continue;
 
 			//
 			// this item's pos() which is in this layoutWidget's coordinate to newParent's coordinate
@@ -547,10 +549,11 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 		// If shrinking, move child BaseWidgets accordingly
 
 		foreach(QGraphicsItem *item, childItems()) {
-			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ||  item==_firstChildLayout || item==_secondChildLayout) {
-	//			qDebug() << "createChildlayout skipping myself, buttons and bar";
-				continue;
-			}
+//			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ||  item==_firstChildLayout || item==_secondChildLayout) {
+//	//			qDebug() << "createChildlayout skipping myself, buttons and bar";
+//				continue;
+//			}
+			if (item->type() < QGraphicsItem::UserType + 12) continue;
 
 			QGraphicsWidget *widget = static_cast<QGraphicsWidget *>(item);
 			Q_ASSERT(widget);
@@ -622,10 +625,11 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 	// reparent child items to appropriate widget. I shouldn't have any child baseWidgets at this point
 	//
 	foreach(QGraphicsItem *item, childItems()) {
-		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ||  item==_firstChildLayout || item==_secondChildLayout ) {
-//			qDebug() << "createChildlayout skipping myself, buttons and bar";
-			continue;
-		}
+//		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ||  item==_firstChildLayout || item==_secondChildLayout ) {
+////			qDebug() << "createChildlayout skipping myself, buttons and bar";
+//			continue;
+//		}
+		if (item->type() < QGraphicsItem::UserType + 12) continue;
 
 		QPointF newPos;
 		QRectF intersectedWithFirst = first & mapRectFromItem(item, item->boundingRect());
@@ -719,10 +723,7 @@ void SN_LayoutWidget::doTile() {
 	if (_bar) return;
 
 	foreach(QGraphicsItem *item, childItems()) {
-		// exclude PartitionBar
-		// exclude PixmapButton
-		if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item==_firstChildLayout || item==_secondChildLayout )
-			continue;
+		if (item->type() < QGraphicsItem::UserType + 12) continue;
 
 	}
 }

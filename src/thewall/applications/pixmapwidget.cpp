@@ -73,10 +73,6 @@ void SN_PixmapWidget::start() {
         QThreadPool::globalInstance()->start(static_cast<QRunnable *>(this));
         **/
 
-	// this is the best in E8400 (raster backend, opengl viewport (Xinerama))
-	// and the same in render1 (raster backend, opengl viewport, GTX 460)
-	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
-
 
 	futureWatcher = new QFutureWatcher<bool>(this);
 	connect(futureWatcher, SIGNAL(finished()), this, SLOT(callUpdate()));
@@ -95,6 +91,10 @@ void SN_PixmapWidget::callUpdate() {
 		resize(_imageTemp->width() + fmargin * 2 , _imageTemp->height() + fmargin * 2);
 //		qDebug() << "boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
 		_appInfo->setFrameSize(_imageTemp->width() + fmargin * 2, _imageTemp->height() + fmargin*2, _imageTemp->depth());
+
+		// this is the best in E8400 (raster backend, opengl viewport (Xinerama))
+		// and the same in render1 (raster backend, opengl viewport, GTX 460)
+//		setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
 
 		delete _imageTemp;

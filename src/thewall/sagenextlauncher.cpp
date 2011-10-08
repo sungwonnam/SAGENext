@@ -361,6 +361,10 @@ SN_BaseWidget * SN_Launcher::launch(QString username, QString vncPasswd, int dis
 	return launch(w, scenepos);
 }
 
+/**
+  Note that pos is in SN_BaseWidget's parent coordinate
+  If w has no parent then it's in scene coordinate
+  */
 SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &pos /*= QPointF()*/) {
 	if ( w ) {
 
@@ -499,7 +503,7 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, const QS
 			sprintf(record, "%lld %d %u %s %s\n",QDateTime::currentMSecsSinceEpoch(), 1, uiclientid, qPrintable(name), qPrintable(color.name()));
 			_scenarioFile->write(record);
 
-			pointer = new SN_PolygonArrowPointer(uiclientid, _settings, name, color, _scenarioFile);
+			pointer = new SN_PolygonArrowPointer(uiclientid, _settings, _scene, name, color, _scenarioFile);
 		}
 		else {
 			qDebug() << "Launcher::launchPointer() : Can't write";
@@ -509,7 +513,7 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, const QS
 	///////////////////////////////////////
 
 	else {
-		pointer = new SN_PolygonArrowPointer(uiclientid, _settings, name, color);
+		pointer = new SN_PolygonArrowPointer(uiclientid, _settings, _scene, name, color);
 	}
 
 	//
