@@ -44,6 +44,11 @@ SN_UiServer::~SN_UiServer() {
 	foreach (SN_PolygonArrowPointer *pa, _pointers) {
 		delete pa;
 	}
+	
+	foreach (UiMsgThread *thr, _uiMsgThreadsMap) {
+		thr->terminate();
+		thr->endThread();
+	}
 
     //	QByteArray msg(EXTUI_MSG_SIZE, 0);
     //	sprintf(msg.data(), "%d dummy", WALL_IS_CLOSING);

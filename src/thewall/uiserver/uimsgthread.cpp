@@ -5,6 +5,7 @@
 UiMsgThread::UiMsgThread(const quint32 uiclientid, int sockfd, QObject *parent)
     : QThread(parent)
     , _uiClientId(uiclientid)
+	, _end(false)
 {
 	if ( ! _tcpSocket.setSocketDescriptor(sockfd) ) {
 		qCritical("%s::%s() : UiMsgThread for %u failed to set socketdescriptor with socket %d", metaObject()->className(), __FUNCTION__, uiclientid, sockfd);
@@ -17,9 +18,9 @@ UiMsgThread::UiMsgThread(const quint32 uiclientid, int sockfd, QObject *parent)
 	_peerAddress = _tcpSocket.peerAddress();
 	qDebug() << "UiMsgThread created for peer" << _tcpSocket.peerAddress().toString();
 
-	if ( ! QObject::connect(&_tcpSocket, SIGNAL(readyRead()), this, SLOT(recvMsg())) ) {
-		qCritical("%s::%s() : failed to connect readyRead and recvMsg", metaObject()->className(), __FUNCTION__);
-	}
+//	if ( ! QObject::connect(&_tcpSocket, SIGNAL(readyRead()), this, SLOT(recvMsg())) ) {
+//		qCritical("%s::%s() : failed to connect readyRead and recvMsg", metaObject()->className(), __FUNCTION__);
+//	}
 
 	QObject::connect(&_tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
 
@@ -33,15 +34,26 @@ UiMsgThread::~UiMsgThread() {
 }
 
 void UiMsgThread::run() {
-	exec();
+//	exec();
+	
+	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	while(!_end) {
+		_tcpSocket.waitForReadyRead(-1);
+		if ( _tcpSocket.read(msg.data(), msg.size()) <= 0 ) {
+			break;
+		}
+		else {
+			emit msgReceived(msg);
+		}
+	}
 
 	_tcpSocket.abort();
 	_tcpSocket.close();
 }
 
 void UiMsgThread::recvMsg() {
-	if (_tcpSocket.bytesAvailable() < EXTUI_MSG_SIZE)
-		return;
+//	if (_tcpSocket.bytesAvailable() < EXTUI_MSG_SIZE)
+//		return;
 
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
 	_tcpSocket.read(msg.data(), EXTUI_MSG_SIZE);
@@ -62,11 +74,14 @@ void UiMsgThread::handleSocketError(QAbstractSocket::SocketError error) {
 	qDebug() << "UiMsgThread socket error. Exit thread" << error;
 
 	emit clientDisconnected(_uiClientId);
+	
+	_end = true;
 
 	exit();
 }
 
 void UiMsgThread::endThread() {
+	_end = true;
 	//_tcpSocket.disconnectFromHost();
 	_tcpSocket.abort();
 	_tcpSocket.close();

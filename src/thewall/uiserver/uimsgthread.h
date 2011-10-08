@@ -25,6 +25,7 @@ private:
 	QHostAddress _peerAddress;
 
 
+	bool _end;
 
 signals:
 	void msgReceived(const QByteArray msg);

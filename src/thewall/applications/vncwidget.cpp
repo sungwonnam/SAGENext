@@ -20,11 +20,16 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	, framerate(frate)
 
 {
+	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_VNC);
+	
 	if ( username == "user" )
 		SN_VNCClientWidget::username = "";
 	else
 		SN_VNCClientWidget::username = username;
 	SN_VNCClientWidget::vncpasswd = passwd;
+	
+	_appInfo->setVncUsername(SN_VNCClientWidget::username);
+	_appInfo->setVncPassword(SN_VNCClientWidget::vncpasswd);
 
 //	qDebug() << "vnc widget constructor " <<  username << passwd << VNCClientWidget::username << VNCClientWidget::vncpasswd;
 
@@ -42,6 +47,8 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 
 	serverAddr.setAddress(senderIP);
 	_appInfo->setSrcAddr(senderIP);
+	
+	
 
 	if (!SN_VNCClientWidget::username.isEmpty()  &&  !SN_VNCClientWidget::vncpasswd.isEmpty()) {
 		vncclient->GetCredential = SN_VNCClientWidget::getCredential;
