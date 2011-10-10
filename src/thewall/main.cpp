@@ -377,7 +377,7 @@ int main(int argc, char *argv[])
 	  create the FileServer
 	 */
 	SN_FileServer *fileServer = new SN_FileServer(&s, launcher);
-	qDebug() << "FileServer is listening on" << fileServer->fileServerListenPort();
+//	qDebug() << "FileServer is listening on" << fileServer->fileServerListenPort();
 
 
 	/*

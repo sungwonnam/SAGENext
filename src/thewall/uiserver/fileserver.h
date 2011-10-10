@@ -6,7 +6,7 @@
 
 #include "../common/commondefinitions.h"
 
-#define EXTUI_MSG_SIZE 1280
+#include "uiserver.h"
 
 class QSettings;
 class SN_Launcher;
@@ -15,10 +15,10 @@ class FileServerThread : public QThread
 {
 	Q_OBJECT
 public:
-	explicit FileServerThread(int sockfd, const quint64 uiclientid, QObject *parent=0);
+	explicit FileServerThread(int sockfd, const quint32 uiclientid, QObject *parent=0);
 	~FileServerThread();
 
-	inline quint64 uiclientid() const {return _uiclientid;}
+	inline quint32 uiclientid() const {return _uiclientid;}
 
 protected:
 	/**
@@ -27,7 +27,7 @@ protected:
 	void run();
 
 private:
-	const quint64 _uiclientid;
+	const quint32 _uiclientid;
 
 //	QTcpSocket _dataSock;
 
@@ -61,7 +61,7 @@ protected:
 private:
 	const QSettings *_settings;
 
-	QMap<quint64, FileServerThread *> _uiFileServerThreadMap;
+	QMap<quint32, FileServerThread *> _uiFileServerThreadMap;
 
 	int _fileServerPort;
 

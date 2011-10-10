@@ -11,6 +11,8 @@
 
 
 #define EXTUI_MSG_SIZE 1280
+#define EXTUI_SMALL_MSG_SIZE 64
+
 
 class SN_TheScene;
 class SN_Launcher;

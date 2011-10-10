@@ -71,13 +71,14 @@ void SN_UiServer::incomingConnection(int sockfd) {
     /*
      send uiclientid and scene size
      */
+	/*
     char buf[EXTUI_MSG_SIZE]; memset(buf, '\0', EXTUI_MSG_SIZE);
 //    int filetransferport = fileRecvPortBase + uiClientId;
 	int filetransferport = _settings->value("general/fileserverport", 46000).toInt();
     sprintf(buf, "%u %d %d %d", _uiClientId, (int)_scene->width(), (int)_scene->height(), filetransferport);
     ::send(sockfd, buf, 1280, 0);
 //    qDebug("UiServer::%s() : The scene size %d x %d sent to ui %u", __FUNCTION__, (int)_scene->width(), (int)_scene->height(), _uiClientId);
-
+*/
 
     /**
       create a msg thread
@@ -85,9 +86,16 @@ void SN_UiServer::incomingConnection(int sockfd) {
     UiMsgThread *thread = new UiMsgThread(_uiClientId, sockfd, this);
     _uiMsgThreadsMap.insert(_uiClientId, thread);
 
+	QByteArray initMsg(EXTUI_MSG_SIZE, 0);
+	int filetransferport = _settings->value("general/fileserverport", 46000).toInt();
+    sprintf(initMsg.data(), "%u %d %d %d", _uiClientId, (int)_scene->width(), (int)_scene->height(), filetransferport);
+	thread->sendMsg(initMsg);
+
+
 	connect(this, SIGNAL(destroyed()), thread, SLOT(endThread()));
     connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
     connect(thread, SIGNAL(clientDisconnected(quint32)), this, SLOT(removeFinishedThread(quint32)));
+
 	if (! connect(thread, SIGNAL(msgReceived(QByteArray)), this, SLOT(handleMessage(const QByteArray))) ) {
 		qCritical("%s::%s() : connecting UiMsgThread::msgReceived() to UiServer::handleMessage() failed", metaObject()->className(), __FUNCTION__);
 	}
@@ -104,7 +112,7 @@ void SN_UiServer::incomingConnection(int sockfd) {
     // by default, ui client is not receiving app layout on the wall
 //    appLayoutFlagMap.insert(uiClientId, false);
 
-    qDebug("SN_UiServer::%s() : ui client %u has connected.", __FUNCTION__, _uiClientId);
+    qDebug("SN_UiServer::%s() : The ui client %u (%s) has connected to UiServer", __FUNCTION__, _uiClientId, qPrintable(thread->peerAddress().toString()));
 }
 
 void SN_UiServer::handleMessage(const QByteArray msg) {

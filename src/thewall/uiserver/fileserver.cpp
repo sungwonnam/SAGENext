@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 
 
-FileServerThread::FileServerThread(int sockfd, const quint64 uiclientid, QObject *parent)
+FileServerThread::FileServerThread(int sockfd, const quint32 uiclientid, QObject *parent)
     : QThread(parent)
     , _uiclientid(uiclientid)
     , _dataSock(sockfd)
@@ -79,7 +79,7 @@ void FileServerThread::run() {
 			break;
 		}
 		case SAGENext::MEDIA_TYPE_PLUGIN : {
-			destdir.append("plugins/");
+			destdir.append("media/plugins/");
 			break;
 		}
 		} // end switch
@@ -132,6 +132,9 @@ SN_FileServer::SN_FileServer(const QSettings *s, SN_Launcher *l, QObject *parent
         qCritical("FileServer::%s() : listen failed", __FUNCTION__);
         deleteLater();
     }
+	else {
+		qWarning() << "FileServer is listening on" << serverAddress() << serverPort();
+	}
 }
 
 SN_FileServer::~SN_FileServer() {
@@ -157,14 +160,14 @@ SN_FileServer::~SN_FileServer() {
 void SN_FileServer::incomingConnection(int handle) {
 
 	// receive uiclientid from the client
-	quint64 uiclientid = 0;
+	quint32 uiclientid = 0;
 	char msg[EXTUI_MSG_SIZE];
 	if ( ::recv(handle, msg, EXTUI_MSG_SIZE, MSG_WAITALL) < 0 ) {
 		qDebug("%s::%s() : error while receiving ", metaObject()->className(), __FUNCTION__);
 		return;
 	}
-	::sscanf(msg, "%llu", &uiclientid); // read uiclientid
-	qDebug("%s::%s() : The client %llu has connected to FileServer", metaObject()->className(), __FUNCTION__, uiclientid);
+	::sscanf(msg, "%u", &uiclientid); // read uiclientid
+	qDebug("%s::%s() : The ui client %u has connected to FileServer", metaObject()->className(), __FUNCTION__, uiclientid);
 
 
 	FileServerThread *thread = new FileServerThread(handle, uiclientid);
