@@ -140,6 +140,8 @@ void SN_BaseWidget::init()
 
 	setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
 
+//	setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+
 	//
 	/* When enabled, the item's paint() function will be called only once for each call to update(); for any subsequent repaint requests, the Graphics View framework will redraw from the cache. */
 	/* Turn cache off for streaming application */
@@ -169,6 +171,7 @@ void SN_BaseWidget::init()
 	infoTextItem = new SN_SimpleTextItem(0, QColor(Qt::black), QColor(128, 128, 128, 164), this);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
+	infoTextItem->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 	//infoTextItem = new SwSimpleTextItem(settings->value("general/fontpointsize").toInt(), this);
 	infoTextItem->hide();
 
@@ -465,8 +468,8 @@ void SN_BaseWidget::maximize()
 		}
 		else {
 			if (parentWidget()) { // could be the SN_LayoutWidget or 0
-				qreal xoffset = (parentWidget()->size().width() - s.width())/2;
-				qreal yoffset = (parentWidget()->size().height() - s.height())/2;
+				qreal xoffset = (parentWidget()->size().width() - s.width() * scaleFactor)/2;
+				qreal yoffset = (parentWidget()->size().height() - s.height() * scaleFactor)/2;
 				setPos( parentWidget()->boundingRect().left() + xoffset , parentWidget()->boundingRect().top() + yoffset);
 			}
 			else {
@@ -562,7 +565,7 @@ void SN_BaseWidget::setTopmost()
 		//qDebug() << typeid(*item).name() << ". And this is " << typeid(*this).name();
 
 		// only consider real app -> excluding buttons pointers, and so on
-		if ( !item ||  item->type() < UserType + 2 ) continue;
+		if ( !item ||  item->type() < UserType + 12 ) continue;
 
 		if ( item == this ) continue;
 
@@ -606,13 +609,17 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 {
 	qreal currentScale = scale();
 
+
 	QSizeF currentVisibleSize = currentScale * size();
 	qreal currentArea = currentVisibleSize.width() * currentVisibleSize.height();
 
 	// shouldn't be too small
 	if ( tick < 0  &&  (currentScale <= 0.05 || currentArea <= 400)) return;
 
-	currentScale += ((qreal)tick * factor);
+	qreal delta = (qreal)tick * factor;
+
+	currentScale += delta;
+
 
 	// Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees,
 	//the child's total transformation will be 180 degrees.
@@ -620,6 +627,17 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 	//An item's transformation does not affect its own local geometry;
 	//all geometry functions (e.g., contains(), update(), and all the mapping functions) still operate in local coordinates.
 	setScale(currentScale);
+
+	/***********
+	  Below is for when the transformOriginPoint() is default (0,0) but we want to make users feel like transform origin is center.
+	  I don't use setTransformOriginPoint() because it's very problematic when item is scaled
+	  ****/
+	qreal dx = (size().width() * -delta)/2.0;
+	qreal dy = (size().height() * -delta)/2.0;
+	moveBy(dx,dy);
+//	QTransform t(currentScale, 0, 0, currentScale, dx, dy);
+//	setTransform(t, true);
+
 
 	//! optional
 //	appInfo->setRecentScale(currentScale);
@@ -869,9 +887,16 @@ void SN_BaseWidget::timerEvent(QTimerEvent *) {
         */
 }
 
-void SN_BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
-	setTransformOriginPoint(e->newSize().width() / 2, e->newSize().height() / 2);
+void SN_BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
+
+	/**
+	  setting transform origin to center is very problematic when scaled.
+	  Because item's scenePos() DOES change while pos() remains unchanged
+	  */
+//	setTransformOriginPoint(e->newSize().width() / 2, e->newSize().height() / 2);
 //	setTransformOriginPoint(boundingRect().center());
+
+//	qDebug() << "SN_BaseWidget::resizeEvent() : bw's transform origin point" << transformOriginPoint();
 }
 
 void SN_BaseWidget::setLastTouch() {

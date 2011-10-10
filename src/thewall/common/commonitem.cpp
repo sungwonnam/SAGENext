@@ -305,7 +305,8 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 		if (_basewidget) {
 
 			// I can move this app to SN_LayoutWidget that contains released scenePos
-//			_scene->addItemOnTheLayout(_basewidget, _scene->rootLayoutWidget()->mapFromScene(_basewidget->scenePos()));
+			// Always pass scene position
+			_scene->addItemOnTheLayout(_basewidget, _basewidget->scenePos());
 
 
 			// I can minimize this app if it's on the minimize rectangle

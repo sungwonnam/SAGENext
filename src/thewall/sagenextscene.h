@@ -163,6 +163,12 @@ public slots:
 	void adjustBar();
 
 
+	/**
+	  move child basewidget so that its window reside within my bounding rectangle
+	  */
+	void adjustChildPos();
+
+
 	void toggleTile();
 
 	/**

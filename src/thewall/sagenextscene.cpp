@@ -94,11 +94,12 @@ bool SN_TheScene::isOnAppRemoveButton(const QPointF &scenepos) {
 	return _appRemoveButton->geometry().contains(scenepos);
 }
 
+/**
+  pos is in scene coordinate
+  */
 void SN_TheScene::addItemOnTheLayout(SN_BaseWidget *bw, const QPointF &pos) {
 	if(_rootLayoutWidget) {
-
-		// pos must be in _rootLayoutWidget's coordinate (which is same with scene coordinate)
-		_rootLayoutWidget->addItem(bw, pos);
+		_rootLayoutWidget->addItem(bw, _rootLayoutWidget->mapFromScene(pos));
 	}
 	else {
 		addItem(bw);
@@ -349,6 +350,9 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 	// pointer->setAppUnderPointer() will pass this item
 	setAcceptedMouseButtons(0);
 
+	setWindowFrameMargins(0,0,0,0);
+	setContentsMargins(0,0,0,0);
+
 	// these png files are 499x499
 	_tileButton = new SN_PixmapButton(":/resources/tile_btn_over.jpg", _settings->value("gui/iconwidth").toDouble(), "", this);
 	_hButton = new SN_PixmapButton(":/resources/horizontal_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
@@ -390,13 +394,19 @@ void SN_LayoutWidget::setRectangle(const QRectF &r) {
 	setPos(r.topLeft());
 }
 
+/**
+  pos is in the current SN_LayoutWidget's coordinate
+  */
 void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/) {
 	/**
 	  If _bar exist, that means this layoutWidget is just a container for child layoutwidgets.
 	  So this layoutWidget can't have any baseWidget as a child.
 	  */
 	if (_bar) {
-		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromParent(pos)) ) {
+
+		QPointF bwCenter = QPointF(0.5 * bw->size().width() * bw->scale(), 0.5 * bw->size().height() * bw->scale());
+
+		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromItem(bw, bwCenter)) ) {
 			_firstChildLayout->addItem(bw, _firstChildLayout->mapFromParent(pos));
 		}
 		else {
@@ -414,6 +424,8 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 		  QGraphicsObject::parentChanged() will be emitted
 		  */
 		bw->setParentItem(this);
+
+//		qDebug() << "SN_LayoutWidget::addItem() : bw->setPos() " << pos;
 		bw->setPos(pos);
 	}
 }
@@ -632,8 +644,8 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 		if (item->type() < QGraphicsItem::UserType + 12) continue;
 
 		QPointF newPos;
-		QRectF intersectedWithFirst = first & mapRectFromItem(item, item->boundingRect());
-		if ( intersectedWithFirst.size().width() * intersectedWithFirst.size().height() >= 0.25 * item->boundingRect().size().width() * item->boundingRect().size().height()) {
+
+		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromItem(item, item->boundingRect().center())) ) {
 			newPos = mapToItem(_firstChildLayout, item->pos());
 			item->setParentItem(_firstChildLayout);
 		}
@@ -689,6 +701,18 @@ void SN_LayoutWidget::adjustBar() {
 		QPointF bottomRight = _firstChildLayout->geometry().bottomRight();
 
 		_bar->setLine(topRight.x(), topRight.y(), bottomRight.x(), bottomRight.y());
+	}
+}
+
+void SN_LayoutWidget::adjustChildPos() {
+
+	foreach(QGraphicsItem *item, childItems()) {
+		if (item->type() < QGraphicsItem::UserType + 12) continue;
+
+		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+
+		Q_ASSERT(bw);
+
 	}
 }
 
@@ -785,7 +809,7 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 			//
 			// item's pos() is saved. not the scenePos()
 			//
-			out << (int)ai->mediaType() << bw->pos() << bw->size() << bw->scale();
+			out << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
 
 			// video, image, pdf, plugin, web have filename
 			if (ai->fileInfo().exists()) {
@@ -828,12 +852,12 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 	}
 	else if (header == "ITEM") {
 		int mtype;
-		QPointF pos;
+		QPointF scenepos;
 		QSizeF size;
 		qreal scale;
 
 
-		in >> mtype >> pos >> size >> scale;
+		in >> mtype >> scenepos >> size >> scale;
 		//qDebug() << "\tentry : " << mtype << scenepos << size << scale;
 
 		QString file;
@@ -845,21 +869,43 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 
 		if (mtype == SAGENext::MEDIA_TYPE_VNC) {
 			in >> srcaddr >> user >> pass;
-			bw = launcher->launch(user, pass, 0, srcaddr, 10, pos);
+			bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos);
 		}
 		else {
 			in >> file;
-			bw = launcher->launch(mtype, file, pos);
+			bw = launcher->launch(mtype, file, scenepos);
 			if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO || mtype == SAGENext::MEDIA_TYPE_VIDEO) {
 				::usleep(300 * 1000);
 			}
 		}
+
+
 		if (!bw) {
-			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << pos << size << scale;
+			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
 		}
 		else {
-			bw->resize(size);
+			//
+			// at this point, the bw has added to the _rootLayoutWidget already
+			//
+
+			/******
+
+			  in SN_BaseWidget::resizeEvent(), item's transformation origin is set to its center.
+			  Because of this, if an image, whose pos is an edge of the scene, is scaled down (from its CENTER), the image can end up positioning out of scene's visible area.
+			  So, I need to apply scale not from its center but from its topleft.
+			  //bw->setScale(scale);
+			  *****/
+			//QTransform scaleTrans(scale, 0, 0, scale, 0, 0); // m31(dx) and m32(dy) which specify horizontal and vertical translation are set to 0
+			//bw->setTransform(scaleTrans, true); // false -> this transformation matrix won't be combined with the current matrix. It will replace the current matrix.
+
+
+
+			/**
+			  below will work ok if item's transformOrigin is its top left
+			  **/
 			bw->setScale(scale);
+
+			bw->resize(size);
 		}
 
 		loadSession(in, launcher);

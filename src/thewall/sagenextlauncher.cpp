@@ -542,8 +542,6 @@ void SN_Launcher::launchSavedSession(const QString &sessionfilename) {
 
 	_scene->loadSession(in, this);
 
-//	delete text;
-
 	f.close();
 
 	SN_SimpleTextWidget *text = new SN_SimpleTextWidget(_settings->value("gui/fontpointsize",20).toInt() * 4, QColor(Qt::white), QColor(64, 64, 64, 128));
