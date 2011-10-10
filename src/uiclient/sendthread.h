@@ -8,12 +8,12 @@
 
 //#include "externalguimain.h"
 
-class SendThread : public QThread
+class SN_PointerUI_SendThread : public QThread
 {
 	Q_OBJECT
 public:
-	explicit SendThread(QObject *parent = 0);
-	~SendThread();
+	explicit SN_PointerUI_SendThread(QObject *parent = 0);
+	~SN_PointerUI_SendThread();
 
 	bool setSockFD(int sock);
 

@@ -6,29 +6,29 @@
 //#include <arpa/inet.h>
 
 
-MessageThread::MessageThread(QObject *parent)
+SN_PointerUI_MsgThread::SN_PointerUI_MsgThread(QObject *parent)
     : QThread(parent)
 //    , sockfd(0)
 	, end(false)
-    , uiclientid(-1)
+    , uiclientid(0)
 {
 	connect(&_tcpMsgSock, SIGNAL(readyRead()), this, SLOT(recvMsg()));
 	connect(&_tcpMsgSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
 }
 
-MessageThread::~MessageThread() {
+SN_PointerUI_MsgThread::~SN_PointerUI_MsgThread() {
 //    ::close(sockfd);
 	_tcpMsgSock.abort();
 	_tcpMsgSock.close();
     qDebug() << "~MessageThread()";
 }
 
-bool MessageThread::setSocketFD(int s) {
+bool SN_PointerUI_MsgThread::setSocketFD(int s) {
 //	sockfd = s;
 	return _tcpMsgSock.setSocketDescriptor(s);
 }
 
-void MessageThread::handleSocketError(QAbstractSocket::SocketError error) {
+void SN_PointerUI_MsgThread::handleSocketError(QAbstractSocket::SocketError error) {
 	/**
 	switch (error) {
 	case QAbstractSocket::RemoteHostClosedError : {
@@ -52,7 +52,7 @@ void MessageThread::handleSocketError(QAbstractSocket::SocketError error) {
 	exit();
 }
 
-void MessageThread::endThread() {
+void SN_PointerUI_MsgThread::endThread() {
 //	::close(sockfd);
     end = true;
 
@@ -68,7 +68,7 @@ void MessageThread::endThread() {
 	qDebug() << "MessageThread finished";
 }
 
-void MessageThread::run() {
+void SN_PointerUI_MsgThread::run() {
 	qDebug() << "MessageThread starting event loop";
 
 	exec(); // will block until exit() is called
@@ -82,7 +82,7 @@ void MessageThread::run() {
 }
 
 
-void MessageThread::sendMsg(const QByteArray msg) {
+void SN_PointerUI_MsgThread::sendMsg(const QByteArray msg) {
 	/*
     if ( ::send(sockfd, msg.data(), msg.size(), 0) <= 0 ) {
         qDebug("MessageThread::%s() : send error", __FUNCTION__);
@@ -98,7 +98,7 @@ void MessageThread::sendMsg(const QByteArray msg) {
 }
 
 
-void MessageThread::recvMsg() {
+void SN_PointerUI_MsgThread::recvMsg() {
 	if (_tcpMsgSock.bytesAvailable() < EXTUI_MSG_SIZE)
 		return;
 

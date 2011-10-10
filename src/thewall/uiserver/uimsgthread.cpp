@@ -85,7 +85,7 @@ void UiMsgThread::run() {
 	while(!_end) {
 		msgStr.fill(0);
 
-		if ( (read = recv(_sockfd, (void *)msgStr.data(), EXTUI_MSG_SIZE, MSG_WAITALL)) == -1 ) {
+		if ( (read = recv(_sockfd, (void *)msgStr.data(), EXTUI_SMALL_MSG_SIZE, MSG_WAITALL)) == -1 ) {
 			qCritical("UiMsgThread::%s() : socket error", __FUNCTION__);
 			break;
 		}

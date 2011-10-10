@@ -11,14 +11,15 @@
 #include <stdio.h>
 */
 
-#include <QNetworkInterface>
+//#include <QNetworkInterface>
+#include <QHostAddress>
 
 
-ExternalGUIMain::ExternalGUIMain(QWidget *parent)
+SN_PointerUI::SN_PointerUI(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::ExternalGUIMain)
+    , ui(new Ui::SN_PointerUI)
     , _settings(0)
-    , uiclientid(0)
+    , _uiclientid(0)
     , fileTransferPort(0)
     , ungrabMouseAction(0)
 //    , msgsock(0)
@@ -50,13 +51,13 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
 
 	//
 	// create msg thread
-	msgThread = new MessageThread();
+	msgThread = new SN_PointerUI_MsgThread();
 	connect(msgThread, SIGNAL(finished()), this, SLOT(unhookMouse()));
 
 
 	//
 	// create send thread (file transfer)
-	sendThread = new SendThread();
+	sendThread = new SN_PointerUI_SendThread();
 
 	connect(msgThread, SIGNAL(finished()), sendThread, SLOT(endThread()));
 
@@ -78,7 +79,7 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
 	//
 	// Drag & Drop gui
 	//
-	mediaDropFrame = new DropFrame(sendThread, this);
+	mediaDropFrame = new SN_PointerUI_DropFrame(sendThread, this);
 	ui->verticalLayout->addWidget(mediaDropFrame);
 	int lastwidgetidx = ui->verticalLayout->count() - 1; // find the index of the last (bottom) widget which is dropFrame
 	ui->verticalLayout->setStretch(lastwidgetidx, 2);
@@ -96,7 +97,7 @@ ExternalGUIMain::ExternalGUIMain(QWidget *parent)
 	connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readFiles(QStringList)));
 }
 
-ExternalGUIMain::~ExternalGUIMain()
+SN_PointerUI::~SN_PointerUI()
 {
 	delete ui;
 	if (fdialog) delete fdialog;
@@ -117,10 +118,10 @@ ExternalGUIMain::~ExternalGUIMain()
 }
 
 // triggered by CMD (CTRL) + n
-void ExternalGUIMain::on_actionNew_Connection_triggered()
+void SN_PointerUI::on_actionNew_Connection_triggered()
 {
 	// open modal dialog to enter IP address and port
-	ConnectionDialog cd(_settings);
+	SN_PointerUI_ConnDialog cd(_settings);
 	cd.exec();
 	if ( cd.result() == QDialog::Rejected) return;
 
@@ -197,7 +198,7 @@ void ExternalGUIMain::on_actionNew_Connection_triggered()
 /*
   connected to the wall
   */
-void ExternalGUIMain::doHandshaking() {
+void SN_PointerUI::doHandshaking() {
 	ui->isConnectedLabel->setText("Connected to the wall");
 	ui->isConnectedLabel->show();
 
@@ -227,20 +228,20 @@ void ExternalGUIMain::doHandshaking() {
 
 	int x = 0;
 	int y = 0;
-	sscanf(buf.constData(), "%u %d %d %d", &uiclientid, &x, &y, &fileTransferPort);
+	sscanf(buf.constData(), "%u %d %d %d", &_uiclientid, &x, &y, &fileTransferPort);
 	wallSize.rwidth() = x;
 	wallSize.rheight() = y;
 	//qDebug("ExternalGUIMain::%s() : my uiClientId is %llu, wall resolution is %d x %d", __FUNCTION__, uiclientid, x,y);
 
 	QDesktopWidget *d = QApplication::desktop();
-	qDebug("My uiclientid is %u, The wall size is %d x %d, my primary screen size %d x %d, fileServer port %d", uiclientid, x, y, d->screenGeometry().width(), d->screenGeometry().height(), fileTransferPort);
+	qDebug("My uiclientid is %u, The wall size is %d x %d, my primary screen size %d x %d, fileServer port %d", _uiclientid, x, y, d->screenGeometry().width(), d->screenGeometry().height(), fileTransferPort);
 
 	/*!
       When I send my mouse movement to the wall, it's pos should be scaled with these values. ( == mapToWall)
      */
 	scaleToWallX = wallSize.width() / (qreal)(d->screenGeometry().width());
 	scaleToWallY = wallSize.height() / (qreal)(d->screenGeometry().height());
-	qDebug("The scaleToWall %.2f x %.2f", scaleToWallX, scaleToWallY);
+	qDebug("\tThe scaleToWall %.2f x %.2f", scaleToWallX, scaleToWallY);
 
 
 
@@ -250,7 +251,7 @@ void ExternalGUIMain::doHandshaking() {
 	  *
 	  **/
 	_tcpDataSock.connectToHost(QHostAddress(_wallAddress), fileTransferPort);
-	qDebug() << "Connecting to the File Server. It could wait for 10 sec";
+//	qDebug() << "Connecting to the File Server. It could wait for 10 sec";
 	if ( !_tcpDataSock.waitForConnected(10000) ) { // block for 10 sec
 		qDebug() << "Failed to connect to FileServer";
 	}
@@ -262,7 +263,7 @@ void ExternalGUIMain::doHandshaking() {
 			qDebug() << "Connected to the File Server. Staring sendThread";
 			// send my uiclientid
 			char msg[EXTUI_MSG_SIZE];
-			::sprintf(msg, "%u", uiclientid);
+			::sprintf(msg, "%u", _uiclientid);
 			_tcpDataSock.write(msg, sizeof(msg));
 			sendThread->start();
 		}
@@ -279,7 +280,7 @@ void ExternalGUIMain::doHandshaking() {
 		msgThread->endThread(); // wait() is called in here
 	}
 
-	msgThread->setUiClientId(uiclientid);
+	msgThread->setUiClientId(_uiclientid);
 //	msgThread->setMyIpAddr(_myIpAddress);
 
 	if ( ! msgThread->setSocketFD(_tcpMsgSock.socketDescriptor()) ) {
@@ -345,26 +346,26 @@ void ExternalGUIMain::doHandshaking() {
 
 
 
-void ExternalGUIMain::on_vncButton_clicked()
+void SN_PointerUI::on_vncButton_clicked()
 {
 	// send msg to UiServer so that local sageapp (vncviewer) can be started
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %u %d %s %s %d", VNC_SHARING, uiclientid, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
+	sprintf(msg.data(), "%d %u %d %s %s %d", VNC_SHARING, _uiclientid, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
 
 	queueMsgToWall(msg);
 }
 
 //
 // for windows and Linux
-void ExternalGUIMain::on_hookMouseBtn_clicked()
+void SN_PointerUI::on_hookMouseBtn_clicked()
 {
 	setMouseTracking(true);
 	hookMouse();
 }
 
-void ExternalGUIMain::hookMouse() {
+void SN_PointerUI::hookMouse() {
 	if (msgThread) {
 		if (msgThread->isRunning()) {
 			//
@@ -389,9 +390,9 @@ void ExternalGUIMain::hookMouse() {
 			grabMouse();
 //			qDebug() << "grabMouse";
 #endif
-			QByteArray msg(EXTUI_MSG_SIZE, 0);
+			QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 			// msgtype, uiclientid, pointer name, Red, Green, Blue
-			sprintf(msg.data(), "%d %u %s %s", POINTER_SHARE, uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
+			sprintf(msg.data(), "%d %u %s %s", POINTER_SHARE, _uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
 			queueMsgToWall(msg);
 		}
 		else {
@@ -403,7 +404,7 @@ void ExternalGUIMain::hookMouse() {
 	}
 }
 
-void ExternalGUIMain::unhookMouse() {
+void SN_PointerUI::unhookMouse() {
 	isMouseCapturing = false;
 	unsetCursor();
 	ui->isConnectedLabel->setText("");
@@ -415,8 +416,8 @@ void ExternalGUIMain::unhookMouse() {
 #endif
 	// remove cursor on the wall
 	if (msgThread && msgThread->isRunning()) {
-		QByteArray msg(EXTUI_MSG_SIZE, 0);
-		sprintf(msg.data(), "%d %u", POINTER_UNSHARE, uiclientid);
+		QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
+		sprintf(msg.data(), "%d %u", POINTER_UNSHARE, _uiclientid);
 		queueMsgToWall(msg);
 	}
 }
@@ -427,7 +428,7 @@ void ExternalGUIMain::unhookMouse() {
 /**
   This function is used by Mac OS X and invoked by QProcess::readyReadStandardOutput() signal
   */
-void ExternalGUIMain::sendMouseEventsToWall() {
+void SN_PointerUI::sendMouseEventsToWall() {
 	Q_ASSERT(macCapture);
 
 //	QTextStream textin(macCapture);
@@ -575,24 +576,24 @@ void ExternalGUIMain::sendMouseEventsToWall() {
 
 
 
-void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btns /*= Qt::NoButton*/) {
+void SN_PointerUI::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btns /*= Qt::NoButton*/) {
 	int x = 0, y = 0;
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
 	if ( btns & Qt::LeftButton) {
 //		qDebug() << "send left dargging";
-		sprintf(msg.data(), "%d %u %d %d", POINTER_DRAGGING, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_DRAGGING, _uiclientid, x, y);
 	}
 	else if (btns & Qt::RightButton) {
 //		qDebug() << "sendMouseMove() Rightbutton dragging";
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTDRAGGING, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTDRAGGING, _uiclientid, x, y);
 	}
 	else {
 		// just move pointer
 //		qDebug() << "sendMouseMove() Moving" << globalPos;
-		sprintf(msg.data(), "%d %u %d %d", POINTER_MOVING, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_MOVING, _uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -600,23 +601,23 @@ void ExternalGUIMain::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btn
 /**
   both mouse press is needed for dragging operation
   */
-void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton */) {
+void SN_PointerUI::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton */) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 	
 	if (btns & Qt::RightButton) {
 		//
 		// this is needed to setPos of selection rectangle
 		//
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTPRESS, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTPRESS, _uiclientid, x, y);
 	}
 	else {
 		//
 		// will trigger setAppUnderPointer() which is needed for left mouse dragging
 		//
-		sprintf(msg.data(), "%d %u %d %d", POINTER_PRESS, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_PRESS, _uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -624,34 +625,34 @@ void ExternalGUIMain::sendMousePress(const QPoint globalPos, Qt::MouseButtons bt
 /**
   Both mouse release are needed to know mouse dragging finish
   */
-void ExternalGUIMain::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btns /* = Qt::LeftButton */) {
+void SN_PointerUI::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btns /* = Qt::LeftButton */) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
 	if (btns & Qt::RightButton) {
 		// will finish selection rectangle
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTRELEASE, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTRELEASE, _uiclientid, x, y);
 	}
 	else {
 		// will pretend droping operation
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RELEASE, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RELEASE, _uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
 
-void ExternalGUIMain::sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton | Qt::NoButton */) {
+void SN_PointerUI::sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton | Qt::NoButton */) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 	
 	if (btns & Qt::RightButton) {
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTCLICK, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTCLICK, _uiclientid, x, y);
 	}
 	else {
-		sprintf(msg.data(), "%d %u %d %d", POINTER_CLICK, uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", POINTER_CLICK, _uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -659,22 +660,22 @@ void ExternalGUIMain::sendMouseClick(const QPoint globalPos, Qt::MouseButtons bt
 /**
   Left button only
   */
-void ExternalGUIMain::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons /*btns*/ /*= Qt::LeftButton | Qt::NoButton*/) {
+void SN_PointerUI::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons /*btns*/ /*= Qt::LeftButton | Qt::NoButton*/) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
-	sprintf(msg.data(), "%d %u %d %d", POINTER_DOUBLECLICK, uiclientid, x, y);
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
+	sprintf(msg.data(), "%d %u %d %d", POINTER_DOUBLECLICK, _uiclientid, x, y);
 	queueMsgToWall(msg);
 }
 
-void ExternalGUIMain::sendMouseWheel(const QPoint globalPos, int delta) {
+void SN_PointerUI::sendMouseWheel(const QPoint globalPos, int delta) {
 	int x=0 , y=0;
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 //	qDebug() << "sendMouseWheel" << delta;
-	sprintf(msg.data(), "%d %u %d %d %d", POINTER_WHEEL, uiclientid, x, y, delta);
+	sprintf(msg.data(), "%d %u %d %d %d", POINTER_WHEEL, _uiclientid, x, y, delta);
 	queueMsgToWall(msg);
 }
 
@@ -687,7 +688,7 @@ void ExternalGUIMain::sendMouseWheel(const QPoint globalPos, int delta) {
 
 
 
-void ExternalGUIMain::mouseMoveEvent(QMouseEvent *e) {
+void SN_PointerUI::mouseMoveEvent(QMouseEvent *e) {
 //	qDebug() << "moveEvent" << e->globalPos();
 	// setMouseTracking(true) to generate this event even when button isn't pressed
 	if ( isMouseCapturing ) {
@@ -703,7 +704,7 @@ void ExternalGUIMain::mouseMoveEvent(QMouseEvent *e) {
 	}
 }
 
-void ExternalGUIMain::mousePressEvent(QMouseEvent *e) {
+void SN_PointerUI::mousePressEvent(QMouseEvent *e) {
 	// to keep track draggin start/end
 	mousePressedPos = e->globalPos();
 
@@ -717,7 +718,7 @@ void ExternalGUIMain::mousePressEvent(QMouseEvent *e) {
 	}
 }
 
-void ExternalGUIMain::mouseReleaseEvent(QMouseEvent *e) {
+void SN_PointerUI::mouseReleaseEvent(QMouseEvent *e) {
 	if ( isMouseCapturing ) {
 		//
 		// below prevents pointerClick() when mouse was dragged
@@ -742,7 +743,7 @@ void ExternalGUIMain::mouseReleaseEvent(QMouseEvent *e) {
 	}
 }
 
-void ExternalGUIMain::contextMenuEvent(QContextMenuEvent *e) {
+void SN_PointerUI::contextMenuEvent(QContextMenuEvent *e) {
 	if (isMouseCapturing) {
 		//
 		// right press (without following release) will trigger this
@@ -753,7 +754,7 @@ void ExternalGUIMain::contextMenuEvent(QContextMenuEvent *e) {
 	}
 }
 
-void ExternalGUIMain::mouseDoubleClickEvent(QMouseEvent *e) {
+void SN_PointerUI::mouseDoubleClickEvent(QMouseEvent *e) {
 	if ( isMouseCapturing ) {
 		sendMouseDblClick(e->globalPos()); // Left double click
 		e->accept();
@@ -763,7 +764,7 @@ void ExternalGUIMain::mouseDoubleClickEvent(QMouseEvent *e) {
 	}
 }
 
-void ExternalGUIMain::wheelEvent(QWheelEvent *e) {
+void SN_PointerUI::wheelEvent(QWheelEvent *e) {
 //	int numDegrees = e->delta() / 8;
 //	int numTicks = numDegrees / 15;
 //	qDebug() << "WHEEL" << e->globalPos() << "delta" << e->delta() << numTicks;
@@ -778,7 +779,7 @@ void ExternalGUIMain::wheelEvent(QWheelEvent *e) {
 }
 
 
-void ExternalGUIMain::queueMsgToWall(const QByteArray &msg) {
+void SN_PointerUI::queueMsgToWall(const QByteArray &msg) {
 	if (msgThread && msgThread->isRunning())
 		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
 	else
@@ -788,7 +789,7 @@ void ExternalGUIMain::queueMsgToWall(const QByteArray &msg) {
 
 
 // CTRL - O to open file dialog
-void ExternalGUIMain::on_actionOpen_Media_triggered()
+void SN_PointerUI::on_actionOpen_Media_triggered()
 {
 	if (fdialog) fdialog->show();
 	else {
@@ -796,7 +797,7 @@ void ExternalGUIMain::on_actionOpen_Media_triggered()
 	}
 }
 
-void ExternalGUIMain::readFiles(QStringList filenames) {
+void SN_PointerUI::readFiles(QStringList filenames) {
     if ( filenames.empty() ) {
         return;
     }
@@ -955,7 +956,7 @@ void ExternalGUIMain::readFiles(QStringList filenames) {
 //}
 
 
-DropFrame::DropFrame(const SendThread *st, QWidget *parent)
+SN_PointerUI_DropFrame::SN_PointerUI_DropFrame(const SN_PointerUI_SendThread *st, QWidget *parent)
     : QLabel(parent)
     , _sendThread(st)
 {
@@ -966,11 +967,11 @@ DropFrame::DropFrame(const SendThread *st, QWidget *parent)
 	setAlignment(Qt::AlignCenter);
 }
 
-void DropFrame::dragEnterEvent(QDragEnterEvent *e) {
+void SN_PointerUI_DropFrame::dragEnterEvent(QDragEnterEvent *e) {
 	e->acceptProposedAction();
 }
 
-void DropFrame::dropEvent(QDropEvent *e) {
+void SN_PointerUI_DropFrame::dropEvent(QDropEvent *e) {
 	if (! _sendThread || !_sendThread->isRunning()) {
 		QMessageBox::warning(this, "No Connection", "Connect to file server first");
 		return;
@@ -998,9 +999,9 @@ void DropFrame::dropEvent(QDropEvent *e) {
 
 
 
-ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
+SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
         : QDialog(parent)
-        , ui(new Ui::connectionDialog)
+        , ui(new Ui::SN_PointerUI_ConnDialog)
         , _settings(s)
         , portnum(0)
 {
@@ -1053,11 +1054,11 @@ ConnectionDialog::ConnectionDialog(QSettings *s, QWidget *parent)
 //	ui->port->setText("30003");
 }
 
-ConnectionDialog::~ConnectionDialog() {
+SN_PointerUI_ConnDialog::~SN_PointerUI_ConnDialog() {
 	delete ui;
 }
 
-void ConnectionDialog::on_buttonBox_accepted()
+void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
 {
 	addr = ui->ipaddr->text();
 	portnum = ui->port->text().toInt();
@@ -1084,12 +1085,12 @@ void ConnectionDialog::on_buttonBox_accepted()
 	//	done(0);
 }
 
-void ConnectionDialog::on_buttonBox_rejected()
+void SN_PointerUI_ConnDialog::on_buttonBox_rejected()
 {
 	reject();
 }
 
-void ConnectionDialog::on_pointerColorButton_clicked()
+void SN_PointerUI_ConnDialog::on_pointerColorButton_clicked()
 {
 	QColor prevColor;
 	prevColor.setNamedColor(_settings->value("pointercolor", "#FF0000").toString());

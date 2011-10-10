@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 //	qDebug() << QCoreApplication::applicationFilePath();
 	
 	a.setApplicationName("sagenextPointer");
-	ExternalGUIMain w;
+	SN_PointerUI w;
 	w.show();
 
 	return a.exec();

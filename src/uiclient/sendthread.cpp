@@ -10,7 +10,7 @@
 
 #include "externalguimain.h"
 
-SendThread::SendThread(QObject *parent)
+SN_PointerUI_SendThread::SN_PointerUI_SendThread(QObject *parent)
     : QThread(parent)
 {
 	_rxImage.setCaseSensitivity(Qt::CaseInsensitive);
@@ -32,33 +32,33 @@ SendThread::SendThread(QObject *parent)
 	connect(&_dataSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
 }
 
-void SendThread::handleSocketError(QAbstractSocket::SocketError error) {
+void SN_PointerUI_SendThread::handleSocketError(QAbstractSocket::SocketError error) {
 	qDebug() << "SendThread socket error" << error;
 	endThread();
 }
 
-SendThread::~SendThread() {
+SN_PointerUI_SendThread::~SN_PointerUI_SendThread() {
 	_dataSock.abort();
 	_dataSock.close();
 }
 
-void SendThread::endThread() {
+void SN_PointerUI_SendThread::endThread() {
 	_dataSock.abort();
 	_dataSock.close();
 	exit();
 }
 
-bool SendThread::setSockFD(int sock) {
+bool SN_PointerUI_SendThread::setSockFD(int sock) {
 	return _dataSock.setSocketDescriptor(sock);
 }
 
-void SendThread::sendMediaList(const QList<QUrl> urls) {
+void SN_PointerUI_SendThread::sendMediaList(const QList<QUrl> urls) {
 	foreach(const QUrl url, urls) {
 		sendMedia(url);
 	}
 }
 
-void SendThread::sendMedia(const QUrl url) {
+void SN_PointerUI_SendThread::sendMedia(const QUrl url) {
 	if (_dataSock.state() != QAbstractSocket::ConnectedState) {
 		qDebug() << "SendThread::sendMedia(). socket is not connected to the file server";
 		return;
@@ -111,7 +111,7 @@ void SendThread::sendMedia(const QUrl url) {
 	}
 }
 
-void SendThread::run() {
+void SN_PointerUI_SendThread::run() {
 	exec();
 	qDebug() << "SentThread exit from event loop";
 }

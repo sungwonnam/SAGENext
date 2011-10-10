@@ -6,7 +6,7 @@
 //#include <QFileInfo>
 #include <QTcpSocket>
 
-class MessageThread : public QThread
+class SN_PointerUI_MsgThread : public QThread
 {
 	Q_OBJECT
 public:
@@ -15,8 +15,8 @@ public:
 	  uiclientid is determined by the wall and sent to uiclient.
 	  To discriminate specific wall from multiple walls, sockfd must be used instead of uiclientid, because uiclientid is unique in the wall not in the ui client.
 	*/
-	explicit MessageThread(QObject *parent = 0);
-	~MessageThread();
+	explicit SN_PointerUI_MsgThread(QObject *parent = 0);
+	~SN_PointerUI_MsgThread();
 	
 	bool setSocketFD(int s);
 	

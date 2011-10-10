@@ -12,6 +12,8 @@
 
 
 #define EXTUI_MSG_SIZE 1280
+#define EXTUI_SMALL_MSG_SIZE 128
+
 
 /* types of messages between external UI and the wall */
 enum EXTUI_MSG_TYPE { MSG_NULL, REG_FROM_UI, ACK_FROM_WALL, DISCONNECT_FROM_WALL, WALL_IS_CLOSING, TOGGLE_APP_LAYOUT, RESPOND_APP_LAYOUT, VNC_SHARING, POINTER_PRESS, POINTER_RIGHTPRESS, POINTER_RELEASE, POINTER_RIGHTRELEASE, POINTER_CLICK, POINTER_RIGHTCLICK, POINTER_DOUBLECLICK, POINTER_DRAGGING, POINTER_RIGHTDRAGGING, POINTER_MOVING, POINTER_SHARE, POINTER_WHEEL, POINTER_UNSHARE };
@@ -22,25 +24,25 @@ enum EXTUI_TRANSFER_MODE { FILE_TRANSFER, FILE_STREAM, PIXEL_STREAM };
 enum MEDIA_TYPE {MEDIA_TYPE_UNKNOWN = 100, MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, MEDIA_TYPE_LOCAL_VIDEO, MEDIA_TYPE_AUDIO, MEDIA_TYPE_PLUGIN, MEDIA_TYPE_VNC, MEDIA_TYPE_WEBURL , MEDIA_TYPE_PDF};
 
 namespace Ui {
-class ExternalGUIMain;
-class connectionDialog;
+class SN_PointerUI;
+class SN_PointerUI_ConnDialog;
 }
 
 
 /**
   Provides drag & drop feature
   */
-class DropFrame : public QLabel {
+class SN_PointerUI_DropFrame : public QLabel {
 	Q_OBJECT
 public:
-	explicit DropFrame(const SendThread *st, QWidget *parent = 0);
+	explicit SN_PointerUI_DropFrame(const SN_PointerUI_SendThread *st, QWidget *parent = 0);
 	
 protected:
 	void dragEnterEvent(QDragEnterEvent *);
 	void dropEvent(QDropEvent *);
 
 private:
-	const SendThread *_sendThread;
+	const SN_PointerUI_SendThread *_sendThread;
 
 signals:
 	void mediaDropped(QList<QUrl> mediaurls);
@@ -51,13 +53,13 @@ signals:
 /**
   sageNextPointer MainWindow
   */
-class ExternalGUIMain : public QMainWindow
+class SN_PointerUI : public QMainWindow
 {
 	Q_OBJECT
 	
 public:
-	explicit ExternalGUIMain(QWidget *parent = 0);
-	~ExternalGUIMain();
+	explicit SN_PointerUI(QWidget *parent = 0);
+	~SN_PointerUI();
 	
 protected:
 	void mouseMoveEvent(QMouseEvent *e);
@@ -96,7 +98,7 @@ protected:
 	void sendMouseWheel(const QPoint globalPos, int delta);
 
 private:
-	Ui::ExternalGUIMain *ui;
+	Ui::SN_PointerUI *ui;
 
 	QSettings *_settings;
 
@@ -107,7 +109,7 @@ private:
 
           This should be map data structure to support multiple wall connections
           */
-	quint32 uiclientid;
+	quint32 _uiclientid;
 
 	/**
 	  receives this from UiServer upon connection.
@@ -159,12 +161,12 @@ private:
         /**
           * The message thread. _tcpMsgSock is used.
           */
-	MessageThread *msgThread;
+	SN_PointerUI_MsgThread *msgThread;
 
         /**
           The file transfer thread. _tcpDataSock is used.
           */
-	SendThread *sendThread;
+	SN_PointerUI_SendThread *sendThread;
 
 		/**
 		  to keep track mouse dragging start and end position
@@ -179,7 +181,7 @@ private:
 		/**
 		  This is QLabel that accept dropEvent
 		  */
-	DropFrame *mediaDropFrame;
+	SN_PointerUI_DropFrame *mediaDropFrame;
 
 	QString _wallAddress;
 
@@ -299,11 +301,11 @@ private slots:
 
 
 
-class ConnectionDialog : public QDialog {
+class SN_PointerUI_ConnDialog : public QDialog {
         Q_OBJECT
 public:
-        ConnectionDialog(QSettings *s, QWidget *parent=0);
-        ~ConnectionDialog();
+        SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent=0);
+        ~SN_PointerUI_ConnDialog();
 
         inline QString address() const {return addr;}
         inline int port() const {return portnum;}
@@ -315,7 +317,7 @@ public:
 		inline QString sharingEdge() const {return psharingEdge;}
 
 private:
-        Ui::connectionDialog *ui;
+        Ui::SN_PointerUI_ConnDialog *ui;
         QSettings *_settings;
 
         /**
