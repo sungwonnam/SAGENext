@@ -1,5 +1,5 @@
 #include <QtGui/QApplication>
-#include "externalguimain.h"
+#include "sn_pointerui.h"
 
 int main(int argc, char *argv[])
 {

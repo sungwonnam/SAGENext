@@ -1,5 +1,5 @@
-#include "messagethread.h"
-#include "externalguimain.h"
+#include "sn_pointerui_msgthread.h"
+#include "sn_pointerui.h"
 
 //#include <sys/socket.h>
 //#include <sys/types.h>

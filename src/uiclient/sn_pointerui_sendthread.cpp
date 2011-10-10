@@ -1,4 +1,4 @@
-#include "sendthread.h"
+#include "sn_pointerui_sendthread.h"
 /*
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -8,7 +8,7 @@
 */
 #include <QFileInfo>
 
-#include "externalguimain.h"
+#include "sn_pointerui.h"
 
 SN_PointerUI_SendThread::SN_PointerUI_SendThread(QObject *parent)
     : QThread(parent)

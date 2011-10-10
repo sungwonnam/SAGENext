@@ -7,8 +7,8 @@
 #include <QSettings>
 #include <QTcpSocket>
 
-#include "messagethread.h"
-#include "sendthread.h"
+#include "sn_pointerui_msgthread.h"
+#include "sn_pointerui_sendthread.h"
 
 
 #define EXTUI_MSG_SIZE 1280

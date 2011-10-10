@@ -46,18 +46,18 @@ macx {
 
 SOURCES += \
 	main.cpp\
-	externalguimain.cpp \
-	sendthread.cpp \
-	messagethread.cpp
+    sn_pointerui.cpp \
+	sn_pointerui_sendthread.cpp \
+	sn_pointerui_msgthread.cpp
 
 HEADERS  += \
-	externalguimain.h \
-	sendthread.h \
-	messagethread.h
+    sn_pointerui.h \
+	sn_pointerui_sendthread.h \
+	sn_pointerui_msgthread.h
 
 FORMS    += \
-	externalguimain.ui \
-	connectiondialog.ui
+	sn_pointerui.ui \
+	sn_pointerui_conndialog.ui
 
 
 

@@ -1,6 +1,7 @@
-#include "externalguimain.h"
-#include "ui_externalguimain.h"
-#include "ui_connectiondialog.h"
+#include "sn_pointerui.h"
+
+#include "ui_sn_pointerui.h"
+#include "ui_sn_pointerui_conndialog.h"
 
 /*
 #include <sys/types.h>
