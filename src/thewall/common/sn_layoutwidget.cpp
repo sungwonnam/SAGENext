@@ -88,6 +88,7 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 	  */
 	if (_bar) {
 
+		// find out bw's effective center position
 		QPointF bwCenter = QPointF(0.5 * bw->size().width() * bw->scale(), 0.5 * bw->size().height() * bw->scale());
 
 		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromItem(bw, bwCenter)) ) {
@@ -110,13 +111,20 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 		bw->setParentItem(this);
 
 		if ( _isTileOn ) {
-			doTile();
+			// I need to return as soon as possible
+			QMetaObject::invokeMethod(this, "doTile", Qt::QueuedConnection);
 		}
 		else {
 //		qDebug() << "SN_LayoutWidget::addItem() : bw->setPos() " << pos;
 			bw->setPos(pos);
 		}
 	}
+
+
+	/**********
+	  Item is finally added to the scene and be shown
+	  AFTER this function returns
+	  *******/
 }
 
 /**
@@ -246,26 +254,36 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	// no _bar, so this layoutWidget contains child basewidgets
 	//
 	else {
-		// If growing, do nothing
-		// If shrinking, move child BaseWidgets accordingly
-
 		if (_isTileOn) {
 			doTile();
 		}
 		else {
-			foreach(QGraphicsItem *item, childItems()) {
-				//			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton ||  item==_firstChildLayout || item==_secondChildLayout) {
-				//	//			qDebug() << "createChildlayout skipping myself, buttons and bar";
-				//				continue;
-				//			}
-				if (item->type() < QGraphicsItem::UserType + 12) continue;
+			// If growing, do nothing
+			// If shrinking, move child BaseWidgets accordingly
 
-				QGraphicsWidget *widget = static_cast<QGraphicsWidget *>(item);
-				Q_ASSERT(widget);
+			if (deltaSize.width() < 0) {
+				// I'm left or right layoutWidget
 
-				if (!rect().contains( widget->geometry() )) {
-					// this widget need to be moved
+				if (pos().x() == 0) {
+					// I'm left. parent layoutwidget's bar moved to the left
+					adjustChildPos(0); // move them to the left
+				}
+				else {
+					// I'm right
+					adjustChildPos(0); // to the right
+				}
 
+			}
+			else if (deltaSize.height() < 0) {
+				// I'm top or bottom layoutWidget
+
+				if (pos().y() == 0) {
+					// I'm top. Parent layoutWidget's bar moved to the top
+					adjustChildPos(1);
+				}
+				else {
+					// I'm bottom
+					adjustChildPos(1);
 				}
 			}
 		}
@@ -342,9 +360,14 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 //		}
 		if (item->type() < QGraphicsItem::UserType + 12) continue;
 
+		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+
 		QPointF newPos;
 
-		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromItem(item, item->boundingRect().center())) ) {
+		// find out bw's effective center position
+//		QPointF bwCenter = QPointF(0.5 * bw->size().width() * bw->scale(), 0.5 * bw->size().height() * bw->scale());
+
+		if ( _firstChildLayout->rect().contains(_firstChildLayout->mapFromItem(bw, bw->boundingRect().center())) ) {
 			newPos = mapToItem(_firstChildLayout, item->pos());
 			item->setParentItem(_firstChildLayout);
 		}
@@ -357,7 +380,7 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 
 
 	//
-	// hides my buttons. This widget will just hold child widget
+	// hides my buttons. This widget will just hold child basewidgets
 	//
 	_tileButton->hide();
 	_vButton->hide();
@@ -366,7 +389,9 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 }
 
 
-
+/**
+  This is called when the _firstChildLayoutWidget is being resized
+  */
 void SN_LayoutWidget::adjustBar() {
 	Q_ASSERT(_bar);
 
@@ -403,15 +428,30 @@ void SN_LayoutWidget::adjustBar() {
 	}
 }
 
-void SN_LayoutWidget::adjustChildPos() {
+/**
+  find out child basewidgets located on top of the parent layoutwidget's _bar
+  */
+void SN_LayoutWidget::adjustChildPos(int direction) {
 
 	foreach(QGraphicsItem *item, childItems()) {
 		if (item->type() < QGraphicsItem::UserType + 12) continue;
-
 		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 
-		Q_ASSERT(bw);
+		Q_ASSERT(_parentLayoutWidget);
+		SN_WallPartitionBar *parentBar =  _parentLayoutWidget->bar();
 
+		if (bw->collidesWithItem(parentBar, Qt::IntersectsItemBoundingRect)) {
+			switch(direction) {
+			case 0 : { // left or right
+				bw->moveBy(parentBar->pos().x() - bw->pos().x() , 0);
+ 				break;
+			}
+			case 1 : { // up or down
+				bw->moveBy(0, parentBar->pos().y() - bw->pos().y());
+				break;
+			}
+			}
+		}
 	}
 }
 
@@ -438,19 +478,39 @@ void SN_LayoutWidget::deleteChildPartitions() {
 	if (_xButton) _xButton->show();
 }
 
+void SN_LayoutWidget::deleteMyself() {
+	// resize, setPos my sibling layout
+
+	// move my child (basewidgets) to my sibling
+
+	// reparent my sibling layout (to grand parent)
+
+	// delete parent and myself
+}
+
 void SN_LayoutWidget::doTile() {
 	if (_bar) return;
 
 	int itemcount = 0;
 
-	qreal layoutRatio = size().width() / size().height();
+//	qreal layoutRatio = size().width() / size().height();
 
+	qreal sumWHratio = 0.0;
 	foreach(QGraphicsItem *item, childItems()) {
 		if (item->type() < QGraphicsItem::UserType + 12) continue;
+		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 		itemcount++;
-	}
 
-	int numItemH = sqrt( itemcount * layoutRatio );
+		if (bw->size().isNull() || bw->size().isEmpty())
+			continue;
+
+		sumWHratio += (bw->size().width() / bw->size().height());
+
+		qDebug() << bw->size() << sumWHratio;
+	}
+	qreal avgWHratio = sumWHratio / itemcount;
+
+	int numItemH = sqrt( itemcount * avgWHratio );
 	if (numItemH < 1) numItemH = 1;
 	int numItemV = itemcount - numItemH;
 
@@ -479,9 +539,7 @@ void SN_LayoutWidget::doTile() {
 	***/
 
 
-	/***
-
-	int itemSpacing = 128; // pixel
+	int itemSpacing = 32; // pixel
 
 	qreal widthPerItem = size().width() - itemSpacing;
 	if ( numItemH > 1) {
@@ -492,8 +550,8 @@ void SN_LayoutWidget::doTile() {
 		heightPerItem = (size().height() / numItemV) - itemSpacing;
 	}
 
-//	qDebug() << layoutRatio << itemcount << numItemH << numItemV;
-//	qDebug() << widthPerItem << heightPerItem;
+	qDebug() << numItemH << numItemV;
+	qDebug() << widthPerItem << heightPerItem;
 
 	int row = 0;
 	int col = 0;
@@ -513,19 +571,16 @@ void SN_LayoutWidget::doTile() {
 			bw->resize( widthPerItem, heightPerItem );
 		}
 		else {
-			qreal scalevalue = 1.0;
-			if (bw->size().width() < bw->size().height()) {
-				scalevalue = widthPerItem / bw->size().width();
-			}
-			else {
-				scalevalue = heightPerItem / bw->size().height();
-			}
-			bw->setScale(scalevalue);
+			qreal scalewidth = 1.0, scaleheight = 1.0;
+				// the the max effective width of this bw is widthPerItem
+			scalewidth = widthPerItem / bw->size().width();
+			scaleheight = heightPerItem / bw->size().height();
+
+			bw->setScale(qMin(scalewidth, scaleheight));
 		}
 
 		col++;
 	}
-	***/
 }
 
 void SN_LayoutWidget::toggleTile() {

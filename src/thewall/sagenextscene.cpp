@@ -104,6 +104,8 @@ bool SN_TheScene::isOnAppRemoveButton(const QPointF &scenepos) {
 void SN_TheScene::addItemOnTheLayout(SN_BaseWidget *bw, const QPointF &scenepos) {
 	if(_rootLayoutWidget) {
 		_rootLayoutWidget->addItem(bw, _rootLayoutWidget->mapFromScene(scenepos));
+//		QPointF pos = _rootLayoutWidget->mapFromScene(scenepos);
+//		QMetaObject::invokeMethod(_rootLayoutWidget, "addItem", Qt::QueuedConnection, Q_ARG(void *, bw), Q_ARG(QPointF, pos));
 	}
 	else {
 		addItem(bw);

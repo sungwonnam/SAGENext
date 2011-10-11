@@ -53,10 +53,7 @@ public:
 	inline SN_LayoutWidget * firstChildLayout() {return _firstChildLayout;}
 	inline SN_LayoutWidget * secondChildLayout() {return _secondChildLayout;}
 
-	/**
-	  Add widget as my child. This will automatically add widget to the scene
-	  */
-	void addItem(SN_BaseWidget *bw, const QPointF &pos = QPointF(30, 30));
+	inline SN_WallPartitionBar * bar() {return _bar;}
 
 	/**
 	  Reparent all the basewidgets to the new layoutWidget
@@ -67,7 +64,6 @@ public:
 	  This will call resize()
 	  */
 	void setRectangle(const QRectF &r);
-
 
 	/**
 	  widget's center is (0,0)
@@ -119,12 +115,15 @@ private:
 
 	void setButtonPos();
 
-	void doTile();
-
 signals:
 	void resized();
 
 public slots:
+	/**
+	  Add widget as my child. This will automatically add widget to the scene
+	  */
+	void addItem(SN_BaseWidget *bw, const QPointF &pos = QPointF(30, 30));
+
 	/**
 	  create horizontal bar that partitions this widget into top and bottom
 	  */
@@ -135,21 +134,36 @@ public slots:
 	  */
 	inline void createVBar() {createChildPartitions(Qt::Vertical);}
 
-	// I'll become actual partition
+	/**
+	  My child layouts ( _firstChildLayout, _secondChildLayout) are going to be deleted
+	  And their child SN_BaseWidget will become my child
+	  */
 	void deleteChildPartitions();
 
-	void adjustBar();
-
+	/**
+	  I will be deleted (This implies I don't have child layouts) and my child SN_BaseWidget will be moved to my sibling.
+	  My sibling's rect() will be same as our parent's rect(). In fact my sibling will replace our parent layout
+	  */
+	void deleteMyself();
 
 	/**
-	  move child basewidget so that its window reside within my bounding rectangle
+	  This slot is called when _firstChildLayout is resized.
 	  */
-	void adjustChildPos();
+	void adjustBar();
 
+	/**
+	  move child basewidget so that its window reside within my bounding rectangle.
+	  0 left/right
+	  1 up/down
+	  */
+	void adjustChildPos(int direction);
 
 	void toggleTile();
 
+	void doTile();
+
 	/**
+	  Recursively save layout and basewidgets.
 	  */
 	void saveSession(QDataStream &out);
 
