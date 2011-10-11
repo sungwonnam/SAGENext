@@ -149,10 +149,10 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 /**
   * UiServer triggers this slot
   */
-SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &pos/* = QPointF()*/, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
+SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &scenepos/* = QPointF()*/, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
 	//qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
 
-	qDebug() << "SN_Launcher::launch() :" << type << filename << pos;
+//	qDebug() << "SN_Launcher::launch() :" << type << filename << scenepos;
 
 
 	////////////////////////////////////////
@@ -162,7 +162,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &p
 	if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
 		if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
 			char record[256];
-			sprintf(record, "%lld %d %d %s %d %d\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(filename), pos.toPoint().x(), pos.toPoint().y());
+			sprintf(record, "%lld %d %d %s %d %d\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(filename), scenepos.toPoint().x(), scenepos.toPoint().y());
 			_scenarioFile->write(record);
 		}
 		else {
@@ -221,7 +221,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &p
 			// add widget to the queue for launch(fsmThread *)
 			//
 			_sageWidgetQueue.push_back(sws);
-			_sageWidgetPosQueue.push_back(pos);
+			_sageWidgetPosQueue.push_back(scenepos);
 
 			// invoke sail remotely
 			QProcess *proc1 = new QProcess(this);
@@ -268,7 +268,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &p
 		      add the widget to the queue
 			*/
 			_sageWidgetQueue.push_back(sws);
-			_sageWidgetPosQueue.push_back(pos);
+			_sageWidgetPosQueue.push_back(scenepos);
 
 			/**
 	          initiate SAIL process
@@ -352,7 +352,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &p
 
 	} // end switch
 
-	return launch(w, pos);
+	return launch(w, scenepos);
 }
 
 SN_BaseWidget * SN_Launcher::launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate, const QPointF &scenepos /*= QPointF()*/) {
@@ -365,7 +365,7 @@ SN_BaseWidget * SN_Launcher::launch(QString username, QString vncPasswd, int dis
   Note that pos is in SN_BaseWidget's parent coordinate
   If w has no parent then it's in scene coordinate
   */
-SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &pos /*= QPointF()*/) {
+SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &scenepos) {
 	if ( w ) {
 
 		/**
@@ -376,7 +376,7 @@ SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &pos /*= QPo
 		if ( w->isRegisteredForMouseHover() ) {
 			_scene->hoverAcceptingApps.push_back(w);
 		}
-		_scene->addItemOnTheLayout(w, pos);
+		_scene->addItemOnTheLayout(w, scenepos);
 
 		//connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));
 		++_globalAppId; // increment only when widget is created successfully

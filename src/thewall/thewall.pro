@@ -171,7 +171,8 @@ SOURCES += \
         sagenextscene.cpp \
         sagenextviewport.cpp \
         sagenextlauncher.cpp \
-        settingstackeddialog.cpp
+        settingstackeddialog.cpp \
+    common/sn_layoutwidget.cpp
 
 HEADERS += \
 #        settingdialog.h \
@@ -206,10 +207,13 @@ HEADERS += \
         sagenextlauncher.h \
         mediastorage.h \
     applications/mediabrowser.h \
-    settingstackeddialog.h
+    settingstackeddialog.h \
+    common/sn_layoutwidget.h
 
 
 #    common/filereceivingrunnable.h
+
+
 
 
 

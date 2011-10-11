@@ -1,4 +1,5 @@
 #include "commonitem.h"
+#include "sn_layoutwidget.h"
 #include "../applications/base/basewidget.h"
 #include "../sagenextscene.h"
 

@@ -107,18 +107,18 @@ public slots:
         /**
           this is general launch function
           */
-		SN_BaseWidget * launch(int mediatype, QString filename, const QPointF &pos = QPointF(), qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
+		SN_BaseWidget * launch(int mediatype, QString filename, const QPointF &scenepos = QPointF(30,30), qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
 
         /**
           just for VNC widget
           */
-        SN_BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10, const QPointF &pos = QPointF());
+        SN_BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30));
 
         /**
           The widget is added to the scene in here.
           _globalAppId is incremented by 1 in here
           */
-        SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &pos = QPointF());
+		SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &scenepos = QPointF(30,30));
 
 		/**
 		  Only with filename, this slot launches all sorts of things (media, session, recording,..)
