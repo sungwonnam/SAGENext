@@ -35,7 +35,8 @@ SN_UiServer::SN_UiServer(const QSettings *s, SN_Launcher *snl, SN_TheScene *sns)
 
     _fileRecvPortBase = 10000 + s->value("general/wallport", 30003).toInt();
 
-    qDebug("SN_UiServer::%s() : UI Server has started on %s:%u", __FUNCTION__, qPrintable(serverAddress().toString()), serverPort());
+    qWarning() << "UI Server has started." << serverAddress() << serverPort();
+
 }
 
 SN_UiServer::~SN_UiServer() {

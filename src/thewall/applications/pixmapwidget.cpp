@@ -20,7 +20,7 @@ SN_PixmapWidget::SN_PixmapWidget(QString filename, const quint64 id, const QSett
 
     , dataSrc(SN_PixmapWidget::FROM_DISK_FILE)
     , _imageTemp(new QImage()) /* Because it is unsafe to use pixmap outside of GUI thread */
-    , _pixmap(new QPixmap())
+//    , _pixmap(new QPixmap())
     , serverSock(0)
     , filename(QString(filename))
     , filesize(0)
@@ -44,7 +44,7 @@ SN_PixmapWidget::SN_PixmapWidget(qint64 filesize, const QString &senderIP, const
 
     , dataSrc(SN_PixmapWidget::FROM_SOCKET)
     , _imageTemp(new QImage()) /* receive into QImage, convert to QPixmap */
-    , _pixmap(new QPixmap())
+//    , _pixmap(new QPixmap())
     , serverSock(0)
     , filename(QString()) /* null string */
     , filesize(filesize)
@@ -60,7 +60,7 @@ SN_PixmapWidget::SN_PixmapWidget(qint64 filesize, const QString &senderIP, const
 
 SN_PixmapWidget::~SN_PixmapWidget() {
 	if (_imageTemp) delete _imageTemp;
-	if (_pixmap) delete _pixmap;
+//	if (_pixmap) delete _pixmap;
 	qDebug("%s::%s()",metaObject()->className(), __FUNCTION__);
 }
 
@@ -86,21 +86,31 @@ void SN_PixmapWidget::start() {
 void SN_PixmapWidget::callUpdate() {
 	if ( futureWatcher->result() ) {
 
+		// at this point, _pixmap is not null
+
 		qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
 
 		resize(_imageTemp->width() + fmargin * 2 , _imageTemp->height() + fmargin * 2);
 //		qDebug() << "boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
 		_appInfo->setFrameSize(_imageTemp->width() + fmargin * 2, _imageTemp->height() + fmargin*2, _imageTemp->depth());
 
+
+//		resize(_pixmap->width() + fmargin*2, _pixmap->height() + fmargin*2);
+//		_appInfo->setFrameSize(_pixmap->width() + fmargin*2, _pixmap->height() + fmargin*2, _pixmap->depth());
+
 		// this is the best in E8400 (raster backend, opengl viewport (Xinerama))
 		// and the same in render1 (raster backend, opengl viewport, GTX 460)
+		// But devicecoordinatecache is no good for pixmapwidget
+		// because pixmapwidget can be scaled freely
 //		setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
+		setCacheMode(QGraphicsItem::NoCache);
 
-		delete _imageTemp;
-		_imageTemp = 0;
-
-//		_myImage = _imageTemp->convertToFormat(QImage::Format_RGB32);
+		_drawingPixmap = QPixmap::fromImage(*_imageTemp);
+		if (_imageTemp) {
+			delete _imageTemp;
+			_imageTemp = 0;
+		}
 
 		isImageReady = true;
 		update();
@@ -145,7 +155,8 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 
 //	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_imageTemp);
 //	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _myImage);
-	painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_pixmap);
+	painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _drawingPixmap);
+//	painter->drawPixmap(0, 0, _drawingPixmap);
 
 
 	if (_perfMon)
@@ -201,12 +212,14 @@ bool SN_PixmapWidget::readImage() {
 		}
 
 		if (_imageTemp->loadFromData(buffer)) {
+			/*
 #if QT_VERSION >= 0x040700
 			_pixmap->convertFromImage(*_imageTemp);
 #else
 			QPixmap pm = QPixmap::fromImage(*image);
 			*pixmap  = pm;
 #endif
+*/
 			//isImageReady = true;
 
 			/* save image file to local disk */
@@ -231,15 +244,35 @@ bool SN_PixmapWidget::readImage() {
 
 	case FROM_DISK_FILE:
 	{
+		/***
+		  Below block make sagenext crash with error
+
+		  <unknown>: Fatal IO error 11 (Resource temporarily unavailable) on X server :0.0.
+
+		  Be careful when using native graphics backend (x11) because QPixmap is stored in the server side (X server) and QPixmap isn't thread-safe
+
 		if (_imageTemp->load(filename)) {
 #if QT_VERSION >= 0x040700
 			_pixmap->convertFromImage(*_imageTemp);
 #else
-			pixmap->load(filename);
+			_pixmap->load(filename);
 #endif
 			//isImageReady = true;
 		}
-		else qWarning("%s::%s() : QImage::load(%s) failed !",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+		****/
+
+		/***
+		  Be careful when using native graphics backend (x11) because QPixmap is stored in the server side (X server) and QPixmap isn't thread-safe
+
+		if ( ! _pixmap->load(filename)) {
+			qCritical("%s::%s() : QPixmap::load(%s) failed !",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+		}
+		***/
+
+		if (!_imageTemp->load(filename)) {
+			qCritical("%s::%s() : QImage::load(%s) failed !",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+		}
+
 		break;
 	}
 	case FROM_DISK_DIRECTORY:
@@ -248,11 +281,14 @@ bool SN_PixmapWidget::readImage() {
 	}
 	} // end of switch
 
-	if ( ! _pixmap->isNull() ) {
+
+
+
+	if ( ! _imageTemp->isNull() ) {
 		return true;
 	}
 	else {
-		qCritical("%s::%s() : pixmap is null", metaObject()->className(), __FUNCTION__);
+		qCritical("%s::%s() : _pixmap is null", metaObject()->className(), __FUNCTION__);
 	}
 
 	return false;

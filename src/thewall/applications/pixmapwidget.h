@@ -51,7 +51,9 @@ private:
 	/*!
 	  image is converted to pixmap and drawn from pixmap to make paint() faster
 	  */
-	QPixmap *_pixmap;
+//	QPixmap *_pixmap;
+
+	QPixmap _drawingPixmap;
 
 	/*!
 	  socket to accept connection from sender

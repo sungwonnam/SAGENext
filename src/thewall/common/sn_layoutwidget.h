@@ -50,15 +50,26 @@ public:
 //	inline SN_LayoutWidget * topWidget() {return _topWidget;}
 //	inline SN_LayoutWidget * bottomWidget() {return _bottomWidget;}
 
+	inline QString position() const {return _position;}
+
+	inline void setParentLayoutWidget(SN_LayoutWidget *p) {_parentLayoutWidget = p;}
+	inline SN_LayoutWidget * parentLayoutWidget() {return _parentLayoutWidget;}
+
+	inline void setFirstChildLayout(SN_LayoutWidget *f) {_firstChildLayout = f;}
+	inline void setSecondChildLayout(SN_LayoutWidget *s) {_secondChildLayout = s;}
+
 	inline SN_LayoutWidget * firstChildLayout() {return _firstChildLayout;}
 	inline SN_LayoutWidget * secondChildLayout() {return _secondChildLayout;}
+
+	inline void setSiblingLayout(SN_LayoutWidget *s) {_siblingLayout = s;}
+	inline SN_LayoutWidget * siblingLayout() {return _siblingLayout;}
 
 	inline SN_WallPartitionBar * bar() {return _bar;}
 
 	/**
 	  Reparent all the basewidgets to the new layoutWidget
 	  */
-	void reparentWidgets(SN_LayoutWidget *newParent);
+	void reparentMyChildBasewidgets(SN_LayoutWidget *newParent);
 
 	/**
 	  This will call resize()
@@ -93,6 +104,8 @@ private:
 
 	SN_LayoutWidget *_firstChildLayout;
 	SN_LayoutWidget *_secondChildLayout;
+
+	SN_LayoutWidget *_siblingLayout;
 
 	SN_WallPartitionBar *_bar;
 	SN_PixmapButton *_tileButton;

@@ -61,15 +61,14 @@ private:
 	/*!
 	  Pointer to QThread object
 	  */
-	SagePixelReceiver *receiverThread;
+	SagePixelReceiver *_receiverThread;
 
 
 	/**
-	  * single pixel storage
-	  * QImage is for I/O. So this is used for receiving pixels from sAIL
+	  Drawing image is expansive than pixmap. But conversion to pixmap isn't needed
 	  */
-	QImage *image;
-//	QImage image2;
+	QImage _imageForDrawing;
+
 
 //	QSemaphore *convertedToPixmap;
 
@@ -78,6 +77,10 @@ private:
 
 	/**
 	  * QPixmap is for drawing.
+
+	  In X11, QPixmap is stored at the X Server. So converting image to pixmap involves converting plus copy to server.
+	  However, drawing pixmap is cheaper.
+
 	  */
 	QPixmap _pixmap;
 

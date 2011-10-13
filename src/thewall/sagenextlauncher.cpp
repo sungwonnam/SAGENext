@@ -188,7 +188,9 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 			//QFuture<bool> future = QtConcurrent::run(this, &SAGENextLauncher::fileReceivingFunction, type, filename, fsize, senderIP, recvIP, recvPort);
 
 			w = new SN_PixmapWidget(fsize, senderIP, recvIP, recvPort, _globalAppId, _settings);
-			_mediaStorage->insertNewMediaToHash(filename);
+
+			if(_mediaStorage)
+				_mediaStorage->insertNewMediaToHash(filename);
 		}
 
 		//
@@ -199,7 +201,8 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 //			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			w = new SN_PixmapWidget(filename, _globalAppId, _settings);
 
-			_mediaStorage->insertNewMediaToHash(filename);
+			if(_mediaStorage)
+				_mediaStorage->insertNewMediaToHash(filename);
 		}
 		else
 			qCritical("%s::%s() : MEDIA_TYPE_IMAGE can't open", metaObject()->className(), __FUNCTION__);
@@ -290,9 +293,14 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 
 //			proc->setWorkingDirectory(qApp->applicationDirPath());
 //			qDebug() << qApp->applicationDirPath();
-//			qDebug() << proc->workingDirectory();
+
 
 			proc->start("mplayer",  args);
+
+			if (!proc->waitForStarted(-1)) {
+				qDebug() << proc->workingDirectory();
+			}
+
 
 			sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_LOCAL_VIDEO);
 			sws->appInfo()->setExecutableName("mplayer");

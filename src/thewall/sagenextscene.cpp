@@ -57,7 +57,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 //	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
 //	opacity->setOpacity(0.2);
 //	closeButton->setGraphicsEffect(opacity);
-	_closeButton->setOpacity(0.1);
+	_closeButton->setOpacity(0.2);
 	_closeButton->setPos(sceneRect.width() - _closeButton->boundingRect().width() - 5, 10);
 //	_closeButton->setScale(0.5);
 	addItem(_closeButton);

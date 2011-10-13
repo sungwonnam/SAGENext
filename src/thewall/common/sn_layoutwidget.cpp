@@ -53,6 +53,8 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 	if (parentWidget) {
 		_xButton = new SN_PixmapButton(":/resources/close_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 		connect(_xButton, SIGNAL(clicked()), _parentLayoutWidget, SLOT(deleteChildPartitions()));
+//		connect(_xButton, SIGNAL(clicked()), this, SLOT(deleteMyself()));
+
 //		_buttonGrp->addToGroup(_xButton);
 	}
 	else {
@@ -130,10 +132,10 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 /**
   Caller's child items will be reparented to the newParent
   */
-void SN_LayoutWidget::reparentWidgets(SN_LayoutWidget *newParent) {
+void SN_LayoutWidget::reparentMyChildBasewidgets(SN_LayoutWidget *newParent) {
 	if (_bar) {
-		_firstChildLayout->reparentWidgets(newParent);
-		_secondChildLayout->reparentWidgets(newParent);
+		_firstChildLayout->reparentMyChildBasewidgets(newParent);
+		_secondChildLayout->reparentMyChildBasewidgets(newParent);
 	}
 	else {
 		foreach(QGraphicsItem *item, childItems()) {
@@ -338,6 +340,9 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 	_firstChildLayout = new SN_LayoutWidget("first", this, _settings, this);
 	_secondChildLayout = new SN_LayoutWidget("second", this, _settings, this);
 
+	_firstChildLayout->setSiblingLayout(_secondChildLayout);
+	_secondChildLayout->setSiblingLayout(_firstChildLayout);
+
 	//
 	// if child widget is resized, then adjust my bar pos and length
 	//
@@ -461,8 +466,8 @@ void SN_LayoutWidget::deleteChildPartitions() {
 	//
 	// reparent all basewidgets of my child layouts to me
 	//
-	_firstChildLayout->reparentWidgets(this);
-	_secondChildLayout->reparentWidgets(this);
+	_firstChildLayout->reparentMyChildBasewidgets(this);
+	_secondChildLayout->reparentMyChildBasewidgets(this);
 	delete _firstChildLayout;
 	delete _secondChildLayout;
 
@@ -478,14 +483,39 @@ void SN_LayoutWidget::deleteChildPartitions() {
 	if (_xButton) _xButton->show();
 }
 
+/**
+  This layoutWidget doesn't have any child layoutWidget
+  */
 void SN_LayoutWidget::deleteMyself() {
-	// resize, setPos my sibling layout
+	SN_LayoutWidget *sibling = siblingLayout();
+	Q_ASSERT(sibling);
+
+	sibling->setPos(0,0);
+	sibling->resize(_parentLayoutWidget->size());
+
 
 	// move my child (basewidgets) to my sibling
+	reparentMyChildBasewidgets(sibling);
 
-	// reparent my sibling layout (to grand parent)
 
-	// delete parent and myself
+	if (sibling->bar()) {
+		// if sibling has child LayoutWidgets
+		_parentLayoutWidget->setFirstChildLayout(sibling->firstChildLayout());
+		_parentLayoutWidget->setSecondChildLayout(sibling->secondChildLayout());
+
+		sibling->firstChildLayout()->setParentLayoutWidget(_parentLayoutWidget);
+		sibling->secondChildLayout()->setParentLayoutWidget(_parentLayoutWidget);
+	}
+	else {
+		sibling->reparentMyChildBasewidgets(_parentLayoutWidget);
+	}
+
+
+	// I'll be deleted
+	deleteLater();
+
+	// my sibling will be deleted
+	sibling->deleteLater();
 }
 
 void SN_LayoutWidget::doTile() {

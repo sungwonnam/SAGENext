@@ -7,6 +7,12 @@
 
 #include <QtGui>
 
+
+#include <sys/time.h>
+#include <sys/resource.h>
+
+
+
 rfbBool SN_VNCClientWidget::got_data = FALSE;
 QString SN_VNCClientWidget::username = "";
 QString SN_VNCClientWidget::vncpasswd = "evl123";
@@ -17,7 +23,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	, serverPort(5900)
 	, _image(0)
 	, _end(false)
-	, framerate(frate)
+	, _framerate(frate)
 
 {
 	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_VNC);
@@ -79,8 +85,8 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	if (vncclient->serverPort == -1 )
 		vncclient->vncRec->doNotSleep = true;
 
-	//_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
-	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
+	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
+//	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
 	//qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
 
@@ -93,13 +99,13 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	resize(_image->width() + fmargin*2, _image->height() + fmargin*2);
 	_appInfo->setFrameSize(_image->width() + fmargin*2, _image->height() + fmargin*2, 24);
 
-	qDebug() << "VNCClientWidget constructor" << boundingRect() << size();
+//	qDebug() << "VNCClientWidget constructor" << boundingRect() << size();
 
 
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 	if (_perfMon) {
-		_perfMon->setExpectedFps( (qreal)framerate );
-		_perfMon->setAdjustedFps( (qreal)framerate );
+		_perfMon->setExpectedFps( (qreal)_framerate );
+		_perfMon->setAdjustedFps( (qreal)_framerate );
 	}
 
 
@@ -145,14 +151,16 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 	//	painter->setRenderHint(QPainter::HighQualityAntialiasing);
 	painter->setRenderHint(QPainter::SmoothPixmapTransform); // important -> this will make text smoother
 
+/*
+	if (!_pixmap.isNull())
+		painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _pixmap); // Drawing QPixmap is much faster than QImage
+		*/
 
-	if (!pixmap.isNull())
-		painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), pixmap); // Drawing QPixmap is much faster than QImage
 
-
-	// if (_image && !_image->isNull()) {
-	//  painter->drawImage(0, 0, *_image);
-	//}
+	if (!_imageForDrawing.isNull()) {
+		// I'm drawing the QImage to avoid conversion delay (just like SageStreamWidget)
+		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _imageForDrawing);
+	}
 
 
 	if (_perfMon)
@@ -160,23 +168,51 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 }
 
 void SN_VNCClientWidget::scheduleUpdate() {
+	/*
 #if QT_VERSION < 0x040700
     pixmap = QPixmap::fromImage(*_image);
     if (pixmap.isNull()) {
         qDebug("SageStreamWidget::scheduleUpdate() : QPixmap::fromImage() error");
 #else
-    if (! pixmap.convertFromImage(*_image, Qt::AutoColor | Qt::OrderedDither) ) {
+    if (! _pixmap.convertFromImage(*_image, Qt::AutoColor | Qt::OrderedDither) ) {
         qDebug("VNCClientWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
 #endif
+*/
+	if (!_image || _image->isNull()) {
     }
 	else {
+		_perfMon->getConvTimer().start();
+
 		// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
 		// QGraphicsView will process the event
+
+		_imageForDrawing = *_image;
+
+		_perfMon->updateConvDelay();
+
 		update();
 	}
 }
 
 void SN_VNCClientWidget::receivingThread() {
+
+	/*
+	struct timeval lats, late;
+	struct rusage ru_start, ru_end;
+
+	if(_perfMon) {
+		_perfMon->getRecvTimer().start(); //QTime::start()
+
+#if defined(Q_OS_LINUX)
+		getrusage(RUSAGE_THREAD, &ru_start); // that of calling thread. Linux specific
+#elif defined(Q_OS_MAC)
+		getrusage(RUSAGE_SELF, &ru_start);
+#endif
+
+		gettimeofday(&lats, 0);
+	}
+	*/
+
 
 	while (!_end) {
 		// sleep to ensure desired fps
@@ -218,7 +254,7 @@ void SN_VNCClientWidget::receivingThread() {
 #else
             time = QDateTime::currentMSecsSinceEpoch();
 #endif
-            if ( (time-now) >= (1000/framerate) ) break;
+            if ( (time-now) >= (1000/_framerate) ) break;
             
 		}
 		if (_end) break;
@@ -234,24 +270,54 @@ void SN_VNCClientWidget::receivingThread() {
 
 		for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
 			// QImage::Format_RGB32 format : 0xffRRGGBB
-			/*
-                    buffer[4*k + 3] = 0xff;
-                        buffer[4*k + 2] = vncpixels[ 4*k + 0];
-                        buffer[4*k + 1] = vncpixels[ 4*k + 1];
-                        buffer[4*k + 0] = vncpixels[ 4*k + 2];
-                        */
+			buffer[4*k + 3] = 0xff;
+			buffer[4*k + 2] = vncpixels[ 4*k + 0];
+			buffer[4*k + 1] = vncpixels[ 4*k + 1];
+			buffer[4*k + 0] = vncpixels[ 4*k + 2];
 
 			// QImage::Format_RGB888
+			/*
 			buffer[3*k + 0] = vncpixels[ 4*k + 0];
 			buffer[3*k + 1] = vncpixels[ 4*k + 1];
 			buffer[3*k + 2] = vncpixels[ 4*k + 2];
+			*/
 		}
+
+//		gettimeofday(&late, 0);
 
 		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
 		// why I can't invoke update() ???
-	}
 
-	qDebug() << "LibVNCClient receiving thread finished";
+//		QMetaObject::invokeMethod(this, "update", Qt::QueuedConnection);
+
+
+
+
+		/***
+		if (_perfMon) {
+#if defined(Q_OS_LINUX)
+			getrusage(RUSAGE_THREAD, &ru_end);
+#elif defined(Q_OS_MAC)
+			getrusage(RUSAGE_SELF, &ru_end);
+#endif
+
+			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001); // second
+
+			// calculate
+//			perf->updateRecvLatency(read, ru_start, ru_end); // QTimer::restart()
+			_perfMon->updateObservedRecvLatency(vncclient->width * vncclient->height, networkrecvdelay, ru_start, ru_end);
+
+			ru_start = ru_end;
+			lats = late;
+
+//			qDebug() << perf->getCpuUsage();
+		}
+		***/
+
+
+	} // end of while (_end)
+
+//	qDebug() << "LibVNCClient receiving thread finished";
 //	QMetaObject::invokeMethod(this, "fadeOutClose", Qt::QueuedConnection);
 	QMetaObject::invokeMethod(this, "close", Qt::QueuedConnection);
 }

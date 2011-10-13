@@ -391,6 +391,7 @@ private:
 		bool _registerForMouseHover;
 
 
+
         /*!
           To store _priority * offset (for quantization)
           Getting this value is much faster

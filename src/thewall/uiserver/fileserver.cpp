@@ -133,7 +133,7 @@ SN_FileServer::SN_FileServer(const QSettings *s, SN_Launcher *l, QObject *parent
         deleteLater();
     }
 	else {
-		qWarning() << "FileServer is listening on" << serverAddress() << serverPort();
+		qWarning() << "FileServer has started." << serverAddress() << serverPort();
 	}
 }
 

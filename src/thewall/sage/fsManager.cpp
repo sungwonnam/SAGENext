@@ -124,7 +124,7 @@ void fsManager::registerApp(quint64 appid, const QString &msgStr, fsManagerMsgTh
 void fsManager::incomingConnection(int sockfd) {
 	++_sageAppId;
 
-	qDebug("fsManager::%s() : Incoming Connection, sockfd %d, sageAppId %llu. Starting msgThread", __FUNCTION__, sockfd, _sageAppId);
+//	qDebug("fsManager::%s() : Incoming Connection, sockfd %d, sageAppId %llu. Starting msgThread", __FUNCTION__, sockfd, _sageAppId);
 
 	fsManagerMsgThread *thread = new fsManagerMsgThread(_sageAppId, sockfd, settings);
 //	connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));

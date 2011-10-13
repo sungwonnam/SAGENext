@@ -13,6 +13,8 @@ SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalapp
 	, _document(0)
 	, _currentPage(0)
 	, _currentPageIndex(0)
+    , _dpix(200)
+    , _dpiy(200)
 {
 	_document = Poppler::Document::load(filename);
 	if (!_document || _document->isLocked()) {
@@ -45,9 +47,15 @@ SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalapp
 //		setTransformOriginPoint(size().width()/2 , size().height()/2);
 //	}
 
-	setCurrentPage(0);
+	_currentPage = _document->page(_currentPageIndex);
+	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(_dpix, _dpiy));
 
-//	setCacheMode(QGraphicsItem::ItemCoordinateCache);
+	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
+
+	resize(_pixmap.width() + fmargin*2, _pixmap.height() + fmargin*2);
+
+	_appInfo->setFrameSize(size().width(), size().height(), _pixmap.depth());
+
 
 /**
 	QPushButton *_rbtn = new QPushButton(QIcon(":/resources/rightbox.png"), "");
@@ -93,21 +101,22 @@ void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 	_currentPage = _document->page(pageNumber);
 	_currentPageIndex = pageNumber;
 
+	qDebug() << "hello" << pageNumber;
+
 //	qint64 start = QDateTime::currentMSecsSinceEpoch();
 
+	/**
 #if QT_VERSION >= 0x040700
-	_pixmap.convertFromImage(_currentPage->renderToImage(200, 200));
+	_pixmap.convertFromImage(_currentPage->renderToImage(_dpix, _dpiy));
 #else
-	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(200, 200));
+	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(_dpix, _dpiy));
 #endif
+**/
+	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(_dpix, _dpiy));
 
 //	qint64 end = QDateTime::currentMSecsSinceEpoch();
 //	qDebug() << end - start << "msec for rendering";
 
-	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
-
-	resize(_pixmap.width() + fmargin*2, _pixmap.height() + fmargin*2);
-	
 //	qDebug() << _currentPage->pageSizeF();
 //	QSizeF sizeinch = _currentPage->pageSizeF() / 72;
 //	qDebug() << sizeinch * 250;
@@ -115,6 +124,7 @@ void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 
 void SN_PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
 	if (!_currentPage) return;
+
 	painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
 	if (_perfMon)

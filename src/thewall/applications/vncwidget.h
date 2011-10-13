@@ -15,7 +15,7 @@
 class SN_VNCClientWidget : public SN_RailawareWidget
 {
 public:
-        SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int framerate, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+        SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int _framerate, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
         ~SN_VNCClientWidget();
 
 protected:
@@ -31,10 +31,12 @@ private:
           */
         QImage *_image;
 
+		QImage _imageForDrawing;
+
         /*!
           paint() will draw this
           */
-        QPixmap pixmap;
+        QPixmap _pixmap;
 
         /*!
           copy vnc framebuffer to QImage
@@ -43,7 +45,7 @@ private:
 
         bool _end;
 
-        int framerate;
+        int _framerate;
 
         QFuture<void> future;
 

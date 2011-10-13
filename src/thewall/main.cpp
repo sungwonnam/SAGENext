@@ -80,13 +80,36 @@ int main(int argc, char *argv[])
 	//
 //	qt_x11_set_global_double_buffer(false);
 
+
+//	QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
+
+
 	/***
 	  When using raster backend, For optimal performance only use the format types
       QImage::Format_ARGB32_Premultiplied, QImage::Format_RGB32 or QImage::Format_RGB16
-	  And use QImage as a paintdevice
+	  And use QImage as a paintdevice.
+
+	  On Linux/X11 this performs very bad
 	***/
-//	QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
-	QApplication::setGraphicsSystem( "raster" );
+//	QApplication::setGraphicsSystem( "raster" );
+
+
+	/***
+	  On Linux/X11 platforms which support it, Qt will use glX/EGL texture-from-pixmap extension.
+This means that if your QPixmap has a real X11 pixmap backend, we simply bind that X11 pixmap as a texture and avoid copying it.
+You will be using the X11 pixmap backend if the pixmap was created with QPixmap::fromX11Pixmap() or you’re using the “native” graphics system.
+Not only does this avoid overhead but it also allows you to write a composition manager or even a widget which shows previews of all your windows.
+
+
+QPixmap, unlike QImage, may be hardware dependent.
+On X11, Mac and Symbian, a QPixmap is stored on the server side while a QImage is stored on the client side
+(on Windows,these two classes have an equivalent internal representation,
+i.e. both QImage and QPixmap are stored on the client side and don't use any GDI resources).
+
+Note that the pixel data in a pixmap is internal and is managed by the underlying window system.
+	  ***/
+//	QApplication::setGraphicsSystem("native"); // default
+
 
 	QApplication a(argc, argv);
 
@@ -282,7 +305,7 @@ int main(int argc, char *argv[])
 	/**
       create the scene (This is a QObject)
       */
-	qDebug() << "Creating the SAGENextScene" << s.value("general/width").toDouble() << s.value("general/height").toDouble();
+	qDebug() << "\nCreating the scene" << s.value("general/width").toDouble() << "x" << s.value("general/height").toDouble();
 	SN_TheScene *scene = new SN_TheScene(QRectF(0, 0, s.value("general/width").toDouble(), s.value("general/height").toDouble()) ,  &s);
 
 
@@ -313,7 +336,7 @@ int main(int argc, char *argv[])
 
 		char *val = getenv("EXP_DATA_FILE");
 		if ( val ) {
-			qDebug("EXP_DATA_FILE is defined. Performance data will be written by the ResourceMonitor.");
+			qWarning("EXP_DATA_FILE is defined. Performance data will be written by the ResourceMonitor.");
 			resourceMonitor->setPrintDataFlag(true);
 			resourceMonitor->printPrelimDataHeader();
 		}
@@ -333,7 +356,9 @@ int main(int argc, char *argv[])
 	/**
 	  create the MediaStorage
 	*/
+//	SN_MediaStorage *mediaStorage = 0;
 	SN_MediaStorage *mediaStorage = new SN_MediaStorage(&s);
+
 
 	/**
 	  create the launcher
@@ -392,7 +417,7 @@ int main(int argc, char *argv[])
         /**
           create viewport widget (This is a QWidget)
           */
-	qDebug() << "Creating SAGENext Viewport";
+	qWarning() << "\nCreating SAGENext Viewport";
 	SN_Viewport *gvm = 0;
 
 	// This hurts performance !!
@@ -410,9 +435,9 @@ int main(int argc, char *argv[])
 			//
 			// with Xinerama, full screen won't work
 			//
-			//gvm->setWindowState(Qt::WindowFullScreen);
+//			gvm->setWindowState(Qt::WindowFullScreen);
 
-			qDebug() << "\n[ using QGLWidget as the viewport - Xinerama]";
+			qDebug() << "\t[using QGLWidget as the viewport widget]";
 		}
 		gvm->move(s.value("general/offsetx", 0).toInt(), s.value("general/offsety", 0).toInt());
         gvm->resize(scene->sceneRect().size().toSize());
@@ -432,7 +457,7 @@ int main(int argc, char *argv[])
 				gvm->setViewport(new QGLWidget(dw->screen(i)));
 				gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 				gvm->setWindowState(Qt::WindowFullScreen);
-				qDebug() << "\n[ using QGLWidget as the viewport ]";
+				qDebug() << "\t[using QGLWidget as the viewport widget]";
 
 			}
 			//

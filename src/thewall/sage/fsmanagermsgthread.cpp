@@ -101,7 +101,7 @@ void fsManagerMsgThread::sendSailSetRailMsg(AffinityInfo *aff, quint64 sageappid
 //	msg.setData(data.length(), (void *)data.data());
 
         if ( ::send(socket, (char *)msg.getBuffer(), msg.getBufSize(), 0) <= 0 ) {
-                        qDebug() << "fsmMsgThread: error sending SAIL_SET_RAIL message";
+			qDebug() << "fsmMsgThread: error sending SAIL_SET_RAIL message";
         }
         else {
 //		qDebug("fsManagerMsgThread::%s() : SAIL_SET_RAIL [%s] has sent", __FUNCTION__, (char *)msg.getData());

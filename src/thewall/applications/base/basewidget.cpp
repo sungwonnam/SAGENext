@@ -145,12 +145,6 @@ void SN_BaseWidget::init()
 	  */
 	setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 
-	//
-	/* When enabled, the item's paint() function will be called only once for each call to update(); for any subsequent repaint requests, the Graphics View framework will redraw from the cache. */
-	/* Turn cache off for streaming application */
-	//
-	//
-//	setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
 	//qDebug() << "BaseWidget::init() : boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
 	// window frame is not interactible by shared pointers

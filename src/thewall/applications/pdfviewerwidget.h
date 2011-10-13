@@ -42,6 +42,9 @@ private:
 
 	QPixmap _pixmap;
 
+	int _dpix;
+	int _dpiy;
+
 public slots:
 	void setCurrentPage(int pageNumber);
 
