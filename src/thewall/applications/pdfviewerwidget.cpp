@@ -114,6 +114,8 @@ void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 **/
 	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(_dpix, _dpiy));
 
+	update();
+
 //	qint64 end = QDateTime::currentMSecsSinceEpoch();
 //	qDebug() << end - start << "msec for rendering";
 
