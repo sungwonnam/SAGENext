@@ -261,8 +261,9 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 		}
 		else {
 			// If growing, do nothing
-			// If shrinking, move child BaseWidgets accordingly
 
+
+			// If shrinking, move child BaseWidgets accordingly
 			if (deltaSize.width() < 0) {
 				// I'm left or right layoutWidget
 
@@ -272,7 +273,7 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 				}
 				else {
 					// I'm right
-					adjustChildPos(0); // to the right
+					adjustChildPos(1); // to the right
 				}
 
 			}
@@ -281,11 +282,11 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 
 				if (pos().y() == 0) {
 					// I'm top. Parent layoutWidget's bar moved to the top
-					adjustChildPos(1);
+					adjustChildPos(2); // move up
 				}
 				else {
 					// I'm bottom
-					adjustChildPos(1);
+					adjustChildPos(3); // move down
 				}
 			}
 		}
@@ -447,12 +448,25 @@ void SN_LayoutWidget::adjustChildPos(int direction) {
 
 		if (bw->collidesWithItem(parentBar, Qt::IntersectsItemBoundingRect)) {
 			switch(direction) {
-			case 0 : { // left or right
-				bw->moveBy(parentBar->pos().x() - bw->pos().x() , 0);
+			case 0 : { // left
+//				bw->moveBy(mapFromParent(parentBar->pos()).x() - bw->pos().x() + bw->size().width(), 0);
+				bw->setPos(size().width() - bw->size().width() * bw->scale() , bw->pos().y());
  				break;
 			}
-			case 1 : { // up or down
-				bw->moveBy(0, parentBar->pos().y() - bw->pos().y());
+			case 1 : { // right
+//				bw->moveBy(mapFromParent(parentBar->pos()).x() - bw->pos().x() , 0);
+				bw->setPos(0 , bw->pos().y());
+
+				break;
+			}
+			case 2 : // up
+			{
+				bw->setPos(bw->pos().x(), size().height() - bw->size().height() * bw->scale());
+				break;
+			}
+			case 3 : // down
+			{
+				bw->setPos(bw->pos().x(), 0);
 				break;
 			}
 			}
@@ -536,13 +550,16 @@ void SN_LayoutWidget::doTile() {
 
 		sumWHratio += (bw->size().width() / bw->size().height());
 
-		qDebug() << bw->size() << sumWHratio;
+//		qDebug() << bw->size() << sumWHratio;
 	}
 	qreal avgWHratio = sumWHratio / itemcount;
+	qreal layoutWHratio = size().width() / size().height();
 
-	int numItemH = sqrt( itemcount * avgWHratio );
+	int numItemH = sqrt( itemcount * layoutWHratio );
 	if (numItemH < 1) numItemH = 1;
-	int numItemV = itemcount - numItemH;
+	int numItemV = itemcount / numItemH;
+
+	qDebug() << "avg itme" << avgWHratio << "layout" << layoutWHratio << " item layout is" << numItemH << "by" << numItemV;
 
 
 	/***
@@ -580,7 +597,6 @@ void SN_LayoutWidget::doTile() {
 		heightPerItem = (size().height() / numItemV) - itemSpacing;
 	}
 
-	qDebug() << numItemH << numItemV;
 	qDebug() << widthPerItem << heightPerItem;
 
 	int row = 0;
