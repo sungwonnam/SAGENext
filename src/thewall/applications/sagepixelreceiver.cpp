@@ -19,7 +19,7 @@
 //#include <sched.h>
 
 
-SagePixelReceiver::SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ ImageDoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */) :
+SagePixelReceiver::SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ RawDoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */) :
 	QThread(parent),
 	s(s),
 	_end(false),
@@ -81,7 +81,7 @@ SagePixelReceiver::~SagePixelReceiver() {
 //        terminate();
 //        wait();
 
-        qDebug() << "return ~SagePixelReceiver" << QTime::currentTime().toString("hh:mm:ss.zzz");
+	qDebug() << "return ~SagePixelReceiver" << QTime::currentTime().toString("hh:mm:ss.zzz");
 }
 
 void SagePixelReceiver::receivePixel() {
@@ -122,7 +122,7 @@ int SagePixelReceiver::receiveUdpPortNumber() {
 
 void SagePixelReceiver::run() {
 
-//	QDebug() << "SagePixelReceiver::run() : starting pixel receiving thread";
+//	fprintf(stderr, "SagePixelReceiver::run() : starting pixel receiving thread");
 
 	QThread::setTerminationEnabled(true);
 
@@ -169,7 +169,8 @@ void SagePixelReceiver::run() {
 
 	int byteCount = appInfo->frameSizeInByte();
 
-	unsigned char *bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
+//	unsigned char *bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
+	unsigned char *bufptr = (unsigned char *)doubleBuffer->getFrontBuffer();
 
 //	unsigned char *bufptr = 0;
 //	QImage localImage(appInfo->nativeSize(), QImage::Format_RGB888);
@@ -267,7 +268,8 @@ void SagePixelReceiver::run() {
 		//QMetaObject::invokeMethod(widget, "scheduleUpdate", Qt::QueuedConnection);
 
 		//getFrontBuffer() will return immediately. There's no mutex waiting in this function
-		bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
+//		bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
+		bufptr = (unsigned char *)doubleBuffer->getFrontBuffer();
 		//qDebug("%s() : grabbed front buffer", __FUNCTION__);
 		/***************************************/
 

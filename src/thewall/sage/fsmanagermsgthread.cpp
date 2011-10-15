@@ -313,6 +313,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
 
                         Q_ASSERT(_sageWidget);
 
+//						qDebug() << "fsmsgthread invoking doInitReceiver() for sage app" << sageAppId << "streamport" << streamPort << QTime::currentTime().toString("hh:mm:ss.zzz");
                         QMetaObject::invokeMethod(_sageWidget, "doInitReceiver", Qt::QueuedConnection,
                                                                           Q_ARG(quint64, sageAppId),
                                                                           Q_ARG(QString, appName),
@@ -323,9 +324,17 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                         // wait a bit so that SageStreamWidget / SagePixelReceiver can be started
                         // If this is too short, sender could connect() before accept() is called at the sageStreamWidget
 //			QCoreApplication::sendPostedEvents();
-                        QThread::yieldCurrentThread();
-                        QThread::msleep(300);
 
+						forever {
+							if ( _sageWidget->isWaitingSailToConnect() ) {
+								QThread::msleep(100);
+								break;
+							}
+							else {
+//								QThread::yieldCurrentThread();
+		                        QThread::msleep(100);
+							}
+						}
 
 
                         /**
@@ -348,6 +357,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                                 break;
                         }
                         dataSize = sageMsg.getBufSize();
+//						qDebug() << "fsmsgthread send SAIL_CONNECT_TO_RCV for sageappid" << sageAppId << QTime::currentTime().toString("hh:mm:ss.zzz");
                         sent = send(socket, (char *)sageMsg.getBuffer(), dataSize, 0);
                         if ( sent == -1 ) {
                                 qCritical("fsManagerMsgThread::%s() : error while sending SAIL_CONNECT_TO_RCV", __FUNCTION__);

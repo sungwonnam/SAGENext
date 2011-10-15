@@ -3,17 +3,15 @@
 
 #include <QtCore>
 #include <QImage>
-#include <QPixmap>
+
 #include <pthread.h>
 
-class QPaintDevice;
+//class QPaintDevice;
 
-
-class DoubleBuffer : public QObject
+class DoubleBuffer
 {
-	Q_OBJECT
 public:
-	explicit DoubleBuffer(QObject *parent = 0);
+	DoubleBuffer();
 	virtual ~DoubleBuffer();
 
 	void * getFrontBuffer();
@@ -22,40 +20,59 @@ public:
 	void swapBuffer();
 	void releaseLocks();
 
-
 	virtual void initBuffer(int width, int height, QImage::Format fmt) = 0;
 
+	inline int imageWidth() const {return _width;}
+	inline int imageHeight() const {return _height;}
+	inline QImage::Format imageFormat() const {return _format;}
+	inline int imageBytecount() const {return _bufsize;}
+
 protected:
-	void **doubleBuffer;
+	void **_doubleBuffer;
 
-	int bufferIndex;
-	int queueLength;
+	int _bufferIndex;
+	int _queueLength;
 
-	pthread_mutex_t *mutex;
-	pthread_cond_t *notEmpty;
-	pthread_cond_t *notFull;
+	int _bufsize;
+
+	int _numbuff;
+
+	pthread_mutex_t *_mutex;
+	pthread_cond_t *_notEmpty;
+	pthread_cond_t *_notFull;
 
 //	QMutex *mutex;
 //	QReadWriteLock rwlock;
 //	QWaitCondition *notEmpty;
 //	QWaitCondition *notFull;
+
+	int _width;
+	int _height;
+	QImage::Format _format;
+};
+
+class RawDoubleBuffer : public DoubleBuffer
+{
+public:
+	void initBuffer(int width, int height, QImage::Format fmt);
+	void rgbSwapped() {}
+
+	~RawDoubleBuffer();
 };
 
 class ImageDoubleBuffer : public DoubleBuffer
 {
-	Q_OBJECT
 public:
 	void initBuffer(int width, int height, QImage::Format fmt);
 	void rgbSwapped();
 	~ImageDoubleBuffer();
 };
 
-class PixmapDoubleBuffer : public DoubleBuffer
-{
-	Q_OBJECT
-public:
-	void initBuffer(int width, int height, QImage::Format fmt);
-	~PixmapDoubleBuffer();
-};
+//class PixmapDoubleBuffer : public DoubleBuffer
+//{
+//public:
+//	void initBuffer(int width, int height, QImage::Format fmt);
+//	~PixmapDoubleBuffer();
+//};
 
 #endif // IMAGEDOUBLEBUFFER_H

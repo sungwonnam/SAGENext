@@ -731,13 +731,13 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 
 		if (mtype == SAGENext::MEDIA_TYPE_VNC) {
 			in >> srcaddr >> user >> pass;
-			bw = launcher->launch(user, pass, 0, srcaddr, 10);
+			bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos);
 		}
 		else {
 			in >> file;
-			bw = launcher->launch(mtype, file);
+			bw = launcher->launch(mtype, file, scenepos);
 			if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO || mtype == SAGENext::MEDIA_TYPE_VIDEO) {
-				::usleep(300 * 1000);
+//				::usleep(100 * 1000);
 			}
 		}
 

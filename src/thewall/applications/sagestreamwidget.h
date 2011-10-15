@@ -10,7 +10,7 @@
 #endif
 
 class fsManagerMsgThread;
-class ImageDoubleBuffer;
+class RawDoubleBuffer;
 class SagePixelReceiver;
 class AffinityInfo;
 class QProcess;
@@ -40,6 +40,7 @@ public:
 	inline void setSailAppProc(QProcess *p) {_sailAppProc = p;}
 	inline QProcess * sailAppProc() {return _sailAppProc;}
 
+	inline bool isWaitingSailToConnect() const {return _readyForStreamer;}
 
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -69,10 +70,12 @@ private:
 	  */
 	QImage _imageForDrawing;
 
+//	QPixmap _pixmapForDrawing;
+
 
 //	QSemaphore *convertedToPixmap;
 
-	ImageDoubleBuffer *doubleBuffer;
+	RawDoubleBuffer *doubleBuffer;
 
 
 	/**
@@ -82,7 +85,7 @@ private:
 	  However, drawing pixmap is cheaper.
 
 	  */
-	QPixmap _pixmap;
+//	QPixmap _pixmap;
 
 	/**
 	  * pixel receiver socket on which this widget will listen in initialize()
@@ -98,9 +101,11 @@ private:
 	/**
 	  * byte count of a frame
 	  */
-	int imageSize;
+//	int imageSize;
 
 	quint64 frameCounter;
+
+	int _bordersize;
 
 	enum sagePixFmt {PIXFMT_NULL, PIXFMT_555, PIXFMT_555_INV, PIXFMT_565, PIXFMT_565_INV,
 		  PIXFMT_888, PIXFMT_888_INV, PIXFMT_8888, PIXFMT_8888_INV, PIXFMT_RLE, PIXFMT_LUV,
@@ -120,6 +125,8 @@ private:
 
 	int _streamProtocol;
 
+	volatile bool _readyForStreamer;
+
 
 //	QMutex *mutex;
 //	QWaitCondition *wc;
@@ -131,7 +138,7 @@ signals:
 	  * This signal is emited in the destructor and connected to fsManager::shutdownSail() by GraphicsViewMain::startSageApp()
 	  * It is to send APP_QUIT to sail
 	  */
-	void destructor(quint64 sageappid);
+//	void destructor(quint64 sageappid);
 
 	/*!
 	  To pause thread
