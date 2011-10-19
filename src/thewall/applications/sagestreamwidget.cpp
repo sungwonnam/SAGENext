@@ -353,7 +353,7 @@ void SN_SageStreamWidget::startReceivingThread() {
 	Q_ASSERT(streamsocket > 0);
 	Q_ASSERT(doubleBuffer);
 
-	_receiverThread = new SagePixelReceiver(_streamProtocol, streamsocket, /*image*/ doubleBuffer, _appInfo, _perfMon, _affInfo, /*this, mutex, wc,*/ _settings);
+	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, /*image*/ doubleBuffer, _appInfo, _perfMon, _affInfo, /*this, mutex, wc,*/ _settings);
 
 
     Q_ASSERT(_receiverThread);

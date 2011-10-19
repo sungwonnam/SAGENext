@@ -11,7 +11,7 @@
 
 class fsManagerMsgThread;
 class RawDoubleBuffer;
-class SagePixelReceiver;
+class SN_SagePixelReceiver;
 class AffinityInfo;
 class QProcess;
 
@@ -62,7 +62,7 @@ private:
 	/*!
 	  Pointer to QThread object
 	  */
-	SagePixelReceiver *_receiverThread;
+	SN_SagePixelReceiver *_receiverThread;
 
 
 	/**

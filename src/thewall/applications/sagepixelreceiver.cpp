@@ -19,7 +19,7 @@
 //#include <sched.h>
 
 
-SagePixelReceiver::SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ RawDoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */) :
+SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ RawDoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */) :
 	QThread(parent),
 	s(s),
 	_end(false),
@@ -58,7 +58,7 @@ SagePixelReceiver::SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ R
 }
 
 
-void SagePixelReceiver::endReceiver() {
+void SN_SagePixelReceiver::endReceiver() {
 //    _mutex.lock();
     _end = true;
     ::shutdown(socket, SHUT_RDWR);
@@ -67,7 +67,7 @@ void SagePixelReceiver::endReceiver() {
 //    _mutex.unlock();
 }
 
-SagePixelReceiver::~SagePixelReceiver() {
+SN_SagePixelReceiver::~SN_SagePixelReceiver() {
 
 //	_mutex.lock();
 
@@ -84,12 +84,12 @@ SagePixelReceiver::~SagePixelReceiver() {
 	qDebug() << "return ~SagePixelReceiver" << QTime::currentTime().toString("hh:mm:ss.zzz");
 }
 
-void SagePixelReceiver::receivePixel() {
+void SN_SagePixelReceiver::receivePixel() {
 	QMutexLocker locker(&_mutex);
 	_waitCond.wakeOne();
 }
 
-int SagePixelReceiver::receiveUdpPortNumber() {
+int SN_SagePixelReceiver::receiveUdpPortNumber() {
 	QByteArray buffer(1024, 0);
 	buffer.clear();
 
@@ -120,7 +120,7 @@ int SagePixelReceiver::receiveUdpPortNumber() {
 }
 
 
-void SagePixelReceiver::run() {
+void SN_SagePixelReceiver::run() {
 
 //	fprintf(stderr, "SagePixelReceiver::run() : starting pixel receiving thread");
 
@@ -230,12 +230,12 @@ void SagePixelReceiver::run() {
 				read = recv(socket, bufptr, appInfo->networkUserBufferLength(), MSG_WAITALL);
 			}
 			if ( read == -1 ) {
-                                qCritical("SagePixelReceiver::run() : error while reading.");
+				qDebug("SagePixelReceiver::run() : error while reading.");
 				_end = true;
 				break;
 			}
 			else if ( read == 0 ) {
-                                qDebug("SagePixelReceiver::run() : sender disconnected");
+				qDebug("SagePixelReceiver::run() : sender disconnected");
 				_end = true;
 				break;
 			}

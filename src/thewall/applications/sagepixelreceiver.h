@@ -25,13 +25,13 @@ class QSettings;
   * receives pixel from sail
   * its parent is SageWidget : QWidget
   */
-class SagePixelReceiver : public QThread {
+class SN_SagePixelReceiver : public QThread {
 	Q_OBJECT
 
 public:
-	SagePixelReceiver(int protocol, int sockfd, RawDoubleBuffer *idb,  AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *m, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent = 0);
+	SN_SagePixelReceiver(int protocol, int sockfd, RawDoubleBuffer *idb,  AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *m, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent = 0);
 //	SagePixelReceiver(int protocol, int sockfd, QImage *img,  AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw,*/ QMutex *m, QWaitCondition *wwcc, const QSettings *s, QObject *parent = 0);
-	~SagePixelReceiver();
+	~SN_SagePixelReceiver();
 
 	void run();
 
