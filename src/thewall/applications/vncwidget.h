@@ -31,12 +31,12 @@ private:
           */
         QImage *_image;
 
-		QImage _imageForDrawing;
+//		QImage _imageForDrawing;
 
         /*!
           paint() will draw this
           */
-        QPixmap _pixmap;
+//        QPixmap _pixmap;
 
         /*!
           copy vnc framebuffer to QImage

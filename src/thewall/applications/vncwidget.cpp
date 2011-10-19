@@ -86,6 +86,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 		vncclient->vncRec->doNotSleep = true;
 
 	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
+	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_ARGB32_Premultiplied);
 //	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
 	//qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
@@ -157,9 +158,14 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 		*/
 
 
-	if (!_imageForDrawing.isNull()) {
+//	if (!_imageForDrawing.isNull()) {
+//		// I'm drawing the QImage to avoid conversion delay (just like SageStreamWidget)
+//		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _imageForDrawing);
+//	}
+
+	if (_image && !_image->isNull()) {
 		// I'm drawing the QImage to avoid conversion delay (just like SageStreamWidget)
-		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _imageForDrawing);
+		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_image);
 	}
 
 
@@ -181,22 +187,21 @@ void SN_VNCClientWidget::scheduleUpdate() {
 	if (!_image || _image->isNull()) {
     }
 	else {
-		_perfMon->getConvTimer().start();
+//		_perfMon->getConvTimer().start();
 
 		// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
 		// QGraphicsView will process the event
 
-		_imageForDrawing = *_image;
+//		_imageForDrawing = *_image;
 
-		_perfMon->updateConvDelay();
+//		_perfMon->updateConvDelay();
 
 		update();
 	}
 }
 
 void SN_VNCClientWidget::receivingThread() {
-
-	/*
+/*
 	struct timeval lats, late;
 	struct rusage ru_start, ru_end;
 
@@ -208,13 +213,14 @@ void SN_VNCClientWidget::receivingThread() {
 #elif defined(Q_OS_MAC)
 		getrusage(RUSAGE_SELF, &ru_start);
 #endif
-
-		gettimeofday(&lats, 0);
 	}
-	*/
-
+*/
 
 	while (!_end) {
+
+//		if (_perfMon) gettimeofday(&lats, 0);
+
+
 		// sleep to ensure desired fps
 		qint64 now = 0;
         
@@ -232,7 +238,7 @@ void SN_VNCClientWidget::receivingThread() {
 				break;
 			}
 
-            int i = WaitForMessage(vncclient, 100000); // 100 microsecond
+            int i = WaitForMessage(vncclient, 100000); // 100 microsecond == 0.1 msec
 			if ( i<0 ) {
 				rfbClientLog("VNC error. quit\n");
 				_end = true;
@@ -259,48 +265,46 @@ void SN_VNCClientWidget::receivingThread() {
 		}
 		if (_end) break;
 
-		// now copy pixels
+
+		//
+		// now copy pixels from LibVNCClient
+		//
 		unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
-		unsigned char * buffer = _image->bits();
+//		unsigned char * rgbbuffer = _image->bits();
+		QRgb *rgbbuffer = (QRgb *)(_image->scanLine(0)); // An ARGB quadruplet on the format #AARRGGBB, equivalent to an unsigned int.
 
-		//		_image->loadFromData(vncpixels, vncclient->width * vncclient->height);
+		Q_ASSERT(vncpixels && rgbbuffer);
 
-		Q_ASSERT(vncpixels && buffer);
-
-
+		/*
 		for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
 			// QImage::Format_RGB32 format : 0xffRRGGBB
-			buffer[4*k + 3] = 0xff;
-			buffer[4*k + 2] = vncpixels[ 4*k + 0];
-			buffer[4*k + 1] = vncpixels[ 4*k + 1];
-			buffer[4*k + 0] = vncpixels[ 4*k + 2];
+			rgbbuffer[4*k + 3] = 0xff;
+			rgbbuffer[4*k + 2] = vncpixels[ 4*k + 0]; // red
+			rgbbuffer[4*k + 1] = vncpixels[ 4*k + 1]; // green
+			rgbbuffer[4*k + 0] = vncpixels[ 4*k + 2]; // blue
 
 			// QImage::Format_RGB888
-			/*
-			buffer[3*k + 0] = vncpixels[ 4*k + 0];
-			buffer[3*k + 1] = vncpixels[ 4*k + 1];
-			buffer[3*k + 2] = vncpixels[ 4*k + 2];
-			*/
+//			buffer[3*k + 0] = vncpixels[ 4*k + 0];
+//			buffer[3*k + 1] = vncpixels[ 4*k + 1];
+//			buffer[3*k + 2] = vncpixels[ 4*k + 2];
+		}
+		*/
+
+		for (int i=0; i<vncclient->width * vncclient->height; i++) {
+			rgbbuffer[i] = qRgb(vncpixels[4*i+0], vncpixels[4*i+1], vncpixels[4*i+2]);
 		}
 
-//		gettimeofday(&late, 0);
-
 		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
-		// why I can't invoke update() ???
-
 //		QMetaObject::invokeMethod(this, "update", Qt::QueuedConnection);
 
-
-
-
-		/***
+/***
 		if (_perfMon) {
+			gettimeofday(&late, 0);
 #if defined(Q_OS_LINUX)
 			getrusage(RUSAGE_THREAD, &ru_end);
 #elif defined(Q_OS_MAC)
 			getrusage(RUSAGE_SELF, &ru_end);
 #endif
-
 			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001); // second
 
 			// calculate
@@ -312,7 +316,7 @@ void SN_VNCClientWidget::receivingThread() {
 
 //			qDebug() << perf->getCpuUsage();
 		}
-		***/
+		****/
 
 
 	} // end of while (_end)

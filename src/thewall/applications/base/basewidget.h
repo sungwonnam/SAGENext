@@ -104,6 +104,23 @@ public:
         QRectF resizeHandleSceneRect();
 
 
+
+
+		/**
+		  Reimplementing QGraphicsWidget::paint()
+		  This will draw infoTextItem followed by window border
+		  */
+		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
+		/**
+		  Reimplementing QGraphicsWidget::paintWindowFrame()
+		  For Qt::Window
+		  */
+		void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
+
+
+
         /*!
           If shared pointer calls mouseClick() in response to ui client's mousePress followed by mouseRelease event, then it means theat the real mouse events are not generated.
 
@@ -301,16 +318,6 @@ protected:
 
 
 
-		/**
-		  This will draw infoTextItem followed by window border
-		  */
-		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-
-		/**
-		  For Qt::Window
-		  */
-		void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-
         /*!
           Derived class should implement paint()
           */
@@ -379,7 +386,7 @@ private:
         /*!
           * startTimer() returns unique timerID.
           */
-        int timerID;
+        int _timerID;
 
 
         /*!

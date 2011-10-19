@@ -41,7 +41,7 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
     , pAnim_size(0)
     , _parallelAnimGroup(0)
     , pAnim_opacity(0)
-    , timerID(0)
+    , _timerID(0)
 	, _priority(0.5)
 	, _registerForMouseHover(false)
     , _priorityQuantized(0)
@@ -75,7 +75,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
     , pAnim_size(0)
     , _parallelAnimGroup(0)
     , pAnim_opacity(0)
-    , timerID(0)
+    , _timerID(0)
 	, _priority(0.5)
 	, _registerForMouseHover(false)
     , _priorityQuantized(0)
@@ -317,14 +317,14 @@ void SN_BaseWidget::drawInfo()
 		//update();
 
 		/* starts timer */
-		timerID = startTimer(1000); // timerEvent every 1000 msec
+		_timerID = startTimer(1000); // timerEvent every 1000 msec
 	}
 }
 
 void SN_BaseWidget::hideInfo()
 {
 	if (_showInfo) {
-		killTimer(timerID);
+		killTimer(_timerID);
 		_showInfo = false;
 		_hideInfoAction->setDisabled(true);
 		_showInfoAction->setEnabled(true);
@@ -874,9 +874,11 @@ void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphi
 /**
   drawInfo() will start the timer
   */
-void SN_BaseWidget::timerEvent(QTimerEvent *) {
+void SN_BaseWidget::timerEvent(QTimerEvent *e) {
 //	qDebug("BaseWidget::%s()", __FUNCTION__);
-	updateInfoTextItem();
+	if (e->timerId() == _timerID)
+		updateInfoTextItem();
+
         /*
         if ( affControl && affControl->isVisible() ) {
                 affControl->updateInfo();

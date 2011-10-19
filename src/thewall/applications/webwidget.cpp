@@ -73,14 +73,21 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	ws->setAttribute(QWebSettings::PluginsEnabled, true);
 	ws->setAttribute(QWebSettings::JavascriptCanOpenWindows, true);
 
+//	setCacheMode(QGraphicsItem::ItemCoordinateCache);
+//	QPixmapCache::setCacheLimit(1024000);
+
+//	setFlag(QGraphicsItem::ItemHasNoContents);
+
 	/**
       gwebview needs to be able to receive mouse events because users want to click links on web pages
       That's why webwidget filter childs' event instead of stacking children behind the parent
      */
-	gwebview = new QGraphicsWebView(); // it is now the top most item unless ItemStacksBehindParent is true
+	gwebview = new QGraphicsWebView; // it is now the top most item unless ItemStacksBehindParent is true
 //	gwebview->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 //	gwebview->installSceneEventFilter(this);
 //	webPage = gwebview->page();
+//	gwebview->setCacheMode(QGraphicsItem::ItemCoordinateCache);
+
 
 	gwebview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Frame);
 	connect(gwebview, SIGNAL(urlChanged(QUrl)), this, SLOT(urlChanged(QUrl)));

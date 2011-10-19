@@ -1,7 +1,7 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-04-08T11:36:20
 # -------------------------------------------------
-QT += network webkit opengl
+QT += network webkit opengl phonon
 TARGET = sagenext
 TEMPLATE = app
 
@@ -172,7 +172,8 @@ SOURCES += \
         sagenextviewport.cpp \
         sagenextlauncher.cpp \
         settingstackeddialog.cpp \
-    common/sn_layoutwidget.cpp
+    common/sn_layoutwidget.cpp \
+    applications/sn_checker.cpp
 
 HEADERS += \
 #        settingdialog.h \
@@ -208,10 +209,13 @@ HEADERS += \
         mediastorage.h \
     applications/mediabrowser.h \
     settingstackeddialog.h \
-    common/sn_layoutwidget.h
+    common/sn_layoutwidget.h \
+    applications/sn_checker.h
 
 
 #    common/filereceivingrunnable.h
+
+
 
 
 

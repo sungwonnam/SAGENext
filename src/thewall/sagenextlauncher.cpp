@@ -19,6 +19,8 @@
 #include "applications/vncwidget.h"
 #include "applications/webwidget.h"
 #include "applications/sagestreamwidget.h"
+#include "applications/sn_checker.h"
+
 #include "applications/base/SN_plugininterface.h"
 
 
