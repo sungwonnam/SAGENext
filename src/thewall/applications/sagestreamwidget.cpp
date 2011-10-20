@@ -128,9 +128,11 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 
 
 
-	if (_sailAppProc) {
-		_sailAppProc->kill();
-	}
+	// this causes other sagestreamwidget gets killed
+	// don't know why
+//	if (_sailAppProc) {
+//		_sailAppProc->kill();
+//	}
 
 
 //    qDebug() << _globalAppId << "end destructor" << QTime::currentTime().toString("hh:mm:ss.zzz");

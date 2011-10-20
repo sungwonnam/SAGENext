@@ -36,7 +36,8 @@ public:
 
 
 /**
-  will hold BaseWdigets or another SAGENextLayoutWidget
+  An object of this class will hold SN_BaseWdigets or another SN_LayoutWidgets as children.
+  If it contains SN_BaseWidgets then _bar is null. Otherwise it continas child SN_LayoutWidget
   */
 class SN_LayoutWidget : public QGraphicsWidget {
 	Q_OBJECT
@@ -118,7 +119,7 @@ private:
 	bool _isTileOn;
 
 	/**
-	  left , right, top, or bottom
+	  first (left or top) or second (right or bottom)
 	  */
 	QString _position;
 
@@ -126,9 +127,16 @@ private:
 
 	void createChildPartitions(Qt::Orientation barOrientation);
 
+	/**
+	  sets _tile, _h, _v, _xButton position. This function is called in the resizeEvent
+	  */
 	void setButtonPos();
 
 signals:
+	/**
+	  emits in resizeEvent()
+	  _parentLayoutWidget's adjustBar() is connected to this signal
+	  */
 	void resized();
 
 public slots:
@@ -169,7 +177,7 @@ public slots:
 	  0 left/right
 	  1 up/down
 	  */
-	void adjustChildPos(int direction);
+	void adjustChildPos(int direction, const QSizeF &delta = QSizeF());
 
 	void toggleTile();
 

@@ -31,7 +31,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, const QSetti
 
 	QPolygonF p;
 //	p << QPointF(0,0) << QPointF(60, 20) << QPointF(46, 34) << QPointF(71, 59) << QPointF(60, 70) << QPointF(35, 45) << QPointF(20, 60) << QPointF(0,0);
-	p << QPointF(0,0) << QPointF(128,110) << QPointF(67, 110) << QPointF(40,160) << QPointF(0,0);
+	p << QPointF(0,0) << QPointF(113,75) << QPointF(47, 67) << QPointF(35,125) << QPointF(0,0);
 
 	QPen pen;
 	pen.setWidth(4); // 4 pixel
@@ -185,15 +185,13 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 					top->resize(      top->size().width(),    top->size().height() + deltay);
 					bottom->resize(bottom->size().width(), bottom->size().height() - deltay);
 
+					// below is when top-left is 0,0
 					bottom->moveBy(0, deltay);
 
 					/*********
-					  ***
-					  ** when the SN_LayoutWidget's 0,0 is the center
-					top->moveBy(0, deltay/2);
-					bottom->moveBy(0, deltay/2);
-					***
-					**/
+					  ** when the SN_LayoutWidget's 0,0 is the center */
+//					top->moveBy(0, deltay/2);
+//					bottom->moveBy(0, deltay/2);
 				}
 				else {
 					// bar moves only left or right (x axis)
@@ -203,15 +201,14 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 					left->resize(  left->size().width() + deltax,  left->size().height());
 					right->resize(right->size().width() - deltax, right->size().height());
 
+					// below is wehn top-left is 0,0
 					right->moveBy(deltax, 0);
 
 					/*********
-					  ***
 					  ** when the SN_LayoutWidget's 0,0 is the center
-					left->moveBy(deltax/2, 0);
-					right->moveBy(deltax/2, 0);
-	                   ***
-                      **/
+					  */
+//					left->moveBy(deltax/2, 0);
+//					right->moveBy(deltax/2, 0);
 				}
 			}
 		}
