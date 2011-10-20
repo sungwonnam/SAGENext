@@ -20,6 +20,10 @@
 
 #ifdef Q_OS_LINUX
 #include <numa.h>
+#endif
+
+#ifdef Q_WS_X11
+#include <X11/Xlib.h>
 extern void qt_x11_set_global_double_buffer(bool);
 #endif
 
@@ -31,6 +35,15 @@ void setViewAttr(SN_Viewport *view, const QSettings &s);
 
 int main(int argc, char *argv[])
 {
+#ifdef Q_WS_X11
+	XInitThreads(); // to enabled threaded-opengl in 4.8
+
+	//
+	// what is this?
+	//
+//	qt_x11_set_global_double_buffer(false);
+#endif
+
 	int errflag = 0;
 	int c;
 	QString configFile(QDir::homePath() + "/.sagenext/sagenext.ini");
@@ -75,10 +88,7 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	//
-	// what is this?
-	//
-//	qt_x11_set_global_double_buffer(false);
+
 
 
 //	QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
