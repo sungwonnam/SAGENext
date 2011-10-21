@@ -138,6 +138,8 @@ void SN_BaseWidget::init()
 	//
 	setAttribute(Qt::WA_DeleteOnClose, true);
 
+	setAttribute(Qt::WA_NoSystemBackground, true);
+
 	setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
 
 	/**
@@ -809,20 +811,21 @@ void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, Q
 		  Below draws rectangle around widget's content (using boundingRect)
 		  Because of this, it has to set Pen (which chagens painter state)
 		  ********/
+
 		/*
 		QPen pen;
-		pen.setWidth( _settings->value("gui/framemargin",0).toInt() );
+		pen.setWidth( _settings->value("gui/framemargin",0).toInt());
 		pen.setBrush(brush);
 
 		painter->setPen(pen);
-		painter->drawRect(boundingRect());
-		*/
+		painter->drawRect(boundingRect().adjusted(1, 1, -2, -2));
+*/
 
 
 		/***************
 		  Below fills rectangle (works as background) so it has to be called BEFORE any drawing code
 		  ***********/
-		painter->fillRect(boundingRect(), brush);
+//		painter->fillRect(boundingRect(), brush);
 	}
 
 

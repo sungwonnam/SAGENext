@@ -195,7 +195,7 @@ GraphicsSettingDialog::GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,i
 	ui->bezelSize->setText(_settings->value("graphics/bezelsize", 0).toString());
 
 
-	if ( _settings->value("graphics/openglviewport", false).toBool() )
+	if ( _settings->value("graphics/openglviewport", true).toBool() )
 		ui->openglviewportCheckBox->setCheckState(Qt::Checked);
 	else
 		ui->openglviewportCheckBox->setCheckState(Qt::Unchecked);

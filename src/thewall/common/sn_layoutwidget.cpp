@@ -27,7 +27,7 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 {
 //	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
-	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
+//	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
 
 	// pointer->setAppUnderPointer() will pass this item
 	setAcceptedMouseButtons(0);
@@ -68,7 +68,21 @@ SN_LayoutWidget::~SN_LayoutWidget() {
 }
 
 //QRectF SN_LayoutWidget::boundingRect() const {
-//	return QRectF(-1 * size().width()/2, -1 * size().height()/2, size().width(), size().height());
+//	// 0,0 is center
+////	return QRectF(-1 * size().width()/2, -1 * size().height()/2, size().width(), size().height());
+
+//	if (_parentLayoutWidget && _position == "second") {
+//		if (_parentLayoutWidget->bar()->orientation() == Qt::Horizontal) {
+//			// I'm bottom layout
+//			// top-right is 0,0
+//			return QRectF(-1 * size().width(), 0, size().width(), size().height());
+//		}
+//		else {
+//			// I'm right layout
+//			return QRectF()
+
+//		}
+//	}
 //}
 
 void SN_LayoutWidget::setRectangle(const QRectF &r) {
@@ -526,32 +540,33 @@ void SN_LayoutWidget::deleteMyself() {
 	SN_LayoutWidget *sibling = siblingLayout();
 	Q_ASSERT(sibling);
 
-	sibling->setPos(0,0);
-	sibling->resize(_parentLayoutWidget->size());
-
-
-	// move my child (basewidgets) to my sibling
-	reparentMyChildBasewidgets(sibling);
-
 
 	if (sibling->bar()) {
 		// if sibling has child LayoutWidgets
+		sibling->setPos(0,0);
+		sibling->resize(_parentLayoutWidget->size());
+
 		_parentLayoutWidget->setFirstChildLayout(sibling->firstChildLayout());
 		_parentLayoutWidget->setSecondChildLayout(sibling->secondChildLayout());
 
 		sibling->firstChildLayout()->setParentLayoutWidget(_parentLayoutWidget);
+		sibling->firstChildLayout()->setParentItem(_parentLayoutWidget);
 		sibling->secondChildLayout()->setParentLayoutWidget(_parentLayoutWidget);
+		sibling->secondChildLayout()->setParentItem(_parentLayoutWidget);
+
+		_parentLayoutWidget->adjustBar();
+
+
+		// I'll be deleted
+		deleteLater();
+
+		// my sibling will be deleted
+		sibling->deleteLater();
 	}
 	else {
-		sibling->reparentMyChildBasewidgets(_parentLayoutWidget);
+		_parentLayoutWidget->deleteChildPartitions();
+//		sibling->reparentMyChildBasewidgets(_parentLayoutWidget);
 	}
-
-
-	// I'll be deleted
-	deleteLater();
-
-	// my sibling will be deleted
-	sibling->deleteLater();
 }
 
 void SN_LayoutWidget::doTile() {
@@ -586,7 +601,7 @@ void SN_LayoutWidget::doTile() {
 	if (numItemH < 1) numItemH = 1;
 	int numItemV = ::ceil( (qreal)itemcount / (qreal)numItemH );
 
-	qDebug() << "avg item WH" << avgWHratio << "layout WH" << layoutWHratio << " item layout is" << numItemH << "by" << numItemV << " total" << itemcount << "items";
+//	qDebug() << "avg item WH" << avgWHratio << "layout WH" << layoutWHratio << " item layout is" << numItemH << "by" << numItemV << " total" << itemcount << "items";
 	/***
 	setLayout(0);
 	QGraphicsGridLayout *gridlayout = new QGraphicsGridLayout;
