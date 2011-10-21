@@ -27,7 +27,7 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 {
 //	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
-//	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
+	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
 
 	// pointer->setAppUnderPointer() will pass this item
 	setAcceptedMouseButtons(0);
@@ -577,12 +577,16 @@ void SN_LayoutWidget::doTile() {
 	qreal avgWHratio = sumWHratio / itemcount;
 	qreal layoutWHratio = size().width() / size().height();
 
+	/**
+	  x(numH) : y(numV) = Width : Height
+	  y = x * H/W , x * y == numItem
+	  x = sqrt( numItem * W/H )
+	  **/
 	int numItemH = sqrt( itemcount * layoutWHratio );
 	if (numItemH < 1) numItemH = 1;
-	int numItemV = itemcount / numItemH;
+	int numItemV = ::ceil( (qreal)itemcount / (qreal)numItemH );
 
-	qDebug() << "avg itme" << avgWHratio << "layout" << layoutWHratio << " item layout is" << numItemH << "by" << numItemV;
-
+	qDebug() << "avg item WH" << avgWHratio << "layout WH" << layoutWHratio << " item layout is" << numItemH << "by" << numItemV << " total" << itemcount << "items";
 	/***
 	setLayout(0);
 	QGraphicsGridLayout *gridlayout = new QGraphicsGridLayout;
