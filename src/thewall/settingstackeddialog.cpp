@@ -382,6 +382,8 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
 	ui->pointerFontSizeLineEdit->setText(_settings->value("gui/pointerfontsize", 20).toString());
 
 	ui->framemargin->setText(_settings->value("gui/framemargin", 8).toString());
+
+	ui->thumbnailsize->setText(_settings->value("gui/mediathumbnailwidth", 64).toString());
 }
 void GuiSettingDialog::accept() {
 	_settings->setValue("gui/iconwidth", ui->iconWidth->text().toInt());
@@ -389,6 +391,7 @@ void GuiSettingDialog::accept() {
 	_settings->setValue("gui/pointerfontsize", ui->pointerFontSizeLineEdit->text().toInt());
 	/* window frame margins */
 	_settings->setValue("gui/framemargin", ui->framemargin->text().toInt());
+	_settings->setValue("gui/mediathumbnailwidth", ui->thumbnailsize->text().toInt());
 }
 GuiSettingDialog::~GuiSettingDialog() {delete ui;}
 
