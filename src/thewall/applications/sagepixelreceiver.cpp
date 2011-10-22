@@ -19,7 +19,7 @@
 //#include <sched.h>
 
 
-SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ RawDoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */) :
+SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ DoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */) :
 	QThread(parent),
 	s(s),
 	_end(false),

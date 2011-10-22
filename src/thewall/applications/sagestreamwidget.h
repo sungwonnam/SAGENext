@@ -10,7 +10,7 @@
 #endif
 
 class fsManagerMsgThread;
-class RawDoubleBuffer;
+class DoubleBuffer;
 class SN_SagePixelReceiver;
 class AffinityInfo;
 class QProcess;
@@ -68,14 +68,13 @@ private:
 	/**
 	  Drawing image is expansive than pixmap. But conversion to pixmap isn't needed
 	  */
-	QImage _imageForDrawing;
-
+//	QImage _imageForDrawing;
 //	QPixmap _pixmapForDrawing;
+	QImage *_imagePointer;
 
 
-//	QSemaphore *convertedToPixmap;
 
-	RawDoubleBuffer *doubleBuffer;
+	DoubleBuffer *doubleBuffer;
 
 
 	/**
@@ -103,7 +102,7 @@ private:
 	  */
 //	int imageSize;
 
-	quint64 frameCounter;
+//	quint64 frameCounter;
 
 	int _bordersize;
 

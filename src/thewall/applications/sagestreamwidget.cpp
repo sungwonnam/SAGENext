@@ -30,12 +30,12 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
     , _sailAppProc(0)
     , _sageAppId(0)
     , _receiverThread(0)
-//    , _imagePtr(0)
+    , _imagePointer(0)
     , doubleBuffer(0)
     //, _pixmap(0)
     , serversocket(0)
     , streamsocket(0)
-    , frameCounter(0)
+//    , frameCounter(0)
 	, _bordersize(0)
     , _streamProtocol(0)
 	, _readyForStreamer(false)
@@ -175,9 +175,6 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	}
 	*/
 
-
-
-
 	/***
 	  On Linux/X11 platforms which support it, Qt will use glX/EGL texture-from-pixmap extension.
 This means that if your QPixmap has a real X11 pixmap backend, we simply bind that X11 pixmap as a texture and avoid copying it.
@@ -192,14 +189,16 @@ i.e. both QImage and QPixmap are stored on the client side and don't use any GDI
 
 So, drawing pixmap is much faster but QImage has to be converted to QPixmap for every frame which involves converting plus copy to X Server.
 	  ***/
-	if (!_imageForDrawing.isNull()) {
-		painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
-	}
+//	if (!_imageForDrawing.isNull()) {
+//		painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
+//	}
 
 //	if (!_pixmapForDrawing.isNull()) {
 //		painter->drawPixmap(_bordersize, _bordersize, _pixmapForDrawing);
 //	}
-
+	if (_imagePointer && !_imagePointer->isNull()) {
+		painter->drawImage(_bordersize, _bordersize, *_imagePointer);
+	}
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
@@ -236,12 +235,12 @@ void SN_SageStreamWidget::scheduleUpdate() {
 
 	//qDebug() << _globalAppId << "scheduleUpdate" << QTime::currentTime().toString("hh:mm:ss.zzz");
 
-	//imgPtr = static_cast<QImage *>(doubleBuffer->getBackBuffer());
-	unsigned char *rawptr = 0;
-	rawptr = (unsigned char *)doubleBuffer->getBackBuffer();
+	_imagePointer = static_cast<QImage *>(doubleBuffer->getBackBuffer());
+//	unsigned char *rawptr = 0;
+//	rawptr = (unsigned char *)doubleBuffer->getBackBuffer();
 
-	//if (imgPtr && !imgPtr->isNull() ) {
-	if (rawptr) {
+	if (_imagePointer && !_imagePointer->isNull() ) {
+//	if (rawptr) {
 		//qDebug() << _globalAppId << "scheduleUpdate" << QTime::currentTime().toString("hh:mm:ss.zzz");
 		// converts to QPixmap if you're gonna paint same QImage more than twice.
 		//qDebug() << _globalAppId << imgPtr->byteCount();
@@ -250,9 +249,6 @@ void SN_SageStreamWidget::scheduleUpdate() {
 #if QT_VERSION >= 0x040700
 //            if (! _pixmap.convertFromImage(*imgPtr) ) {
 //			qDebug("SageStreamWidget::scheduleUpdate() : pixmap.convertFromImage() error");
-
-   if(! _pixmap.loadFromData(imgPtr->bits(), imgPtr->byteCount())) {
-	qCritical("%s::%s() : Failed to load pixels into pixmap from image !", metaObject()->className(), __FUNCTION__);
 #else
 			_pixmap = QPixmap::fromImage(*imgPtr);
 			if (_pixmap.isNull()) {
@@ -280,15 +276,15 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		//
 		//_imageForDrawing = imgPtr->convertToFormat(QImage::Format_RGB32); // faster drawing !!
 		//_imageForDrawing = imgPtr->convertToFormat(QImage::Format_ARGB32_Premultiplied); // faster drawing !!
-		_imageForDrawing = QImage(rawptr, doubleBuffer->imageWidth(), doubleBuffer->imageHeight(), doubleBuffer->imageFormat()).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+//		_imageForDrawing = QImage(rawptr, doubleBuffer->imageWidth(), doubleBuffer->imageHeight(), doubleBuffer->imageFormat()).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+		
 
-//		_pixmapForDrawing.loadFromData(rawptr, doubleBuffer->imageBytecount());
-//		_imageForDrawing.loadFromData(rawptr, doubleBuffer->imageBytecount());
 
 		_perfMon->updateConvDelay();
 
+		if (0) {
 //		if (_pixmapForDrawing.isNull()) {
-		if(_imageForDrawing.isNull()) {
+//		if(_imageForDrawing.isNull()) {
 			qCritical("SageStreamWidget::scheduleUpdate() : image is null");
 		}
 		//image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
@@ -305,7 +301,7 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		else {
 			setScheduled(false); // reset scheduling flag for SMART scheduler
 
-			++frameCounter;
+//			++frameCounter;
 			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget : " << frameCounter << " has converted";
 
 			/*
@@ -313,7 +309,7 @@ void SN_SageStreamWidget::scheduleUpdate() {
 				*/
 			doubleBuffer->releaseBackBuffer();
 			//imgPtr = 0;
-			rawptr = 0;
+//			rawptr = 0;
 
 			//_perfMon->getEqTimer().start();
 			//QDateTime::currentMSecsSinceEpoch();
@@ -490,7 +486,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
             deleteLater();
             return -1;
     }
-
+	
 
     if(_affInfo)
 		_affInfo->setWidgetID(_sageAppId);
@@ -522,8 +518,8 @@ int SN_SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt
 
     qDebug("%s::%s() : recved regMsg. size %d x %d, pixfmt %d, pixelSize %d Byte, memwidth %d Byte, imageSize %d Byte",metaObject()->className(), __FUNCTION__, resX, resY, pixfmt, bytePerPixel, memwidth, memwidth * resY);
 
-//    if (!doubleBuffer) doubleBuffer = new ImageDoubleBuffer;
-	if (!doubleBuffer) doubleBuffer = new RawDoubleBuffer;
+    if (!doubleBuffer) doubleBuffer = new ImageDoubleBuffer;
+//	if (!doubleBuffer) doubleBuffer = new RawDoubleBuffer;
 
     /*
          Do not draw ARGB32 images into the raster engine.

@@ -4,7 +4,7 @@
 #include <QThread>
 //#include "common/imagedoublebuffer.h"
 
-class RawDoubleBuffer;
+class DoubleBuffer;
 class SN_RailawareWidget;
 class SN_SageStreamWidget;
 class QImage;
@@ -29,7 +29,7 @@ class SN_SagePixelReceiver : public QThread {
 	Q_OBJECT
 
 public:
-	SN_SagePixelReceiver(int protocol, int sockfd, RawDoubleBuffer *idb,  AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *m, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent = 0);
+	SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffer *idb,  AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *m, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent = 0);
 //	SagePixelReceiver(int protocol, int sockfd, QImage *img,  AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw,*/ QMutex *m, QWaitCondition *wwcc, const QSettings *s, QObject *parent = 0);
 	~SN_SagePixelReceiver();
 
@@ -54,7 +54,7 @@ private:
 
 	QImage *image;
 
-	RawDoubleBuffer *doubleBuffer;
+	DoubleBuffer *doubleBuffer;
 
 	enum sageNwProtocol {SAGE_TCP, SAGE_UDP};
 

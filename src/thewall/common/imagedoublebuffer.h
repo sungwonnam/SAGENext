@@ -19,6 +19,8 @@ public:
 	void releaseBackBuffer();
 	void swapBuffer();
 	void releaseLocks();
+	
+	virtual void rgbSwapped() {}
 
 	virtual void initBuffer(int width, int height, QImage::Format fmt) = 0;
 
