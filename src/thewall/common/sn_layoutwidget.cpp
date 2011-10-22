@@ -27,7 +27,7 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 {
 //	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
-	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
+//	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
 
 	// pointer->setAppUnderPointer() will pass this item
 	setAcceptedMouseButtons(0);
@@ -65,8 +65,25 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 }
 
 SN_LayoutWidget::~SN_LayoutWidget() {
-
 }
+
+//QRectF SN_LayoutWidget::boundingRect() const {
+//	// 0,0 is center
+////	return QRectF(-1 * size().width()/2, -1 * size().height()/2, size().width(), size().height());
+
+//	if (_parentLayoutWidget && _position == "second") {
+//		if (_parentLayoutWidget->bar()->orientation() == Qt::Horizontal) {
+//			// I'm bottom layout
+//			// top-right is 0,0
+//			return QRectF(-1 * size().width(), 0, size().width(), size().height());
+//		}
+//		else {
+//			// I'm right layout
+//			return QRectF()
+
+//		}
+//	}
+//}
 
 void SN_LayoutWidget::setRectangle(const QRectF &r) {
 	resize(r.size());
@@ -91,9 +108,9 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 	if (_bar) {
 
 		// find out bw's effective center position
-		QPointF bwCenter = QPointF(0.5 * bw->size().width() * bw->scale(), 0.5 * bw->size().height() * bw->scale());
+//		QPointF bwCenter = QPointF(0.5 * bw->size().width() * bw->scale(), 0.5 * bw->size().height() * bw->scale());
 
-		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromItem(bw, bwCenter)) ) {
+		if ( _firstChildLayout->rect().contains( _firstChildLayout->mapFromItem(bw, bw->boundingRect().center())) ) {
 			_firstChildLayout->addItem(bw, _firstChildLayout->mapFromParent(pos));
 		}
 		else {
@@ -121,7 +138,6 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 			bw->setPos(pos);
 		}
 	}
-
 
 	/**********
 	  Item is finally added to the scene and be shown
@@ -181,10 +197,6 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 	//
 	if (_bar) {
 
-		/*******
-		  ****
-		 *****  Below is when (0, 0) is center
-
 		QRectF br = boundingRect();
 		QRectF first, second;
 
@@ -192,32 +204,31 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 			//
 			// bar is horizontal so my children is at TOP and BOTTOM
 			//
-			first = QRectF(br.topLeft(), QSizeF(br.width(), _bar->line().y1() - br.top()));
+			first =  QRectF(br.topLeft(),                 QSizeF(br.width(), _bar->line().y1() - br.top()));
 			second = QRectF(br.left(), _bar->line().y1(), br.width(), br.bottom() - _bar->line().y1());
 		}
 		else {
-			first = QRectF(br.topLeft(), QSizeF(_bar->line().x1() - br.left(), br.height()));
+			first =  QRectF(br.topLeft(),                QSizeF(_bar->line().x1() - br.left(), br.height()));
 			second = QRectF(_bar->line().x1(), br.top(), br.right() - _bar->line().x1(), br.height());
 		}
 		_firstChildLayout->setRectangle(first);
 		_secondChildLayout->setRectangle(second);
-		******
-		*****/
 
+/***
 		if (_bar->orientation() == Qt::Horizontal) {
 			//
 			// bar is horizontal so my children is at TOP and BOTTOM
 			//
-			_firstChildLayout->setPos(0, 0);
+//			_firstChildLayout->setPos(0, 0);
 
 			if (deltaSize.height() == 0) {
 				//
 				// I'm resized horizontally.  -> only width changes for my childs
 				//
-				_firstChildLayout->resize(   e->newSize().width() ,    _firstChildLayout->size().height());
+				_firstChildLayout->resize( e->newSize().width() , _firstChildLayout->size().height());
 				_secondChildLayout->resize(e->newSize().width() , _secondChildLayout->size().height());
 
-				_secondChildLayout->setPos(0, _secondChildLayout->geometry().y());
+//				_secondChildLayout->setPos(0, _secondChildLayout->geometry().y());
 			}
 			else if (deltaSize.width() == 0) {
 				//
@@ -226,6 +237,9 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 				_firstChildLayout->resize(      _firstChildLayout->size().width() ,    _firstChildLayout->size().height() + deltaSize.height() / 2.0);
 				_secondChildLayout->resize(_secondChildLayout->size().width() , _secondChildLayout->size().height() + deltaSize.height() / 2.0);
 
+				//
+				// second layoutwidget has to move vertically
+				//
 				_secondChildLayout->setPos(0, _secondChildLayout->geometry().y() + deltaSize.height()/2.0);
 			}
 		}
@@ -233,12 +247,12 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 			//
 			// the bar is vertical so my children is at LEFT and RIGHT
 			//
-			_firstChildLayout->setPos(0,0);
+//			_firstChildLayout->setPos(0,0);
 
 			if (deltaSize.height() == 0) {
 				// I'm resized horizontally. -> no height changes in my children
-				_firstChildLayout->resize(_firstChildLayout->size().width() + deltaSize.width()/2.0,  _firstChildLayout->size().height());
-				_secondChildLayout->resize(_secondChildLayout->size().width() + deltaSize.width()/2.0, _secondChildLayout->size().height());
+				_firstChildLayout->resize(  _firstChildLayout->size().width() + deltaSize.width()/2.0,  _firstChildLayout->size().height());
+				_secondChildLayout->resize(_secondChildLayout->size().width() + deltaSize.width()/2.0,  _secondChildLayout->size().height());
 
 				_secondChildLayout->setPos(_secondChildLayout->geometry().x() + deltaSize.width()/2.0 , 0);
 			}
@@ -247,46 +261,45 @@ void SN_LayoutWidget::resizeEvent(QGraphicsSceneResizeEvent *e) {
 				_firstChildLayout->resize( _firstChildLayout->size().width(),  e->newSize().height());
 				_secondChildLayout->resize(_secondChildLayout->size().width(), e->newSize().height());
 
-				_secondChildLayout->setPos(_secondChildLayout->geometry().x(), 0);
+//				_secondChildLayout->setPos(_secondChildLayout->geometry().x(), 0);
 			}
 		}
+		***/
 	}
 
 	//
-	// no _bar, so this layoutWidget contains child basewidgets
+	// There is no _bar, so this layoutWidget contains SN_basewidgets as its children
 	//
 	else {
 		if (_isTileOn) {
+			//
+			// redo tiling
+			//
 			doTile();
 		}
 		else {
-			// If growing, do nothing
-
-
-			// If shrinking, move child BaseWidgets accordingly
-			if (deltaSize.width() < 0) {
-				// I'm left or right layoutWidget
-
-				if (pos().x() == 0) {
-					// I'm left. parent layoutwidget's bar moved to the left
-					adjustChildPos(0); // move them to the left
+			//
+			// move SN_BaseWidgets accordingly
+			//
+			if (deltaSize.height() == 0) {
+				if (_position == "first") {
+					// I'm a left layout.
+					adjustChildPos(0, deltaSize); // move them to the left
 				}
 				else {
-					// I'm right
-					adjustChildPos(1); // to the right
+					// I'm a right layout
+					adjustChildPos(1, deltaSize); // to the right
 				}
 
 			}
-			else if (deltaSize.height() < 0) {
-				// I'm top or bottom layoutWidget
-
-				if (pos().y() == 0) {
-					// I'm top. Parent layoutWidget's bar moved to the top
-					adjustChildPos(2); // move up
+			else if (deltaSize.width() == 0) {
+				if (_position == "first") {
+					// I'm a top layout
+					adjustChildPos(2, deltaSize); // move up
 				}
 				else {
-					// I'm bottom
-					adjustChildPos(3); // move down
+					// I'm a bottom layout
+					adjustChildPos(3, deltaSize); // move down
 				}
 			}
 		}
@@ -302,28 +315,27 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation) 
 		//
 		// bar is horizontal, partition is Top and Bottom (same X pos)
 		//
+		first =  QRectF(br.topLeft(),               QSizeF(br.width(), br.height()/2));
+		second = QRectF(br.left(), br.center().y(),        br.width(), br.height()/2);
 
-		/******* (0,0) is center
-		first = QRectF(br.topLeft(), QSizeF(br.width(), br.height()/2));
-		second = QRectF(br.left(), 0, br.width(), br.height()/2);
-		********/
-
+		/*
+		  top left is 0,0
 		first = QRectF( 0, 0,             br.width(), br.height()/2);
 		second = QRectF(0, br.height()/2, br.width(), br.height()/2);
+		*/
 	}
 	else {
 		//
 		// bar is vertical, partition is Left and Right (same Y pos)
 		//
+		first =  QRectF(br.topLeft(),        QSizeF(br.width()/2, br.height()));
+		second = QRectF(br.center().x(), br.top(),  br.width()/2, br.height());
 
-		/********* (0,0) is center
-		first = QRectF(br.topLeft(), QSizeF(br.width()/2, br.height()));
-		second = QRectF(0, br.top(), br.width()/2, br.height());
-		*********/
-
+		/*
+		  top left is 0,0
 		first = QRectF(  0,           0, br.width()/2, br.height());
 		second = QRectF(br.width()/2, 0, br.width()/2, br.height());
-
+		*/
 	}
 
 	createChildPartitions(dividerOrientation, first, second);
@@ -349,12 +361,10 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 	//
 	connect(_firstChildLayout, SIGNAL(resized()), this, SLOT(adjustBar()));
 
-
 	// will invoke resize()
 	_firstChildLayout->setRectangle(first);
 	_secondChildLayout->setRectangle(second);
 //	qDebug() << "createchild result" << rect() << firstlayoutchild->geometry() << secondlayoutchild->geometry();
-
 
 	//
 	// reparent child items to appropriate widget. I shouldn't have any child baseWidgets at this point
@@ -384,7 +394,6 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 		item->setPos(newPos);
 	}
 
-
 	//
 	// hides my buttons. This widget will just hold child basewidgets
 	//
@@ -403,6 +412,7 @@ void SN_LayoutWidget::adjustBar() {
 
 	/*******
 	  ***** (0,0) is center
+	  */
 	if ( _bar->orientation() == Qt::Horizontal ) {
 		// my children is top and bottom widgets
 		qreal newY = boundingRect().top() + _firstChildLayout->size().height();
@@ -415,9 +425,8 @@ void SN_LayoutWidget::adjustBar() {
 		QLineF line(newX, boundingRect().top(), newX, boundingRect().bottom());
 		_bar->setLine(line);
 	}
-	********
-	*****/
 
+	/*
 	if ( _bar->orientation() == Qt::Horizontal ) {
 		// my children is top and bottom widgets
 		QPointF bottomLeft = _firstChildLayout->geometry().bottomLeft();
@@ -432,45 +441,72 @@ void SN_LayoutWidget::adjustBar() {
 
 		_bar->setLine(topRight.x(), topRight.y(), bottomRight.x(), bottomRight.y());
 	}
+	*/
 }
 
 /**
   find out child basewidgets located on top of the parent layoutwidget's _bar
   */
-void SN_LayoutWidget::adjustChildPos(int direction) {
+void SN_LayoutWidget::adjustChildPos(int direction, const QSizeF &delta /* = QSizeF() */) {
 
 	foreach(QGraphicsItem *item, childItems()) {
+
+		// skip everything other than SN_BaseWidget
 		if (item->type() < QGraphicsItem::UserType + 12) continue;
+
 		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 
 		Q_ASSERT(_parentLayoutWidget);
 		SN_WallPartitionBar *parentBar =  _parentLayoutWidget->bar();
 
+		//
+		// move SN_BaseWidget which collides with the _bar
+		//
 		if (bw->collidesWithItem(parentBar, Qt::IntersectsItemBoundingRect)) {
 			switch(direction) {
 			case 0 : { // left
 //				bw->moveBy(mapFromParent(parentBar->pos()).x() - bw->pos().x() + bw->size().width(), 0);
-				bw->setPos(size().width() - bw->size().width() * bw->scale() , bw->pos().y());
+				bw->setPos(boundingRect().right() - bw->size().width() * bw->scale() , bw->pos().y());
  				break;
 			}
 			case 1 : { // right
 //				bw->moveBy(mapFromParent(parentBar->pos()).x() - bw->pos().x() , 0);
-				bw->setPos(0 , bw->pos().y());
+				bw->setPos(boundingRect().left() , bw->pos().y());
 
 				break;
 			}
 			case 2 : // up
 			{
-				bw->setPos(bw->pos().x(), size().height() - bw->size().height() * bw->scale());
+				bw->setPos(bw->pos().x(), boundingRect().bottom() - bw->size().height() * bw->scale());
 				break;
 			}
 			case 3 : // down
 			{
-				bw->setPos(bw->pos().x(), 0);
+				bw->setPos(bw->pos().x(), boundingRect().top());
 				break;
 			}
 			}
 		}
+
+		//
+		// SN_BaseWidget doesn't collide with the _bar
+		//
+		/*
+		else {
+			if ( _position == "second"  ||  (_parentLayoutWidget && _parentLayoutWidget->position() == "second") ) {
+				//
+				// Upon resizing, second layoutwidgets (right or bottom layoutWidgets) have to move along with the _bar->pos()
+				// this is because QGraphicsWidget's origin (0,0) is its top-left corner
+				// and the first layoutwidget's top-left is always same as its parent's top-left
+				//
+				// And if layoutwidget moves its children moves too.
+				// So, for the second layoutwidgets I have to counter-move its children
+				//
+
+				bw->moveBy(delta.width(), delta.height());
+			}
+		}
+		*/
 	}
 }
 
@@ -504,32 +540,33 @@ void SN_LayoutWidget::deleteMyself() {
 	SN_LayoutWidget *sibling = siblingLayout();
 	Q_ASSERT(sibling);
 
-	sibling->setPos(0,0);
-	sibling->resize(_parentLayoutWidget->size());
-
-
-	// move my child (basewidgets) to my sibling
-	reparentMyChildBasewidgets(sibling);
-
 
 	if (sibling->bar()) {
 		// if sibling has child LayoutWidgets
+		sibling->setPos(0,0);
+		sibling->resize(_parentLayoutWidget->size());
+
 		_parentLayoutWidget->setFirstChildLayout(sibling->firstChildLayout());
 		_parentLayoutWidget->setSecondChildLayout(sibling->secondChildLayout());
 
 		sibling->firstChildLayout()->setParentLayoutWidget(_parentLayoutWidget);
+		sibling->firstChildLayout()->setParentItem(_parentLayoutWidget);
 		sibling->secondChildLayout()->setParentLayoutWidget(_parentLayoutWidget);
+		sibling->secondChildLayout()->setParentItem(_parentLayoutWidget);
+
+		_parentLayoutWidget->adjustBar();
+
+
+		// I'll be deleted
+		deleteLater();
+
+		// my sibling will be deleted
+		sibling->deleteLater();
 	}
 	else {
-		sibling->reparentMyChildBasewidgets(_parentLayoutWidget);
+		_parentLayoutWidget->deleteChildPartitions();
+//		sibling->reparentMyChildBasewidgets(_parentLayoutWidget);
 	}
-
-
-	// I'll be deleted
-	deleteLater();
-
-	// my sibling will be deleted
-	sibling->deleteLater();
 }
 
 void SN_LayoutWidget::doTile() {
@@ -555,13 +592,16 @@ void SN_LayoutWidget::doTile() {
 	qreal avgWHratio = sumWHratio / itemcount;
 	qreal layoutWHratio = size().width() / size().height();
 
+	/**
+	  x(numH) : y(numV) = Width : Height
+	  y = x * H/W , x * y == numItem
+	  x = sqrt( numItem * W/H )
+	  **/
 	int numItemH = sqrt( itemcount * layoutWHratio );
 	if (numItemH < 1) numItemH = 1;
-	int numItemV = itemcount / numItemH;
+	int numItemV = ::ceil( (qreal)itemcount / (qreal)numItemH );
 
-	qDebug() << "avg itme" << avgWHratio << "layout" << layoutWHratio << " item layout is" << numItemH << "by" << numItemV;
-
-
+//	qDebug() << "avg item WH" << avgWHratio << "layout WH" << layoutWHratio << " item layout is" << numItemH << "by" << numItemV << " total" << itemcount << "items";
 	/***
 	setLayout(0);
 	QGraphicsGridLayout *gridlayout = new QGraphicsGridLayout;
@@ -624,7 +664,6 @@ void SN_LayoutWidget::doTile() {
 
 			bw->setScale(qMin(scalewidth, scaleheight));
 		}
-
 		col++;
 	}
 }
@@ -643,12 +682,7 @@ void SN_LayoutWidget::toggleTile() {
 
 void SN_LayoutWidget::setButtonPos() {
 //	qDebug() << "attachButton" << boundingRect() << geometry();
-
-	/******* (0,0) center
-	_tileButton->setPos(boundingRect().topRight().x() - _tileButton->size().width() - 10, 0);
-	*****/
-
-	_tileButton->setPos(size().width() - _tileButton->size().width() - 10, size().height()/2);
+	_tileButton->setPos(boundingRect().right() - _tileButton->size().width() - 10,   boundingRect().center().y());
 
 	_vButton->setPos(_tileButton->geometry().x(), _tileButton->geometry().bottom() + 5);
 	_hButton->setPos(_vButton->geometry().x(),  _vButton->geometry().bottom() + 5);
@@ -792,7 +826,7 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 		loadSession(in, launcher);
 	}
 	else if (header == "RETURN") {
-		qDebug("%s::%s() : RETURN", metaObject()->className(), __FUNCTION__);
+//		qDebug("%s::%s() : RETURN", metaObject()->className(), __FUNCTION__);
 	}
 	else {
 		qDebug("%s::%s() : Unknown entry", metaObject()->className(), __FUNCTION__);

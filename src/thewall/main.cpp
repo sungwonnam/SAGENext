@@ -1,7 +1,7 @@
 #include <QtGui/QApplication>
 #include <QGLWidget>
 
-#include "settingdialog.h"
+//#include "settingdialog.h"
 #include "settingstackeddialog.h"
 #include "sagenextscene.h"
 #include "sagenextviewport.h"
