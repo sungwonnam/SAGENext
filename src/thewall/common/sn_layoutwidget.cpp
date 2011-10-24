@@ -27,7 +27,7 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 {
 //	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
-//	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
+	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
 
 	// pointer->setAppUnderPointer() will pass this item
 	setAcceptedMouseButtons(0);

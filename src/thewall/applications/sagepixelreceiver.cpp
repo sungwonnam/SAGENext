@@ -169,8 +169,8 @@ void SN_SagePixelReceiver::run() {
 
 	int byteCount = appInfo->frameSizeInByte();
 
-//	unsigned char *bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
-	unsigned char *bufptr = (unsigned char *)doubleBuffer->getFrontBuffer();
+	unsigned char *bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
+//	unsigned char *bufptr = (unsigned char *)doubleBuffer->getFrontBuffer();
 
 //	unsigned char *bufptr = 0;
 //	QImage localImage(appInfo->nativeSize(), QImage::Format_RGB888);
@@ -268,8 +268,8 @@ void SN_SagePixelReceiver::run() {
 		//QMetaObject::invokeMethod(widget, "scheduleUpdate", Qt::QueuedConnection);
 
 		//getFrontBuffer() will return immediately. There's no mutex waiting in this function
-//		bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
-		bufptr = (unsigned char *)doubleBuffer->getFrontBuffer();
+		bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
+//		bufptr = (unsigned char *)doubleBuffer->getFrontBuffer();
 		//qDebug("%s() : grabbed front buffer", __FUNCTION__);
 		/***************************************/
 

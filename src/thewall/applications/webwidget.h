@@ -3,12 +3,14 @@
 
 #include "base/basewidget.h"
 #include <QFutureWatcher>
-#include <QWebPage>
+//#include <QWebPage>
 
 class QGraphicsWebView;
 class QLineEdit;
 class QGraphicsLinearLayout;
-
+class QWebPage;
+class QWebFrame;
+class QGraphicsProxyWidget;
 
 
 /**

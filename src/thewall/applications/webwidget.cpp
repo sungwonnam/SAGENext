@@ -3,6 +3,7 @@
 
 #include <QtGui>
 #include <QtWebKit>
+//#include <QWebPage>
 
 SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent /*0*/, Qt::WindowFlags wFlags/* Qt::Window */)
     : SN_BaseWidget(gaid, setting, parent, wFlags)
