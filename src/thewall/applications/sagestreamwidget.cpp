@@ -49,6 +49,8 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 	connect(&_initReceiverWatcher, SIGNAL(finished()), this, SLOT(startReceivingThread()));
 
 	_bordersize = s->value("gui/framemargin",0).toInt();
+	
+	setAttribute(Qt::WA_PaintOnScreen);
 }
 
 
@@ -191,16 +193,19 @@ i.e. both QImage and QPixmap are stored on the client side and don't use any GDI
 
 So, drawing pixmap is much faster but QImage has to be converted to QPixmap for every frame which involves converting plus copy to X Server.
 	  ***/
-//	if (!_imageForDrawing.isNull()) {
-//		painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
-//	}
+	
+	painter->setCompositionMode(QPainter::CompositionMode_Source);
+	
+	if (!_imageForDrawing.isNull()) {
+		painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
+	}
 
 //	if (!_pixmapForDrawing.isNull()) {
 //		painter->drawPixmap(_bordersize, _bordersize, _pixmapForDrawing);
 //	}
-	if (_imagePointer && !_imagePointer->isNull()) {
-		painter->drawImage(_bordersize, _bordersize, *_imagePointer);
-	}
+//	if (_imagePointer && !_imagePointer->isNull()) {
+//		painter->drawImage(_bordersize, _bordersize, *_imagePointer);
+//	}
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
@@ -280,7 +285,7 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		//_imageForDrawing = imgPtr->convertToFormat(QImage::Format_ARGB32_Premultiplied); // faster drawing !!
 //		_imageForDrawing = QImage(rawptr, doubleBuffer->imageWidth(), doubleBuffer->imageHeight(), doubleBuffer->imageFormat()).convertToFormat(QImage::Format_ARGB32_Premultiplied);
 		
-
+		_imageForDrawing = _imagePointer->convertToFormat(QImage::Format_ARGB32_Premultiplied);
 
 		_perfMon->updateConvDelay();
 
@@ -289,17 +294,7 @@ void SN_SageStreamWidget::scheduleUpdate() {
 //		if(_imageForDrawing.isNull()) {
 			qCritical("SageStreamWidget::scheduleUpdate() : image is null");
 		}
-		//image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
-		//if (image2.isNull()) {
-		//     qDebug() << "image2 is null";
-		// }
-
-		//            image2 = imgPtr->convertToFormat(QImage::Format_RGB32);
-		//            image2 = QGLWidget::convertToGLFormat(*imgPtr);
-		//			if ( image2.isNull() )  {
-		//            	qDebug("Sibal");
-		//            }
-
+		
 		else {
 			setScheduled(false); // reset scheduling flag for SMART scheduler
 

@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	//
 	// what is this?
 	//
-//	qt_x11_set_global_double_buffer(false);
+//	qt_x11_set_global_double_buffer(true);
 #endif
 
 	int errflag = 0;
@@ -577,6 +577,8 @@ void setViewAttr(SN_Viewport *gvm, const QSettings &s) {
 	/// You can call QPainter::setPen() or setBrush() without restoring the state after painting
 	///
 	gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, false);
+	
+	gvm->viewport()->setAttribute(Qt::WA_NoSystemBackground);
 }
 
 

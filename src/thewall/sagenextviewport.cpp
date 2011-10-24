@@ -37,10 +37,15 @@ SN_Viewport::SN_Viewport(SN_TheScene *s, int viewportId, SN_Launcher *l, QWidget
 		_closeAllAction->setShortcut( QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_W) );
 		connect(_closeAllAction, SIGNAL(triggered()), _sageNextScene, SLOT(closeAllUserApp()));
 	}
+//	startTimer(30);
 }
 
 SN_Viewport::~SN_Viewport() {
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
+}
+
+void SN_Viewport::timerEvent(QTimerEvent *) {
+//	viewport()->update();
 }
 
 void SN_Viewport::on_actionOpen_Media_triggered()

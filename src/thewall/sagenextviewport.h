@@ -15,6 +15,9 @@ public:
 	~SN_Viewport();
 
 	inline int viewportId() const {return _viewportID;}
+	
+protected:
+	void timerEvent(QTimerEvent *);
 
 private:
 	/**

@@ -68,7 +68,7 @@ private:
 	/**
 	  Drawing image is expansive than pixmap. But conversion to pixmap isn't needed
 	  */
-//	QImage _imageForDrawing;
+	QImage _imageForDrawing;
 //	QPixmap _pixmapForDrawing;
 	QImage *_imagePointer;
 
