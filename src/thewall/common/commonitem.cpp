@@ -152,6 +152,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
         // Because of pointerPress, appUnderPointer has already been set at this point
         //
         if (_basewidget) {
+			/*
             //qDebug() << app->resizeHandleSceneRect() << _scenePos << deltax << deltay;
             if ( _basewidget->isWindow()  &&  _basewidget->resizeHandleSceneRect().contains(_scenePos)) {
 
@@ -166,6 +167,8 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 //                _basewidget->moveBy(deltax, deltay);
 				_basewidget->handlePointerDrag( _scenePos, deltax, deltay, Qt::LeftButton, modifier);
             }
+			*/
+			_basewidget->handlePointerDrag(_scenePos, deltax, deltay, Qt::LeftButton, modifier);
         }
 
 		//

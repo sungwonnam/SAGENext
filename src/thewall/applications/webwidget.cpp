@@ -96,7 +96,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
 	linearLayout = new QGraphicsLinearLayout(Qt::Vertical, this);
 	linearLayout->setSpacing(4);
-	linearLayout->setContentsMargins(0,0,0,0);
+	linearLayout->setContentsMargins(20,20,20,40);
 
 	// The layout takes ownership of these items.
 	linearLayout->addItem(urlboxproxy);
@@ -106,6 +106,8 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	setLayout(linearLayout);
 
 
+	resize(1280, 1024);
+			
 	/* This means nothing. Because wheel event won't be handled by BaseGraphicsWidget, and this widget redefines resizeEvent */
 	//	setNativeSize(810,650); // w/o frame
 }
@@ -164,6 +166,7 @@ bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 			//
 			return false;
 		}
+		
 
 		else if (event->type() == QEvent::GraphicsSceneMouseDoubleClick) {
 //			qDebug() << "webwidget received doubleClick event";

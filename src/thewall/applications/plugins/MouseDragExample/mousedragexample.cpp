@@ -109,7 +109,7 @@ void MouseDragExample::handlePointerDrag(const QPointF &scenePos, qreal pointerD
 		  to keep the base implementation -> moves window itself
 		  */
 //		if ( scenePos is in dragging handle )
-		SN_BaseWidget::handlePointerDrag(scenePos, pointerDeltaX, pointerDeltaY, button, modifier);
+//		SN_BaseWidget::handlePointerDrag(scenePos, pointerDeltaX, pointerDeltaY, button, modifier);
 	}
 
 }

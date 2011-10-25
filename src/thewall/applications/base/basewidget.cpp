@@ -767,10 +767,17 @@ void SN_BaseWidget::createActions()
 
 
 
-void SN_BaseWidget::handlePointerDrag(const QPointF & /*pointerScenePos*/, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
+void SN_BaseWidget::handlePointerDrag(const QPointF & pointerScenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
 
 	if (btn == Qt::LeftButton) {
-		moveBy(pointerDeltaX, pointerDeltaY);
+		
+		if (isWindow() && resizeHandleSceneRect().contains(pointerScenePos)) {
+			// do resize
+			resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);
+		}
+		else {
+			moveBy(pointerDeltaX, pointerDeltaY);
+		}
 	}
 }
 

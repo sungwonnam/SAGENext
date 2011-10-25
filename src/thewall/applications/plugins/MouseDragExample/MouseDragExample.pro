@@ -11,7 +11,7 @@ TEMPLATE = lib
 CONFIG += plugin
 DESTDIR = $$(HOME)/.sagenext/media/plugins
 
-SAGENEXT_DIR = $$(HOME)/SAGENext
+SAGENEXT_DIR = $$(HOME)/SAGENext-clone
 
 INCLUDEPATH += $$SAGENEXT_DIR/src/thewall
 #DEPENDPATH += $$SAGENEXT_DIR/src/thewall/BUILD
