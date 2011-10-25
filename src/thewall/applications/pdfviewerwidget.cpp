@@ -50,9 +50,9 @@ SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalapp
 	_currentPage = _document->page(_currentPageIndex);
 	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(_dpix, _dpiy));
 
-	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
-
-	resize(_pixmap.width() + fmargin*2, _pixmap.height() + fmargin*2);
+//	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
+//	resize(_pixmap.width() + fmargin*2, _pixmap.height() + fmargin*2);
+	resize(_pixmap.size());
 
 	_appInfo->setFrameSize(size().width(), size().height(), _pixmap.depth());
 
@@ -140,7 +140,7 @@ void SN_PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 //	_currentPage->renderToPainter(painter); // with Arthur renderBackend
 
 	if (!_pixmap.isNull())
-		painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _pixmap);
+		painter->drawPixmap(0,0, _pixmap);
 
 
 	if (_perfMon)

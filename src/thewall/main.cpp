@@ -13,6 +13,7 @@
 
 #include "applications/base/affinityinfo.h"
 #include "applications/mediabrowser.h"
+//#include "applications/sn_checker.h"
 
 #include "system/sagenextscheduler.h"
 #include "system/resourcemonitor.h"
@@ -366,8 +367,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	/**
 	  create the MediaStorage
 	*/
-//	SN_MediaStorage *mediaStorage = 0;
-	SN_MediaStorage *mediaStorage = new SN_MediaStorage(&s);
+	SN_MediaStorage *mediaStorage = 0;
+//	SN_MediaStorage *mediaStorage = new SN_MediaStorage(&s);
 
 
 	/**
@@ -404,8 +405,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	/**
 	  create the initial MediaBrowser.
 	*/
-	SN_MediaBrowser *mediaBrowser = new SN_MediaBrowser(launcher, 0, &s, mediaStorage);
-	launcher->launch(mediaBrowser);
+//	SN_MediaBrowser *mediaBrowser = new SN_MediaBrowser(launcher, 0, &s, mediaStorage);
+//	launcher->launch(mediaBrowser);
 
 
 	/**
@@ -505,6 +506,9 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 //	launcher->launchScenario( QDir::homePath() + "/.sagenext/test.scenario" );
 
+//	SN_Checker *ccc  = new SN_Checker(QSize(1920,1080), 30, 0, &s);
+//	launcher->launch(ccc);
+
 
 	// starts the event loop
 	int ret = a.exec();
@@ -576,9 +580,10 @@ void setViewAttr(SN_Viewport *gvm, const QSettings &s) {
 	/// GraphicsView will not protect the painter state when rendering. Changes in painter state (pen, brush,..) will remain changed if set true.
 	/// You can call QPainter::setPen() or setBrush() without restoring the state after painting
 	///
-	gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, false);
+//	gvm->setOptimizationFlag(QGraphicsView::DontSavePainterState, true);
+	gvm->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, true);
 	
-	gvm->viewport()->setAttribute(Qt::WA_NoSystemBackground);
+//	gvm->viewport()->setAttribute(Qt::WA_NoSystemBackground);
 }
 
 

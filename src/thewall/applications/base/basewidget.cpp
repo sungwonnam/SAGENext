@@ -25,6 +25,7 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, infoTextItem(0)
+    , _bordersize(10)
 	, _lastTouch(0)
 	, _rMonitor(0)
 	, _quality(1.0)
@@ -59,6 +60,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, infoTextItem(0)
+    , _bordersize(10)
 	, _lastTouch(0)
 	, _rMonitor(0)
 	, _quality(1.0)
@@ -80,11 +82,12 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	, _registerForMouseHover(false)
     , _priorityQuantized(0)
 {
+
 	// This will affect boundingRect(), windowFrameRect() of the widget.
-	qreal fmargin = _settings->value("gui/framemargin", 8).toDouble();
+	_bordersize = _settings->value("gui/framemargin", 8).toInt();
 	if (isWindow()) {
 		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
-		setContentsMargins(fmargin, fmargin + 40, fmargin, fmargin); // by default, this is 0 0 0 0
+		setContentsMargins(_bordersize, _bordersize + 40, _bordersize, _bordersize); // by default, this is 0 0 0 0
 	}
 	else {
 		// setting frameMargins won't have any effect.. (Qt::Widget doesn't have frame)
@@ -795,6 +798,7 @@ void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, Q
 
 
 	if (! isWindow()) {
+
 		QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
 		if (isSelected()) {
 			lg.setColorAt(0, QColor(250, 250, 0, 164));
@@ -807,19 +811,18 @@ void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, Q
 		QBrush brush(lg);
 
 
+
 		/**********
 		  Below draws rectangle around widget's content (using boundingRect)
 		  Because of this, it has to set Pen (which chagens painter state)
 		  ********/
 
-		/*
 		QPen pen;
-		pen.setWidth( _settings->value("gui/framemargin",0).toInt());
+		pen.setWidth( _bordersize );
 		pen.setBrush(brush);
 
 		painter->setPen(pen);
-		painter->drawRect(boundingRect().adjusted(1, 1, -2, -2));
-*/
+		painter->drawRect(boundingRect()/*.adjusted(1, 1, -2, -2)*/);
 
 
 		/***************

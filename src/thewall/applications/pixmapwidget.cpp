@@ -61,6 +61,10 @@ SN_PixmapWidget::SN_PixmapWidget(qint64 filesize, const QString &senderIP, const
 SN_PixmapWidget::~SN_PixmapWidget() {
 	if (_imageTemp) delete _imageTemp;
 //	if (_pixmap) delete _pixmap;
+
+	if (glIsTexture(_gltexture)) {
+		glDeleteTextures(1, &_gltexture);
+	}
 	qDebug("%s::%s()",metaObject()->className(), __FUNCTION__);
 }
 
@@ -72,6 +76,10 @@ void SN_PixmapWidget::start() {
         // Note that the thread pool takes ownership of the runnable if runnable->autoDelete() returns true, and the runnable will be deleted automatically by the thread pool after the runnable->run() returns. If runnable->autoDelete() returns false, ownership of runnable remains with the caller. Note that changing the auto-deletion on runnable after calling this functions results in undefined behavior.
         QThreadPool::globalInstance()->start(static_cast<QRunnable *>(this));
         **/
+
+	setCacheMode(QGraphicsItem::NoCache);
+
+	setAttribute(Qt::WA_PaintOnScreen);
 
 
 	futureWatcher = new QFutureWatcher<bool>(this);
@@ -86,32 +94,47 @@ void SN_PixmapWidget::start() {
 void SN_PixmapWidget::callUpdate() {
 	if ( futureWatcher->result() ) {
 
-		// at this point, _pixmap is not null
+		// at this point, image is not null
 
-		qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
+		_imgWidth = _imageTemp->width();
+		_imgHeight = _imageTemp->height();
 
-		resize(_imageTemp->width() + fmargin * 2 , _imageTemp->height() + fmargin * 2);
-//		qDebug() << "boundingRect" << boundingRect() << "windowFrameRect" << windowFrameRect();
-		_appInfo->setFrameSize(_imageTemp->width() + fmargin * 2, _imageTemp->height() + fmargin*2, _imageTemp->depth());
+//		qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
+
+//		resize(_imgWidth + _bordersize * 2 , _imgHeight + _bordersize * 2);
+//		_appInfo->setFrameSize(_imgWidth + _bordersize * 2, _imgHeight + _bordersize*2, _imageTemp->depth());
+
+		resize(_imageTemp->size());
+		_appInfo->setFrameSize(_imgWidth, _imgHeight, _imageTemp->depth());
 
 
-//		resize(_pixmap->width() + fmargin*2, _pixmap->height() + fmargin*2);
-//		_appInfo->setFrameSize(_pixmap->width() + fmargin*2, _pixmap->height() + fmargin*2, _pixmap->depth());
 
-		// this is the best in E8400 (raster backend, opengl viewport (Xinerama))
-		// and the same in render1 (raster backend, opengl viewport, GTX 460)
-		// But devicecoordinatecache is no good for pixmapwidget
-		// because pixmapwidget can be scaled freely
-//		setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+		QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
+		if(glContext) {
 
-		setCacheMode(QGraphicsItem::NoCache);
+			const QImage &constRef = _imageTemp->mirrored().rgbSwapped(); // to avoid detach()
+			//_gltexture = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
-		_drawingPixmap = QPixmap::fromImage(*_imageTemp);
-		if (_imageTemp) {
-			delete _imageTemp;
-			_imageTemp = 0;
+			if (glIsTexture(_gltexture)) {
+				glDeleteTextures(1, &_gltexture);
+			}
+			glGenTextures(1, &_gltexture);
+			glBindTexture(GL_TEXTURE_2D, _gltexture);
+
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, constRef.width(), constRef.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+		else {
+			_drawingPixmap = QPixmap::fromImage(*_imageTemp);
 		}
 
+		delete _imageTemp;
+		_imageTemp = 0;
 		isImageReady = true;
 		update();
 	}
@@ -153,11 +176,36 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 	//if ( scaleFactorX != 1.0 || scaleFactorY != 1.0 )
 	//painter->scale(scaleFactorX, scaleFactorX);
 
-//	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_imageTemp);
-//	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _myImage);
-	painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _drawingPixmap);
-//	painter->drawPixmap(0, 0, _drawingPixmap);
 
+	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
+		if (glIsTexture(_gltexture)) {
+
+//			painter->beginNativePainting();
+
+//			glEnable(GL_TEXTURE_2D);
+//			glBindTexture(GL_TEXTURE_2D, _gltexture);
+
+//			glBegin(GL_QUADS);
+//			glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+//			glTexCoord2f(1.0, 1.0); glVertex2f(_image->width(), 0);
+//			glTexCoord2f(1.0, 0.0); glVertex2f(_image->width(), _image->height());
+//			glTexCoord2f(0.0, 0.0); glVertex2f(0, _image->height());
+//			glEnd();
+
+//			painter->endNativePainting();
+
+			QGLWidget *viewportWidget = (QGLWidget *)w;
+//			QRectF target = QRect(_bordersize, _bordersize, _imgWidth, _imgHeight);
+//			QRectF target = QRect(0, 0, _imgWidth, _imgHeight);
+			viewportWidget->drawTexture(QPointF(0,0), _gltexture);
+		}
+	}
+	else {
+		//	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_imageTemp);
+		//	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _myImage);
+			painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _drawingPixmap);
+		//	painter->drawPixmap(0, 0, _drawingPixmap);
+	}
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.

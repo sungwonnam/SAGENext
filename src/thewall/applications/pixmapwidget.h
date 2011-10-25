@@ -8,6 +8,8 @@
 
 #include <QFutureWatcher>
 
+#include <QtOpenGL>
+
 class SN_PixmapWidget : public SN_BaseWidget
 {
 	Q_OBJECT
@@ -54,6 +56,11 @@ private:
 //	QPixmap *_pixmap;
 
 	QPixmap _drawingPixmap;
+
+	GLuint _gltexture;
+
+	int _imgWidth;
+	int _imgHeight;
 
 	/*!
 	  socket to accept connection from sender

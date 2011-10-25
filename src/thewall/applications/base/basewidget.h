@@ -252,6 +252,11 @@ protected:
           */
         SN_SimpleTextItem *infoTextItem;
 
+		/**
+		  The size (in pixel) of window frame
+		  */
+		int _bordersize;
+
 
         /*!
           effective visible region (used to calculate priority)

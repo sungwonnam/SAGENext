@@ -91,14 +91,17 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	//qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
 
-	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
+//	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
 
 	/**
 	  Don't forget to call resize() once you know the size of image you're displaying.
 	  Also BaseWidget::resizeEvent() will call setTransformOriginPoint();
      */
-	resize(_image->width() + fmargin*2, _image->height() + fmargin*2);
-	_appInfo->setFrameSize(_image->width() + fmargin*2, _image->height() + fmargin*2, 24);
+//	resize(_image->width() + fmargin*2, _image->height() + fmargin*2);
+//	_appInfo->setFrameSize(_image->width() + fmargin*2, _image->height() + fmargin*2, 24);
+
+	resize(_image->size());
+	_appInfo->setFrameSize(_image->width(), _image->height(), _image->depth());
 
 //	qDebug() << "VNCClientWidget constructor" << boundingRect() << size();
 
@@ -109,6 +112,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 		_perfMon->setAdjustedFps( (qreal)_framerate );
 	}
 
+	setAttribute(Qt::WA_PaintOnScreen);
 
 	/**
 	  sets the transform origin point to widget's center
@@ -173,13 +177,13 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
 		if (glIsTexture(_textureid)) {
 			QGLWidget *viewportWidget = (QGLWidget *)w;
-			viewportWidget->drawTexture(QPointF(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt()), _textureid);
+			viewportWidget->drawTexture(QPointF(0, 0), _textureid);
 		}
 	}
 	else {
 		if (_image && !_image->isNull()) {
 			// I'm drawing the QImage to avoid conversion delay (just like SageStreamWidget)
-			painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_image);
+			painter->drawImage(0, 0, *_image);
 		}
 	}
 
@@ -227,8 +231,8 @@ void SN_VNCClientWidget::scheduleUpdate() {
 			glGenTextures(1, &_textureid);
 			glBindTexture(GL_TEXTURE_2D, _textureid);
 
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR /*GL_NEAREST*/);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR /*GL_NEAREST*/);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 //			glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
 
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, constRef.width(), constRef.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());

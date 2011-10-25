@@ -21,8 +21,9 @@ SN_Checker::SN_Checker(const QSize &imagesize, qreal framerate, const quint64 ap
 	qDebug() << "SN_Checker : depth" << _image->depth() << "bpp";
 	qDebug() << "SN_Checker : w x h" << _image->width() * _image->height();
 
-	int fmargin = _settings->value("gui/framemargin", 0).toInt();
-	resize(_image->width() + fmargin*2, _image->height() + fmargin * 2 );
+//	int fmargin = _settings->value("gui/framemargin", 0).toInt();
+//	resize(_image->width() + fmargin*2, _image->height() + fmargin * 2 );
+	resize(_image->size());
 
 	_appInfo->setFrameSize(_image->width(), _image->height(), _image->depth());
 	_perfMon->setExpectedFps(framerate);
@@ -73,22 +74,29 @@ void SN_Checker::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWi
 	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
 		if (glIsTexture(_gltexture)) {
 
-//			painter->beginNativePainting();
+			painter->beginNativePainting();
 
-//			glBindTexture(GL_TEXTURE_2D, _gltexture);
+//			glMatrixMode(GL_PROJECTION);
+//			glLoadIdentity();
 
-//			glBegin(GL_QUADS);
-//			glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
-//			glTexCoord2f(1.0, 1.0); glVertex2f(_image->width(), 0);
-//			glTexCoord2f(1.0, 0.0); glVertex2f(_image->width(), _image->height());
-//			glTexCoord2f(0.0, 0.0); glVertex2f(0, _image->height());
-//			glEnd();
+//			glOrtho();
+//			glMatrixMode(GL_MODELVIEW);
 
-//			painter->endNativePainting();
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, _gltexture);
 
-			QGLWidget *viewportWidget = (QGLWidget *)w;
-			QRectF target = QRect(0, 0, _image->width(), _image->height());
-			viewportWidget->drawTexture(target, _gltexture);
+			glBegin(GL_QUADS);
+			glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+			glTexCoord2f(1.0, 1.0); glVertex2f(_image->width(), 0);
+			glTexCoord2f(1.0, 0.0); glVertex2f(_image->width(), _image->height());
+			glTexCoord2f(0.0, 0.0); glVertex2f(0, _image->height());
+			glEnd();
+
+			painter->endNativePainting();
+
+//			QGLWidget *viewportWidget = (QGLWidget *)w;
+//			QRectF target = QRect(0, 0, _image->width(), _image->height());
+//			viewportWidget->drawTexture(target, _gltexture);
 		}
 
 //		if(_glbuffer && _glbuffer->bufferId()) {
@@ -153,7 +161,7 @@ void SN_Checker::_doInit() {
 
 	Q_ASSERT(_image);
 
-	const QImage &constRef = *_image; // to avoid detach()
+	const QImage *constRef = _image; // to avoid detach()
 	//_gltexture = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
 	if (glIsTexture(_gltexture)) {
@@ -162,11 +170,13 @@ void SN_Checker::_doInit() {
 	glGenTextures(1, &_gltexture);
 	glBindTexture(GL_TEXTURE_2D, _gltexture);
 
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
+//	glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _image->width(), _image->height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, constRef->width(), constRef->height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef->bits());
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -256,17 +266,19 @@ void SN_Checker::_doRecvPixel() {
 		glGenTextures(1, &_gltexture);
 		glBindTexture(GL_TEXTURE_2D, _gltexture);
 
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
+//		glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _image->width(), _image->height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
 		glBindTexture(GL_TEXTURE_2D, 0);
 
-		GLenum error = glGetError();
-		if(error != GL_NO_ERROR) {
-			qWarning("texture upload failed. error code 0x%x\n", error);
-		}
+//		GLenum error = glGetError();
+//		if(error != GL_NO_ERROR) {
+//			qWarning("texture upload failed. error code 0x%x\n", error);
+//		}
 	}
 
 	//Q_ASSERT(_glbuffer);

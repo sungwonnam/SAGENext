@@ -50,7 +50,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 
 	_bordersize = s->value("gui/framemargin",0).toInt();
 	
-//	setAttribute(Qt::WA_PaintOnScreen);
+	setAttribute(Qt::WA_PaintOnScreen);
 }
 
 
@@ -223,6 +223,7 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 
 			painter->beginNativePainting();
 
+
 			glEnable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, _textureid);
 
@@ -245,8 +246,8 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 
 			glEnd();
 
-			glBindTexture(GL_TEXTURE_2D, 0);
-			glDisable(GL_TEXTURE_2D);
+//			glBindTexture(GL_TEXTURE_2D, 0);
+//			glDisable(GL_TEXTURE_2D);
 
 			painter->endNativePainting();
 
@@ -346,26 +347,25 @@ void SN_SageStreamWidget::scheduleUpdate() {
 
 			// to avoid detach(), and QGLContext::InvertedYBindOption
 			// In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
-			const QImage &constRef = *_imagePointer;
+//			const QImage &constRef = *_imagePointer;
+			const QImage *constPtr = _imagePointer;
 			//_textureid = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
 			if (glIsTexture(_textureid)) {
 				glDeleteTextures(1, &_textureid);
 			}
 			glGenTextures(1, &_textureid);
-
 //			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
 //			glEnable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, _textureid);
 
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 //			glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
 
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, constRef.width(), constRef.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, constRef.bits());
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, constPtr->width(), constPtr->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, constPtr->bits());
 			glBindTexture(GL_TEXTURE_2D, 0);
 
 //			GLenum error = glGetError();
@@ -376,10 +376,6 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		else {
 //			_imageForDrawing = _imagePointer->convertToFormat(QImage::Format_ARGB32_Premultiplied);
 		}
-
-
-
-
 
 
 
@@ -568,8 +564,9 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     _perfMon->setExpectedFps( (qreal)framerate );
     _perfMon->setAdjustedFps( (qreal)framerate );
 
-	int fmargin = _settings->value("gui/framemargin",0).toInt();
-    resize(resX + fmargin*2, resY + fmargin*2); // BaseWidget::ResizeEvent will call setTransforOriginPoint
+//	int fmargin = _settings->value("gui/framemargin",0).toInt();
+//    resize(resX + fmargin*2, resY + fmargin*2); // BaseWidget::ResizeEvent will call setTransforOriginPoint
+	resize(resX, resY);
 
 
     /* create double buffer */
