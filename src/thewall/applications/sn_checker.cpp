@@ -48,9 +48,21 @@ void SN_Checker::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWi
 
 	SN_BaseWidget::paint(painter,o,w);
 
-	if (_image && !_image->isNull()) {
-		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_image);
+//	if (_image && !_image->isNull()) {
+//		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_image);
+//	}
+	
+	
+	if (glIsTexture(_gltexture)) {
+		if (painter->paintEngine()->type() == QPaintEngine::OpenGL2) {
+			QGLWidget *viewportWidget = (QGLWidget *)w;
+			viewportWidget->drawTexture(QPointF(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt()), _gltexture);
+		}
+		else {
+			qDebug() << "paintEngine isn't OpenGL";
+		}
 	}
+	
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
@@ -63,12 +75,15 @@ void SN_Checker::timerEvent(QTimerEvent *e) {
 
 			gettimeofday(&lats, 0);
 
-			unsigned char *buffer = _image->bits();
+//			unsigned char *buffer = _image->bits();
 
-			int byteperpixel = _image->depth() / 8;
+//			int byteperpixel = _image->depth() / 8;
 			int numpixel = _image->width() * _image->height();
 			//int numpixel = _image->byteCount() / (_image->depth() / 8); // image size (in Byte) / Byte per pixel
 
+			//
+			// determine new pixel data
+			//
 			unsigned char red = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
 			unsigned char green = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
 			unsigned char blue = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
@@ -85,9 +100,27 @@ void SN_Checker::timerEvent(QTimerEvent *e) {
 //			}
 
 
+			//
+			// write new pixel data
+			//
 			QRgb *rgb = (QRgb *)(_image->scanLine(0)); // An ARGB quadruplet on the format #AARRGGBB, equivalent to an unsigned int.
 			for (int i=0; i<numpixel; i++) {
 				rgb[i] = qRgb(red, green, blue);
+			}
+			
+			//
+			// now _image is complete
+			//
+
+			
+			static QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
+			if(glContext) {
+				// pixmapTexture = glContext->bindTexture(QImage(QString("./test.png")), GL_TEXTURE_2D);
+//				pixmapTexture = glContext->bindTexture(QPixmap(QString(":/resources/plugin_200x200.png")), GL_TEXTURE_2D);
+				if (glIsTexture(_gltexture)) {
+					glContext->deleteTexture(_gltexture);
+				}
+				_gltexture = glContext->bindTexture(*_image);
 			}
 
 

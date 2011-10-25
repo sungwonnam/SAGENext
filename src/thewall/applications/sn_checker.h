@@ -3,6 +3,7 @@
 
 #include "base/basewidget.h"
 #include <QTimer>
+#include <QtOpenGL>
 
 #include <sys/resource.h>
 
@@ -20,6 +21,8 @@ protected:
 
 private:
 	QImage *_image;
+	
+	GLuint _gltexture;
 
 	int _timerid;
 
