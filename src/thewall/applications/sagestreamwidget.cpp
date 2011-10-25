@@ -50,7 +50,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 
 	_bordersize = s->value("gui/framemargin",0).toInt();
 	
-	setAttribute(Qt::WA_PaintOnScreen);
+//	setAttribute(Qt::WA_PaintOnScreen);
 }
 
 
@@ -129,6 +129,9 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
     doubleBuffer = 0;
 
 
+	if (glIsTexture(_textureid)) {
+		glDeleteTextures(1, &_textureid);
+	}
 
 	// this causes other sagestreamwidget gets killed
 	// don't know why
@@ -194,7 +197,7 @@ i.e. both QImage and QPixmap are stored on the client side and don't use any GDI
 So, drawing pixmap is much faster but QImage has to be converted to QPixmap for every frame which involves converting plus copy to X Server.
 	  ***/
 	
-	painter->setCompositionMode(QPainter::CompositionMode_Source);
+//	painter->setCompositionMode(QPainter::CompositionMode_Source);
 	
 //	if (!_imageForDrawing.isNull()) {
 //		painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
@@ -211,8 +214,42 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 
 	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
 		if (glIsTexture(_textureid)) {
-			QGLWidget *viewportWidget = (QGLWidget *)w;
-			viewportWidget->drawTexture(QPointF(_bordersize, _bordersize), _textureid);
+
+			//
+			// 0 draw latency because it's drawn from the cache
+			//
+//			QGLWidget *viewportWidget = (QGLWidget *)w;
+//			viewportWidget->drawTexture(QPointF(_bordersize, _bordersize), _textureid);
+
+			painter->beginNativePainting();
+
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, _textureid);
+
+			glBegin(GL_QUADS);
+			//
+			// below is QGLContext::InvertedYBindOption
+			//
+			glTexCoord2f(0.0, 1.0); glVertex2f(0, _imagePointer->height());
+			glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
+			glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), 0);
+			glTexCoord2f(0.0, 0.0); glVertex2f(0, 0);
+
+			//
+			// below is normal
+			//
+//			glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+//			glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
+//			glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
+//			glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
+
+			glEnd();
+
+			glBindTexture(GL_TEXTURE_2D, 0);
+			glDisable(GL_TEXTURE_2D);
+
+			painter->endNativePainting();
+
 		}
 	}
 	else {
@@ -291,7 +328,6 @@ void SN_SageStreamWidget::scheduleUpdate() {
 	qCritical("SageStreamWidget::scheduleUpdate() : QPixmap::fromImage() error");
    }
    */
-
 		_perfMon->getConvTimer().start();
 
 		//
@@ -305,33 +341,37 @@ void SN_SageStreamWidget::scheduleUpdate() {
 
 
 
-
-
-
 		QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
 		if(glContext) {
 
 			// to avoid detach(), and QGLContext::InvertedYBindOption
 			// In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
-			const QImage &constRef = _imagePointer->mirrored(false, true);
+			const QImage &constRef = *_imagePointer;
 			//_textureid = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
 			if (glIsTexture(_textureid)) {
 				glDeleteTextures(1, &_textureid);
 			}
 			glGenTextures(1, &_textureid);
+
+//			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+//			glEnable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, _textureid);
 
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR /*GL_NEAREST*/);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR /*GL_NEAREST*/);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 //			glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
 
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, constRef.width(), constRef.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, constRef.bits());
+			glBindTexture(GL_TEXTURE_2D, 0);
 
-			GLenum error = glGetError();
-			if(error != GL_NO_ERROR) {
-				qWarning("texture upload failed. error code 0x%x\n", error);
-			}
+//			GLenum error = glGetError();
+//			if(error != GL_NO_ERROR) {
+//				qWarning("texture upload failed. error code 0x%x\n", error);
+//			}
 		}
 		else {
 //			_imageForDrawing = _imagePointer->convertToFormat(QImage::Format_ARGB32_Premultiplied);
@@ -524,7 +564,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     int resY = regMsgStrList.at(10).toInt();
     Q_ASSERT(resX > 0 && resY > 0);
 
-//	qDebug() << "sd;fkljasdf;lkasjdf;    " << framerate << "\n";
+	qDebug() << "SN_SageStreamWidget : streamer connected. Framerate is" << framerate << "\n";
     _perfMon->setExpectedFps( (qreal)framerate );
     _perfMon->setAdjustedFps( (qreal)framerate );
 

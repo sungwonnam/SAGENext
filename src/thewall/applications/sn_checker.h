@@ -24,6 +24,10 @@ private:
 	
 	GLuint _gltexture;
 
+	GLuint pboIds[2];
+
+	bool _init;
+
 //	GLuint _dynamic;
 
 //	QGLBuffer *_glbuffer;
@@ -32,7 +36,14 @@ private:
 
 	int _timerid;
 
+	qreal _frate;
+
 //	QTimer _timer;
+
+
+
+	QFuture<void> _future;
+	QFutureWatcher<void> _fwatcher;
 
 	struct timeval lats;
 	struct timeval late;
@@ -40,8 +51,22 @@ private:
 	struct rusage ru_start;
 	struct rusage ru_end;
 
+	void _doInit();
+	void _doRecvPixel();
+
 public slots:
 //	void doUpdate();
+
+	void recvPixel();
 };
+
+
+
+//class RecvPixel : public QThread
+//{
+//	Q_OBJECT
+//public:
+//	RecvPixel(QObject *parent=0);
+//};
 
 #endif // SN_CHECKER_H

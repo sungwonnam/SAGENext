@@ -124,6 +124,10 @@ SN_VNCClientWidget::~SN_VNCClientWidget() {
 	future.cancel();
 	future.waitForFinished();
 	if (_image) delete _image;
+
+	if (glIsTexture(_textureid)) {
+		glDeleteTextures(1, &_textureid);
+	}
 }
 
 rfbCredential * SN_VNCClientWidget::getCredential(struct _rfbClient *client, int credentialType) {
@@ -228,6 +232,7 @@ void SN_VNCClientWidget::scheduleUpdate() {
 //			glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
 
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, constRef.width(), constRef.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
+			glBindTexture(GL_TEXTURE_2D, 0);
 
 			GLenum error = glGetError();
 			if(error != GL_NO_ERROR) {
