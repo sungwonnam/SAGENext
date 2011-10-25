@@ -18,6 +18,8 @@ class QProcess;
 #include <QFutureWatcher>
 //#include <QWaitCondition>
 
+#include <QtOpenGL>
+
 class SN_SageStreamWidget : public SN_RailawareWidget
 {
 	Q_OBJECT
@@ -72,6 +74,7 @@ private:
 //	QPixmap _pixmapForDrawing;
 	QImage *_imagePointer;
 
+	GLuint _textureid;
 
 
 	DoubleBuffer *doubleBuffer;

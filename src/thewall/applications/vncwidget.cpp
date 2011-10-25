@@ -1,5 +1,4 @@
 #include "vncwidget.h"
-#include <signal.h>
 
 #include "base/perfmonitor.h"
 #include "base/appinfo.h"
@@ -7,7 +6,7 @@
 
 #include <QtGui>
 
-
+#include <signal.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
@@ -22,6 +21,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	, vncclient(0)
 	, serverPort(5900)
 	, _image(0)
+    , _textureid(0)
 	, _end(false)
 	, _framerate(frate)
 
@@ -86,7 +86,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 		vncclient->vncRec->doNotSleep = true;
 
 	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
-	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_ARGB32_Premultiplied);
+//	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_ARGB32_Premultiplied);
 //	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
 	//qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
 
@@ -163,9 +163,20 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 //		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _imageForDrawing);
 //	}
 
-	if (_image && !_image->isNull()) {
-		// I'm drawing the QImage to avoid conversion delay (just like SageStreamWidget)
-		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_image);
+
+
+
+	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
+		if (glIsTexture(_textureid)) {
+			QGLWidget *viewportWidget = (QGLWidget *)w;
+			viewportWidget->drawTexture(QPointF(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt()), _textureid);
+		}
+	}
+	else {
+		if (_image && !_image->isNull()) {
+			// I'm drawing the QImage to avoid conversion delay (just like SageStreamWidget)
+			painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_image);
+		}
 	}
 
 
@@ -187,14 +198,48 @@ void SN_VNCClientWidget::scheduleUpdate() {
 	if (!_image || _image->isNull()) {
     }
 	else {
-//		_perfMon->getConvTimer().start();
+		_perfMon->getConvTimer().start();
 
 		// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
 		// QGraphicsView will process the event
 
 //		_imageForDrawing = *_image;
 
-//		_perfMon->updateConvDelay();
+
+
+
+
+		QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
+		if(glContext) {
+
+			// to avoid detach(), and QGLContext::InvertedYBindOption
+			// In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
+			const QImage &constRef = _image->mirrored(false, true);
+			//_textureid = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
+
+			if (glIsTexture(_textureid)) {
+				glDeleteTextures(1, &_textureid);
+			}
+			glGenTextures(1, &_textureid);
+			glBindTexture(GL_TEXTURE_2D, _textureid);
+
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR /*GL_NEAREST*/);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR /*GL_NEAREST*/);
+//			glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, constRef.width(), constRef.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
+
+			GLenum error = glGetError();
+			if(error != GL_NO_ERROR) {
+				qWarning("texture upload failed. error code 0x%x\n", error);
+			}
+		}
+
+
+
+
+
+		_perfMon->updateConvDelay();
 
 		update();
 	}
@@ -291,7 +336,7 @@ void SN_VNCClientWidget::receivingThread() {
 		*/
 
 		for (int i=0; i<vncclient->width * vncclient->height; i++) {
-			rgbbuffer[i] = qRgb(vncpixels[4*i+0], vncpixels[4*i+1], vncpixels[4*i+2]);
+			rgbbuffer[i] = qRgb(vncpixels[4*i+2], vncpixels[4*i+1], vncpixels[4*i+0]);
 		}
 
 		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);

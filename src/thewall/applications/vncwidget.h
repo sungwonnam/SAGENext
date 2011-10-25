@@ -9,7 +9,7 @@
 
 #include <QHostAddress>
 #include <QtCore>
-
+#include <QtOpenGL>
 
 
 class SN_VNCClientWidget : public SN_RailawareWidget
@@ -30,6 +30,11 @@ private:
           pixel buffer
           */
         QImage *_image;
+
+		/**
+		  texture id I'm going to draw
+		  */
+		GLuint _textureid;
 
 //		QImage _imageForDrawing;
 

@@ -196,9 +196,9 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 	
 	painter->setCompositionMode(QPainter::CompositionMode_Source);
 	
-	if (!_imageForDrawing.isNull()) {
-		painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
-	}
+//	if (!_imageForDrawing.isNull()) {
+//		painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
+//	}
 
 //	if (!_pixmapForDrawing.isNull()) {
 //		painter->drawPixmap(_bordersize, _bordersize, _pixmapForDrawing);
@@ -206,6 +206,22 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 //	if (_imagePointer && !_imagePointer->isNull()) {
 //		painter->drawImage(_bordersize, _bordersize, *_imagePointer);
 //	}
+
+
+
+	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
+		if (glIsTexture(_textureid)) {
+			QGLWidget *viewportWidget = (QGLWidget *)w;
+			viewportWidget->drawTexture(QPointF(_bordersize, _bordersize), _textureid);
+		}
+	}
+	else {
+		if (!_imageForDrawing.isNull()) {
+//			painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
+		}
+	}
+
+
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
@@ -285,7 +301,48 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		//_imageForDrawing = imgPtr->convertToFormat(QImage::Format_ARGB32_Premultiplied); // faster drawing !!
 //		_imageForDrawing = QImage(rawptr, doubleBuffer->imageWidth(), doubleBuffer->imageHeight(), doubleBuffer->imageFormat()).convertToFormat(QImage::Format_ARGB32_Premultiplied);
 		
-		_imageForDrawing = _imagePointer->convertToFormat(QImage::Format_ARGB32_Premultiplied);
+//		_imageForDrawing = _imagePointer->convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+
+
+
+
+
+		QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
+		if(glContext) {
+
+			// to avoid detach(), and QGLContext::InvertedYBindOption
+			// In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
+			const QImage &constRef = _imagePointer->mirrored(false, true);
+			//_textureid = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
+
+			if (glIsTexture(_textureid)) {
+				glDeleteTextures(1, &_textureid);
+			}
+			glGenTextures(1, &_textureid);
+			glBindTexture(GL_TEXTURE_2D, _textureid);
+
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR /*GL_NEAREST*/);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR /*GL_NEAREST*/);
+//			glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, constRef.width(), constRef.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, constRef.bits());
+
+			GLenum error = glGetError();
+			if(error != GL_NO_ERROR) {
+				qWarning("texture upload failed. error code 0x%x\n", error);
+			}
+		}
+		else {
+//			_imageForDrawing = _imagePointer->convertToFormat(QImage::Format_ARGB32_Premultiplied);
+		}
+
+
+
+
+
+
+
 
 		_perfMon->updateConvDelay();
 

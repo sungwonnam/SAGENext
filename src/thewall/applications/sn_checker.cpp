@@ -10,6 +10,9 @@
 SN_Checker::SN_Checker(const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wFlags)
     : SN_BaseWidget(appid, s, parent, wFlags)
     , _image(0)
+    , _gltexture(0)
+//    , _glbuffer(0)
+//    , _pbuffer(0)
 {
 	_image = new QImage(imagesize , QImage::Format_RGB32);
 	qDebug() << "SN_Checker : bytecount" << _image->byteCount() << "Byte";
@@ -32,11 +35,16 @@ SN_Checker::SN_Checker(const QSize &imagesize, qreal framerate, const quint64 ap
 	if(_perfMon) {
 		_perfMon->getRecvTimer().start(); //QTime::start()
 	}
+
 }
 
 SN_Checker::~SN_Checker() {
 //	killTimer(_timerid);
 	if (_image) delete _image;
+//	if (_glbuffer) {
+//		_glbuffer->destroy();
+//		delete _glbuffer;
+//	}
 }
 
 void SN_Checker::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
@@ -48,18 +56,40 @@ void SN_Checker::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWi
 
 	SN_BaseWidget::paint(painter,o,w);
 
-//	if (_image && !_image->isNull()) {
-//		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_image);
-//	}
 	
-	
-	if (glIsTexture(_gltexture)) {
-		if (painter->paintEngine()->type() == QPaintEngine::OpenGL2) {
+	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
+		if (glIsTexture(_gltexture)) {
+
+//			painter->beginNativePainting();
+
+//			glBindTexture(GL_TEXTURE_2D, _gltexture);
+
+//			glBegin(GL_QUADS);
+//			glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+//			glTexCoord2f(1.0, 1.0); glVertex2f(_image->width(), 0);
+//			glTexCoord2f(1.0, 0.0); glVertex2f(_image->width(), _image->height());
+//			glTexCoord2f(0.0, 0.0); glVertex2f(0, _image->height());
+//			glEnd();
+
+//			painter->endNativePainting();
+
 			QGLWidget *viewportWidget = (QGLWidget *)w;
-			viewportWidget->drawTexture(QPointF(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt()), _gltexture);
+			QRectF target = QRect(0, 0, _image->width(), _image->height());
+			viewportWidget->drawTexture(target, _gltexture);
 		}
-		else {
-			qDebug() << "paintEngine isn't OpenGL";
+
+//		if(_glbuffer && _glbuffer->bufferId()) {
+//			QGLWidget *viewportWidget = (QGLWidget *)w;
+//			viewportWidget->drawTexture(QPointF(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt()), _glbuffer->bufferId());
+//		}
+
+//		if (_pbuffer) {
+//			_pbuffer->drawTexture(QPointF(0,0), _dynamic);
+//		}
+	}
+	else {
+		if (_image && !_image->isNull()) {
+			painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_image);
 		}
 	}
 	
@@ -71,10 +101,25 @@ void SN_Checker::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWi
 void SN_Checker::timerEvent(QTimerEvent *e) {
 
 	if (e->timerId() == _timerid) {
+
+		gettimeofday(&lats, 0);
+
+//		if (!_glbuffer) {
+//			_glbuffer = new QGLBuffer();
+//			if ( ! _glbuffer->create() ) {
+//				qCritical() << "SN_Checker : couldn't create QGLBuffer";
+//				deleteLater();
+//			}
+//			else {
+//				_glbuffer->allocate(_image->byteCount());
+////				if (!_glbuffer->bind()) {
+////					qCritical() << "SN_Checker::timerEvent() : glbuffer->bind() failed";
+////				}
+//			}
+//		}
+
+
 		if (_image) {
-
-			gettimeofday(&lats, 0);
-
 //			unsigned char *buffer = _image->bits();
 
 //			int byteperpixel = _image->depth() / 8;
@@ -112,17 +157,49 @@ void SN_Checker::timerEvent(QTimerEvent *e) {
 			// now _image is complete
 			//
 
-			
-			static QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
+
+			QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
 			if(glContext) {
 				// pixmapTexture = glContext->bindTexture(QImage(QString("./test.png")), GL_TEXTURE_2D);
 //				pixmapTexture = glContext->bindTexture(QPixmap(QString(":/resources/plugin_200x200.png")), GL_TEXTURE_2D);
 				if (glIsTexture(_gltexture)) {
-					glContext->deleteTexture(_gltexture);
+//					glContext->deleteTexture(_gltexture);
 				}
-				_gltexture = glContext->bindTexture(*_image);
+
+				const QImage &constRef = *_image; // to avoid detach()
+//				_gltexture = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
+
+
+				if (glIsTexture(_gltexture)) {
+					glDeleteTextures(1, &_gltexture);
+				}
+				glGenTextures(1, &_gltexture);
+				glBindTexture(GL_TEXTURE_2D, _gltexture);
+
+				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR /*GL_NEAREST*/);
+				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR /*GL_NEAREST*/);
+				glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
+
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _image->width(), _image->height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
+
+				GLenum error = glGetError();
+				if(error != GL_NO_ERROR) {
+					qWarning("texture upload failed. error code 0x%x\n", error);
+				}
 			}
 
+//			Q_ASSERT(_glbuffer);
+//			_glbuffer->write(0, constRef.bits(), constRef.byteCount());
+
+
+			/*
+			_pbuffer->makeCurrent();
+			_gltexture = _pbuffer->bindTexture(*_image);
+			_dynamic = _pbuffer->generateDynamicTexture();
+
+			QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
+			glContext->makeCurrent();
+			*/
 
 			gettimeofday(&late, 0);
 			update();

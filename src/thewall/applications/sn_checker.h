@@ -24,6 +24,12 @@ private:
 	
 	GLuint _gltexture;
 
+//	GLuint _dynamic;
+
+//	QGLBuffer *_glbuffer;
+
+//	QGLPixelBuffer *_pbuffer;
+
 	int _timerid;
 
 //	QTimer _timer;
