@@ -79,7 +79,7 @@ void SN_PixmapWidget::start() {
 
 	setCacheMode(QGraphicsItem::NoCache);
 
-	setAttribute(Qt::WA_PaintOnScreen);
+	//setAttribute(Qt::WA_PaintOnScreen);
 
 
 	futureWatcher = new QFutureWatcher<bool>(this);
