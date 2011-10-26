@@ -172,8 +172,6 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 //	}
 
 
-
-
 	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
 		if (glIsTexture(_textureid)) {
 			QGLWidget *viewportWidget = (QGLWidget *)w;
@@ -204,54 +202,53 @@ void SN_VNCClientWidget::scheduleUpdate() {
 #endif
 */
 	if (!_image || _image->isNull()) {
+		return;
     }
-	else {
-		_perfMon->getConvTimer().start();
-
-		// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
-		// QGraphicsView will process the event
-
-//		_imageForDrawing = *_image;
 
 
+	_perfMon->getConvTimer().start();
+
+	// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
+	// QGraphicsView will process the event
+
+	//_imageForDrawing = *_image;
 
 
 
-		QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
-		if(glContext) {
-
-			// to avoid detach(), and QGLContext::InvertedYBindOption
-			// In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
-			const QImage &constRef = _image->mirrored(false, true);
-			//_textureid = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
-
-			if (glIsTexture(_textureid)) {
-				glDeleteTextures(1, &_textureid);
-			}
-			glGenTextures(1, &_textureid);
-			glBindTexture(GL_TEXTURE_2D, _textureid);
-
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-//			glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
-
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, constRef.width(), constRef.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
-			glBindTexture(GL_TEXTURE_2D, 0);
-
-			GLenum error = glGetError();
-			if(error != GL_NO_ERROR) {
-				qWarning("texture upload failed. error code 0x%x\n", error);
-			}
+	const QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
+	if(glContext) {
+		if (glIsTexture(_textureid)) {
+			glDeleteTextures(1, &_textureid);
 		}
 
+		//
+		// to avoid detach(), and QGLContext::InvertedYBindOption
+		// In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
+		//
+		const QImage &constRef = _image->mirrored(false, true);
+		//_textureid = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
+		glGenTextures(1, &_textureid);
+		glBindTexture(GL_TEXTURE_2D, _textureid);
 
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+		//glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
 
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, constRef.width(), constRef.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
+		glBindTexture(GL_TEXTURE_2D, 0);
 
-		_perfMon->updateConvDelay();
-
-		update();
+		GLenum error = glGetError();
+		if(error != GL_NO_ERROR) {
+			qWarning("texture upload failed. error code 0x%x\n", error);
+		}
 	}
+
+
+
+	_perfMon->updateConvDelay();
+
+	update();
 }
 
 void SN_VNCClientWidget::receivingThread() {

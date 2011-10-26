@@ -30,13 +30,13 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
     , _sailAppProc(0)
     , _sageAppId(0)
     , _receiverThread(0)
-    , _imagePointer(0)
+//    , _imagePointer(0)
     , doubleBuffer(0)
     //, _pixmap(0)
     , serversocket(0)
     , streamsocket(0)
 //    , frameCounter(0)
-	, _bordersize(0)
+//	, _bordersize(0)
     , _streamProtocol(0)
 	, _readyForStreamer(false)
 {
@@ -48,7 +48,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 
 	connect(&_initReceiverWatcher, SIGNAL(finished()), this, SLOT(startReceivingThread()));
 
-	_bordersize = s->value("gui/framemargin",0).toInt();
+//	_bordersize = s->value("gui/framemargin",0).toInt();
 	
 	setAttribute(Qt::WA_PaintOnScreen);
 }
@@ -200,7 +200,7 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 //	painter->setCompositionMode(QPainter::CompositionMode_Source);
 	
 //	if (!_imageForDrawing.isNull()) {
-//		painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
+//		painter->drawImage(0, 0, _imageForDrawing);
 //	}
 
 //	if (!_pixmapForDrawing.isNull()) {
@@ -211,33 +211,34 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 //	}
 
 
-
-	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
+	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2
+	//|| painter->paintEngine()->type() == QPaintEngine::OpenGL
+	)
+	{
 		if (glIsTexture(_textureid)) {
-
 			//
 			// 0 draw latency because it's drawn from the cache
+			// but higher latency in scheduleUpdate()
 			//
 //			QGLWidget *viewportWidget = (QGLWidget *)w;
-//			viewportWidget->drawTexture(QPointF(_bordersize, _bordersize), _textureid);
+//			viewportWidget->drawTexture(QPointF(0,0), _textureid);
 
 			painter->beginNativePainting();
-
 
 			glEnable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, _textureid);
 
 			glBegin(GL_QUADS);
 			//
-			// below is QGLContext::InvertedYBindOption
+			// below is same with QGLContext::InvertedYBindOption
 			//
-			glTexCoord2f(0.0, 1.0); glVertex2f(0, _imagePointer->height());
-			glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
-			glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), 0);
+			glTexCoord2f(0.0, 1.0); glVertex2f(0, size().height());
+			glTexCoord2f(1.0, 1.0); glVertex2f(size().width(), size().height());
+			glTexCoord2f(1.0, 0.0); glVertex2f(size().width(), 0);
 			glTexCoord2f(0.0, 0.0); glVertex2f(0, 0);
 
 			//
-			// below is normal
+			// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
 			//
 //			glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
 //			glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
@@ -246,20 +247,17 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 
 			glEnd();
 
-//			glBindTexture(GL_TEXTURE_2D, 0);
-//			glDisable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, 0);
+			glDisable(GL_TEXTURE_2D);
 
 			painter->endNativePainting();
-
 		}
 	}
 	else {
 		if (!_imageForDrawing.isNull()) {
-//			painter->drawImage(_bordersize, _bordersize, _imageForDrawing);
+//			painter->drawImage(0, 0, _imageForDrawing);
 		}
 	}
-
-
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
@@ -290,17 +288,23 @@ void SN_SageStreamWidget::scheduleReceive() {
   */
 void SN_SageStreamWidget::scheduleUpdate() {
 
-    if ( !doubleBuffer || !_receiverThread || _receiverThread->isFinished() || !isVisible()  )
+    if ( !doubleBuffer || !_receiverThread || _receiverThread->isFinished() || !isVisible() )
         return;
-
 
 	//qDebug() << _globalAppId << "scheduleUpdate" << QTime::currentTime().toString("hh:mm:ss.zzz");
 
-	_imagePointer = static_cast<QImage *>(doubleBuffer->getBackBuffer());
+	const QImage *constImageRef = static_cast<QImage *>(doubleBuffer->getBackBuffer());
 //	unsigned char *rawptr = 0;
 //	rawptr = (unsigned char *)doubleBuffer->getBackBuffer();
 
-	if (_imagePointer && !_imagePointer->isNull() ) {
+	if ( !constImageRef || constImageRef->isNull()) {
+		qCritical("SageStreamWidget::%s() : globalAppId %llu, sageAppId %llu : imgPtr is null. Failed to retrieve back buffer from double buffer", __FUNCTION__, globalAppId(), _sageAppId);
+		return;
+	}
+
+	_perfMon->getConvTimer().start();
+
+
 //	if (rawptr) {
 		//qDebug() << _globalAppId << "scheduleUpdate" << QTime::currentTime().toString("hh:mm:ss.zzz");
 		// converts to QPixmap if you're gonna paint same QImage more than twice.
@@ -319,107 +323,98 @@ void SN_SageStreamWidget::scheduleUpdate() {
    ****/
 
 
-		/*
 	 //
-	 // in X11, this means image is converted and copied to X Server -> slow !
-	 // but drawing pixmap is very efficient
+	 // Drawing QPixmap is the fastest. But in X11, this means image is converted and copied to X Server -> slow !
+	 // For static images this is ok but for animations this results bad frame rate
 	 //
-   _pixmap = QPixmap::fromImage(*imgPtr);
+	/*
+   _pixmap = QPixmap::fromImage(*constImageRef);
    if (_pixmap.isNull()) {
 	qCritical("SageStreamWidget::scheduleUpdate() : QPixmap::fromImage() error");
+	return;
    }
    */
-		_perfMon->getConvTimer().start();
+
+
+//	There's small conversion delay but drawing is faster
+
+//	_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32); // faster drawing !!
+//	_imageForDrawing = constImageRef->convertToFormat(QImage::Format_ARGB32_Premultiplied); // faster drawing !!
+
+	// Don't create QImage like this. This slot is called frequently
+//	_imageForDrawing = QImage(rawptr, doubleBuffer->imageWidth(), doubleBuffer->imageHeight(), doubleBuffer->imageFormat()).convertToFormat(QImage::Format_RGB32);
+
+//	_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32);
+//	if (_imageForDrawing.isNull()) {
+//		qCritical("SN_SageStreamWidget::%s() : Image conversion failed", __FUNCTION__);
+//		return;
+//	}
+
+	const QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
+	if(glContext) {
+		if (glIsTexture(_textureid)) {
+			glDeleteTextures(1, &_textureid);
+		}
+
+//		 QGLContext::InvertedYBindOption Because In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
+		//
+		// This is awfully slow. Probably because QImage::scaled() inside qgl.cpp to convert image size near power of two
+		//
+//		_textureid = glContext->bindTexture(constImageRef->convertToFormat(QImage::Format_RGB32), GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
+
+		glGenTextures(1, &_textureid);
+		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		//glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, _textureid);
+
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		//glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
 
 		//
-		// There's small conversion delay but drawing is faster
+		// Note that it's QImage::Format_RGB888 we're getting from SAGE app
 		//
-		//_imageForDrawing = imgPtr->convertToFormat(QImage::Format_RGB32); // faster drawing !!
-		//_imageForDrawing = imgPtr->convertToFormat(QImage::Format_ARGB32_Premultiplied); // faster drawing !!
-//		_imageForDrawing = QImage(rawptr, doubleBuffer->imageWidth(), doubleBuffer->imageHeight(), doubleBuffer->imageFormat()).convertToFormat(QImage::Format_ARGB32_Premultiplied);
-		
-//		_imageForDrawing = _imagePointer->convertToFormat(QImage::Format_ARGB32_Premultiplied);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, constImageRef->width(), constImageRef->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, constImageRef->bits());
+		glBindTexture(GL_TEXTURE_2D, 0);
 
-
-
-		QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
-		if(glContext) {
-
-			// to avoid detach(), and QGLContext::InvertedYBindOption
-			// In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
-//			const QImage &constRef = *_imagePointer;
-			const QImage *constPtr = _imagePointer;
-			//_textureid = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
-
-			if (glIsTexture(_textureid)) {
-				glDeleteTextures(1, &_textureid);
-			}
-			glGenTextures(1, &_textureid);
-//			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-//			glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, _textureid);
-
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//			glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
-
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, constPtr->width(), constPtr->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, constPtr->bits());
-			glBindTexture(GL_TEXTURE_2D, 0);
-
-//			GLenum error = glGetError();
-//			if(error != GL_NO_ERROR) {
-//				qWarning("texture upload failed. error code 0x%x\n", error);
-//			}
-		}
-		else {
-//			_imageForDrawing = _imagePointer->convertToFormat(QImage::Format_ARGB32_Premultiplied);
-		}
-
-
-
-
-		_perfMon->updateConvDelay();
-
-		if (0) {
-//		if (_pixmapForDrawing.isNull()) {
-//		if(_imageForDrawing.isNull()) {
-			qCritical("SageStreamWidget::scheduleUpdate() : image is null");
-		}
-		
-		else {
-			setScheduled(false); // reset scheduling flag for SMART scheduler
-
-//			++frameCounter;
-			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget : " << frameCounter << " has converted";
-
-			/*
-				  Maybe I should schedule update() and releaseBackBuffer in the scheduler
-				*/
-			doubleBuffer->releaseBackBuffer();
-			//imgPtr = 0;
-//			rawptr = 0;
-
-			//_perfMon->getEqTimer().start();
-			//QDateTime::currentMSecsSinceEpoch();
-			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget is about to call update() for frame " << frameCounter;
-
-			// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
-			// QGraphicsView will process the event
-			update(); // post paint event to myself
-			//qApp->sendPostedEvents(this, QEvent::MetaCall);
-			//qApp->flush();
-			//qApp->processEvents();
-
-			//this->scene()->views().front()->update( mapRectToScene(boundingRect()).toRect() );
-		}
+		//GLenum error = glGetError();
+		//if(error != GL_NO_ERROR) {
+		//		qCritical("texture upload failed. error code 0x%x\n", error);
+		//}
 	}
 	else {
-		qCritical("SageStreamWidget::%s() : globalAppId %llu, sageAppId %llu : imgPtr is null. Failed to retrieve back buffer from double buffer", __FUNCTION__, globalAppId(), _sageAppId);
+		_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32);
+		if (_imageForDrawing.isNull()) {
+			qCritical("SN_SageStreamWidget::%s() : Image conversion failed", __FUNCTION__);
+			return;
+		}
 	}
-	//doubleBuffer->releaseBackBuffer();
-	//imgPtr = 0;
+
+
+	_perfMon->updateConvDelay();
+
+
+	setScheduled(false); // reset scheduling flag for SMART scheduler
+
+	//++frameCounter;
+	//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget : " << frameCounter << " has converted";
+
+	/*
+	  Maybe I should schedule update() and releaseBackBuffer in the scheduler
+	 */
+	doubleBuffer->releaseBackBuffer();
+
+
+	// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
+	// QGraphicsView will process the event
+	update(); // post paint event to myself
+	//qApp->sendPostedEvents(this, QEvent::MetaCall);
+	//qApp->flush();
+	//qApp->processEvents();
+
+	//this->scene()->views().front()->update( mapRectToScene(boundingRect()).toRect() );
 }
 
 
@@ -560,7 +555,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     int resY = regMsgStrList.at(10).toInt();
     Q_ASSERT(resX > 0 && resY > 0);
 
-	qDebug() << "SN_SageStreamWidget : streamer connected. Framerate is" << framerate << "\n";
+	qDebug() << "SN_SageStreamWidget : streamer connected. Framerate is" << framerate;
     _perfMon->setExpectedFps( (qreal)framerate );
     _perfMon->setAdjustedFps( (qreal)framerate );
 

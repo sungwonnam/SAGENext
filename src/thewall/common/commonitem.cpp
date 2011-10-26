@@ -745,6 +745,7 @@ SN_SimpleTextItem::SN_SimpleTextItem(int ps, const QColor &fontcolor, const QCol
 {
 	if ( ps > 0 ) {
 		QFont f;
+		f.setStyleStrategy(QFont::OpenGLCompatible);
 		f.setPointSize(ps);
 		setFont(f);
 	}

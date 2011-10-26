@@ -100,7 +100,6 @@ void SN_PixmapWidget::callUpdate() {
 		_imgHeight = _imageTemp->height();
 
 //		qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
-
 //		resize(_imgWidth + _bordersize * 2 , _imgHeight + _bordersize * 2);
 //		_appInfo->setFrameSize(_imgWidth + _bordersize * 2, _imgHeight + _bordersize*2, _imageTemp->depth());
 
@@ -108,6 +107,8 @@ void SN_PixmapWidget::callUpdate() {
 		_appInfo->setFrameSize(_imgWidth, _imgHeight, _imageTemp->depth());
 
 
+/****
+  This is for Qt 4.8 RC
 
 		QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
 		if(glContext) {
@@ -132,6 +133,15 @@ void SN_PixmapWidget::callUpdate() {
 		else {
 			_drawingPixmap = QPixmap::fromImage(*_imageTemp);
 		}
+		*/
+
+		/**
+		  With Qt 4.8 RC
+		  image is kept uploaded to X server
+
+		  Below works ok with Qt 4.7.4
+		  **/
+		_drawingPixmap = QPixmap::fromImage(*_imageTemp);
 
 		delete _imageTemp;
 		_imageTemp = 0;
@@ -176,8 +186,12 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 	//if ( scaleFactorX != 1.0 || scaleFactorY != 1.0 )
 	//painter->scale(scaleFactorX, scaleFactorX);
 
+/*************
+  *******
+  This is for Qt 4.8 RC.
+  I should test drawPixmap when official 4.8 is out
 
-	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
+	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 ) {
 		if (glIsTexture(_gltexture)) {
 
 //			painter->beginNativePainting();
@@ -206,6 +220,16 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 			painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _drawingPixmap);
 		//	painter->drawPixmap(0, 0, _drawingPixmap);
 	}
+	*************/
+
+	/****
+	  ***
+	  With Qt 4.7.4 this is ok.
+	  Opening multiple large static images won't hurt performance (meaning drawing latency is still 0)
+	  But with Qt 4.8 RC, I should do native OpenGL calls
+	  ****
+	  ****/
+	painter->drawPixmap(0,0, _drawingPixmap);
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.

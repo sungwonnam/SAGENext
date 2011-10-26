@@ -72,10 +72,9 @@ private:
 	  */
 	QImage _imageForDrawing;
 //	QPixmap _pixmapForDrawing;
-	QImage *_imagePointer;
+//	QImage *_imagePointer;
 
 	GLuint _textureid;
-
 
 	DoubleBuffer *doubleBuffer;
 
@@ -107,7 +106,7 @@ private:
 
 //	quint64 frameCounter;
 
-	int _bordersize;
+//	int _bordersize;
 
 	enum sagePixFmt {PIXFMT_NULL, PIXFMT_555, PIXFMT_555_INV, PIXFMT_565, PIXFMT_565_INV,
 		  PIXFMT_888, PIXFMT_888_INV, PIXFMT_8888, PIXFMT_8888_INV, PIXFMT_RLE, PIXFMT_LUV,

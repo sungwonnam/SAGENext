@@ -94,6 +94,8 @@ void SN_PDFViewerWidget::nextPage() {
 void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 	if (pageNumber < 0  || pageNumber >=  _document->numPages()) return;
 
+	_perfMon->getConvTimer().start();
+
 	if (_currentPage) {
 		delete _currentPage;
 		_currentPage = 0;
@@ -101,7 +103,7 @@ void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 	_currentPage = _document->page(pageNumber);
 	_currentPageIndex = pageNumber;
 
-	qDebug() << "hello" << pageNumber;
+//	qDebug() << "hello" << pageNumber;
 
 //	qint64 start = QDateTime::currentMSecsSinceEpoch();
 
@@ -113,6 +115,8 @@ void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 #endif
 **/
 	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(_dpix, _dpiy));
+
+	_perfMon->updateConvDelay();
 
 	update();
 
