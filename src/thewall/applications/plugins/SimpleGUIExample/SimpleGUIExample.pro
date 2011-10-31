@@ -20,7 +20,7 @@ OBJECTS_DIR = $$BUILD_DIR
 
 
 SOURCES += \
-imagewidgetplugin.cpp \
+simpleguiexample.cpp \
 ../../base/basewidget.cpp \
 ../../base/appinfo.cpp \
 ../../base/perfmonitor.cpp \
@@ -28,7 +28,7 @@ imagewidgetplugin.cpp \
 
 
 HEADERS  += \
-imagewidgetplugin.h \
+simpleguiexample.h \
 ../../base/SN_plugininterface.h \
 ../../base/basewidget.h \
 ../../base/appinfo.h \

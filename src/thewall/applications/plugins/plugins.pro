@@ -1,6 +1,6 @@
 TEMPLATE = subdirs
 SUBDIRS += \
-ImageWidgetPlugin \
+SimpleGUIExample \
 MouseHoverExample \
     MouseDragExample
 

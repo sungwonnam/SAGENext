@@ -1,4 +1,4 @@
-#include "imagewidgetplugin.h"
+#include "simpleguiexample.h"
 
 #include "../../../common/commonitem.h"
 //#include "../../base/perfmonitor.h"
@@ -13,19 +13,11 @@ SimpleGUIExample::SimpleGUIExample()
 	//
 	setWindowFlags(Qt::Window);
 
-	//
-	// I want to intercept wheelEvent sent to label and do something.
-	// It is sent to the label because label (child) is stacking above me (parent)
-	//
-//	setFiltersChildEvents(true);
 
 	// create label
 	label = new QLabel();
-//	label->setPixmap(QPixmap(800,600));
-	label->setText("Hello World");
 	label->setFrameStyle(QFrame::Box);
 	label->setLineWidth(8);
-	label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
 		//
         // create proxywidget for label
@@ -80,10 +72,6 @@ SimpleGUIExample::SimpleGUIExample()
       */
 	resize(800, 400);
 
-//	_appInfo->setFrameSize(800, 600, 24);
-
-        /* appInfo->setFrameSize() takes care of it */
-//	appInfo->setNativeSize(QSize(800, 600)); // duplicate
 
 //		qreal l, r, t, b;
 //		getWindowFrameMargins(&l, &t, &r, &b);
