@@ -198,16 +198,27 @@ public:
 		inline bool isRegisteredForMouseHover() const {return _registerForMouseHover;}
 
 
+
 		/**
-		  If SN_BaseWidget is registered for hover listener widget, (by settings setRegisterForMouseHover())
-		  a pointer will call this function if it's on this widget's area
+		  If SN_BaseWidget is registered for hover listener widget, (by settings setRegisterForMouseHover()), the pointer will call this function whenever it moves.
+
+		  isHovering is true only when the pointer is hovering on this widget.
+		  The exact location of the pointer on this widget is point which is in this widget's local coordinate.
 		  */
-		virtual void handlePointerHover(SN_PolygonArrowPointer * /*pointer*/, const QPointF & /*pointerPosOnMe*/, bool /* isHovering */) {}
+		virtual void handlePointerHover(SN_PolygonArrowPointer */*pointer*/, const QPointF & /*point*/, bool /* isHovering */) {}
+
+		/**
+		  The point is in this widget's local coordinate
+		  */
+		virtual void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn = Qt::LeftButton);
 
 		/*!
-          Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to weird behavior. So this should be implemented in child class manually.
+          Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to weird behavior.
+          So this should be implemented in child class manually.
+
+		  This function is called in SN_PolygonArrowPointer::pointerMove()
           */
-        virtual void handlePointerDrag(const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
+        virtual void handlePointerDrag(SN_PolygonArrowPointer *pointer ,const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button = Qt::LeftButton, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 
 		/**
@@ -337,7 +348,7 @@ protected:
 		  setTransformOriginPoint() with center of the widget
 		  Because of this, your widget's transformationOrigin is center
           */
-        virtual void resizeEvent(QGraphicsSceneResizeEvent *event);
+//        virtual void resizeEvent(QGraphicsSceneResizeEvent *event);
 
         /*!
           * Just changes z value and recency of interaction

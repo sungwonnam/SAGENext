@@ -9,17 +9,16 @@
 /*!
   A plugin example that inherits BaseWidget
   */
-class ExamplePlugin : public SN_BaseWidget, SN_PluginInterface
+class SimpleGUIExample : public SN_BaseWidget, SN_PluginInterface
 {
 	Q_OBJECT
 	Q_INTERFACES(SN_PluginInterface)
 
 public:
-	ExamplePlugin();
-	virtual ~ExamplePlugin();
+	SimpleGUIExample();
+	virtual ~SimpleGUIExample();
 
 	SN_BaseWidget * createInstance();
-
 
 protected:
 
@@ -31,36 +30,7 @@ protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 
-		/**
-		  To intercept wheelEvent sent to label
-		  */
-	bool sceneEventFilter(QGraphicsItem *watched, QEvent *event);
-
-        /**
-          BaseWidget's wheelEvent resizes the entire window if item flag is Qt::Widget
-		  and nothing happens if Qt::Window
-          */
-//		void wheelEvent(QGraphicsSceneWheelEvent *event);
-
-//	void resizeEvent(QGraphicsSceneResizeEvent *event);
-
 private:
-		/*!
-		  This is null for the plugin that inherits BaseWidget
-		  */
-//        QGraphicsProxyWidget *root;
-
-        /*!
-          your paint device
-          */
-//	QImage *image;
-
-        /*!
-          Try using pixmap as much as possible because it's faster !
-          */
-//	QPixmap *pixmap;
-//	QGraphicsPixmapItem *pixmapItem;
-
 
         /*!
           Example GUI components

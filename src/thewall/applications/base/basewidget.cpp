@@ -650,8 +650,8 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 
 QRectF SN_BaseWidget::resizeHandleSceneRect()
 {
-	QSizeF size(100, 100);
-	QPointF pos( boundingRect().width() - size.width(), boundingRect().height() - size.height() );
+	QSizeF size(128, 128);
+	QPointF pos( boundingRect().right() - size.width() - 16, boundingRect().bottom() - size.height() - 16 );
 	return mapRectToScene(QRectF(pos, size));
 }
 
@@ -764,16 +764,27 @@ void SN_BaseWidget::createActions()
 
 
 
+void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
+	Q_UNUSED(pointer);
+	Q_UNUSED(point);
+	Q_UNUSED(btn);
 
+	setTopmost();
+}
 
-
-void SN_BaseWidget::handlePointerDrag(const QPointF & pointerScenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
+void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & pointerScenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
+	Q_UNUSED(pointer);
 
 	if (btn == Qt::LeftButton) {
-		
-		if (isWindow() && resizeHandleSceneRect().contains(pointerScenePos)) {
-			// do resize
-			resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);
+		if (resizeHandleSceneRect().contains(pointerScenePos)) {
+			if (isWindow()) {
+				// do resize
+				resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);
+			}
+			else {
+				// do scale.
+				// For now, resizeHandleSceneRect is always bottom right corner of the widget
+			}
 		}
 		else {
 			moveBy(pointerDeltaX, pointerDeltaY);
@@ -899,7 +910,7 @@ void SN_BaseWidget::timerEvent(QTimerEvent *e) {
         */
 }
 
-void SN_BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
+//void SN_BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
 
 	/**
 	  setting transform origin to center is very problematic when scaled.
@@ -909,7 +920,7 @@ void SN_BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
 //	setTransformOriginPoint(boundingRect().center());
 
 //	qDebug() << "SN_BaseWidget::resizeEvent() : bw's transform origin point" << transformOriginPoint();
-}
+//}
 
 void SN_BaseWidget::setLastTouch() {
 #if QT_VERSION < 0x040700

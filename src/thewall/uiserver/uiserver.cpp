@@ -221,7 +221,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
         QByteArray pname(64, '\0');
         sscanf(msg.constData(), "%d %u %s %s", &code, &uiclientid, pname.data(), colorname);
 
-        qDebug("UiServer::%s() : POINTER_SHARE from uiclient %u, (%s, %s)",__FUNCTION__, uiclientid, pname.constData(), colorname);
+//        qDebug("UiServer::%s() : POINTER_SHARE from uiclient %u, (%s, %s)",__FUNCTION__, uiclientid, pname.constData(), colorname);
 
         SN_PolygonArrowPointer *pointerItem = 0;
 //		pointerItem = new SAGENextPolygonArrow(uiclientid, settings, QString(pname), QColor(QString(colorname)));

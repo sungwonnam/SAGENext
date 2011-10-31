@@ -5,7 +5,7 @@
 //#include "../../base/appinfo.h"
 
 
-ExamplePlugin::ExamplePlugin()
+SimpleGUIExample::SimpleGUIExample()
     : SN_BaseWidget(Qt::Window)
 {
 	//
@@ -17,14 +17,14 @@ ExamplePlugin::ExamplePlugin()
 	// I want to intercept wheelEvent sent to label and do something.
 	// It is sent to the label because label (child) is stacking above me (parent)
 	//
-	setFiltersChildEvents(true);
+//	setFiltersChildEvents(true);
 
 	// create label
 	label = new QLabel();
 //	label->setPixmap(QPixmap(800,600));
 	label->setText("Hello World");
-	label->setFrameStyle(QFrame::NoFrame);
-//	label->setLineWidth(6);
+	label->setFrameStyle(QFrame::Box);
+	label->setLineWidth(8);
 	label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
 		//
@@ -106,103 +106,45 @@ ExamplePlugin::ExamplePlugin()
 /*!
   Reimplement my own paint function
   */
-void ExamplePlugin::paint(QPainter * /*painter*/, const QStyleOptionGraphicsItem *, QWidget *)
+void SimpleGUIExample::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-        /** starts timer */
-        /*
-        if (_perfMon)
-                _perfMon->getDrawTimer().start();
-        */
+//	if (_perfMon)
+//		_perfMon->getDrawTimer().start();
+
+	SN_BaseWidget::paint(painter, option, widget);
+
+	/*************
+	put your drawing code here if needed
+      ************/
+//	painter->fillRect(boundingRect(), _currentColor.darker());
 
 
-        /*************
-
-          put your drawing code here if needed
-
-          ************/
-
-
-        /** overlay app information */
-	//BaseWidget::paint(painter, option, widget);
-
-        /** measure latency */
-        /*
-        if (_perfMon)
-                _perfMon->updateDrawLatency();
-        */
+//	if (_perfMon)
+//		_perfMon->updateDrawLatency();
 }
 
-ExamplePlugin::~ExamplePlugin() {
+SimpleGUIExample::~SimpleGUIExample() {
 }
 
-SN_BaseWidget * ExamplePlugin::createInstance() {
-	return new ExamplePlugin;
+SN_BaseWidget * SimpleGUIExample::createInstance() {
+	return new SimpleGUIExample;
 }
 
-//QString ExamplePlugin::name() const {
-//	//
-//    // Please return parent class name.
-//    // Don't change this !!!
-//	//
-//	return "BaseWidget";
-//}
-
-/*!
-  THis plugin doesn't have to have proxy widget
-  Because it reimplements paint() and manually draw everything.
-  So you don't have to modify this function.
-  */
-//QGraphicsProxyWidget * ExamplePlugin::rootWidget() {
-//	return root;
-//}
-
-
-bool ExamplePlugin::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
-	if (watched == labelProxy) {
-		if ( event->type() == QEvent::GraphicsSceneWheel) {
-
-			QGraphicsSceneWheelEvent *we = static_cast<QGraphicsSceneWheelEvent *>(event);
-			int numDegrees = we->delta() / 8;
-			int numTicks = numDegrees / 15;
-			qDebug() << numTicks;
-
-			QColor newcolor;
-			if (numTicks>0) {
-				newcolor  = _currentColor.lighter(101);
-			}
-			else {
-				newcolor = _currentColor.darker(101);
-			}
-
-			QPixmap pixmap(size().toSize());
-			pixmap.fill( _currentColor );
-			label->setPixmap(pixmap);
-
-			// event is not going to be forwarded to label
-			return true;
-		}
-	}
-
-	// everything else should be sent to proper child items
-	return false;
-}
-
-
-void ExamplePlugin::buttonR() {
+void SimpleGUIExample::buttonR() {
 	QPixmap pixmap(size().toSize());
 	label->setText("Red clicked");
 	_currentColor = QColor(Qt::red);
 	pixmap.fill( _currentColor );
 	label->setPixmap(pixmap);
 }
-void ExamplePlugin::buttonG() {
+void SimpleGUIExample::buttonG() {
 	QPixmap pixmap(size().toSize());
 	label->setText("Green clicked");
 	_currentColor = QColor(Qt::green);
 	pixmap.fill(_currentColor);
 	label->setPixmap(pixmap);
 }
-void ExamplePlugin::buttonB() {
+void SimpleGUIExample::buttonB() {
 	label->setText("Blue clicked");
 	QPixmap pixmap(size().toSize());
 	_currentColor = QColor(Qt::blue);
@@ -211,7 +153,7 @@ void ExamplePlugin::buttonB() {
 }
 
 
-Q_EXPORT_PLUGIN2(MouseClickExamplePlugin, ExamplePlugin)
+Q_EXPORT_PLUGIN2(MouseClickExamplePlugin, SimpleGUIExample)
 
 
 

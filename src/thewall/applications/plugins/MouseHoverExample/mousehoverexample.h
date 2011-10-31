@@ -10,7 +10,11 @@
 class TrackerItem : public QGraphicsEllipseItem
 {
 public:
-	TrackerItem(qreal x, qreal y, qreal w, qreal h, QGraphicsItem *parent = 0);
+	TrackerItem(qreal x, qreal y, qreal w, qreal h, const QColor &c, QGraphicsItem *parent = 0);
+
+private:
+	QColor _color;
+
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);
 };
@@ -53,7 +57,8 @@ private:
 	/**
 	  pointerid(uiclientid) , hover traking item
 	  */
-	QMap<quint64, TrackerItem *> _hoverTrackerItemList;
+//	QMap<quint64, TrackerItem *> _hoverTrackerItemList;
+	QMap<SN_PolygonArrowPointer *, TrackerItem *> _hoverTrackerItemList;
 
 
 	/**

@@ -70,46 +70,51 @@ SN_BaseWidget * MouseDragExample::createInstance() {
 	return new MouseDragExample;
 }
 
-TrackerItem * MouseDragExample::getTrackerItemUnderScenePos(const QPointF &scenepos) {
+TrackerItem * MouseDragExample::getTrackerItemUnderPoint(const QPointF &point) {
+	QList<QGraphicsItem *> children = childItems();
 
-	foreach(QGraphicsItem *child, childItems()) {
-		TrackerItem *tracker = static_cast<TrackerItem *>(child);
-		if (!tracker) continue;
-
-		/**
-		  if tracker's rectangle contains the scenepos
-		  then this tracker is under the pointer
-		  */
-		if (tracker->rect().contains( tracker->mapFromScene(scenepos) )) {
-			return tracker;
-		}
+	for (int i=children.size()-1; i>=0; i--) {
+//		TrackerItem *tracker = static_cast<TrackerItem *>(children.at(i));
+		QGraphicsItem *item = children.at(i);
+		if(item && item->boundingRect().contains(item->mapFromParent(point)))
+			return static_cast<TrackerItem *>(item);
 	}
+
 	return 0;
 }
 
-void MouseDragExample::handlePointerDrag(const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
+void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
+	SN_BaseWidget::handlePointerPress(pointer, point, btn);
 
-	TrackerItem *tracker = getTrackerItemUnderScenePos(scenePos);
+	TrackerItem *t = getTrackerItemUnderPoint(point);
+	if (t)
+		_dragTrackerMap.insert(pointer, t);
+}
+
+void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
+
+	//
+	// If there is a trackeritem under the pointer
+	//
+	TrackerItem *tracker = _dragTrackerMap.value(pointer, 0);
 	if (tracker) {
 		if (button == Qt::LeftButton) {
-			tracker->moveBy(pointerDeltaX, pointerDeltaY);
 
-			// Todo:
-			// need to prevent tracker item from moving outside of widget's window
-		}
-		else if (button == Qt::RightButton) {
+			QPointF trackerCenter = tracker->mapToParent(tracker->boundingRect().center());
 
-		}
-		else {
+			// And the tracker resides inside of this widget
+			if (boundingRect().contains(trackerCenter))
+
+				// then move the tracker
+				tracker->moveBy(pointerDeltaX, pointerDeltaY);
 
 		}
 	}
 	else {
 		/**
-		  to keep the base implementation -> moves window itself
+		  keep the base implementation -> moves this example window itself or resize the window
 		  */
-//		if ( scenePos is in dragging handle )
-//		SN_BaseWidget::handlePointerDrag(scenePos, pointerDeltaX, pointerDeltaY, button, modifier);
+		SN_BaseWidget::handlePointerDrag(pointer, scenePos, pointerDeltaX, pointerDeltaY, button, modifier);
 	}
 
 }

@@ -119,6 +119,8 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	//////////////////////////////
 
 
+
+
 	//
 	// iterate over items in the container maintained by the scene
 	// if pointer is on one of them
@@ -126,14 +128,21 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	// else
 	// unset hover flag
 	//
+	QList<QGraphicsItem *> collidingapps = _scene->collidingItems(this);
+	SN_BaseWidget *firstUnderPointer = 0;
+	for (int i=collidingapps.size()-1; i>=0; i--) {
+		QGraphicsItem *item = collidingapps.at(i);
+		if (item->type() < QGraphicsItem::UserType + 12) continue;
+		firstUnderPointer = static_cast<SN_BaseWidget *>(item);
+		break;
+	}
 	foreach(SN_BaseWidget *bw, _scene->hoverAcceptingApps) {
 		if (!bw) {
 			_scene->hoverAcceptingApps.removeOne(bw);
 			continue;
 		}
 
-		if (bw->contains( bw->mapFromScene(_scenePos) ) ) {
-//		if (collidesWithItem(bw, Qt::IntersectsItemBoundingRect)) {
+		if (bw == firstUnderPointer && bw->contains(bw->mapFromScene(_scenePos)) ) {
 			bw->handlePointerHover(this, bw->mapFromScene(_scenePos), true);
 		}
 		else {
@@ -152,23 +161,9 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
         // Because of pointerPress, appUnderPointer has already been set at this point
         //
         if (_basewidget) {
-			/*
-            //qDebug() << app->resizeHandleSceneRect() << _scenePos << deltax << deltay;
-            if ( _basewidget->isWindow()  &&  _basewidget->resizeHandleSceneRect().contains(_scenePos)) {
 
-                // resize doesn't count window frame
-                qreal top, left, right, bottom;
-				_basewidget->getWindowFrameMargins(&left, &top, &right, &bottom);
+			_basewidget->handlePointerDrag(this, _scenePos, deltax, deltay, Qt::LeftButton, modifier);
 
-				_basewidget->resize(_basewidget->boundingRect().width() -left - right + deltax, _basewidget->boundingRect().height() -top - bottom + deltay); // should have more PIXEL : not scaling
-            }
-            else {
-                // move app widget under this pointer
-//                _basewidget->moveBy(deltax, deltay);
-				_basewidget->handlePointerDrag( _scenePos, deltax, deltay, Qt::LeftButton, modifier);
-            }
-			*/
-			_basewidget->handlePointerDrag(_scenePos, deltax, deltay, Qt::LeftButton, modifier);
         }
 
 		//
@@ -268,9 +263,14 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
         qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
     }
 	else {
+		Q_ASSERT(_basewidget || _item);
+		if (_basewidget) _basewidget->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
+
+		/**
 //		qDebug() << "PolygonArrow::pointerPress() : got the app";
 		if (btn == Qt::LeftButton) {
-			if (_basewidget) _basewidget->setTopmost();
+			if (_basewidget)
+				_basewidget->setTopmost();
 		}
 		else if (btn == Qt::RightButton) {
 			// this won't be delivered
@@ -282,6 +282,7 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
 			// Assume each pointer has the selection rectangle widget
 			// selRect->setPos(scenePos);
 		}
+		**/
 	}
 }
 

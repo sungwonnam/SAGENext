@@ -6,13 +6,14 @@
 #include "../../../common/commonitem.h"
 
 
-TrackerItem::TrackerItem(qreal x, qreal y, qreal w, qreal h, QGraphicsItem *parent)
+TrackerItem::TrackerItem(qreal x, qreal y, qreal w, qreal h, const QColor &c, QGraphicsItem *parent)
 	: QGraphicsEllipseItem(x,y,w,h,parent)
+    , _color(c)
 {
 	setAcceptedMouseButtons(0);
 }
 void TrackerItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
-	painter->setBrush(QBrush(Qt::red));
+	painter->setBrush(QBrush(_color));
 	painter->drawEllipse(boundingRect());
 }
 
@@ -82,24 +83,29 @@ void MouseHoverExample::handlePointerHover(SN_PolygonArrowPointer *pointer, cons
 
 				// a tracker item for each pointer
 				TrackerItem *tracker = 0;
-				if ( ! (tracker = _hoverTrackerItemList.value(pointer->id(), 0)) ) {
-					 tracker = new TrackerItem(0,0,64,64, this);
+				if ( ! (tracker = _hoverTrackerItemList.value(pointer, 0)) ) {
+					 tracker = new TrackerItem(0,0,64,64, pointer->color(), this);
 //					 tracker->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
-					_hoverTrackerItemList.insert(pointer->id(), tracker);
+					_hoverTrackerItemList.insert(pointer, tracker);
 				}
 
 				//
 				// stalking the pointer
 				//
+				tracker->show();
 				tracker->setPos( pointerPosOnMe.x() - 32 , pointerPosOnMe.y() - 32 );
 			}
 		}
 	}
 	else {
 		//
-		// Something informed that it doesn't hover anymore.
+		// The pointer informed that it doesn't hover anymore.
 		// But we still need to check because there still can be other pointers hovering on me. (Multiuser interaction !!)
 		//
+		TrackerItem *t = _hoverTrackerItemList.value(pointer, 0);
+		if (t) {
+			t->hide();
+		}
 
 		//
 		// So, find any pointer who is still hovering on me
@@ -107,7 +113,7 @@ void MouseHoverExample::handlePointerHover(SN_PolygonArrowPointer *pointer, cons
 		for (; it!=_pointerMap.constEnd(); it++) {
 			if ( it.value().second == true ) {
 				// Found one!
-				// so do nothing, return
+				// so there is at least one pointer currently hovering on me. do nothing, return
 				return;
 			}
 		}

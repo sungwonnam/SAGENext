@@ -46,10 +46,12 @@ public:
 	SN_BaseWidget * createInstance();
 
 
+	void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
+
 	/**
 	  Reimplementing SN_BaseWidget::handlePointerDrag()
 	  */
-	void handlePointerDrag(const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
+	void handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
 
 protected:
 	/**
@@ -76,12 +78,12 @@ private:
 	int _margintop;
 	int _marginbottom;
 
+	QMap<SN_PolygonArrowPointer *, TrackerItem *> _dragTrackerMap;
 
 	/**
-	  Returns TrackerItem under the position scenepos which is in scene coordinate
-	  returns 0 if none has found
+	  point is in this example's local coordinate
 	  */
-	TrackerItem * getTrackerItemUnderScenePos(const QPointF &scenepos);
+	TrackerItem * getTrackerItemUnderPoint(const QPointF &point);
 };
 
 #endif // MOUSEDRAGEXAMPLE_H
