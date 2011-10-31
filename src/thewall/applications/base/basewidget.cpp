@@ -143,6 +143,19 @@ void SN_BaseWidget::init()
 
 	setAttribute(Qt::WA_NoSystemBackground, true);
 
+	//
+	// Indicates that the widget paints all its pixels when it receives a paint event
+	// Thus, it is not required for operations like updating, resizing, scrolling and focus changes
+	// to erase the widget before generating paint events.
+	//
+	setAttribute(Qt::WA_OpaquePaintEvent, true);
+
+	//
+	// To be effective when true, unset WA_OpaquePaintEvent
+	//
+	setAutoFillBackground(false);
+
+
 	setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
 
 	/**
@@ -208,18 +221,6 @@ void SN_BaseWidget::init()
 	pAnim_opacity->setEasingCurve(QEasingCurve::OutCubic);
 	connect(pAnim_opacity, SIGNAL(finished()), this, SLOT(close()));
 
-
-
-	//
-	// Indicates that the widget paints all its pixels when it receives a paint event
-	// Thus, it is not required for operations like updating, resizing, scrolling and focus changes
-	// to erase the widget before generating paint events.
-	setAttribute(Qt::WA_OpaquePaintEvent, true);
-
-
-	//
-	// To be effective, unset WA_OpaquePaintEvent
-	setAutoFillBackground(false);
 
 
         /*!

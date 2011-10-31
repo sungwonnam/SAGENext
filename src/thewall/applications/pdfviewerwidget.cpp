@@ -11,10 +11,17 @@ SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalapp
 	: SN_BaseWidget(globalappid, s, parent, wflags)
 	, _pdfFileName(filename)
 	, _document(0)
-	, _currentPage(0)
+//	, _currentPage(0)
 	, _currentPageIndex(0)
     , _dpix(200)
     , _dpiy(200)
+    , _pagewidth(0)
+    , _pageheight(0)
+    , _pagespacing(8)
+    , _multipageCount(1)
+    , _prevButton(0)
+    , _nextButton(0)
+    , _incPageButton(0)
 {
 	_document = Poppler::Document::load(filename);
 	if (!_document || _document->isLocked()) {
@@ -47,14 +54,25 @@ SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalapp
 //		setTransformOriginPoint(size().width()/2 , size().height()/2);
 //	}
 
-	_currentPage = _document->page(_currentPageIndex);
-	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(_dpix, _dpiy));
+	Poppler::Page *p = _document->page(_currentPageIndex);
+	if (p) {
+		QPixmap pixmap = QPixmap::fromImage(p->renderToImage(_dpix, _dpiy));
+		_pixmaps.insert(0, pixmap);
+		delete p;
 
-//	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
-//	resize(_pixmap.width() + fmargin*2, _pixmap.height() + fmargin*2);
-	resize(_pixmap.size());
+		_pagewidth = pixmap.width();
+		_pageheight = pixmap.height();
 
-	_appInfo->setFrameSize(size().width(), size().height(), _pixmap.depth());
+		resize(pixmap.size());
+		_appInfo->setFrameSize(size().width(), size().height(), pixmap.depth());
+	}
+	else{
+		qCritical("%s::%s() : Couldn't create page", metaObject()->className(), __FUNCTION__);
+		deleteLater();
+		return;
+	}
+
+
 
 
 /**
@@ -66,19 +84,24 @@ SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalapp
 	rButton->setPos( 10, size().height() - rButton->size().height() );
 	*/
 
-	SN_PixmapButton *left = new SN_PixmapButton(":/resources/media-forward-rtl_128x128.png", 0, "", this);
-	SN_PixmapButton *right = new SN_PixmapButton(":/resources/media-forward-ltr_128x128.png", 0, "", this);
-	connect(left, SIGNAL(clicked()), this, SLOT(prevPage()));
-	connect(right, SIGNAL(clicked()), this, SLOT(nextPage()));
-	left->setPos(0, size().height()/2);
-	right->setPos(size().width() - right->size().width(), size().height()/2);
+	_prevButton = new SN_PixmapButton(":/resources/media-forward-rtl_128x128.png", 0, "", this);
+	_nextButton = new SN_PixmapButton(":/resources/media-forward-ltr_128x128.png", 0, "", this);
+	connect(_prevButton, SIGNAL(clicked()), this, SLOT(prevPage()));
+	connect(_nextButton, SIGNAL(clicked()), this, SLOT(nextPage()));
+
+
+	_incPageButton = new SN_PixmapButton(":/resources/media-play-ltr_128x128.png", 0, "", this);
+	_decPageButton = new SN_PixmapButton(":/resources/media-play-ltr_128x128.png", 0, "", this);
+	connect(_incPageButton, SIGNAL(clicked()), this, SLOT(increasePage()));
+	connect(_decPageButton, SIGNAL(clicked()), this, SLOT(decreasePage()));
+
+	setButtonPos();
 }
 
 SN_PDFViewerWidget::~SN_PDFViewerWidget() {
-	if (_currentPage) delete _currentPage;
 	if (_document) delete _document;
 
-	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
+//	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
 
 void SN_PDFViewerWidget::prevPage() {
@@ -88,6 +111,9 @@ void SN_PDFViewerWidget::prevPage() {
 
 void SN_PDFViewerWidget::nextPage() {
 	if ( _currentPageIndex >= _document->numPages() - 1) return;
+
+	if ( _currentPageIndex + _multipageCount >= _document->numPages() ) return;
+
 	setCurrentPage(_currentPageIndex + 1);
 }
 
@@ -96,40 +122,97 @@ void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 
 	_perfMon->getConvTimer().start();
 
-	if (_currentPage) {
-		delete _currentPage;
-		_currentPage = 0;
-	}
-	_currentPage = _document->page(pageNumber);
+//	if (_currentPage) {
+//		delete _currentPage;
+//		_currentPage = 0;
+//	}
+
+	int newpageidx = 0;
+	if (pageNumber > _currentPageIndex)
+		newpageidx = pageNumber + _multipageCount - 1;
+	else if (pageNumber < _currentPageIndex)
+		newpageidx = pageNumber;
+
 	_currentPageIndex = pageNumber;
 
-//	qDebug() << "hello" << pageNumber;
+	//
+	// A new page needed to be rendered
+	//
+	Poppler::Page *newpage  = _document->page(newpageidx);
+	if (newpage) {
+		_pixmaps.insert(newpageidx, QPixmap::fromImage(newpage->renderToImage(_dpix, _dpiy)));
 
-//	qint64 start = QDateTime::currentMSecsSinceEpoch();
+		delete newpage;
+	}
+	else {
+		qCritical("%s::%s() : Couldn't create page %d", metaObject()->className(), __FUNCTION__, newpageidx);
 
-	/**
-#if QT_VERSION >= 0x040700
-	_pixmap.convertFromImage(_currentPage->renderToImage(_dpix, _dpiy));
-#else
-	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(_dpix, _dpiy));
-#endif
-**/
-	_pixmap = QPixmap::fromImage(_currentPage->renderToImage(_dpix, _dpiy));
+	}
+
+
+	for (int i=0; i<_document->numPages(); i++) {
+		if ( _currentPageIndex <= i && i < _currentPageIndex + _multipageCount) {
+			// is being shown
+//			qDebug() << "setCurrentPage() : page" << i << "will be shown.";
+		}
+		else {
+			_pixmaps.erase( _pixmaps.find(i) );
+		}
+	}
+
+//	qDebug() << "setCurrentPage() : _pixmaps size" << _pixmaps.size();
 
 	_perfMon->updateConvDelay();
 
 	update();
+}
 
-//	qint64 end = QDateTime::currentMSecsSinceEpoch();
-//	qDebug() << end - start << "msec for rendering";
+void SN_PDFViewerWidget::increasePage() {
+	if(_multipageCount >= _document->numPages()) return;
 
-//	qDebug() << _currentPage->pageSizeF();
-//	QSizeF sizeinch = _currentPage->pageSizeF() / 72;
-//	qDebug() << sizeinch * 250;
+	_multipageCount++;
+
+	int newpageidx = _currentPageIndex + _multipageCount -1;
+	if (newpageidx < _document->numPages()) {
+		// new page is going to be the next page
+	}
+	else {
+		// new page is going to be the previous page
+		// and _currentPageIndex should point it
+		_currentPageIndex--;
+		newpageidx = _currentPageIndex;
+	}
+	Poppler::Page *p = _document->page(newpageidx);
+	if (p) {
+		QPixmap pixmap = QPixmap::fromImage(p->renderToImage(_dpix, _dpiy));
+		_pixmaps.insert(newpageidx, pixmap);
+		delete p;
+
+		resize(size().width() + _pagewidth + _pagespacing, size().height());
+
+		setButtonPos();
+	}
+	else {
+		qCritical("%s::%s() : Couldn't create page %d", metaObject()->className(), __FUNCTION__, newpageidx);
+		_multipageCount--; // reset;
+	}
+}
+
+void SN_PDFViewerWidget::decreasePage() {
+	if (_multipageCount == 1) return;
+
+	int pageToBeDeleted = _currentPageIndex + _multipageCount - 1;
+
+	_multipageCount--;
+
+	_pixmaps.erase(_pixmaps.find(pageToBeDeleted));
+
+	resize(size().width() - _pagewidth - _pagespacing, size().height());
+
+	setButtonPos();
 }
 
 void SN_PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-	if (!_currentPage) return;
 
 	painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
@@ -143,10 +226,25 @@ void SN_PDFViewerWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 	  */
 //	_currentPage->renderToPainter(painter); // with Arthur renderBackend
 
-	if (!_pixmap.isNull())
-		painter->drawPixmap(0,0, _pixmap);
 
+	int count = 0;
+	int page = _currentPageIndex;
+	while (count < _multipageCount) {
+
+		painter->drawPixmap(count * (_pagewidth + _pagespacing), 0, _pixmaps.value(page));
+
+		page++;
+		count++;
+	}
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
+}
+
+void SN_PDFViewerWidget::setButtonPos() {
+	_incPageButton->setPos(boundingRect().center().x(), boundingRect().bottom() - _incPageButton->size().height());
+
+	_decPageButton->setPos(_incPageButton->geometry().left() - _decPageButton->size().width(), _incPageButton->geometry().y());
+	_prevButton->setPos( _decPageButton->geometry().left() - _prevButton->size().width()     , _incPageButton->geometry().y());
+	_nextButton->setPos(_incPageButton->geometry().right()                                   , _incPageButton->geometry().y());
 }

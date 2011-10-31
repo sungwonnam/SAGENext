@@ -22,5 +22,6 @@
         <file>resources/x_box_red.png</file>
         <file>resources/x_circle_gray.png</file>
         <file>resources/tile_btn_over.jpg</file>
+        <file>resources/media-play-ltr_128x128.png</file>
     </qresource>
 </RCC>

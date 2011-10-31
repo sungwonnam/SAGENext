@@ -5,6 +5,8 @@
 
 #include <poppler-qt4.h>
 
+class SN_PixmapButton;
+
 class SN_PDFViewerWidget : public SN_BaseWidget
 {
 	Q_OBJECT
@@ -33,17 +35,34 @@ private:
 	  Use QImage Poppler::Page::renderToImage or bool Poppler::Page::renderToPainter to render the page
 	  Use QImage Poppler::Page::thumbnail() for thumbnail
 	  */
-	Poppler::Page * _currentPage;
+//	Poppler::Page * _currentPage;
 
 	/**
 	  0 as the first page
 	  */
 	int _currentPageIndex;
 
-	QPixmap _pixmap;
+	QMap<int, QPixmap> _pixmaps;
 
 	int _dpix;
 	int _dpiy;
+
+	qreal _pagewidth;
+	qreal _pageheight;
+
+	qreal _pagespacing;
+
+	/**
+	  how many pages to show
+	  */
+	int _multipageCount;
+
+	SN_PixmapButton *_prevButton;
+	SN_PixmapButton *_nextButton;
+	SN_PixmapButton *_incPageButton;
+	SN_PixmapButton *_decPageButton;
+
+	void setButtonPos();
 
 public slots:
 	void setCurrentPage(int pageNumber);
@@ -51,6 +70,13 @@ public slots:
 	void nextPage();
 
 	void prevPage();
+
+	/**
+	  increase number of pages showing on this widget
+	  */
+	void increasePage();
+
+	void decreasePage();
 
 };
 
