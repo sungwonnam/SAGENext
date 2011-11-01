@@ -3,6 +3,7 @@
 #include "mediastorage.h"
 
 #include "common/commonitem.h"
+#include "common/sn_sharedpointer.h"
 
 #include "sage/fsManager.h"
 #include "sage/fsmanagermsgthread.h"

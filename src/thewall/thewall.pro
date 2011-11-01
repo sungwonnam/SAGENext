@@ -173,7 +173,8 @@ SOURCES += \
         sagenextlauncher.cpp \
         settingstackeddialog.cpp \
     common/sn_layoutwidget.cpp \
-    applications/sn_checker.cpp
+    applications/sn_checker.cpp \
+    common/sn_sharedpointer.cpp
 
 HEADERS += \
 #        settingdialog.h \
@@ -210,10 +211,13 @@ HEADERS += \
     applications/mediabrowser.h \
     settingstackeddialog.h \
     common/sn_layoutwidget.h \
-    applications/sn_checker.h
+    applications/sn_checker.h \
+    common/sn_sharedpointer.h
 
 
 #    common/filereceivingrunnable.h
+
+
 
 
 

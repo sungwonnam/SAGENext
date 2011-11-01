@@ -5,7 +5,7 @@
 #include "uimsgthread.h"
 //#include "graphicsviewmainwindow.h"
 #include "common/commondefinitions.h"
-#include "common/commonitem.h"
+//#include "common/commonitem.h"
 
 #include <QTcpServer>
 
@@ -17,6 +17,7 @@
 class SN_TheScene;
 class SN_Launcher;
 class QSettings;
+class SN_PolygonArrowPointer;
 
 //class FileReceivingTcpServer;
 

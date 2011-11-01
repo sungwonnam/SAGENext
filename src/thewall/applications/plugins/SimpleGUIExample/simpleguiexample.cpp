@@ -1,6 +1,6 @@
 #include "simpleguiexample.h"
 
-#include "../../../common/commonitem.h"
+//#include "../../../common/commonitem.h"
 //#include "../../base/perfmonitor.h"
 //#include "../../base/appinfo.h"
 

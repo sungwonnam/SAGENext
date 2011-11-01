@@ -5,7 +5,7 @@
 #include <QGraphicsWidget>
 
 #include <QGraphicsLineItem>
-#include <QGraphicsLinearLayout>
+//#include <QGraphicsLinearLayout>
 
 #include <QSettings>
 
@@ -21,8 +21,6 @@ class SN_LayoutWidget;
 class SN_BaseWidget;
 
 class SN_Launcher;
-
-
 
 
 

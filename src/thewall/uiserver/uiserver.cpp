@@ -4,6 +4,7 @@
 #include "../sagenextlauncher.h"
 #include "../applications/base/basewidget.h"
 #include "../common/filereceivingrunnable.h"
+#include "../common/sn_sharedpointer.h"
 
 #include <QGraphicsScene>
 #include <QGraphicsItem>
