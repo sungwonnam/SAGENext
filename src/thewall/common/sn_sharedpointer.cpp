@@ -4,6 +4,8 @@
 #include "../applications/base/basewidget.h"
 #include "../sagenextscene.h"
 
+#include "sn_drawingwidget.h"
+
 SelectionRectangle::SelectionRectangle(QGraphicsItem *parent)
 	: QGraphicsWidget(parent)
 {
@@ -24,6 +26,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, const QSetti
 	, _selectedApps(0)
 	, _scenarioFile(scenarioFile)
 	, _isDrawing(false)
+	, _isErasing(true)
 {
 	///
 	/// will this help?
@@ -158,11 +161,14 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
     else if ( btnFlags & Qt::LeftButton ) {
 		
 		if (_isDrawing) {
-			QGraphicsView *view = eventReceivingViewport(_scenePos);
-			QPainter painter(view); // keep creating QPainter object is efficient?
-			painter.setBrush(Qt::yellow);
-			painter.drawEllipse(view->mapFromScene(_scenePos), 16, 16);
-			
+			SN_DrawingWidget *canvas = _scene->drawingCanvas();
+			const QRectF &r = QRectF(canvas->mapFromScene(_scenePos), QSizeF(32,32));
+			if (_isErasing) {
+				canvas->drawEllipse(r, QColor(0,0,0,0));
+			}
+			else {
+				canvas->drawEllipse(r, _color);
+			}
 			return;
 		}
 

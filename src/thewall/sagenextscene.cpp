@@ -5,6 +5,7 @@
 #include "sagenextlauncher.h"
 #include "common/commonitem.h"
 #include "common/sn_layoutwidget.h"
+#include "common/sn_drawingwidget.h"
 
 #include "applications/base/basewidget.h"
 #include "applications/base/appinfo.h"
@@ -90,6 +91,14 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	  So, do NOT explicitly additem(sagenext application) !!
 	  */
 	addItem(_rootLayoutWidget);
+
+
+
+
+
+	_drawingCanvas = new SN_DrawingWidget;
+	_drawingCanvas->resize(sceneRect.size());
+	addItem(_drawingCanvas);
 }
 
 bool SN_TheScene::isOnAppRemoveButton(const QPointF &scenepos) {

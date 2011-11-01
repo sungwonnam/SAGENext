@@ -10,6 +10,7 @@
 #include <QSettings>
 
 class SN_PixmapButton;
+class SN_DrawingWidget;
 class SN_WallPartitionBar;
 //class PartitionTreeNode;
 
@@ -55,6 +56,9 @@ public:
 	QList<SN_BaseWidget *> hoverAcceptingApps;
 
 
+	inline SN_DrawingWidget * drawingCanvas() {return _drawingCanvas;}
+
+
 private:
 	const QSettings *_settings;
 	SN_UiServer *_uiserver;
@@ -79,6 +83,12 @@ private:
 	  close an application
 	  */
 	SN_PixmapButton *_appRemoveButton;
+
+
+	/**
+	  Free drawing using shared pointer will draw onto this widget
+	  */
+	SN_DrawingWidget *_drawingCanvas;
 
 public slots:
 	void closeAllUserApp();

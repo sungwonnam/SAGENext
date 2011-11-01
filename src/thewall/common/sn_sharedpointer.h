@@ -154,6 +154,7 @@ private:
 	QFile *_scenarioFile;
 		
 	bool _isDrawing;
+	bool _isErasing;
 
 		/**
 		  Returns the view on which the event occured.

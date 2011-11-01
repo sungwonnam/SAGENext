@@ -174,7 +174,8 @@ SOURCES += \
         settingstackeddialog.cpp \
     common/sn_layoutwidget.cpp \
     applications/sn_checker.cpp \
-    common/sn_sharedpointer.cpp
+    common/sn_sharedpointer.cpp \
+    common/sn_drawingwidget.cpp
 
 HEADERS += \
 #        settingdialog.h \
@@ -212,10 +213,13 @@ HEADERS += \
     settingstackeddialog.h \
     common/sn_layoutwidget.h \
     applications/sn_checker.h \
-    common/sn_sharedpointer.h
+    common/sn_sharedpointer.h \
+    common/sn_drawingwidget.h
 
 
 #    common/filereceivingrunnable.h
+
+
 
 
 
