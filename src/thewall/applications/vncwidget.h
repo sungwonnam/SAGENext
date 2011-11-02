@@ -41,7 +41,7 @@ private:
         /*!
           paint() will draw this
           */
-//        QPixmap _pixmap;
+        QPixmap _pixmapForDrawing;
 
         /*!
           copy vnc framebuffer to QImage

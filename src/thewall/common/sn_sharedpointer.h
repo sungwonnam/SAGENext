@@ -43,6 +43,7 @@ public:
 	inline QColor color() const {return _color;}
 	
 	inline void setDrawing(bool b=true) {_isDrawing = b;}
+	void setErasing(bool b=true);
 
 	void pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags);
 

@@ -101,7 +101,7 @@ public:
 
           This function does nothing but return scene rect of 100x100 on the bottom right corner of the widget
           */
-        QRectF resizeHandleSceneRect();
+        virtual QRectF resizeHandleSceneRect();
 
 
 

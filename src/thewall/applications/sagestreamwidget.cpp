@@ -254,8 +254,13 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 		}
 	}
 	else {
+		/*
 		if (!_imageForDrawing.isNull()) {
-//			painter->drawImage(0, 0, _imageForDrawing);
+			painter->drawImage(0, 0, _imageForDrawing);
+		}
+		*/
+		if (!_pixmapForDrawing.isNull()) {
+			painter->drawPixmap(0, 0, _pixmapForDrawing);
 		}
 	}
 
@@ -385,11 +390,18 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		//}
 	}
 	else {
+		/*
 		_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32);
 		if (_imageForDrawing.isNull()) {
 			qCritical("SN_SageStreamWidget::%s() : Image conversion failed", __FUNCTION__);
 			return;
 		}
+		*/
+
+		//
+		// Below doesn't work under X11 backend. Use raster backend
+		//
+		_pixmapForDrawing.convertFromImage(*constImageRef, Qt::ColorOnly | Qt::ThresholdDither);
 	}
 
 

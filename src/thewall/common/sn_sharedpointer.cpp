@@ -26,7 +26,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, const QSetti
 	, _selectedApps(0)
 	, _scenarioFile(scenarioFile)
 	, _isDrawing(false)
-	, _isErasing(true)
+	, _isErasing(false)
 {
 	///
 	/// will this help?
@@ -71,6 +71,15 @@ SN_PolygonArrowPointer::~SN_PolygonArrowPointer() {
 		sprintf(buffer, "%lld %d %u", QDateTime::currentMSecsSinceEpoch(), 11, _uiclientid);
 		_scenarioFile->write(buffer);
 		_scenarioFile->flush();
+	}
+}
+
+void SN_PolygonArrowPointer::setErasing(bool b) {
+	_isErasing = b;
+	if (b) {
+		if (!_isDrawing) {
+			_isDrawing = true;
+		}
 	}
 }
 
@@ -160,11 +169,11 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	//
     else if ( btnFlags & Qt::LeftButton ) {
 		
-		if (_isDrawing) {
-			SN_DrawingWidget *canvas = _scene->drawingCanvas();
+		SN_DrawingWidget *canvas = _scene->drawingCanvas();
+		if (_isDrawing && canvas) {
 			const QRectF &r = QRectF(canvas->mapFromScene(_scenePos), QSizeF(32,32));
 			if (_isErasing) {
-				canvas->drawEllipse(r, QColor(0,0,0,0));
+				canvas->drawEllipse(r, QColor(0,0,0,0), true);
 			}
 			else {
 				canvas->drawEllipse(r, _color);
@@ -409,14 +418,14 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 				//
 				_basewidget->setSelected(false);
 				// to be effective, turn off WA_OpaquePaintEvent or set setAutoFillBackground(true)
-				_basewidget->palette().setColor(QPalette::Window, QColor(100, 100, 100, 128));
+//				_basewidget->palette().setColor(QPalette::Window, QColor(100, 100, 100, 128));
 			}
 			else {
 				//
 				// select widget
 				//
 				_basewidget->setSelected(true);
-				_basewidget->palette().setColor(QPalette::Window, QColor(170, 170, 5, 164));
+//				_basewidget->palette().setColor(QPalette::Window, QColor(170, 170, 5, 164));
 			}
 		}
 	}

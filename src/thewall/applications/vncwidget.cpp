@@ -179,9 +179,12 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 		}
 	}
 	else {
-		if (_image && !_image->isNull()) {
+//		if (_image && !_image->isNull()) {
 			// I'm drawing the QImage to avoid conversion delay (just like SageStreamWidget)
-			painter->drawImage(0, 0, *_image);
+//			painter->drawImage(0, 0, *_image);
+//		}
+		if (!_pixmapForDrawing.isNull()) {
+			painter->drawPixmap(0, 0, _pixmapForDrawing);
 		}
 	}
 
@@ -242,6 +245,9 @@ void SN_VNCClientWidget::scheduleUpdate() {
 		if(error != GL_NO_ERROR) {
 			qWarning("texture upload failed. error code 0x%x\n", error);
 		}
+	}
+	else {
+		_pixmapForDrawing.convertFromImage(*_image, Qt::ColorOnly | Qt::ThresholdDither);
 	}
 
 

@@ -1,8 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>resources/close_shape.gif</file>
-        <file>resources/maximize_shape.gif</file>
-        <file>resources/minimize_shape.gif</file>
         <file>resources/cursor-nw-resize.gif</file>
         <file>resources/image_down.png</file>
         <file>resources/image.png</file>
@@ -19,9 +16,17 @@
         <file>resources/evl-logo.png</file>
         <file>resources/horizontal_divider_btn_over.png</file>
         <file>resources/vertical_divider_btn_over.png</file>
-        <file>resources/x_box_red.png</file>
         <file>resources/x_circle_gray.png</file>
         <file>resources/tile_btn_over.jpg</file>
         <file>resources/media-play-ltr_128x128.png</file>
+        <file>resources/eraser_48x48.png</file>
+        <file>resources/brush_48x48.png</file>
+        <file>resources/cursor_arrow_48x48.png</file>
+        <file>resources/sq_minus_48x48.png</file>
+        <file>resources/sq_plus_48x48.png</file>
+        <file>resources/arrow-left-64x64.png</file>
+        <file>resources/arrow-right-64x64.png</file>
+        <file>resources/minus_64x64.png</file>
+        <file>resources/plus_64x64.png</file>
     </qresource>
 </RCC>

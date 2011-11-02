@@ -123,7 +123,7 @@ SN_WebWidget::~SN_WebWidget() {
 //	if (urlboxproxy) delete urlboxproxy;
 //	if (urlbox) delete urlbox;
 
-	qDebug("WebWidget::%s()", __FUNCTION__);
+//	qDebug("WebWidget::%s()", __FUNCTION__);
 }
 
 
@@ -178,8 +178,6 @@ bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 			//
 			return true;
 		}
-
-
 		/*
  // resizing of the WebWidget is done by window frame. Notice that windowFlag of WebWidget is Qt::Window
  else if (event->type() == QEvent::GraphicsSceneWheel) {

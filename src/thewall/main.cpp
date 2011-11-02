@@ -11,6 +11,8 @@
 #include "uiserver/uiserver.h"
 #include "uiserver/fileserver.h"
 
+#include "common/sn_drawingwidget.h"
+
 #include "applications/base/affinityinfo.h"
 #include "applications/mediabrowser.h"
 //#include "applications/sn_checker.h"
@@ -508,6 +510,11 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 //	SN_Checker *ccc  = new SN_Checker(QSize(1920,1080), 30, 0, &s);
 //	launcher->launch(ccc);
+
+	SN_DrawingTool *dt = new SN_DrawingTool(0, &s);
+	dt->adjustSize();
+//	dt->moveBy(scene->width() - (2 * dt->size().width()) , 10);
+	launcher->launch(dt);
 
 
 	// starts the event loop

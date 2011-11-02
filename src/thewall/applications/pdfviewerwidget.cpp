@@ -84,14 +84,14 @@ SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalapp
 	rButton->setPos( 10, size().height() - rButton->size().height() );
 	*/
 
-	_prevButton = new SN_PixmapButton(":/resources/media-forward-rtl_128x128.png", 0, "", this);
-	_nextButton = new SN_PixmapButton(":/resources/media-forward-ltr_128x128.png", 0, "", this);
+	_prevButton = new SN_PixmapButton(":/resources/arrow-left-64x64.png", 0, "", this);
+	_nextButton = new SN_PixmapButton(":/resources/arrow-right-64x64.png", 0, "", this);
 	connect(_prevButton, SIGNAL(clicked()), this, SLOT(prevPage()));
 	connect(_nextButton, SIGNAL(clicked()), this, SLOT(nextPage()));
 
 
-	_incPageButton = new SN_PixmapButton(":/resources/media-play-ltr_128x128.png", 0, "", this);
-	_decPageButton = new SN_PixmapButton(":/resources/media-play-ltr_128x128.png", 0, "", this);
+	_incPageButton = new SN_PixmapButton(":/resources/plus_64x64.png", 0, "", this);
+	_decPageButton = new SN_PixmapButton(":/resources/minus_64x64.png", 0, "", this);
 	connect(_incPageButton, SIGNAL(clicked()), this, SLOT(increasePage()));
 	connect(_decPageButton, SIGNAL(clicked()), this, SLOT(decreasePage()));
 

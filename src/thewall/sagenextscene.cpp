@@ -99,6 +99,8 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	_drawingCanvas = new SN_DrawingWidget;
 	_drawingCanvas->resize(sceneRect.size());
 	addItem(_drawingCanvas);
+
+
 }
 
 bool SN_TheScene::isOnAppRemoveButton(const QPointF &scenepos) {
@@ -161,6 +163,11 @@ SN_TheScene::~SN_TheScene() {
 		delete _rootLayoutWidget;
 	}
 
+	if (_drawingCanvas) {
+		removeItem(_drawingCanvas);
+		delete _drawingCanvas;
+	}
+
 	foreach (QGraphicsItem *item, items()) {
 		if (!item) continue;
 		if (item->type() >= QGraphicsItem::UserType + 12) {
@@ -174,6 +181,7 @@ SN_TheScene::~SN_TheScene() {
 		}
 		else {
 			// this probably is common GUI
+			removeItem(item);
 			delete item;
 		}
 	}
