@@ -24,6 +24,7 @@ SN_DrawingWidget::SN_DrawingWidget(QGraphicsItem *parent)
 
 void SN_DrawingWidget::resizeEvent(QGraphicsSceneResizeEvent *event) {
 	_theCanvas = QImage(event->newSize().toSize(), QImage::Format_ARGB32_Premultiplied);
+//	_theCanvas = QPixmap(event->newSize().toSize());
 	QPainter painter(&_theCanvas);
 	QBrush b(QColor(0, 0, 0, 0));
 	painter.fillRect(0, 0, _theCanvas.width(), _theCanvas.height(), b);
@@ -33,7 +34,14 @@ void SN_DrawingWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
 
+//	qint64 s = QDateTime::currentMSecsSinceEpoch();
+
 	painter->drawImage(0,0,_theCanvas);
+//	painter->drawPixmap(0, 0, _theCanvas);
+
+//	qint64 e = QDateTime::currentMSecsSinceEpoch();
+
+//	qDebug() << e - s << "msec";
 }
 
 void SN_DrawingWidget::drawEllipse(const QRectF &r, const QColor &color, bool clear) {
@@ -53,8 +61,30 @@ void SN_DrawingWidget::drawEllipse(const QRectF &r, const QColor &color, bool cl
 	update();
 }
 
+void SN_DrawingWidget::erase(const QPointF &p, const QSizeF &s) {
+	QPainter painter(&_theCanvas);
+
+	painter.setPen(Qt::NoPen);
+	painter.setBrush(QColor(0,0,0,0));
+
+	painter.setCompositionMode(QPainter::CompositionMode_Clear);
+
+	painter.drawEllipse(p, s.width(), s.height());
+	update();
+}
 
 
+void SN_DrawingWidget::drawLine(const QPointF &oldp, const QPointF &newp, const QColor &color, int penwidth) {
+	QPainter painter(&_theCanvas);
+
+	QPen pen;
+	pen.setColor(color);
+	pen.setWidth(penwidth);
+
+	painter.setPen(pen);
+	painter.drawLine(oldp, newp);
+	update();
+}
 
 
 
@@ -114,6 +144,3 @@ void SN_DrawingTool::handlePointerPress(SN_PolygonArrowPointer *pointer, const Q
 }
 
 
-void SN_DrawingTool::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
-//	painter->fillRect(boundingRect(), Qt::darkGray);
-}

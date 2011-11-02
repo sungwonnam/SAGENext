@@ -25,11 +25,16 @@ protected:
 
 private:
 	QImage _theCanvas;
+//	QPixmap _theCanvas;
 
 signals:
 
 public slots:
 	void drawEllipse(const QRectF &r, const QColor &color, bool clear = false);
+
+	void drawLine(const QPointF &oldp, const QPointF &newp, const QColor &c = QColor(255,255,255), int penwidth = 16);
+
+	void erase(const QPointF &point, const QSizeF &size = QSizeF(64, 64));
 };
 
 
@@ -49,7 +54,6 @@ public:
 	void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
 
 protected:
-	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 private:
 	SN_PixmapButton *_brushIcon;

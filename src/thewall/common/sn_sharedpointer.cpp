@@ -105,8 +105,10 @@ void SN_PolygonArrowPointer::setPointerName(const QString &text) {
 }
 
 void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
-    qreal deltax = _scenePos.x() - scenePos().x();
-    qreal deltay = _scenePos.y() - scenePos().y();
+	const QPointF &oldp = scenePos();
+
+    qreal deltax = _scenePos.x() - oldp.x();
+    qreal deltay = _scenePos.y() - oldp.y();
 
 
 	//
@@ -171,12 +173,11 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		
 		SN_DrawingWidget *canvas = _scene->drawingCanvas();
 		if (_isDrawing && canvas) {
-			const QRectF &r = QRectF(canvas->mapFromScene(_scenePos), QSizeF(32,32));
 			if (_isErasing) {
-				canvas->drawEllipse(r, QColor(0,0,0,0), true);
+				canvas->erase(canvas->mapFromScene(_scenePos));
 			}
 			else {
-				canvas->drawEllipse(r, _color);
+				canvas->drawLine(canvas->mapFromScene(oldp), canvas->mapFromScene(_scenePos), _color);
 			}
 			return;
 		}
@@ -281,7 +282,7 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
 
 	// note that this doesn't consider window frame
     if (!setAppUnderPointer(scenePos)) {
-        qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
+//        qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
     }
 	else {
 		Q_ASSERT(_basewidget || _item);
