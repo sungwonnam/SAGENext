@@ -133,9 +133,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	//////////////////////////////
 
 
-	
-
-	if (btnFlags & Qt::NoButton) {
+	if (btnFlags == 0 || btnFlags & Qt::NoButton) {
 		//
 		// iterate over items in the container maintained by the scene
 		// if pointer is on one of them
@@ -148,9 +146,12 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		for (int i=collidingapps.size()-1; i>=0; i--) {
 			QGraphicsItem *item = collidingapps.at(i);
 			if (item->type() < QGraphicsItem::UserType + 12) continue;
+
 			firstUnderPointer = static_cast<SN_BaseWidget *>(item);
+//			qDebug() << "shared pointer collides with basewidget" << firstUnderPointer;
 			break;
 		}
+
 		foreach(SN_BaseWidget *bw, _scene->hoverAcceptingApps) {
 			if (!bw) {
 				_scene->hoverAcceptingApps.removeOne(bw);
