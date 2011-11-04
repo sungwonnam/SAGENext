@@ -89,6 +89,9 @@ void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const
 	TrackerItem *t = getTrackerItemUnderPoint(point);
 	if (t)
 		_dragTrackerMap.insert(pointer, t);
+	else {
+		_dragTrackerMap.erase(_dragTrackerMap.find(pointer));
+	}
 }
 
 void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {

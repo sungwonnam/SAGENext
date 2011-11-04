@@ -156,7 +156,7 @@ void SN_BaseWidget::init()
 	setAutoFillBackground(false);
 
 
-	setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
+	setFlag(QGraphicsItem::ItemIsMovable);
 
 	/**
 	  When basewidget is child of SN_LayoutWidget,
@@ -770,6 +770,14 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
 	Q_UNUSED(point);
 	Q_UNUSED(btn);
 
+#if QT_VERSION < 0x040700
+	struct timeval tv;
+	gettimeofday(&tv, 0);
+	_lastTouch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#else
+	_lastTouch = QDateTime::currentMSecsSinceEpoch();
+#endif
+
 	setTopmost();
 }
 
@@ -934,43 +942,6 @@ void SN_BaseWidget::setLastTouch() {
 }
 
 
-/*!
-  reimplement this so the item can be the mousegrabber
-  */
-void SN_BaseWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-//	qDebug() << "BaseWidget::mousePressEvent() : buttons"<< event->button() << "pos:" << event->pos() << " ,scenePos:" << event->scenePos() << " ,screenPos:" << event->screenPos();
-    if ( event->buttons() & Qt::LeftButton) {
-        // refresh lastTouch
-#if QT_VERSION < 0x040700
-        struct timeval tv;
-        gettimeofday(&tv, 0);
-        _lastTouch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
-#else
-        _lastTouch = QDateTime::currentMSecsSinceEpoch();
-#endif
-        // change zvalue
-		// This is called by PolygonArrow::pointerPress()
-//        setTopmost();
-    }
-
-	/*
-	  event will by default be accepted, and this item is then the mouse grabber
-	  */
-
-	/*
-	  The mouse press event decides which item should become the mouse grabber (see QGraphicsScene::mouseGrabberItem()).
-      If you do not reimplement this function, the press event will propagate to any topmost item beneath this item,
-      and no other mouse events will be delivered to this item.
-	  */
-//    QGraphicsWidget::mousePressEvent(event);
-}
-
-void SN_BaseWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
-
-	// If you keep the base implementation for console mouse interaction,
-	// it makes multiple item selection with shared pointer unavailable
-//	QGraphicsItem::mouseReleaseEvent(e);
-}
 
 
 void SN_BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {

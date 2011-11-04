@@ -21,6 +21,9 @@ public:
 protected:
         virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
+//		void mousePressEvent(QGraphicsSceneMouseEvent *event);
+//		void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+
 private:
         rfbClient *vncclient;
         QHostAddress serverAddr;
@@ -51,6 +54,11 @@ private:
         bool _end;
 
         int _framerate;
+
+		/**
+		  to send mouse click event to VNC server
+		  */
+		int _buttonMask;
 
         QFuture<void> future;
 

@@ -329,18 +329,11 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 	if (button == Qt::LeftButton) {
 		if (_basewidget) {
 
-			// I can move this app to SN_LayoutWidget that contains released scenePos
-			// Always pass scene position
-			_scene->addItemOnTheLayout(_basewidget, _basewidget->scenePos());
-
-
-			// I can minimize this app if it's on the minimize rectangle
-
-
 			// I can close this app if removeButton on the scene contains released scenePos
 			if (_scene->isOnAppRemoveButton(scenePos)) {
 				_scene->hoverAcceptingApps.removeAll(_basewidget);
 				_basewidget->close();
+				return;
 
 //				if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
 //					char record[64];
@@ -348,6 +341,14 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 //					_scenarioFile->write(record);
 //				}
 			}
+
+
+			// I can move this app to SN_LayoutWidget that contains released scenePos
+			// Always pass scene position
+			_scene->addItemOnTheLayout(_basewidget, _basewidget->scenePos());
+
+
+			// I can minimize this app if it's on the minimize rectangle
 		}
 	}
 

@@ -50,7 +50,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 
 //	_bordersize = s->value("gui/framemargin",0).toInt();
 	
-	setAttribute(Qt::WA_PaintOnScreen);
+//	setAttribute(Qt::WA_PaintOnScreen);
 }
 
 

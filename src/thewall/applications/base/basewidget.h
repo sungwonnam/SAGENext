@@ -208,6 +208,8 @@ public:
 		virtual void handlePointerHover(SN_PolygonArrowPointer */*pointer*/, const QPointF & /*point*/, bool /* isHovering */) {}
 
 		/**
+		  SN_PolygonArrowPointer::pointerPress() calls this.
+		  Note that SN_PolygonArrowPointer::pointerClick() generates mousePressEvent() immediately followed by mouseReleaseEvent()
 		  The point is in this widget's local coordinate
 		  */
 		virtual void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn = Qt::LeftButton);
@@ -358,7 +360,7 @@ protected:
 
 		  Reimplementing this makes the event->accept() which makes this widget the mousegrabber
           */
-        virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
+//        virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
 
 		/*!
 		  QGraphicsItem::mouseReleaseEvent() handles basic interactions such as selection and moving upon receiving this event.
@@ -367,7 +369,7 @@ protected:
 
 		  This is intended. We focus on interactions through shared pointers.
 		  */
-		virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
+//		virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
 
 //        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
 

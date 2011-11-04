@@ -7,13 +7,17 @@
 #include "../../base/basewidget.h"
 
 
-class TrackerItem : public QGraphicsEllipseItem
+class TrackerItem : public QGraphicsItem
 {
 public:
 	TrackerItem(qreal x, qreal y, qreal w, qreal h, const QColor &c, QGraphicsItem *parent = 0);
 
+	QRectF boundingRect() const;
+
 private:
 	QColor _color;
+	QTime _startTime;
+	QSizeF _size;
 
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *);

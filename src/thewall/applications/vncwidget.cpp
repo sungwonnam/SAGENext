@@ -24,6 +24,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
     , _textureid(0)
 	, _end(false)
 	, _framerate(frate)
+    , _buttonMask(0)
 
 {
 	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_VNC);
@@ -447,4 +448,38 @@ void SN_VNCClientWidget::update_func(rfbClient* client,int x,int y,int w,int h)
 
         //rfbClientLog("Received an update for %d,%d,%d,%d.\n",x,y,w,h);
 }
+
+/*
+void SN_VNCClientWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
+
+	if (event->buttons() & Qt::LeftButton) {
+		_buttonMask |= rfbButton1Mask; // 1
+	}
+	else if (event->buttons() & Qt::RightButton) {
+		_buttonMask |= rfbButton3Mask; // 3
+	}
+	SendPointerEvent(vncclient, event->pos().x(), event->pos().y(), _buttonMask);
+	_buttonMask &= ~(rfbButton4Mask | rfbButton5Mask);
+}
+
+void SN_VNCClientWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
+
+	if (event->buttons() & Qt::LeftButton) {
+		_buttonMask &= ~rfbButton1Mask; // 1
+	}
+	else if (event->buttons() & Qt::RightButton) {
+		_buttonMask &= ~rfbButton3Mask; // 3
+	}
+
+	int x,y;
+
+//	event->buttonDownPos(Qt::LeftButton);
+//	qDebug() << "releaseEvent" << event->pos();
+	x = event->pos().x();
+	y = event->pos().y();
+
+	SendPointerEvent(vncclient, x, y, _buttonMask);
+	_buttonMask &= ~(rfbButton4Mask | rfbButton5Mask);
+}
+*/
 

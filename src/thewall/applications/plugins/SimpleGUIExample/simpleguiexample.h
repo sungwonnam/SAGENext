@@ -44,12 +44,16 @@ private:
           */
         QGraphicsProxyWidget *labelProxy;
 
-        QPushButton *btn_R;
-        QPushButton *btn_G;
-        QPushButton *btn_B;
+        QPushButton *btn_R; /**< red (1,0,0) */
+        QPushButton *btn_M; /**< magenta (1,0,1) */
+		QPushButton *btn_Y; /**< yellow (1,1,0) */
+
         QGraphicsProxyWidget *proxy_btn_R;
-        QGraphicsProxyWidget *proxy_btn_G;
-        QGraphicsProxyWidget *proxy_btn_B;
+        QGraphicsProxyWidget *proxy_btn_M;
+        QGraphicsProxyWidget *proxy_btn_Y;
+
+		QCheckBox *_invert;
+		QGraphicsProxyWidget *_proxy_invert;
 
         /*!
           Layout widget to layout GUI components nicely
@@ -57,11 +61,16 @@ private:
         QGraphicsLinearLayout *btnLayout;
         QGraphicsLinearLayout *mainLayout;
 
+		bool _isInvertOn;
+
+		void updateLabel(const QColor &c);
+
 private slots:
         void buttonR();
-        void buttonG();
-        void buttonB();
+        void buttonM();
+        void buttonY();
 
+		void toggleInvert(int state);
 };
 
 

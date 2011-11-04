@@ -7,6 +7,7 @@
 
 SimpleGUIExample::SimpleGUIExample()
     : SN_BaseWidget(Qt::Window)
+    , _isInvertOn(false)
 {
 	//
 	// when resized, usually native application will set this
@@ -27,30 +28,47 @@ SimpleGUIExample::SimpleGUIExample()
 	labelProxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Label);
 
 
+	/*
+	_invert = new QCheckBox("Invert");
+	connect(_invert, SIGNAL(stateChanged(int)), this, SLOT(toggleInvert(int)));
+	_proxy_invert = new QGraphicsProxyWidget(this, Qt::Widget);
+	_proxy_invert->setWidget(_invert);
+	*/
+
+
+	QGraphicsLinearLayout *toplayout = new QGraphicsLinearLayout(Qt::Horizontal);
+	toplayout->addItem(labelProxy);
+//	toplayout->addItem(_proxy_invert);
+
+
+
+
 	// create buttons and connect to corresponding callback functions
 	btn_R = new QPushButton("Red");
-	btn_G = new QPushButton("Green");
-	btn_B = new QPushButton("Blue");
+	btn_Y = new QPushButton("Yellow");
+	btn_M = new QPushButton("Magenta");
 	connect(btn_R, SIGNAL(clicked()), this, SLOT(buttonR()));
-	connect(btn_G, SIGNAL(clicked()), this, SLOT(buttonG()));
-	connect(btn_B, SIGNAL(clicked()), this, SLOT(buttonB()));
-
+	connect(btn_Y, SIGNAL(clicked()), this, SLOT(buttonY()));
+	connect(btn_M, SIGNAL(clicked()), this, SLOT(buttonM()));
 		//
         // create proxywidget for buttons
 		//
 	proxy_btn_R = new QGraphicsProxyWidget(this, Qt::Widget);
-	proxy_btn_G = new QGraphicsProxyWidget(this, Qt::Widget);
-	proxy_btn_B = new QGraphicsProxyWidget(this, Qt::Widget);
+	proxy_btn_M = new QGraphicsProxyWidget(this, Qt::Widget);
+	proxy_btn_Y = new QGraphicsProxyWidget(this, Qt::Widget);
 	proxy_btn_R->setWidget(btn_R);
-	proxy_btn_G->setWidget(btn_G);
-	proxy_btn_B->setWidget(btn_B);
+	proxy_btn_M->setWidget(btn_M);
+	proxy_btn_Y->setWidget(btn_Y);
 
 	// create layout for buttons (proxywidgets for buttons more precisely)
 	btnLayout = new QGraphicsLinearLayout(Qt::Horizontal);
 	btnLayout->addItem(proxy_btn_R);
-	btnLayout->addItem(proxy_btn_G);
-	btnLayout->addItem(proxy_btn_B);
+	btnLayout->addItem(proxy_btn_M);
+	btnLayout->addItem(proxy_btn_Y);
 	btnLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::PushButton);
+
+
+
 
 
 	// create main layout
@@ -59,7 +77,7 @@ SimpleGUIExample::SimpleGUIExample()
 	mainLayout->setContentsMargins(0,0,0,0);
 
 	// add GUI components in it
-	mainLayout->addItem(labelProxy);
+	mainLayout->addItem(toplayout);
 	mainLayout->addItem(btnLayout);
 //	mainLayout->setItemSpacing(0, 2);
 
@@ -119,25 +137,50 @@ SN_BaseWidget * SimpleGUIExample::createInstance() {
 }
 
 void SimpleGUIExample::buttonR() {
-	QPixmap pixmap(size().toSize());
-	label->setText("Red clicked");
-	_currentColor = QColor(Qt::red);
-	pixmap.fill( _currentColor );
-	label->setPixmap(pixmap);
+	btn_M->setDown(false);
+	btn_Y->setDown(false);
+	btn_R->setDown(true);
+	updateLabel(QColor(Qt::red));
 }
-void SimpleGUIExample::buttonG() {
-	QPixmap pixmap(size().toSize());
-	label->setText("Green clicked");
-	_currentColor = QColor(Qt::green);
-	pixmap.fill(_currentColor);
-	label->setPixmap(pixmap);
+void SimpleGUIExample::buttonM() {
+	btn_M->setDown(true);
+	btn_Y->setDown(false);
+	btn_R->setDown(false);
+	updateLabel(QColor(Qt::magenta));
 }
-void SimpleGUIExample::buttonB() {
-	label->setText("Blue clicked");
-	QPixmap pixmap(size().toSize());
-	_currentColor = QColor(Qt::blue);
-	pixmap.fill(_currentColor);
-	label->setPixmap(pixmap);
+void SimpleGUIExample::buttonY() {
+	btn_M->setDown(false);
+	btn_Y->setDown(true);
+	btn_R->setDown(false);
+	updateLabel(QColor(Qt::yellow));
+}
+
+void SimpleGUIExample::toggleInvert(int) {
+	if (_isInvertOn)
+		_isInvertOn = false;
+	else
+		_isInvertOn = true;
+
+	updateLabel(_currentColor);
+}
+
+void SimpleGUIExample::updateLabel(const QColor &c) {
+	QPixmap p(size().toSize());
+
+	if (_isInvertOn) {
+		int r,g,b;
+		c.getRgb(&r, &g, &b);
+		r = 255 - r;
+		g = 255 - g;
+		b = 255 - b;
+		p.fill(QColor(r,g,b));
+	}
+	else {
+		p.fill(c);
+	}
+	_currentColor = c;
+
+	label->setPixmap(p);
 }
 
 
