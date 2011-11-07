@@ -580,15 +580,19 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
 			// custom item that inherits SN_BaseWidget. (SN_MediaBrowser is UserType + 11)
 			// So this custom type should be less than UserType + 12
 			//
+			_item = item;
+//			qDebug() << _item;
+			_basewidget = 0;
+			return true;
 		}
 		else {
 			//
 			// regualar graphics items, All the SN_PixmapButton, SN_WallPartitionBar
 			//
-			_item = item;
-//			qDebug() << _item;
-			_basewidget = 0;
-			return true;
+//			_item = item;
+////			qDebug() << _item;
+//			_basewidget = 0;
+//			return true;
 		}
     }
     _basewidget = 0; // reset
