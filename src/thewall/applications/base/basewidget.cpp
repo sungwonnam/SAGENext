@@ -95,6 +95,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	}
 
 	init();
+
 }
 
 SN_BaseWidget::~SN_BaseWidget()
@@ -649,11 +650,12 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 //	qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
 }
 
-QRectF SN_BaseWidget::resizeHandleSceneRect()
+QRectF SN_BaseWidget::resizeHandleRect() const
 {
 	QSizeF size(128, 128);
-	QPointF pos( boundingRect().right() - size.width() - 16, boundingRect().bottom() - size.height() - 16 );
-	return mapRectToScene(QRectF(pos, size));
+	QPointF pos( boundingRect().right() - size.width(), boundingRect().bottom() - size.height());
+//	return mapRectToScene(QRectF(pos, size));
+	return QRectF(pos, size);
 }
 
 
@@ -781,11 +783,11 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
 	setTopmost();
 }
 
-void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & pointerScenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
+void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
 	Q_UNUSED(pointer);
 
 	if (btn == Qt::LeftButton) {
-		if (resizeHandleSceneRect().contains(pointerScenePos)) {
+		if (resizeHandleRect().contains(point)) {
 			if (isWindow()) {
 				// do resize
 				resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);

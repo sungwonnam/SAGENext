@@ -450,6 +450,16 @@ void SN_VNCClientWidget::update_func(rfbClient* client,int x,int y,int w,int h)
 }
 
 /*
+void SN_VNCClientWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier mod) {
+	Q_UNUSED(btn);
+	Q_UNUSED(mod);
+
+
+
+	SendPointerEvent(vncclient, mapFromScene(point));
+}
+
+
 void SN_VNCClientWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 
 	if (event->buttons() & Qt::LeftButton) {
@@ -458,7 +468,7 @@ void SN_VNCClientWidget::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 	else if (event->buttons() & Qt::RightButton) {
 		_buttonMask |= rfbButton3Mask; // 3
 	}
-	SendPointerEvent(vncclient, event->pos().x(), event->pos().y(), _buttonMask);
+	SendPointerEvent(vncclient, event->pos().x(), event->pos().y(), 1);
 	_buttonMask &= ~(rfbButton4Mask | rfbButton5Mask);
 }
 
@@ -478,8 +488,13 @@ void SN_VNCClientWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 	x = event->pos().x();
 	y = event->pos().y();
 
-	SendPointerEvent(vncclient, x, y, _buttonMask);
+	SendPointerEvent(vncclient, x, y, 0);
+	SendPointerEvent(vncclient, x, y, 0);
+	SendPointerEvent(vncclient, x, y, 0);
+	SendPointerEvent(vncclient, x, y, 0);
+	SendPointerEvent(vncclient, x, y, 0);
+	SendPointerEvent(vncclient, x, y, 0);
 	_buttonMask &= ~(rfbButton4Mask | rfbButton5Mask);
 }
-*/
 
+*/

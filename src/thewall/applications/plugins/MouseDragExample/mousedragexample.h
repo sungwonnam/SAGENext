@@ -51,7 +51,7 @@ public:
 	/**
 	  Reimplementing SN_BaseWidget::handlePointerDrag()
 	  */
-	void handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
+	void handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
 
 protected:
 	/**

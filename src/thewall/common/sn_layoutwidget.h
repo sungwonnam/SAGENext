@@ -16,6 +16,9 @@ public:
 	inline Qt::Orientation orientation() const {return _orientation;}
 	inline SN_LayoutWidget * ownerNode() {return _ownerNode;}
 
+        enum { Type = QGraphicsItem::UserType + 1 };
+        virtual int type() const { return Type;}
+
 protected:
 
 private:

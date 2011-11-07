@@ -18,6 +18,8 @@ public:
         SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int _framerate, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
         ~SN_VNCClientWidget();
 
+//		void handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
+
 protected:
         virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 

@@ -49,7 +49,7 @@ public:
 	/**
 	  This widget doesn't resize
 	  */
-	QRectF resizeHandleSceneRect() {return QRectF();}
+	QRectF resizeHandleRect() const {return QRectF();}
 
 	void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
 

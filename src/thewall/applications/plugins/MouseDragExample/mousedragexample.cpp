@@ -94,7 +94,7 @@ void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const
 	}
 }
 
-void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
+void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
 
 	//
 	// If there is a trackeritem under the pointer
@@ -117,7 +117,7 @@ void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const
 		/**
 		  keep the base implementation -> moves this example window itself or resize the window
 		  */
-		SN_BaseWidget::handlePointerDrag(pointer, scenePos, pointerDeltaX, pointerDeltaY, button, modifier);
+		SN_BaseWidget::handlePointerDrag(pointer, point, pointerDeltaX, pointerDeltaY, button, modifier);
 	}
 
 }

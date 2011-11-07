@@ -101,7 +101,7 @@ public:
 
           This function does nothing but return scene rect of 100x100 on the bottom right corner of the widget
           */
-        virtual QRectF resizeHandleSceneRect();
+        virtual QRectF resizeHandleRect() const;
 
 
 
@@ -219,8 +219,10 @@ public:
           So this should be implemented in child class manually.
 
 		  This function is called in SN_PolygonArrowPointer::pointerMove()
+
+		  The point is in this widget's local coordinate
           */
-        virtual void handlePointerDrag(SN_PolygonArrowPointer *pointer ,const QPointF &scenePos, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button = Qt::LeftButton, Qt::KeyboardModifier modifier = Qt::NoModifier);
+        virtual void handlePointerDrag(SN_PolygonArrowPointer *pointer ,const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button = Qt::LeftButton, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 
 		/**
