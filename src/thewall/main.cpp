@@ -501,7 +501,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 
 		//launcher->launch("", "evl123", 0, "131.193.77.191", 24);
-	//launcher->launch(MEDIA_TYPE_WEBURL, "http://youtube.com");
+	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
 //		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
 //		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
@@ -511,10 +511,10 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 //	SN_Checker *ccc  = new SN_Checker(QSize(1920,1080), 30, 0, &s);
 //	launcher->launch(ccc);
 
-	SN_DrawingTool *dt = new SN_DrawingTool(0, &s);
-	dt->adjustSize();
+//	SN_DrawingTool *dt = new SN_DrawingTool(0, &s);
+//	dt->adjustSize();
 //	dt->moveBy(scene->width() - (2 * dt->size().width()) , 10);
-	launcher->launch(dt);
+//	launcher->launch(dt);
 
 
 	// starts the event loop

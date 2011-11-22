@@ -23,6 +23,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
     , _closeFlag(false)
     , _closeButton(0)
     , _appRemoveButton(0)
+    , _drawingCanvas(0)
 {
 	//
 	// This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously.
@@ -96,9 +97,11 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 
 
 
+	/*
 	_drawingCanvas = new SN_DrawingWidget;
 	_drawingCanvas->resize(sceneRect.size());
 	addItem(_drawingCanvas);
+	*/
 
 
 }
