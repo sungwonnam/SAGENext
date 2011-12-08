@@ -69,10 +69,19 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
 	/* webkit related */
 	QWebSettings *ws = QWebSettings::globalSettings();
+
 	ws->setAttribute(QWebSettings::JavaEnabled, true);
 	ws->setAttribute(QWebSettings::JavascriptEnabled, true);
 	ws->setAttribute(QWebSettings::PluginsEnabled, true);
 	ws->setAttribute(QWebSettings::JavascriptCanOpenWindows, true);
+	ws->setAttribute(QWebSettings::LocalContentCanAccessFileUrls, true);
+	ws->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
+
+	ws->setAttribute(QWebSettings::AcceleratedCompositingEnabled, true);
+#if QT_VERSION >= 0x040800
+	qDebug() << "WebWidget : Enabling WebGL";
+	ws->setAttribute(QWebSettings::WebGLEnabled, true);
+#endif
 
 //	setCacheMode(QGraphicsItem::ItemCoordinateCache);
 //	QPixmapCache::setCacheLimit(1024000);
