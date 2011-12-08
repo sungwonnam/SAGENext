@@ -355,11 +355,22 @@ void SN_SageStreamWidget::scheduleUpdate() {
 //		return;
 //	}
 
+	bool isFirst = false;
+
 	const QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
-	if(glContext) {
-		if (glIsTexture(_textureid)) {
-			glDeleteTextures(1, &_textureid);
+	if(glContext && glContext->isValid()) {
+
+		if (!glIsTexture(_textureid)) {
+			glGenTextures(1, &_textureid);
+			isFirst = true;
 		}
+
+//		if (glIsTexture(_textureid)) {
+//			glDeleteTextures(1, &_textureid);
+//		}
+//		else {
+//			qDebug() << "no texture id";
+//		}
 
 //		 QGLContext::InvertedYBindOption Because In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
 		//
@@ -367,7 +378,7 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		//
 //		_textureid = glContext->bindTexture(constImageRef->convertToFormat(QImage::Format_RGB32), GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
-		glGenTextures(1, &_textureid);
+//		glGenTextures(1, &_textureid);
 		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		//glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, _textureid);
@@ -381,7 +392,12 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		//
 		// Note that it's QImage::Format_RGB888 we're getting from SAGE app
 		//
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, constImageRef->width(), constImageRef->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, constImageRef->bits());
+		if (isFirst) {
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, constImageRef->width(), constImageRef->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, constImageRef->bits());
+		}
+		else {
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, constImageRef->width(), constImageRef->height(), GL_RGB, GL_UNSIGNED_BYTE, constImageRef->bits());
+		}
 		glBindTexture(GL_TEXTURE_2D, 0);
 
 		//GLenum error = glGetError();
