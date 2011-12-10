@@ -37,15 +37,20 @@ SN_Viewport::SN_Viewport(SN_TheScene *s, int viewportId, SN_Launcher *l, QWidget
 		_closeAllAction->setShortcut( QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_W) );
 		connect(_closeAllAction, SIGNAL(triggered()), _sageNextScene, SLOT(closeAllUserApp()));
 	}
-//	startTimer(30);
+
+	_swapBufferTimerId = startTimer(30); // every 30 msec
 }
 
 SN_Viewport::~SN_Viewport() {
+	killTimer(_swapBufferTimerId);
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
 
-void SN_Viewport::timerEvent(QTimerEvent *) {
-//	viewport()->update();
+void SN_Viewport::timerEvent(QTimerEvent *e) {
+	if (e->timerId() == _swapBufferTimerId) {
+		// enable this when QGraphicsView's update mode is NoUpdate
+		if (viewport()) viewport()->update();
+	}
 }
 
 void SN_Viewport::on_actionOpen_Media_triggered()

@@ -1,5 +1,8 @@
 #include "imagedoublebuffer.h"
 
+#include <QGLBuffer>
+#include <QGLContext>
+
 DoubleBuffer::DoubleBuffer()
 	: _doubleBuffer(0)
 	, _bufferIndex(0)
@@ -193,6 +196,51 @@ ImageDoubleBuffer::~ImageDoubleBuffer() {
 	free(_doubleBuffer);
 	fprintf(stderr, "ImageDoubleBuffer::%s() \n", __FUNCTION__);
 }
+
+
+void GLDoubleBuffer::initBuffer(int width, int height, QImage::Format fmt) {
+	_width = width;
+	_height = height;
+	_format = fmt;
+
+	_doubleBuffer = (void **)malloc(sizeof(QGLBuffer *) * _numbuff);
+
+	QGLBuffer *glbuff = 0;
+	for (int i=0; i<_numbuff; i++) {
+		glbuff = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
+		glbuff->setUsagePattern(QGLBuffer::DynamicDraw);
+		_doubleBuffer[i] = (void *) glbuff;
+
+		//
+		// make sure there's valid current QGLContext
+		//
+		if (!glbuff->create()) {
+			qCritical("%s() : failed to create glbuffer", __FUNCTION__);
+			return;
+		}
+		if (!glbuff->bind()) {
+			qCritical("%s() : failed to bind glbuffer", __FUNCTION__);
+			return;
+		}
+		glbuff->allocate(width * height * 4); // 32 bpp
+		glbuff->release();
+	}
+	_bufsize = width * height * 4;
+}
+
+GLDoubleBuffer::~GLDoubleBuffer() {
+	QGLBuffer *buf = 0;
+	for (int i=0; i<_numbuff; i++) {
+		if ( _doubleBuffer && _doubleBuffer[i] ) {
+			buf = static_cast<QGLBuffer *>(_doubleBuffer[i]);
+			buf->destroy();
+			delete buf;
+		}
+	}
+	free(_doubleBuffer);
+	fprintf(stderr, "GLDoubleBuffer::%s() \n", __FUNCTION__);
+}
+
 
 
 void RawDoubleBuffer::initBuffer(int width, int height, QImage::Format fmt) {

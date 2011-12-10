@@ -16,6 +16,8 @@
 #include "applications/base/affinityinfo.h"
 #include "applications/mediabrowser.h"
 //#include "applications/sn_checker.h"
+#include "applications/sn_pboexample.h"
+#include "applications/vncwidget.h"
 
 #include "system/sagenextscheduler.h"
 #include "system/resourcemonitor.h"
@@ -26,7 +28,7 @@
 #endif
 
 #ifdef Q_WS_X11
-#include <X11/Xlib.h>
+//#include <X11/Xlib.h>
 extern void qt_x11_set_global_double_buffer(bool);
 #endif
 
@@ -39,7 +41,20 @@ void setViewAttr(SN_Viewport *view, const QSettings &s);
 int main(int argc, char *argv[])
 {
 #ifdef Q_WS_X11
-	XInitThreads(); // to enabled threaded-opengl in 4.8
+	/********
+The GL libraries that ship with recent versions of Windows and Mac OS X are thread-safe,
+but under Unix/X11 this might not always be the case, so you should check this.
+
+An additional problem under X11 is that Xlib (and therefore GLX) is not inherently thread-safe;
+doing Xlib calls in two different threads simultaneously will usually result in a crash.
+The GLX functions that the QGL module calls (e.g. for switching GL contexts, or for doing a buffer swap)
+also make Xlib calls which means that these calls must be protected in some way under X11.
+The simple solution is to call XInitThreads() before creating the QApplication object in your program.
+XInitThreads() must be the first Xlib call made in an application for it to work reliably.
+This will in effect make Xlib thread-safe.
+****************/
+	//XInitThreads(); // to ensure Xlib thread-safeness
+	QCoreApplication::setAttribute(Qt::AA_X11InitThreads);
 
 	//
 	// what is this?
@@ -437,12 +452,14 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	// don't do this
 	//QGLFormat glFormat(QGL::DoubleBuffer | QGL::Rgba  | QGL::DepthBuffer | QGL::SampleBuffers);
 
+	QGLFormat glFormat;
+
 	if (s.value("graphics/isxinerama").toBool()) {
 		gvm = new SN_Viewport(scene, 0, launcher);
 
 		if ( s.value("graphics/openglviewport").toBool() ) {
-			//gvm->setViewport(new QGLWidget(glFormat));
-			gvm->setViewport(new QGLWidget);
+			gvm->setViewport(new QGLWidget(glFormat));
+//			gvm->setViewport(new QGLWidget);
 			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 
 			//
@@ -456,6 +473,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
         gvm->resize(scene->sceneRect().size().toSize());
 
 		setViewAttr(gvm, s);
+		gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
 
 		gvm->show();
 	}
@@ -500,8 +518,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 
 
-		//launcher->launch("", "evl123", 0, "131.193.77.191", 24);
-	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
+//	launcher->launch("user", "evl123", 0, "131.193.77.191", 24);
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
 //		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
 //		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
@@ -510,6 +528,24 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 //	SN_Checker *ccc  = new SN_Checker(QSize(1920,1080), 30, 0, &s);
 //	launcher->launch(ccc);
+
+//	SN_PBOtexture *pbo = new SN_PBOtexture(QSize(1920, 1080), 2, glFormat, 0, &s);
+//	launcher->launch(pbo);
+
+//	SN_FBOtexture *fbo = new SN_FBOtexture(QSize(1920, 1080), 2, 0, &s);
+//	launcher->launch(fbo);
+
+//	SN_GLBufferExample *glb = new SN_GLBufferExample(QSize(1920, 1080), 2, 0, &s);
+//	launcher->launch(glb);
+
+
+//	SN_VNCClientWidget *w = new SN_VNCClientWidget(0, "131.193.77.191", 0, "user", "evl123", 24, &s);
+
+//	launcher->launch(w);
+
+
+
+
 
 //	SN_DrawingTool *dt = new SN_DrawingTool(0, &s);
 //	dt->adjustSize();
@@ -623,6 +659,7 @@ numa_free_cpumask(mask);
 
 #endif
 **/
+
 
 
 

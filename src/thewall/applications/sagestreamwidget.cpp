@@ -151,14 +151,10 @@ void SN_SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
 
 
 void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
-
 	if (_perfMon) {
 		_perfMon->getDrawTimer().start();
 		//perfMon->startPaintEvent();
 	}
-
-	SN_BaseWidget::paint(painter,o,w);
-
 
 	//	if ( currentScale != 1.0 ) painter->scale(currentScale, currentScale);
 
@@ -254,15 +250,12 @@ So, drawing pixmap is much faster but QImage has to be converted to QPixmap for 
 		}
 	}
 	else {
-		/*
-		if (!_imageForDrawing.isNull()) {
-			painter->drawImage(0, 0, _imageForDrawing);
-		}
-		*/
 		if (!_pixmapForDrawing.isNull()) {
 			painter->drawPixmap(0, 0, _pixmapForDrawing);
 		}
 	}
+
+	SN_BaseWidget::paint(painter,o,w);
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
@@ -288,8 +281,11 @@ void SN_SageStreamWidget::scheduleReceive() {
 	_receiverThread->receivePixel();
 }
 
+
+
 /**
-  * this slot connected to the signal PixelReceiver::frameReceived()
+  This slot connected to the signal PixelReceiver::frameReceived()
+  This slot is queued in sagepixelreceiver after swapbuffer()
   */
 void SN_SageStreamWidget::scheduleUpdate() {
 
@@ -462,16 +458,44 @@ void SN_SageStreamWidget::startReceivingThread() {
 	Q_ASSERT(streamsocket > 0);
 	Q_ASSERT(doubleBuffer);
 
-	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, /*image*/ doubleBuffer, _appInfo, _perfMon, _affInfo, /*this, mutex, wc,*/ _settings);
 
 
+	/*!
+	  At this point, we know widget size and pixel format
+
+	  Init _textureid
+	  */
+	//
+	// QGLContext is accessible from this widget ONLY after the constructor returns
+	//
+	QGLContext *context = const_cast<QGLContext *>(QGLContext::currentContext());
+	QGLWidget *viewportWidget = 0;
+	if (context && context->isValid())
+		 viewportWidget = static_cast<QGLWidget *>(context->device());
+
+	if (viewportWidget && viewportWidget->paintEngine()->type() == QPaintEngine::OpenGL2) {
+		delete doubleBuffer;
+		doubleBuffer = 0;
+
+//		unsigned char dummy[_appInfo->frameSizeInByte()];
+		glGenTextures(1, &_textureid);
+		glBindTexture(GL_TEXTURE_2D, _textureid);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size().width(), size().height(), 0, GL_RGB, GL_UNSIGNED_BYTE, (void *)0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+
+
+	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, _textureid, viewportWidget, /*image*/ doubleBuffer, _appInfo, _perfMon, _affInfo, /*this, mutex, wc,*/ _settings);
     Q_ASSERT(_receiverThread);
-
     connect(_receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
 
     // don't do below.
 //		connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));
-
 
 //		if (!scheduler) {
             // This is queued connection because receiverThread reside outside of the main thread

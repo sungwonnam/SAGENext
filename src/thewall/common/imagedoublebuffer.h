@@ -2,8 +2,8 @@
 #define IMAGEDOUBLEBUFFER_H
 
 #include <QtCore>
-#include <QImage>
 
+#include <QImage>
 #include <pthread.h>
 
 //class QPaintDevice;
@@ -68,6 +68,13 @@ public:
 	void initBuffer(int width, int height, QImage::Format fmt);
 	void rgbSwapped();
 	~ImageDoubleBuffer();
+};
+
+class GLDoubleBuffer : public DoubleBuffer
+{
+public:
+	void initBuffer(int width, int height, QImage::Format fmt);
+	~GLDoubleBuffer();
 };
 
 //class PixmapDoubleBuffer : public DoubleBuffer

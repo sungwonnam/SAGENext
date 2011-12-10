@@ -175,7 +175,8 @@ SOURCES += \
     common/sn_layoutwidget.cpp \
     applications/sn_checker.cpp \
     common/sn_sharedpointer.cpp \
-    common/sn_drawingwidget.cpp
+    common/sn_drawingwidget.cpp \
+    applications/sn_pboexample.cpp
 
 HEADERS += \
 #        settingdialog.h \
@@ -214,10 +215,13 @@ HEADERS += \
     common/sn_layoutwidget.h \
     applications/sn_checker.h \
     common/sn_sharedpointer.h \
-    common/sn_drawingwidget.h
+    common/sn_drawingwidget.h \
+    applications/sn_pboexample.h
 
 
 #    common/filereceivingrunnable.h
+
+
 
 
 

@@ -14,17 +14,18 @@
 
 class SN_VNCClientWidget : public SN_RailawareWidget
 {
+	Q_OBJECT
 public:
-        SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int _framerate, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
+        explicit SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int _framerate, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
         ~SN_VNCClientWidget();
 
 //		void handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
 
-protected:
-        virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 //		void mousePressEvent(QGraphicsSceneMouseEvent *event);
 //		void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+
 
 private:
         rfbClient *vncclient;
@@ -39,7 +40,7 @@ private:
 		/**
 		  texture id I'm going to draw
 		  */
-		GLuint _textureid;
+		GLuint _texid;
 
 //		QImage _imageForDrawing;
 
@@ -64,6 +65,22 @@ private:
 
         QFuture<void> future;
 
+
+		/*!
+		  Double OpenGL buffers. This buffers are created in the server side.
+		  So writing to these buffers is DMA to GPU memory
+		  */
+		QGLBuffer **_glbuffers;
+		int initGLBuffers(int bytecount);
+
+		QGLWidget *_myGlWidget;
+		QGLWidget *_viewportWidget;
+
+		bool _useGLBuffer;
+
+
+
+
 		static rfbCredential * getCredential(struct _rfbClient *client, int credentialType);
 
         static rfbBool got_data;
@@ -83,6 +100,13 @@ private:
         static void update_func(rfbClient* client,int x,int y,int w,int h);
 
 public slots:
+		/*!
+		  The receivingThread() should be invoked after the constructor returns
+		  to be able to get QGLContext
+		  */
+		void startThread();
+
+
         /*!
           Reimplementing virtual function.
           convert QImage to QPixmap and schedule QGraphicsItem::update()
@@ -93,7 +117,6 @@ public slots:
           Reimplementing virtual function.
           */
         void scheduleReceive() {}
-
 };
 
 #endif // VNCWIDGET_H

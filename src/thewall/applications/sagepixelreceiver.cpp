@@ -18,21 +18,25 @@
 #include <sys/resource.h>
 //#include <sched.h>
 
+#include <QtOpenGL>
 
-SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ DoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */) :
-	QThread(parent),
-	s(s),
-	_end(false),
-	socket(sockfd),
-	_socket(0),
-	image(0),
-	doubleBuffer(idb),
-	appInfo(ap),
-	perf(pm),
-	affInfo(ai),
-	frameCounter(0)
+
+SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ GLuint tid, QGLWidget *sw, DoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */)
+    : QThread(parent)
+    , s(s)
+    , _end(false)
+    , _tcpsocket(sockfd)
+    , _udpsocket(0)
+    , _textureid(tid)
+    , _myGlWidget(0)
+    , _shareWidget(sw)
+    , doubleBuffer(idb)
+    , appInfo(ap)
+    , perf(pm)
+    , affInfo(ai)
+    , _glbuffers(0)
+    , _useGLBuffer(false)
 {
-
 	QThread::setTerminationEnabled(true);
 
 	if ( protocol == SAGE_TCP ) {
@@ -45,7 +49,9 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, /*QImage *i
 		*/
 	}
 	else {
-		_socket = new QUdpSocket(this);
+		// to make this work, this thread has to have its own event loop.
+		// Use exec() instead of start()
+		_udpsocket = new QUdpSocket(this);
 		int udpPortNumber = receiveUdpPortNumber();
 		if ( udpPortNumber <= 0 ) {
 			qCritical("%s::%s() : failed to receive UDP port number for streaming", qPrintable(objectName()), __FUNCTION__);
@@ -54,32 +60,37 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, /*QImage *i
 		else {
 		}
 	}
-
 }
-
 
 void SN_SagePixelReceiver::endReceiver() {
 //    _mutex.lock();
     _end = true;
-    ::shutdown(socket, SHUT_RDWR);
-    ::close(socket);
+    ::shutdown(_tcpsocket, SHUT_RDWR);
+    ::close(_tcpsocket);
 //    _waitCond.wakeOne();
 //    _mutex.unlock();
 }
 
 SN_SagePixelReceiver::~SN_SagePixelReceiver() {
-
-//	_mutex.lock();
-
 	_end = true;
 //	::shutdown(socket, SHUT_RDWR);
-	::close(socket);
+	::close(_tcpsocket);
 
 //	_waitCond.wakeOne();
 //	_mutex.unlock();
 
-//        terminate();
-//        wait();
+	if (_glbuffers) {
+		for (int i=0; i<2; i++) {
+			_glbuffers[i]->release();
+			_glbuffers[i]->destroy();
+			delete _glbuffers[i];
+		}
+		free(_glbuffers);
+	}
+
+	if (_myGlWidget) {
+		delete _myGlWidget;
+	}
 
 	qDebug() << "return ~SagePixelReceiver" << QTime::currentTime().toString("hh:mm:ss.zzz");
 }
@@ -97,13 +108,13 @@ int SN_SagePixelReceiver::receiveUdpPortNumber() {
 
 	// send receiver's(display) UDP port
 	sprintf(buffer.data(), "%d", 24243);
-	int sent = send(socket, buffer.data(), buffer.size(), 0);
+	int sent = send(_tcpsocket, buffer.data(), buffer.size(), 0);
 	Q_UNUSED(sent);
 
 	buffer.clear();
 	// receive sender's (sail) UDP port
 	qDebug("SagePixelReceiver::%s() : waiting for sender to send her UDP port", __FUNCTION__);
-	int read = recv(socket, buffer.data(), buffer.size(), MSG_WAITALL);
+	int read = recv(_tcpsocket, buffer.data(), buffer.size(), MSG_WAITALL);
 	int udpPortNumber = 0;
 	sscanf(buffer.data(), "%d", &udpPortNumber);
 	qDebug("SagePixelReceiver::%s() : received sender's UDP port number %d", __FUNCTION__, udpPortNumber);
@@ -119,21 +130,57 @@ int SN_SagePixelReceiver::receiveUdpPortNumber() {
 	}
 }
 
+int SN_SagePixelReceiver::initGLBuffers(int bytecount) {
+	if (!_shareWidget) return -1;
+
+	if (_shareWidget->paintEngine()->type() != QPaintEngine::OpenGL2) {
+		qWarning("%s::%s() : OpenGL2 paintEngine is not available");
+		return -1;
+	}
+
+	_myGlWidget = new QGLWidget(QGLFormat::defaultFormat(), 0, _shareWidget);
+	_myGlWidget->makeCurrent();
+
+	//
+	// init glbuffer (at the GLServer)
+	//
+	_glbuffers = (QGLBuffer **)malloc(sizeof(QGLBuffer *) * 2);
+	for (int i=0; i<2; i++) {
+		_glbuffers[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
+		_glbuffers[i]->setUsagePattern(QGLBuffer::StreamDraw);
+
+		//
+		// glGenBufferARB
+		//
+		if (!_glbuffers[i]->create()) {
+			qDebug() << "glbuffer->create() failed";
+			return -1;
+		}
+
+		//
+		// glBindBufferARB
+		//
+		if (!_glbuffers[i]->bind()) {
+			qDebug() << "glbuffer->bind() failed";
+			return -1;
+		}
+
+		//
+		// glBufferDataARB
+		//
+		_glbuffers[i]->allocate(bytecount);
+
+		_glbuffers[i]->release();
+	}
+
+	return 0;
+}
 
 void SN_SagePixelReceiver::run() {
 
 //	fprintf(stderr, "SagePixelReceiver::run() : starting pixel receiving thread");
 
 	QThread::setTerminationEnabled(true);
-
-	/**
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(3, &cpuset);
-	if ( sched_setaffinity(0, sizeof(cpuset), &cpuset) != 0 ) {
-		qDebug("SagePixelReceiver::%s() : sched_setaffinity error", __FUNCTION__);
-	}
-	**/
 
 	/*
 	 * Initially store current affinity settings of this thread using NUMA API
@@ -145,13 +192,6 @@ void SN_SagePixelReceiver::run() {
 		affInfo->setCpuOfMine( sched_getcpu() ,s->value("system/sailaffinity", false).toBool()); // true will cause sail affinityinfo
 #endif
 	}
-
-
-	/*
-	QThread *thread = this->thread();
-	// The operating system will schedule the thread according to the priority parameter. The effect of the priority parameter is dependent on the operating system's scheduling policy. In particular, the priority will be ignored on systems that do not support thread priorities (such as on Linux, see http://linux.die.net/man/2/sched_setscheduler for more details).
-	qDebug("SagePixelReceiver::%s() : priority %d", __FUNCTION__, thread->priority());
-	*/
 
 	// network recv latency
 	struct timeval lats, late;
@@ -168,12 +208,18 @@ void SN_SagePixelReceiver::run() {
 	}
 
 	int byteCount = appInfo->frameSizeInByte();
+	unsigned char *bufptr = 0;
+	QGLBuffer *currGLBuf = 0;
+	int bufidx = 0; // glbuffer[]
 
-	unsigned char *bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
-//	unsigned char *bufptr = (unsigned char *)doubleBuffer->getFrontBuffer();
+	if ( initGLBuffers(byteCount) == 0 ) {
+		_useGLBuffer = true;
+	}
+	else {
+		_useGLBuffer = false;
+		bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
+	}
 
-//	unsigned char *bufptr = 0;
-//	QImage localImage(appInfo->nativeSize(), QImage::Format_RGB888);
 
 	while(! _end ) {
 		if ( affInfo ) {
@@ -196,6 +242,45 @@ void SN_SagePixelReceiver::run() {
 			}
 		}
 
+		if (_useGLBuffer) {
+			bufidx = (bufidx + 1) % 2;
+			int nextbufidx = (bufidx + 1) % 2;
+
+			currGLBuf = _glbuffers[bufidx];
+			//
+			// bind the texture and buffer object
+			//
+			glBindTexture(GL_TEXTURE_2D, _textureid);
+			if (!currGLBuf->bind()) qDebug() << "bind error";
+
+			//
+			// copy the pixel from the glbuffer to texture object
+			// glTexImage2D has been called in init()
+			//
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, appInfo->nativeSize().width(), appInfo->nativeSize().height(), GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+			// reset
+			glBindTexture(GL_TEXTURE_2D, 0);
+			currGLBuf->release();
+
+			/*****
+             DMA write to GPU memory
+	         *****/
+			currGLBuf = _glbuffers[nextbufidx];
+			if (!currGLBuf->bind()) qDebug() << "bind error";
+
+			// map the buffer object into client's memory
+			// Note that glMapBufferARB() causes sync issue.
+			// If GPU is working with this buffer, glMapBufferARB() will wait(stall)
+			// for GPU to finish its job. To avoid waiting (stall), you can call
+			// first glBufferDataARB() with NULL pointer before glMapBufferARB().
+			// If you do that, the previous data in PBO will be discarded and
+			// glMapBufferARB() returns a new allocated pointer immediately
+			// even if GPU is still working with the previous data.
+			currGLBuf->allocate(0, appInfo->frameSizeInByte());
+			bufptr = (unsigned char *)currGLBuf->map(QGLBuffer::WriteOnly);
+
+		}
 
 		// recv header
 		/*
@@ -219,15 +304,15 @@ void SN_SagePixelReceiver::run() {
 
 		gettimeofday(&lats, 0);
 
-		// PRODUCER
+		// PIXEL RECEIVING
 		while (totalread < byteCount ) {
 			// If remaining byte is smaller than user buffer length (which is groupSize)
 			if ( byteCount-totalread < appInfo->networkUserBufferLength() ) {
-				read = recv(socket, bufptr, byteCount-totalread , MSG_WAITALL);
+				read = recv(_tcpsocket, bufptr, byteCount-totalread , MSG_WAITALL);
 			}
 			// otherwise, always read groupSize bytes
 			else {
-				read = recv(socket, bufptr, appInfo->networkUserBufferLength(), MSG_WAITALL);
+				read = recv(_tcpsocket, bufptr, appInfo->networkUserBufferLength(), MSG_WAITALL);
 			}
 			if ( read == -1 ) {
 				qDebug("SagePixelReceiver::run() : error while reading.");
@@ -245,35 +330,30 @@ void SN_SagePixelReceiver::run() {
 		}
 		if ( totalread < byteCount  ||  _end ) break;
 		read = totalread;
+
+		if (_useGLBuffer) {
+			currGLBuf->unmap();
+			currGLBuf->release();
+		}
+		else {
+			/********************************/   // double buffering
+			Q_ASSERT(doubleBuffer);
+
+			// will wait until consumer (SageStreamWidget) consumes the data
+			// i.e. until consumer calls doubleBuffer->releaseBackBuffer();
+			doubleBuffer->swapBuffer();
+			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "swapBuffer returned";
+
+			emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
+
+			//
+			// getFrontBuffer() will return immediately. There's no mutex waiting in this function
+			//
+			bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
+			/***************************************/
+		}
+
 		gettimeofday(&late, 0);
-
-//		++frameCounter;
-//		qDebug() << (QTime::currentTime()).toString("mm:ss.zzz") << " recevier : " << frameCounter << " received";
-
-
-
-		/********************************/   // double buffering
-		Q_ASSERT(doubleBuffer);
-
-		// will wait until consumer (SageStreamWidget) consumes the data
-		// i.e. until consumer calls doubleBuffer->releaseBackBuffer();
-		doubleBuffer->swapBuffer();
-		//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "swapBuffer returned";
-
-//		perf->getConvTimer().start();
-
-		emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
-
-		//qDebug("%s() : signal emitted", __FUNCTION__);
-		//QMetaObject::invokeMethod(widget, "scheduleUpdate", Qt::QueuedConnection);
-
-		//getFrontBuffer() will return immediately. There's no mutex waiting in this function
-		bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
-//		bufptr = (unsigned char *)doubleBuffer->getFrontBuffer();
-		//qDebug("%s() : grabbed front buffer", __FUNCTION__);
-		/***************************************/
-
-
 
 
 		/**********************************************/ // scheduling with wait condition
@@ -306,8 +386,6 @@ void SN_SagePixelReceiver::run() {
 
 
 
-
-
 		if (perf) {
 #if defined(Q_OS_LINUX)
 			getrusage(RUSAGE_THREAD, &ru_end);
@@ -318,24 +396,16 @@ void SN_SagePixelReceiver::run() {
 			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001);
 
 			// calculate
-//			perf->updateRecvLatency(read, ru_start, ru_end); // QTimer::restart()
 			perf->updateObservedRecvLatency(read, networkrecvdelay, ru_start, ru_end);
 			ru_start = ru_end;
-
-//			qDebug() << perf->getCpuUsage();
 		}
 	} /*** end of receiving loop ***/
 
-//	if(doubleBuffer) {
-
-//		doubleBuffer->swapBuffer(); // not a good idea
-
-//		doubleBuffer->releaseLocks();
-//		delete doubleBuffer; // do not delete doublebuffer here
-//	}
+	if (_myGlWidget)
+		_myGlWidget->doneCurrent();
 
 	/* pixel receiving thread exit */
-        qDebug("SagePixelReceiver : thread exit");
+	qDebug("SagePixelReceiver : thread exit");
 }
 
 

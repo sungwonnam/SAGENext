@@ -21,11 +21,14 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	, vncclient(0)
 	, serverPort(5900)
 	, _image(0)
-    , _textureid(0)
+//    , _texid(0)
 	, _end(false)
 	, _framerate(frate)
     , _buttonMask(0)
-
+    , _glbuffers(0)
+    , _myGlWidget(0)
+    , _viewportWidget(0)
+    , _useGLBuffer(false)
 {
 	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_VNC);
 	
@@ -86,25 +89,13 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	if (vncclient->serverPort == -1 )
 		vncclient->vncRec->doNotSleep = true;
 
-	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
-//	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_ARGB32_Premultiplied);
-//	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB888);
-	//qDebug("vnc widget image %d x %d and bytecount %d", vncclient->width, vncclient->height, _image->byteCount());
-
-
-//	qreal fmargin = _settings->value("gui/framemargin", 0).toInt();
 
 	/**
 	  Don't forget to call resize() once you know the size of image you're displaying.
 	  Also BaseWidget::resizeEvent() will call setTransformOriginPoint();
      */
-//	resize(_image->width() + fmargin*2, _image->height() + fmargin*2);
-//	_appInfo->setFrameSize(_image->width() + fmargin*2, _image->height() + fmargin*2, 24);
-
-	resize(_image->size());
-	_appInfo->setFrameSize(_image->width(), _image->height(), _image->depth());
-
-//	qDebug() << "VNCClientWidget constructor" << boundingRect() << size();
+	resize(vncclient->width, vncclient->height);
+	_appInfo->setFrameSize(vncclient->width, vncclient->height, 32);
 
 
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
@@ -113,12 +104,35 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 		_perfMon->setAdjustedFps( (qreal)_framerate );
 	}
 
-	setAttribute(Qt::WA_PaintOnScreen);
+	QTimer::singleShot(10, this, SLOT(startThread()));
+}
 
-	/**
-	  sets the transform origin point to widget's center
-	 */
-//	setTransformOriginPoint( _image->width() / 2.0 , _image->height() / 2.0 );
+
+void SN_VNCClientWidget::startThread() {
+	//
+	// QGLContext is accessible from this widget ONLY after the constructor returns
+	//
+	QGLContext *context = const_cast<QGLContext *>(QGLContext::currentContext());
+	if (context && context->isValid())
+		 _viewportWidget = static_cast<QGLWidget *>(context->device());
+
+	if (_viewportWidget && _viewportWidget->paintEngine()->type() == QPaintEngine::OpenGL2) {
+//		qDebug() << "\n\nOpenGL viewport available\n\n";
+		glGenTextures(1, &_texid);
+		glBindTexture(GL_TEXTURE_2D, _texid);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size().width(), size().height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, (void *)0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		_useGLBuffer = true;
+	}
+	else {
+		// this is going to be the pixel buffer when OpenGL isn't available
+		_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
+		_useGLBuffer = false;
+	}
 
 	// starting thread.
 	future = QtConcurrent::run(this, &SN_VNCClientWidget::receivingThread);
@@ -128,26 +142,76 @@ SN_VNCClientWidget::~SN_VNCClientWidget() {
 	_end = true;
 	future.cancel();
 	future.waitForFinished();
+
+	if (vncclient) {
+		rfbClientCleanup(vncclient);
+	}
+
 	if (_image) delete _image;
 
-	if (glIsTexture(_textureid)) {
-		glDeleteTextures(1, &_textureid);
+	if (glIsTexture(_texid)) {
+		glDeleteTextures(1, &_texid);
+	}
+
+	if (_glbuffers) {
+		for (int i=0; i<2; i++) {
+			_glbuffers[i]->release();
+			_glbuffers[i]->destroy();
+			delete _glbuffers[i];
+		}
+		free(_glbuffers);
+	}
+
+	if (_myGlWidget) {
+		delete _myGlWidget;
 	}
 }
 
-rfbCredential * SN_VNCClientWidget::getCredential(struct _rfbClient *client, int credentialType) {
-	Q_UNUSED(client);
-	Q_UNUSED(credentialType);
-	rfbCredential *res = (rfbCredential *)malloc(sizeof(rfbCredential));
-	if ( ! SN_VNCClientWidget::username.isEmpty())
-		res->userCredential.username = strdup(qPrintable(SN_VNCClientWidget::username));
-	else
-		res->userCredential.username = NULL;
-	if (! SN_VNCClientWidget::vncpasswd.isEmpty())
-		res->userCredential.password = strdup(qPrintable(SN_VNCClientWidget::vncpasswd));
-	else
-		res->userCredential.password = NULL;
-	return res;
+
+int SN_VNCClientWidget::initGLBuffers(int bytecount) {
+	if (!_viewportWidget) return -1;
+
+	if (_viewportWidget->paintEngine()->type() != QPaintEngine::OpenGL2) {
+		qWarning("%s::%s() : OpenGL2 paintEngine is not available");
+		return -1;
+	}
+
+	_myGlWidget = new QGLWidget(QGLFormat::defaultFormat(), 0, _viewportWidget);
+	_myGlWidget->makeCurrent();
+
+	//
+	// init glbuffer (at the GLServer)
+	//
+	_glbuffers = (QGLBuffer **)malloc(sizeof(QGLBuffer *) * 2);
+	for (int i=0; i<2; i++) {
+		_glbuffers[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
+		_glbuffers[i]->setUsagePattern(QGLBuffer::StreamDraw);
+
+		//
+		// glGenBufferARB
+		//
+		if (!_glbuffers[i]->create()) {
+			qDebug() << "glbuffer->create() failed";
+			return -1;
+		}
+
+		//
+		// glBindBufferARB
+		//
+		if (!_glbuffers[i]->bind()) {
+			qDebug() << "glbuffer->bind() failed";
+			return -1;
+		}
+
+		//
+		// glBufferDataARB
+		//
+		_glbuffers[i]->allocate(bytecount);
+
+		_glbuffers[i]->release();
+	}
+
+	return 0;
 }
 
 void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
@@ -155,40 +219,48 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 		_perfMon->getDrawTimer().start();
 	}
 
-	SN_BaseWidget::paint(painter, o, w);
-
 	//	painter->setRenderHint(QPainter::Antialiasing);
 	//	painter->setRenderHint(QPainter::HighQualityAntialiasing);
 	painter->setRenderHint(QPainter::SmoothPixmapTransform); // important -> this will make text smoother
 
-/*
-	if (!_pixmap.isNull())
-		painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _pixmap); // Drawing QPixmap is much faster than QImage
-		*/
 
+	if (_useGLBuffer && painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
+		painter->beginNativePainting();
 
-//	if (!_imageForDrawing.isNull()) {
-//		// I'm drawing the QImage to avoid conversion delay (just like SageStreamWidget)
-//		painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _imageForDrawing);
-//	}
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, _texid);
 
+		glBegin(GL_QUADS);
+		//
+		// below is same with QGLContext::InvertedYBindOption
+		//
+		glTexCoord2f(0.0, 1.0); glVertex2f(0, size().height());
+		glTexCoord2f(1.0, 1.0); glVertex2f(size().width(), size().height());
+		glTexCoord2f(1.0, 0.0); glVertex2f(size().width(), 0);
+		glTexCoord2f(0.0, 0.0); glVertex2f(0, 0);
 
-	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
-		if (glIsTexture(_textureid)) {
-			QGLWidget *viewportWidget = (QGLWidget *)w;
-			viewportWidget->drawTexture(QPointF(0, 0), _textureid);
-		}
+		//
+		// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
+		//
+		//			glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+		//			glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
+		//			glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
+		//			glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
+
+		glEnd();
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDisable(GL_TEXTURE_2D);
+
+		painter->endNativePainting();
 	}
 	else {
-//		if (_image && !_image->isNull()) {
-			// I'm drawing the QImage to avoid conversion delay (just like SageStreamWidget)
-//			painter->drawImage(0, 0, *_image);
-//		}
 		if (!_pixmapForDrawing.isNull()) {
 			painter->drawPixmap(0, 0, _pixmapForDrawing);
 		}
 	}
 
+	SN_BaseWidget::paint(painter, o, w);
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
@@ -209,57 +281,18 @@ void SN_VNCClientWidget::scheduleUpdate() {
 		return;
     }
 
-
 	_perfMon->getConvTimer().start();
 
-	// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
-	// QGraphicsView will process the event
-
-	//_imageForDrawing = *_image;
-
-
-
-	const QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
-	if(glContext) {
-		if (glIsTexture(_textureid)) {
-			glDeleteTextures(1, &_textureid);
-		}
-
-		//
-		// to avoid detach(), and QGLContext::InvertedYBindOption
-		// In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
-		//
-		const QImage &constRef = _image->mirrored(false, true);
-		//_textureid = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
-
-		glGenTextures(1, &_textureid);
-		glBindTexture(GL_TEXTURE_2D, _textureid);
-
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-		//glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, constRef.width(), constRef.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		GLenum error = glGetError();
-		if(error != GL_NO_ERROR) {
-			qWarning("texture upload failed. error code 0x%x\n", error);
-		}
-	}
-	else {
-		_pixmapForDrawing.convertFromImage(*_image, Qt::ColorOnly | Qt::ThresholdDither);
-	}
-
-
+	_pixmapForDrawing.convertFromImage(*_image, Qt::ColorOnly | Qt::ThresholdDither);
 
 	_perfMon->updateConvDelay();
 
-	update();
+	// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
+	// QGraphicsView will process the event
+//	update();
 }
 
 void SN_VNCClientWidget::receivingThread() {
-/*
 	struct timeval lats, late;
 	struct rusage ru_start, ru_end;
 
@@ -272,12 +305,23 @@ void SN_VNCClientWidget::receivingThread() {
 		getrusage(RUSAGE_SELF, &ru_start);
 #endif
 	}
-*/
+
+
+	if (_useGLBuffer) {
+		if ( initGLBuffers(_appInfo->frameSizeInByte()) != 0 ) {
+			_useGLBuffer = false;
+			_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
+			_texid = 0;
+			_viewportWidget = 0;
+		}
+	}
+	QGLBuffer *currGLBuf = 0;
+	int bufidx = 0;
+	unsigned char *bufptr = 0; // I will copy to this buffer
+
 
 	while (!_end) {
-
 //		if (_perfMon) gettimeofday(&lats, 0);
-
 
 		// sleep to ensure desired fps
 		qint64 now = 0;
@@ -324,38 +368,91 @@ void SN_VNCClientWidget::receivingThread() {
 		if (_end) break;
 
 
-		//
-		// now copy pixels from LibVNCClient
-		//
-		unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
-//		unsigned char * rgbbuffer = _image->bits();
-		QRgb *rgbbuffer = (QRgb *)(_image->scanLine(0)); // An ARGB quadruplet on the format #AARRGGBB, equivalent to an unsigned int.
+		if (_perfMon)
+			gettimeofday(&lats, 0);
 
-		Q_ASSERT(vncpixels && rgbbuffer);
+		if (_useGLBuffer) {
+			bufidx = (bufidx + 1) % 2;
+			int nextbufidx = (bufidx + 1) % 2;
 
-		/*
-		for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
-			// QImage::Format_RGB32 format : 0xffRRGGBB
-			rgbbuffer[4*k + 3] = 0xff;
-			rgbbuffer[4*k + 2] = vncpixels[ 4*k + 0]; // red
-			rgbbuffer[4*k + 1] = vncpixels[ 4*k + 1]; // green
-			rgbbuffer[4*k + 0] = vncpixels[ 4*k + 2]; // blue
+			currGLBuf = _glbuffers[bufidx];
+			//
+			// bind the texture and buffer object
+			//
+			glBindTexture(GL_TEXTURE_2D, _texid);
+			if (!currGLBuf->bind()) qDebug() << "bind error";
 
-			// QImage::Format_RGB888
+			//
+			// copy the pixel from the glbuffer to texture object
+			// glTexImage2D has been called in init()
+			//
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+			// reset
+			glBindTexture(GL_TEXTURE_2D, 0);
+			currGLBuf->release();
+
+			/*****
+             DMA write to GPU memory
+	         *****/
+			currGLBuf = _glbuffers[nextbufidx];
+			if (!currGLBuf->bind()) qDebug() << "bind error";
+
+			// map the buffer object into client's memory
+			// Note that glMapBufferARB() causes sync issue.
+			// If GPU is working with this buffer, glMapBufferARB() will wait(stall)
+			// for GPU to finish its job. To avoid waiting (stall), you can call
+			// first glBufferDataARB() with NULL pointer before glMapBufferARB().
+			// If you do that, the previous data in PBO will be discarded and
+			// glMapBufferARB() returns a new allocated pointer immediately
+			// even if GPU is still working with the previous data.
+			currGLBuf->allocate(0, _appInfo->frameSizeInByte());
+			bufptr = 0;
+			bufptr = (unsigned char *)currGLBuf->map(QGLBuffer::WriteOnly);
+			if (bufptr) {
+				::memcpy(bufptr, (unsigned char *)vncclient->frameBuffer, _appInfo->frameSizeInByte());
+				currGLBuf->unmap();
+			}
+			currGLBuf->release();
+
+			/*
+			  Texture object is going to be shared.
+			  So I dont have to update explicitly
+			  */
+		}
+		else {
+			//
+			// now copy pixels from LibVNCClient
+			//
+			unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
+			//		unsigned char * rgbbuffer = _image->bits();
+			QRgb *rgbbuffer = (QRgb *)(_image->scanLine(0)); // A RGB32 quadruplet on the format 0xffRRGGBB, equivalent to an unsigned int.
+
+			Q_ASSERT(vncpixels && rgbbuffer);
+
+			/*
+  for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
+   // QImage::Format_RGB32 format : 0xffRRGGBB
+   rgbbuffer[4*k + 3] = 0xff;
+   rgbbuffer[4*k + 2] = vncpixels[ 4*k + 0]; // red
+   rgbbuffer[4*k + 1] = vncpixels[ 4*k + 1]; // green
+   rgbbuffer[4*k + 0] = vncpixels[ 4*k + 2]; // blue
+
+   // QImage::Format_RGB888
 //			buffer[3*k + 0] = vncpixels[ 4*k + 0];
 //			buffer[3*k + 1] = vncpixels[ 4*k + 1];
 //			buffer[3*k + 2] = vncpixels[ 4*k + 2];
+  }
+  */
+
+			for (int i=0; i<vncclient->width * vncclient->height; i++) {
+				rgbbuffer[i] = qRgb(vncpixels[4*i+0], vncpixels[4*i+1], vncpixels[4*i+2]);
+			}
+
+			QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
+			//QMetaObject::invokeMethod(this, "update", Qt::QueuedConnection);
 		}
-		*/
 
-		for (int i=0; i<vncclient->width * vncclient->height; i++) {
-			rgbbuffer[i] = qRgb(vncpixels[4*i+2], vncpixels[4*i+1], vncpixels[4*i+0]);
-		}
-
-		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
-//		QMetaObject::invokeMethod(this, "update", Qt::QueuedConnection);
-
-/***
 		if (_perfMon) {
 			gettimeofday(&late, 0);
 #if defined(Q_OS_LINUX)
@@ -366,18 +463,15 @@ void SN_VNCClientWidget::receivingThread() {
 			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001); // second
 
 			// calculate
-//			perf->updateRecvLatency(read, ru_start, ru_end); // QTimer::restart()
 			_perfMon->updateObservedRecvLatency(vncclient->width * vncclient->height, networkrecvdelay, ru_start, ru_end);
 
 			ru_start = ru_end;
 			lats = late;
-
-//			qDebug() << perf->getCpuUsage();
 		}
-		****/
-
-
 	} // end of while (_end)
+
+	if (_myGlWidget)
+		_myGlWidget->doneCurrent();
 
 //	qDebug() << "LibVNCClient receiving thread finished";
 //	QMetaObject::invokeMethod(this, "fadeOutClose", Qt::QueuedConnection);
@@ -414,6 +508,22 @@ rfbBool SN_VNCClientWidget::resize_func(rfbClient* client)
 
         rfbClientLog("Allocate %d bytes: %d x %d x %d\n", width*height*depth, width,height,depth);
         return TRUE;
+}
+
+
+rfbCredential * SN_VNCClientWidget::getCredential(struct _rfbClient *client, int credentialType) {
+	Q_UNUSED(client);
+	Q_UNUSED(credentialType);
+	rfbCredential *res = (rfbCredential *)malloc(sizeof(rfbCredential));
+	if ( ! SN_VNCClientWidget::username.isEmpty())
+		res->userCredential.username = strdup(qPrintable(SN_VNCClientWidget::username));
+	else
+		res->userCredential.username = NULL;
+	if (! SN_VNCClientWidget::vncpasswd.isEmpty())
+		res->userCredential.password = strdup(qPrintable(SN_VNCClientWidget::vncpasswd));
+	else
+		res->userCredential.password = NULL;
+	return res;
 }
 
 void SN_VNCClientWidget::frame_func(rfbClient *)

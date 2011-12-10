@@ -26,6 +26,8 @@ private:
 	  */
 	int _viewportID;
 
+	int _swapBufferTimerId;
+
 	/*!
 	  File dialog (CMD or CTRL - O) to open local files
 	  */
