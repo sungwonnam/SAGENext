@@ -18,23 +18,24 @@
 #include <sys/resource.h>
 //#include <sched.h>
 
-#include <QtOpenGL>
+//#include <QtOpenGL>
 
 
-SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ GLuint tid, QGLWidget *sw, DoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */)
+SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, /*QImage *img*/ /*GLuint tid, GLuint *pboids,*/ /*QGLWidget *sw,*/ DoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */)
     : QThread(parent)
     , s(s)
     , _end(false)
     , _tcpsocket(sockfd)
     , _udpsocket(0)
-    , _textureid(tid)
-    , _myGlWidget(0)
-    , _shareWidget(sw)
+//    , _textureid(tid)
+//    , _pboIds(pboids)
+//    , _myGlWidget(0)
+//    , _shareWidget(0)
     , doubleBuffer(idb)
     , appInfo(ap)
     , perf(pm)
     , affInfo(ai)
-    , _glbuffers(0)
+//    , _glbuffers(0)
     , _useGLBuffer(false)
 {
 	QThread::setTerminationEnabled(true);
@@ -79,6 +80,7 @@ SN_SagePixelReceiver::~SN_SagePixelReceiver() {
 //	_waitCond.wakeOne();
 //	_mutex.unlock();
 
+	/*
 	if (_glbuffers) {
 		for (int i=0; i<2; i++) {
 			_glbuffers[i]->release();
@@ -91,6 +93,7 @@ SN_SagePixelReceiver::~SN_SagePixelReceiver() {
 	if (_myGlWidget) {
 		delete _myGlWidget;
 	}
+	*/
 
 	qDebug() << "return ~SagePixelReceiver" << QTime::currentTime().toString("hh:mm:ss.zzz");
 }
@@ -129,8 +132,8 @@ int SN_SagePixelReceiver::receiveUdpPortNumber() {
 		return -1;
 	}
 }
-
-int SN_SagePixelReceiver::initGLBuffers(int bytecount) {
+/*
+int SN_SagePixelReceiver::initQGLBuffers(int bytecount) {
 	if (!_shareWidget) return -1;
 
 	if (_shareWidget->paintEngine()->type() != QPaintEngine::OpenGL2) {
@@ -145,6 +148,7 @@ int SN_SagePixelReceiver::initGLBuffers(int bytecount) {
 	// init glbuffer (at the GLServer)
 	//
 	_glbuffers = (QGLBuffer **)malloc(sizeof(QGLBuffer *) * 2);
+
 	for (int i=0; i<2; i++) {
 		_glbuffers[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
 		_glbuffers[i]->setUsagePattern(QGLBuffer::StreamDraw);
@@ -165,16 +169,20 @@ int SN_SagePixelReceiver::initGLBuffers(int bytecount) {
 			return -1;
 		}
 
+
 		//
 		// glBufferDataARB
 		//
 		_glbuffers[i]->allocate(bytecount);
+
 
 		_glbuffers[i]->release();
 	}
 
 	return 0;
 }
+*/
+
 
 void SN_SagePixelReceiver::run() {
 
@@ -209,16 +217,19 @@ void SN_SagePixelReceiver::run() {
 
 	int byteCount = appInfo->frameSizeInByte();
 	unsigned char *bufptr = 0;
-	QGLBuffer *currGLBuf = 0;
-	int bufidx = 0; // glbuffer[]
+//	QGLBuffer *currGLBuf = 0;
+//	int bufidx = 0; // glbuffer[]
 
-	if ( initGLBuffers(byteCount) == 0 ) {
+	/*
+	if ( initQGLBuffers(byteCount) == 0 ) {
 		_useGLBuffer = true;
 	}
 	else {
 		_useGLBuffer = false;
 		bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
 	}
+	*/
+	bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
 
 
 	while(! _end ) {
@@ -241,7 +252,7 @@ void SN_SagePixelReceiver::run() {
 #endif
 			}
 		}
-
+/*
 		if (_useGLBuffer) {
 			bufidx = (bufidx + 1) % 2;
 			int nextbufidx = (bufidx + 1) % 2;
@@ -263,9 +274,9 @@ void SN_SagePixelReceiver::run() {
 			glBindTexture(GL_TEXTURE_2D, 0);
 			currGLBuf->release();
 
-			/*****
+			//////////
              DMA write to GPU memory
-	         *****/
+	         ///////
 			currGLBuf = _glbuffers[nextbufidx];
 			if (!currGLBuf->bind()) qDebug() << "bind error";
 
@@ -281,6 +292,22 @@ void SN_SagePixelReceiver::run() {
 			bufptr = (unsigned char *)currGLBuf->map(QGLBuffer::WriteOnly);
 
 		}
+	*/
+
+
+		/**
+		bufidx = (bufidx + 1) % 2;
+		int nextbufidx = (bufidx + 1) % 2;
+
+		glBindTexture(GL_TEXTURE_2D, _textureid);
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[bufidx]);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, appInfo->nativeSize().width(), appInfo->nativeSize().height(), GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
+		glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, byteCount, 0, GL_STREAM_DRAW_ARB);
+		bufptr = (unsigned char *)glMapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+		**/
 
 		// recv header
 		/*
@@ -331,11 +358,13 @@ void SN_SagePixelReceiver::run() {
 		if ( totalread < byteCount  ||  _end ) break;
 		read = totalread;
 
-		if (_useGLBuffer) {
-			currGLBuf->unmap();
-			currGLBuf->release();
-		}
-		else {
+/*
+		glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB);
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+
+		emit frameReceived();
+		*/
+
 			/********************************/   // double buffering
 			Q_ASSERT(doubleBuffer);
 
@@ -351,7 +380,6 @@ void SN_SagePixelReceiver::run() {
 			//
 			bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
 			/***************************************/
-		}
 
 		gettimeofday(&late, 0);
 
@@ -401,8 +429,8 @@ void SN_SagePixelReceiver::run() {
 		}
 	} /*** end of receiving loop ***/
 
-	if (_myGlWidget)
-		_myGlWidget->doneCurrent();
+//	if (_myGlWidget)
+//		_myGlWidget->doneCurrent();
 
 	/* pixel receiving thread exit */
 	qDebug("SagePixelReceiver : thread exit");

@@ -2,7 +2,6 @@
 #define IMAGEDOUBLEBUFFER_H
 
 #include <QtCore>
-
 #include <QImage>
 #include <pthread.h>
 
@@ -70,12 +69,13 @@ public:
 	~ImageDoubleBuffer();
 };
 
+/*
 class GLDoubleBuffer : public DoubleBuffer
 {
 public:
 	void initBuffer(int width, int height, QImage::Format fmt);
 	~GLDoubleBuffer();
-};
+};*/
 
 //class PixmapDoubleBuffer : public DoubleBuffer
 //{

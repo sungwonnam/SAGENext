@@ -1,5 +1,5 @@
 #include <QtGui/QApplication>
-#include <QGLWidget>
+//#include <QGLWidget>
 
 //#include "settingdialog.h"
 #include "settingstackeddialog.h"
@@ -11,17 +11,20 @@
 #include "uiserver/uiserver.h"
 #include "uiserver/fileserver.h"
 
-#include "common/sn_drawingwidget.h"
+//#include "common/sn_drawingwidget.h"
 
 #include "applications/base/affinityinfo.h"
 #include "applications/mediabrowser.h"
 //#include "applications/sn_checker.h"
-#include "applications/sn_pboexample.h"
+//#include "applications/sn_pboexample.h"
 #include "applications/vncwidget.h"
 
 #include "system/sagenextscheduler.h"
 #include "system/resourcemonitor.h"
 #include "system/resourcemonitorwidget.h"
+
+#include <QGLWidget>
+#include <QGLFormat>
 
 #ifdef Q_OS_LINUX
 #include <numa.h>
@@ -473,7 +476,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
         gvm->resize(scene->sceneRect().size().toSize());
 
 		setViewAttr(gvm, s);
-		gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
+//		gvm->setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
 
 		gvm->show();
 	}
@@ -515,7 +518,6 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 			gvm->show();
 		}
 	}
-
 
 
 //	launcher->launch("user", "evl123", 0, "131.193.77.191", 24);

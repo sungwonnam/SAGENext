@@ -3,6 +3,7 @@
 
 #include <QGraphicsWidget>
 
+
 class QSettings;
 class QPropertyAnimation;
 class QParallelAnimationGroup;
@@ -233,6 +234,11 @@ public:
 		}
 
 protected:
+		/*!
+		  OpenGL viewport is available ?
+		  */
+		bool _useOpenGL;
+
         quint64 _globalAppId; /**< Unique identifier */
 
         const QSettings *_settings; /**< Global configuration parameters */

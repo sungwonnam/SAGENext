@@ -5,8 +5,14 @@
 //#include "common/imagedoublebuffer.h"
 
 #if defined(Q_OS_LINUX)
-//#include <GL/gl.h>
-//#include <GL/glu.h>
+//#define GLEW_STATIC 1
+#define GL_GLEXT_PROTOTYPES
+#include <GL/gl.h>
+#include <GL/glext.h>
+#elif defined(Q_OS_MAC)
+#define GL_GLEXT_PROTOTYPES
+#include <OpenGL/gl.h>
+#include <OpenGL/glext.h>
 #endif
 
 class fsManagerMsgThread;
@@ -18,7 +24,7 @@ class QProcess;
 #include <QFutureWatcher>
 //#include <QWaitCondition>
 
-#include <QtOpenGL>
+//#include <QtOpenGL>
 
 class SN_SageStreamWidget : public SN_RailawareWidget
 {
@@ -75,6 +81,12 @@ private:
 //	QImage *_imagePointer;
 
 	GLuint _textureid;
+
+	bool _usePbo;
+
+	GLuint _pboIds[2];
+
+	int _pboBufIdx;
 
 	DoubleBuffer *doubleBuffer;
 

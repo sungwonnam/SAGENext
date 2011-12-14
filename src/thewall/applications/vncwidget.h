@@ -9,7 +9,18 @@
 
 #include <QHostAddress>
 #include <QtCore>
-#include <QtOpenGL>
+
+
+#if defined(Q_OS_LINUX)
+//#define GLEW_STATIC 1
+#define GL_GLEXT_PROTOTYPES
+#include <GL/gl.h>
+#include <GL/glext.h>
+#elif defined(Q_OS_MAC)
+#define GL_GLEXT_PROTOTYPES
+#include <OpenGL/gl.h>
+#include <OpenGL/glext.h>
+#endif
 
 
 class SN_VNCClientWidget : public SN_RailawareWidget
@@ -42,6 +53,12 @@ private:
 		  */
 		GLuint _texid;
 
+		GLuint _pboIds[2];
+
+		bool _usePbo;
+
+		int _pboBufIdx;
+
 //		QImage _imageForDrawing;
 
         /*!
@@ -70,6 +87,7 @@ private:
 		  Double OpenGL buffers. This buffers are created in the server side.
 		  So writing to these buffers is DMA to GPU memory
 		  */
+		/*
 		QGLBuffer **_glbuffers;
 		int initGLBuffers(int bytecount);
 
@@ -77,7 +95,7 @@ private:
 		QGLWidget *_viewportWidget;
 
 		bool _useGLBuffer;
-
+*/
 
 
 

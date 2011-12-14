@@ -17,6 +17,7 @@
 
 SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	: QGraphicsWidget(0, wflags)
+    , _useOpenGL(true)
 	, _globalAppId(-1)
 	, _settings(0)
 	, _windowState(SN_BaseWidget::W_NORMAL)
@@ -52,6 +53,7 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 
 SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent /*0*/, Qt::WindowFlags wflags /*0*/)
 	: QGraphicsWidget(parent, wflags)
+    , _useOpenGL(true)
 	, _globalAppId(globalappid)
 	, _settings(s)
 	, _windowState(SN_BaseWidget::W_NORMAL)
@@ -94,8 +96,9 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 		// setting contentMargins won't have any effect unless this widget has a layout.
 	}
 
-	init();
+	_useOpenGL = _settings->value("graphics/openglviewport").toBool();
 
+	init();
 }
 
 SN_BaseWidget::~SN_BaseWidget()

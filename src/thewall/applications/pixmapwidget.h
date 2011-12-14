@@ -8,7 +8,11 @@
 
 #include <QFutureWatcher>
 
-#include <QtOpenGL>
+#if defined(Q_OS_LINUX)
+#include <GL/gl.h>
+#elif defined(Q_OS_MAC)
+#include <OpenGL/gl.h>
+#endif
 
 class SN_PixmapWidget : public SN_BaseWidget
 {
@@ -57,7 +61,7 @@ private:
 
 	QPixmap _drawingPixmap;
 
-	GLuint _gltexture;
+	GLuint _textureid;
 
 	int _imgWidth;
 	int _imgHeight;

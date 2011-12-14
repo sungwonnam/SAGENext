@@ -254,11 +254,13 @@ void GraphicsSettingDialog::accept() {
 void GraphicsSettingDialog::on_openglviewportCheckBox_stateChanged(int)
 {
 	if ( ui->openglviewportCheckBox->isChecked() ) {
+		_settings->setValue("graphics/openglviewport", true);
 		ui->viewportUpdateComboBox->setEnabled(false);
 		ui->viewportUpdateComboBox->setCurrentIndex( ui->viewportUpdateComboBox->findText("full") );
 	}
 	else {
 		ui->viewportUpdateComboBox->setEnabled(true);
+		_settings->setValue("graphics/openglviewport", false);
 	}
 }
 

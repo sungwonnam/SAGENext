@@ -20,6 +20,7 @@ SN_PixmapWidget::SN_PixmapWidget(QString filename, const quint64 id, const QSett
 
     , dataSrc(SN_PixmapWidget::FROM_DISK_FILE)
     , _imageTemp(new QImage()) /* Because it is unsafe to use pixmap outside of GUI thread */
+    , _textureid(-1)
 //    , _pixmap(new QPixmap())
     , serverSock(0)
     , filename(QString(filename))
@@ -44,6 +45,7 @@ SN_PixmapWidget::SN_PixmapWidget(qint64 filesize, const QString &senderIP, const
 
     , dataSrc(SN_PixmapWidget::FROM_SOCKET)
     , _imageTemp(new QImage()) /* receive into QImage, convert to QPixmap */
+    , _textureid(-1)
 //    , _pixmap(new QPixmap())
     , serverSock(0)
     , filename(QString()) /* null string */
@@ -62,9 +64,9 @@ SN_PixmapWidget::~SN_PixmapWidget() {
 	if (_imageTemp) delete _imageTemp;
 //	if (_pixmap) delete _pixmap;
 
-	if (glIsTexture(_gltexture)) {
-		glDeleteTextures(1, &_gltexture);
-	}
+//	if (glIsTexture(_gltexture)) {
+//		glDeleteTextures(1, &_gltexture);
+//	}
 	qDebug("%s::%s()",metaObject()->className(), __FUNCTION__);
 }
 
@@ -106,21 +108,15 @@ void SN_PixmapWidget::callUpdate() {
 		resize(_imageTemp->size());
 		_appInfo->setFrameSize(_imgWidth, _imgHeight, _imageTemp->depth());
 
-
-/****
-  This is for Qt 4.8 RC
-
-		QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
-		if(glContext) {
-
+		if (_useOpenGL) {
 			const QImage &constRef = _imageTemp->mirrored().rgbSwapped(); // to avoid detach()
 			//_gltexture = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
-			if (glIsTexture(_gltexture)) {
-				glDeleteTextures(1, &_gltexture);
+			if (glIsTexture(_textureid)) {
+				glDeleteTextures(1, &_textureid);
 			}
-			glGenTextures(1, &_gltexture);
-			glBindTexture(GL_TEXTURE_2D, _gltexture);
+			glGenTextures(1, &_textureid);
+			glBindTexture(GL_TEXTURE_2D, _textureid);
 
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -133,15 +129,6 @@ void SN_PixmapWidget::callUpdate() {
 		else {
 			_drawingPixmap = QPixmap::fromImage(*_imageTemp);
 		}
-		*/
-
-		/**
-		  With Qt 4.8 RC
-		  image is kept uploaded to X server
-
-		  Below works ok with Qt 4.7.4
-		  **/
-		_drawingPixmap = QPixmap::fromImage(*_imageTemp);
 
 		delete _imageTemp;
 		_imageTemp = 0;
@@ -160,10 +147,6 @@ void SN_PixmapWidget::callUpdate() {
 }
 
 void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
-	Q_UNUSED(o);
-	Q_UNUSED(w);
-
-	//	qDebug() << o->rect << o->state << o->type;
 
 	if ( ! isImageReady ) {
 //		QGraphicsSimpleTextItem text("Loading Image...", this);
@@ -177,59 +160,35 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 	if (_perfMon)
 		_perfMon->getDrawTimer().start();
 
-	SN_BaseWidget::paint(painter, o, w);
-
 //	painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
-	//why not using painter->scale() instead?
-	//painter->drawImage(0, 0, _image->scaled(contentSize.toSize(), Qt::KeepAspectRatio)); // shallow copy (Implicitly Shared mode)
-	//if ( scaleFactorX != 1.0 || scaleFactorY != 1.0 )
-	//painter->scale(scaleFactorX, scaleFactorX);
+	if (_useOpenGL) {
+		Q_ASSERT(painter->paintEngine()->type() == QPaintEngine::OpenGL2);
 
-/*************
-  *******
-  This is for Qt 4.8 RC.
-  I should test drawPixmap when official 4.8 is out
+		if (!glIsTexture(_textureid)) return;
 
-	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 ) {
-		if (glIsTexture(_gltexture)) {
+		painter->beginNativePainting();
 
-//			painter->beginNativePainting();
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, _textureid);
 
-//			glEnable(GL_TEXTURE_2D);
-//			glBindTexture(GL_TEXTURE_2D, _gltexture);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+		glTexCoord2f(1.0, 1.0); glVertex2f(_imgWidth, 0);
+		glTexCoord2f(1.0, 0.0); glVertex2f(_imgWidth, _imgHeight);
+		glTexCoord2f(0.0, 0.0); glVertex2f(0, _imgHeight);
+		glEnd();
 
-//			glBegin(GL_QUADS);
-//			glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
-//			glTexCoord2f(1.0, 1.0); glVertex2f(_image->width(), 0);
-//			glTexCoord2f(1.0, 0.0); glVertex2f(_image->width(), _image->height());
-//			glTexCoord2f(0.0, 0.0); glVertex2f(0, _image->height());
-//			glEnd();
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDisable(GL_TEXTURE_2D);
 
-//			painter->endNativePainting();
-
-			QGLWidget *viewportWidget = (QGLWidget *)w;
-//			QRectF target = QRect(_bordersize, _bordersize, _imgWidth, _imgHeight);
-//			QRectF target = QRect(0, 0, _imgWidth, _imgHeight);
-			viewportWidget->drawTexture(QPointF(0,0), _gltexture);
-		}
+		painter->endNativePainting();
 	}
 	else {
-		//	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_imageTemp);
-		//	painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _myImage);
-			painter->drawPixmap(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), _drawingPixmap);
-		//	painter->drawPixmap(0, 0, _drawingPixmap);
+		painter->drawPixmap(0,0, _drawingPixmap);
 	}
-	*************/
 
-	/****
-	  ***
-	  With Qt 4.7.4 this is ok.
-	  Opening multiple large static images won't hurt performance (meaning drawing latency is still 0)
-	  But with Qt 4.8 RC, I should do native OpenGL calls
-	  ****
-	  ****/
-	painter->drawPixmap(0,0, _drawingPixmap);
+	SN_BaseWidget::paint(painter, o, w);
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.

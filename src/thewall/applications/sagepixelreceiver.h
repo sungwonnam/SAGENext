@@ -20,7 +20,8 @@ class QSettings;
 
 #include <QMutex>
 #include <QWaitCondition>
-#include <QtOpenGL>
+
+
 /**
   * receives pixel from sail
   * its parent is SageWidget : QWidget
@@ -29,7 +30,7 @@ class SN_SagePixelReceiver : public QThread {
 	Q_OBJECT
 
 public:
-	SN_SagePixelReceiver(int protocol, int sockfd, GLuint tid, QGLWidget *_sw, DoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *m, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent = 0);
+	SN_SagePixelReceiver(int protocol, int sockfd, /*GLuint tid, GLuint *pboids*/ /*QGLWidget *_sw*/ DoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *m, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent = 0);
 //	SagePixelReceiver(int protocol, int sockfd, QImage *img,  AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw,*/ QMutex *m, QWaitCondition *wwcc, const QSettings *s, QObject *parent = 0);
 	~SN_SagePixelReceiver();
 
@@ -58,19 +59,21 @@ private:
 	/*!
 	  texture handle for the image frame
 	  */
-	GLuint _textureid;
+//	GLuint _textureid;
+
+//	GLuint *_pboIds;
 
 	/*!
 	  For the OpenGL context to which my _glbuffers will bind
 	  */
-	QGLWidget *_myGlWidget;
+//	QGLWidget *_myGlWidget;
 
 	/*!
 	  SageStreamWidget has to pass the pointer to the viewport widget (which is QGLWidget for the OpenGL Viewport)
 	  _myGLWidget is sharing with _shareWidget
 	  to share texture objects
 	  */
-	QGLWidget *_shareWidget;
+//	QGLWidget *_shareWidget;
 
 	DoubleBuffer *doubleBuffer;
 
@@ -90,8 +93,8 @@ private:
 	  Double OpenGL buffers. This buffers are created in the server side.
 	  So writing to these buffers is DMA to GPU memory
 	  */
-	QGLBuffer **_glbuffers;
-	int initGLBuffers(int bytecount);
+//	QGLBuffer **_glbuffers;
+//	int initQGLBuffers(int bytecount);
 
 	bool _useGLBuffer;
 

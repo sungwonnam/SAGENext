@@ -1,7 +1,7 @@
 #include "imagedoublebuffer.h"
 
-#include <QGLBuffer>
-#include <QGLContext>
+//#include <QGLBuffer>
+//#include <QGLContext>
 
 DoubleBuffer::DoubleBuffer()
 	: _doubleBuffer(0)
@@ -197,7 +197,7 @@ ImageDoubleBuffer::~ImageDoubleBuffer() {
 	fprintf(stderr, "ImageDoubleBuffer::%s() \n", __FUNCTION__);
 }
 
-
+/*
 void GLDoubleBuffer::initBuffer(int width, int height, QImage::Format fmt) {
 	_width = width;
 	_height = height;
@@ -240,7 +240,7 @@ GLDoubleBuffer::~GLDoubleBuffer() {
 	free(_doubleBuffer);
 	fprintf(stderr, "GLDoubleBuffer::%s() \n", __FUNCTION__);
 }
-
+*/
 
 
 void RawDoubleBuffer::initBuffer(int width, int height, QImage::Format fmt) {

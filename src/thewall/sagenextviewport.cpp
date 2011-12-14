@@ -38,7 +38,7 @@ SN_Viewport::SN_Viewport(SN_TheScene *s, int viewportId, SN_Launcher *l, QWidget
 		connect(_closeAllAction, SIGNAL(triggered()), _sageNextScene, SLOT(closeAllUserApp()));
 	}
 
-	_swapBufferTimerId = startTimer(30); // every 30 msec
+//	_swapBufferTimerId = startTimer(30); // every 30 msec
 }
 
 SN_Viewport::~SN_Viewport() {

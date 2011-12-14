@@ -5,7 +5,7 @@
 #include "sagenextlauncher.h"
 #include "common/commonitem.h"
 #include "common/sn_layoutwidget.h"
-#include "common/sn_drawingwidget.h"
+//#include "common/sn_drawingwidget.h"
 
 #include "applications/base/basewidget.h"
 #include "applications/base/appinfo.h"
@@ -23,7 +23,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
     , _closeFlag(false)
     , _closeButton(0)
     , _appRemoveButton(0)
-    , _drawingCanvas(0)
+//    , _drawingCanvas(0)
 {
 	//
 	// This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously.
@@ -166,10 +166,12 @@ SN_TheScene::~SN_TheScene() {
 		delete _rootLayoutWidget;
 	}
 
+	/*
 	if (_drawingCanvas) {
 		removeItem(_drawingCanvas);
 		delete _drawingCanvas;
 	}
+	*/
 
 	foreach (QGraphicsItem *item, items()) {
 		if (!item) continue;

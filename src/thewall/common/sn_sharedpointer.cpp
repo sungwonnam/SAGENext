@@ -4,7 +4,7 @@
 #include "../applications/base/basewidget.h"
 #include "../sagenextscene.h"
 
-#include "sn_drawingwidget.h"
+//#include "sn_drawingwidget.h"
 
 SelectionRectangle::SelectionRectangle(QGraphicsItem *parent)
 	: QGraphicsWidget(parent)
@@ -172,6 +172,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	//
     else if ( btnFlags & Qt::LeftButton ) {
 		
+		/*
 		SN_DrawingWidget *canvas = _scene->drawingCanvas();
 		if (_isDrawing && canvas) {
 			if (_isErasing) {
@@ -182,6 +183,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 			}
 			return;
 		}
+		*/
 
 		//
         // Because of pointerPress, appUnderPointer has already been set at this point
