@@ -25,6 +25,7 @@
 
 #include <QGLWidget>
 #include <QGLFormat>
+#include <QGLPixelBuffer>
 
 #ifdef Q_OS_LINUX
 #include <numa.h>
@@ -465,6 +466,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 //			gvm->setViewport(new QGLWidget);
 			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 
+			s.setValue("graphics/openglpbo", QGLPixelBuffer::hasOpenGLPbuffers());
+
 			//
 			// with Xinerama, full screen won't work
 			//
@@ -488,11 +491,13 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 			gvm = new SN_Viewport(scene, i, launcher, dw->screen(i));
 
 			if ( s.value("graphics/openglviewport").toBool() ) {
+
 				gvm->setViewport(new QGLWidget(dw->screen(i)));
 				gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 				gvm->setWindowState(Qt::WindowFullScreen);
 				qDebug() << "\t[using QGLWidget as the viewport widget]";
 
+				s.setValue("graphics/openglpbo", QGLPixelBuffer::hasOpenGLPbuffers());
 			}
 			//
 			// set sceneRect to be viewed for each viewport. Bezel size has to be applied to here
@@ -603,6 +608,9 @@ void setViewAttr(SN_Viewport *gvm, const QSettings &s) {
 		else {
 			gvm->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate); // default
 		}
+	}
+	else {
+
 	}
 	/* DON'T DO THIS ! poor performance and not correct. I don't know why. It's worth look into this */
     //gvm->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);

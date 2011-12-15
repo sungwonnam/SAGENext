@@ -22,9 +22,8 @@ class AffinityInfo;
 class QProcess;
 
 #include <QFutureWatcher>
-//#include <QWaitCondition>
-
-//#include <QtOpenGL>
+#include <QMutex>
+#include <QWaitCondition>
 
 class SN_SageStreamWidget : public SN_RailawareWidget
 {
@@ -48,6 +47,10 @@ public:
 	inline void setSailAppProc(QProcess *p) {_sailAppProc = p;}
 	inline QProcess * sailAppProc() {return _sailAppProc;}
 
+	/*!
+	  fsManagerMsgThread has to know if receiver (which is this widget) is ready to receive streamer message.
+	  Widget is ready to receive the message if it blocking waits for ::accept()
+	  */
 	inline bool isWaitingSailToConnect() const {return _readyForStreamer;}
 
 protected:
@@ -81,6 +84,8 @@ private:
 //	QImage *_imagePointer;
 
 	GLuint _textureid;
+
+	GLenum _pixelFormat;
 
 	bool _usePbo;
 
@@ -138,11 +143,37 @@ private:
 
 	int _streamProtocol;
 
+	/*!
+	  The widget called ::accept() and ready to receive streamer's message.
+	  This is to let fsManagerMsgThread to know if i'm ready or not.
+	  */
 	volatile bool _readyForStreamer;
 
 
-//	QMutex *mutex;
-//	QWaitCondition *wc;
+
+
+
+	/*!
+	  double buffer for mapped pbo
+	  */
+	void * _pbobufarray[2];
+
+//	QFuture<void> _recvThreadFuture;
+//	QFutureWatcher<void> _recvThreadWatcher;
+
+//	void __recvThread();
+
+//	ssize_t __recvFrame(int sock, int bytecount, void *ptr);
+
+	bool __firstFrame;
+
+	bool __bufferMapped;
+
+//	bool _recvThreadEnd;
+
+	pthread_mutex_t *_pbomutex;
+	pthread_cond_t *_pbobufferready;
+
 
 signals:
 //	void pixelReceiverFinished();
@@ -160,6 +191,7 @@ signals:
 
 	void resumeThread();
 
+	void frameReady();
 
 public slots:
 	/**
@@ -201,6 +233,19 @@ public slots:
 	  It calls then QGraphicsWidget::update()
 	  */
 	void scheduleUpdate();
+
+
+	/*!
+	  This slot is invoked by __recvThread() after DMA writing is done.
+	  This slot do
+
+	  unmap previous buffer
+	  map new buffer
+	  signal thread for next frame
+	  texture update with previous buffer
+	  */
+	void schedulePboUpdate();
+
 
 	/*!
 	  Wake waitCondition

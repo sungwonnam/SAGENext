@@ -26,11 +26,12 @@ class QSettings;
   * receives pixel from sail
   * its parent is SageWidget : QWidget
   */
-class SN_SagePixelReceiver : public QThread {
+class SN_SagePixelReceiver : public QThread
+{
 	Q_OBJECT
 
 public:
-	SN_SagePixelReceiver(int protocol, int sockfd, /*GLuint tid, GLuint *pboids*/ /*QGLWidget *_sw*/ DoubleBuffer *idb, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *m, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent = 0);
+	SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffer *idb, bool usepbo, void **pbobufarray, pthread_mutex_t *pboMutex, pthread_cond_t *pboCond, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, const QSettings *s, QObject *parent = 0);
 //	SagePixelReceiver(int protocol, int sockfd, QImage *img,  AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw,*/ QMutex *m, QWaitCondition *wwcc, const QSettings *s, QObject *parent = 0);
 	~SN_SagePixelReceiver();
 
@@ -85,18 +86,15 @@ private:
 	PerfMonitor *perf;
 	AffinityInfo *affInfo;
 
+	bool _usePbo;
+	bool __bufferMapped;
+	int _pboBufIdx;
+	void **_pbobufarray;
+	pthread_mutex_t * _pboMutex;
+	pthread_cond_t * _pboCond;
+
 	QMutex _mutex;
 	QWaitCondition _waitCond;
-
-
-	/*!
-	  Double OpenGL buffers. This buffers are created in the server side.
-	  So writing to these buffers is DMA to GPU memory
-	  */
-//	QGLBuffer **_glbuffers;
-//	int initQGLBuffers(int bytecount);
-
-	bool _useGLBuffer;
 
 public:
 	void receivePixel();
@@ -108,6 +106,8 @@ signals:
 	  */
 	void frameReceived();
 
+public slots:
+	void flip(int idx);
 };
 
 #endif // SAGEPIXELRECEIVER_H

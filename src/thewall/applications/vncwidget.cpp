@@ -108,6 +108,8 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 		_perfMon->setAdjustedFps( (qreal)_framerate );
 	}
 
+	_usePbo = s->value("graphics/openglpbo", false).toBool();
+
 	QTimer::singleShot(10, this, SLOT(startThread()));
 }
 
@@ -148,8 +150,7 @@ void SN_VNCClientWidget::startThread() {
 		_pboIds[0] = -1;
 		_pboIds[1] = -1;
 
-		if (QGLPixelBuffer::hasOpenGLPbuffers()) {
-			_usePbo = true;
+		if (_usePbo) {
 
 			qDebug() << "VNCWidget : OpenGL pbuffer extension is present. Using PBO";
 			glGenBuffersARB(2, _pboIds);
@@ -161,9 +162,6 @@ void SN_VNCClientWidget::startThread() {
 			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
 
 			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-		}
-		else {
-			_usePbo = false;
 		}
 	}
 
