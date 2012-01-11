@@ -827,7 +827,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 	_appInfo->setFrameSize(resX, resY, getPixelSize((sagePixFmt)pixfmt) * 8);
 
 
-	qDebug() << "SN_SageStreamWidget : streamer connected. Framerate is" << framerate;
+	qDebug() << "SN_SageStreamWidget : streamer connected. groupSize" << _appInfo->networkUserBufferLength() << "Byte. Framerate" << framerate << "fps";
     _perfMon->setExpectedFps( (qreal)framerate );
     _perfMon->setAdjustedFps( (qreal)framerate );
 
