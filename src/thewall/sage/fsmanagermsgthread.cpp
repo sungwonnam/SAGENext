@@ -249,6 +249,9 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                                    &app->frameRate,
                                    &app->instID,
                                    app->launcherID,
+
+								   // portForwarding is passed only in google code version
+								   // cube ratko version doesn't send this !!
                                    &app->portForwarding);
                                    */
 

@@ -5,7 +5,8 @@
 namespace OldSage {
 
 const int REG_APP = 1;
-const int REG_MSG_SIZE = 1024;
+//const int REG_MSG_SIZE = 1024; // previously google code version
+const int REG_MSG_SIZE = 128; // cube Ratko version and google code version is now 128 Byte as well
 const int NOTIFY_APP_SHUTDOWN = 7;
 const int SAIL_INIT_MSG = 30102;
 const int SAIL_CONNECT_TO_RCV = 30101;
