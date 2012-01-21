@@ -70,16 +70,29 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	/* webkit related */
 	QWebSettings *ws = QWebSettings::globalSettings();
 
+	/*
+	  **
+	  I recommend using Java plugin from the Java SE @ oracle
+	  instead of IcedTea plugin from OpenJDK that comes with your OS.
+
+	  Use $JAVAHOME/jre/lib/amd64/libnpjp2.so
+	  and make symbolic link in plugin directory or a directory pointed by $QTWEBKIT_PLUGIN_PATH env variable.
+	  e.g.
+	  cd /usr/lib64/browser-plugins
+	  ln -s $JAVAHOME/jre/lib/amd64/lipnpjp2.so javaplugin.so
+	  ****
+	  **/
 	ws->setAttribute(QWebSettings::JavaEnabled, true);
 	ws->setAttribute(QWebSettings::JavascriptEnabled, true);
 	ws->setAttribute(QWebSettings::PluginsEnabled, true);
 	ws->setAttribute(QWebSettings::JavascriptCanOpenWindows, true);
+
 	ws->setAttribute(QWebSettings::LocalContentCanAccessFileUrls, true);
 	ws->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
 
 	ws->setAttribute(QWebSettings::AcceleratedCompositingEnabled, true);
 #if QT_VERSION >= 0x040800
-	qDebug() << "WebWidget : Enabling WebGL";
+	qDebug() << "SN_WebWidget() : Using Qt 4.8.0.. Enabling WebGL";
 	ws->setAttribute(QWebSettings::WebGLEnabled, true);
 #endif
 

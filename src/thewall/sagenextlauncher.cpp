@@ -233,7 +233,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 			QProcess *proc1 = new QProcess(this);
 			QStringList args1;
 			//	args1 << "-xf" << senderIP << "\"cd $HOME/.sageConfig;$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0\"";
-			args1 << "-xf" << senderIP << "$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0" << filename;
+			args1 << "-xf" << senderIP << "$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0 -sws 4" << filename;
 
 			sws->appInfo()->setCmdArgs(args1);
 
@@ -284,7 +284,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 //			proc->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
 
 			QStringList args;
-			args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-identify" << filename;
+			args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" << "4" << "-identify" << filename;
 
 			sws->appInfo()->setCmdArgs(args);
 

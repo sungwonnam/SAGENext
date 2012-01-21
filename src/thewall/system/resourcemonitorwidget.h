@@ -16,7 +16,7 @@ class SN_ResourceMonitor;
 class SN_SchedulerControl;
 class SN_AbstractScheduler;
 
-class GraphicsViewMain;
+//class GraphicsViewMain;
 
 /*!
   Main plot class
