@@ -1,7 +1,6 @@
 #include "sagestreamwidget.h"
 #include "sagepixelreceiver.h"
 
-#include "../sage/fsmanagermsgthread.h"
 #include "../sage/sagecommondefinitions.h"
 
 #include "../common/commonitem.h"
@@ -22,6 +21,17 @@
 
 //#include <QProcess>
 
+/*
+#define YUV444toRGB888(Y,U,V,R,G,B)					\
+    R = clip(( 298 * (Y-16)                 + 409 * (V-128) + 128) >> 8); \
+    G = clip(( 298 * (Y-16) - 100 * (U-128) - 208 * (V-128) + 128) >> 8); \
+    B = clip(( 298 * (Y-16) + 516 * (U-128)
+*/
+
+
+#include <QGLPixelBuffer>
+
+
 SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
     : SN_RailawareWidget(globalappid, s, parent, wFlags)
     , _settings(s)
@@ -30,7 +40,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
     , _sageAppId(0)
     , _receiverThread(0) // QThread *
     , _textureid(-1) // will draw this texture
-    , _usePbo(true)
+    , _usePbo(false)
     , _pboBufIdx(0)
 //    , _imagePointer(0)
     , doubleBuffer(0) // application buffer
@@ -48,6 +58,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 //    , _recvThreadEnd(false)
     , _pbomutex(0)
     , _pbobufferready(0)
+
 {
     // this is defined in BaseWidget
     setRMonitor(rm);
@@ -59,33 +70,43 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 		qCritical("SN_SageStreamWidget constructor : Failed to connect _initReceiverWatcher->finished() signal to this->startReceivingThread() slot");
 	}
 
-	_usePbo = s->value("graphics/openglpbo", false).toBool();
+//	_usePbo = s->value("graphics/openglpbo", false).toBool();
+	if (_useOpenGL) {
+		if (QGLPixelBuffer::hasOpenGLPbuffers()) {
 
-//	_bordersize = s->value("gui/framemargin",0).toInt();
-	
-//	setAttribute(Qt::WA_PaintOnScreen);
-
-
-//	connect(&_memcpyThreadWatcher, SIGNAL(finished()), this, SLOT(unmapGLBuffer()));
-
-
-	if (_usePbo) {
-		_pbomutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-		if ( pthread_mutex_init(_pbomutex, 0) != 0 ) {
-			perror("pthread_mutex_init");
-		}
-		if ( pthread_mutex_unlock(_pbomutex) != 0 ) {
-			perror("pthread_mutex_unlock");
-		}
-
-		_pbobufferready = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
-		if ( pthread_cond_init(_pbobufferready, 0) != 0 ) {
-			perror("pthread_cond_init");
+			//
+			// Note that if PIXFMT_YUV then _usePbo will be set to false again
+			//
+			_usePbo = true;
 		}
 	}
+	else {
+		_usePbo = false;
+	}
+
 }
 
+bool SN_SageStreamWidget::_initPboMutex() {
+	if (!_usePbo) return false;
 
+	_pbomutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+	if ( pthread_mutex_init(_pbomutex, 0) != 0 ) {
+		perror("pthread_mutex_init");
+		return false;
+	}
+	if ( pthread_mutex_unlock(_pbomutex) != 0 ) {
+		perror("pthread_mutex_unlock");
+		return false;
+	}
+
+	_pbobufferready = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
+	if ( pthread_cond_init(_pbobufferready, 0) != 0 ) {
+		perror("pthread_cond_init");
+		return false;
+	}
+
+	return true;
+}
 
 SN_SageStreamWidget::~SN_SageStreamWidget()
 {
@@ -203,10 +224,6 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
     qDebug("%s::%s() ",metaObject()->className(),  __FUNCTION__);
 }
 
-void SN_SageStreamWidget::setFsmMsgThread(fsManagerMsgThread *thread) {
-	_fsmMsgThread = thread;
-	_fsmMsgThread->start();
-}
 
 
 void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
@@ -232,30 +249,64 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 		  */
 		painter->beginNativePainting();
 
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, _textureid);
+		if (_pixelFormat == GL_LUMINANCE_ALPHA ) {
+			glUseProgramObjectARB(_shaderProgHandle);
+			glActiveTexture(GL_TEXTURE0);
+			int h=glGetUniformLocationARB(_shaderProgHandle,"yuvtex");
+			glUniform1iARB(h,0);  /* Bind yuvtex to texture unit 0 */
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
 
-		glBegin(GL_QUADS);
-		//
-		// below is same with QGLContext::InvertedYBindOption
-		//
-		glTexCoord2f(0.0, 1.0); glVertex2f(0, size().height());
-		glTexCoord2f(1.0, 1.0); glVertex2f(size().width(), size().height());
-		glTexCoord2f(1.0, 0.0); glVertex2f(size().width(), 0);
-		glTexCoord2f(0.0, 0.0); glVertex2f(0, 0);
+			glBegin(GL_QUADS);
+			//
+			// below is same with QGLContext::InvertedYBindOption
+			//
+			glTexCoord2f(0.0, size().height()); glVertex2f(0, size().height());
+			glTexCoord2f(size().width(), size().height()); glVertex2f(size().width(), size().height());
+			glTexCoord2f(size().width(), 0.0); glVertex2f(size().width(), 0);
+			glTexCoord2f(0.0, 0.0); glVertex2f(0, 0);
 
-		//
-		// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
-		//
-		//glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
-		//glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
-		//glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
-		//glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
+			//
+			// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
+			//
+			//glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+			//glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
+			//glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
+			//glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
 
-		glEnd();
+			glEnd();
 
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glDisable(GL_TEXTURE_2D);
+			glUseProgramObjectARB(0);
+			glDisable(GL_TEXTURE_RECTANGLE_ARB);
+			glEnable(GL_TEXTURE_2D);
+		}
+		else {
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, _textureid);
+
+			glBegin(GL_QUADS);
+			//
+			// below is same with QGLContext::InvertedYBindOption
+			//
+			glTexCoord2f(0.0, 1.0); glVertex2f(0, size().height());
+			glTexCoord2f(1.0, 1.0); glVertex2f(size().width(), size().height());
+			glTexCoord2f(1.0, 0.0); glVertex2f(size().width(), 0);
+			glTexCoord2f(0.0, 0.0); glVertex2f(0, 0);
+
+			//
+			// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
+			//
+			//glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+			//glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
+			//glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
+			//glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
+
+			glEnd();
+
+			glBindTexture(GL_TEXTURE_2D, 0);
+			glDisable(GL_TEXTURE_2D);
+		}
+
+
 
 		painter->endNativePainting();
 	}
@@ -315,58 +366,47 @@ void SN_SageStreamWidget::scheduleUpdate() {
 	_perfMon->getConvTimer().start();
 
 
-	// use PBO
-	/**********
-	if ( _useOpenGL && _usePbo ) {
-		_pboBufIdx = (_pboBufIdx + 1) % 2;
-		int nextbufidx = (_pboBufIdx + 1) % 2;
-
-		glBindTexture(GL_TEXTURE_2D, _textureid);
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
-
-
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
-		glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-//		GLubyte *ptr = (GLubyte *)glMapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY_ARB);
-		void *ptr = glMapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY_ARB);
-		if (ptr) {
-//			Q_ASSERT(constImageRef->byteCount() == _appInfo->frameSizeInByte());
-			::memcpy(ptr, constImageRef->bits(), _appInfo->frameSizeInByte());
-			glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB);
-
-//			_memcpyThreadFuture = QtConcurrent::run(this, &SN_SageStreamWidget::__doMemCpyThread, ptr, constImageRef->bits(), constImageRef->byteCount());
-//			_memcpyThreadWatcher.setFuture(_memcpyThreadFuture);
-		}
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-	}
-	********/
 	if (_useOpenGL) {
 
-		// QGLContext::InvertedYBindOption Because In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
-		//
-		// Below is awfully slow. Probably because QImage::scaled() inside qgl.cpp to convert image size near power of two
-		// _textureid = glContext->bindTexture(constImageRef->convertToFormat(QImage::Format_RGB32), GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
+		if (_pixelFormat == GL_LUMINANCE_ALPHA) {
+			// PIXFMT_YUV
+			glDisable(GL_TEXTURE_2D);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB);
 
-		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		//glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, _textureid);
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
+			glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, constImageRef->width(), constImageRef->height(), _pixelFormat, GL_UNSIGNED_BYTE, constImageRef->bits());
+//			pixel_bytes += block->width * block->height * pInfo.bytesPerPixel; // luc
 
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glDisable(GL_TEXTURE_RECTANGLE_ARB);
+			glEnable(GL_TEXTURE_2D);
+		}
+		else {
 
-		//
-		// Note that it's QImage::Format_RGB888 we're getting from SAGE app
-		//
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, constImageRef->width(), constImageRef->height(), _pixelFormat, GL_UNSIGNED_BYTE, constImageRef->bits());
-		//GLenum error = glGetError();
-		//if(error != GL_NO_ERROR) {
-		//		qCritical("texture upload failed. error code 0x%x\n", error);
-		//}
+			// QGLContext::InvertedYBindOption Because In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
+			//
+			// Below is awfully slow. Probably because QImage::scaled() inside qgl.cpp to convert image size near power of two
+			// _textureid = glContext->bindTexture(constImageRef->convertToFormat(QImage::Format_RGB32), GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
-		glBindTexture(GL_TEXTURE_2D, 0);
+			//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+			//glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, _textureid);
+
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+			//
+			// Note that it's QImage::Format_RGB888 we're getting from SAGE app
+			//
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, constImageRef->width(), constImageRef->height(), _pixelFormat, GL_UNSIGNED_BYTE, constImageRef->bits());
+			//GLenum error = glGetError();
+			//if(error != GL_NO_ERROR) {
+			//		qCritical("texture upload failed. error code 0x%x\n", error);
+			//}
+
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
 	}
 	else {
 		/*
@@ -393,7 +433,7 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		//
 		// Below doesn't work under X11 backend. Use raster backend
 		//
-		_pixmapForDrawing.convertFromImage(*constImageRef, Qt::ColorOnly | Qt::ThresholdDither);
+		_pixmapForDrawing.convertFromImage(*constImageRef, Qt::AutoColor | Qt::ThresholdDither);
 
 
    //	There's small conversion delay but drawing is faster
@@ -441,30 +481,89 @@ void SN_SageStreamWidget::startReceivingThread() {
 	Q_ASSERT(streamsocket > 0);
 
 	if (_useOpenGL) {
+
 		glGenTextures(1, &_textureid);
-		glBindTexture(GL_TEXTURE_2D, _textureid);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0);
-		glBindTexture(GL_TEXTURE_2D, 0);
 
-		if ( _usePbo ) {
-			qDebug() << "SN_SageStreamWidget : OpenGL pbuffer extension is present. Using PBO";
-			glGenBuffersARB(2, _pboIds);
+		if (_pixelFormat == GL_LUMINANCE_ALPHA) {
+			// pixfmt PIXFMT_YUV
+			// _usePbo should be false
 
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
-			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+//			_shaderProgram = new QGLShaderProgram;
+//			if (!_shaderProgram->addShaderFromSourceFile(QGLShader::Vertex, QString("/home/evl/snam5/SAGE/current/usr/local/sage/bin/yuv.vert")))
+//				qDebug() << "compiling vertex shader failed";
+//			qDebug() << _shaderProgram->log();
+//			if (!_shaderProgram->addShaderFromSourceFile(QGLShader::Fragment, QString("/home/evl/snam5/SAGE/current/usr/local/sage/bin/yuv.frag")))
+//				qDebug() << "compiling fragment shader failed";
+//			qDebug() << _shaderProgram->log();
 
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
-			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+//			_shaderProgram->link(); qDebug() << _shaderProgram->log();
+//			_shaderProgram->bind(); qDebug() << _shaderProgram->log();
 
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+//			PHandle = _shaderProgram->programId();
+//			qDebug() << PHandle;
 
 
-			////////////// receiving thread /////////////////
-/*
+			GLchar *FragmentShaderSource;
+			GLchar *VertexShaderSource;
+
+			char *sfn, *sd;
+			sfn = (char*)malloc(256);
+			memset(sfn, 0, 256);
+			sd = getenv("SAGE_DIRECTORY");
+			sprintf(sfn, "%s/bin/yuv", sd);
+
+			GLSLreadShaderSource(sfn, &VertexShaderSource, &FragmentShaderSource);
+			_shaderProgHandle = GLSLinstallShaders(VertexShaderSource, FragmentShaderSource);
+
+			/* Finally, use the program. */
+			glUseProgramObjectARB(_shaderProgHandle);
+			free(sfn);
+			glUseProgramObjectARB(0);
+
+
+
+			glDisable(GL_TEXTURE_2D);
+			glEnable(GL_TEXTURE_RECTANGLE_ARB);
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
+			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, 2, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits());
+		}
+		else {
+			glBindTexture(GL_TEXTURE_2D, _textureid);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0);
+			glBindTexture(GL_TEXTURE_2D, 0);
+
+
+
+			if ( _usePbo ) {
+				//
+				// init mutex
+				//
+				if ( ! _initPboMutex() ) {
+					qDebug() << "Failed to init mutex !";
+				}
+
+				qDebug() << "SN_SageStreamWidget : OpenGL pbuffer extension is present. Using PBO";
+				glGenBuffersARB(2, _pboIds);
+
+				glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
+				glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+				glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
+				glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+				glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+
+
+				////////////// receiving thread /////////////////
+				/*
 			connect(&_recvThreadWatcher, SIGNAL(started()), this, SLOT(schedulePboUpdate()));
 			connect(&_recvThreadWatcher, SIGNAL(finished()), this, SLOT(close()));
 			connect(_fsmMsgThread, SIGNAL(finished()), &_recvThreadWatcher, SLOT(cancel()));
@@ -480,6 +579,7 @@ void SN_SageStreamWidget::startReceivingThread() {
 
 			return;
 			*/
+			}
 		}
 	}
 
@@ -500,6 +600,11 @@ void SN_SageStreamWidget::startReceivingThread() {
 			qCritical("%s::%s() : Failed to connect frameReceived() signal and schedulePboUpdate() slot", metaObject()->className(), __FUNCTION__);
 			return;
         }
+
+		///
+		// schedulePboUpdate() must be called once before the _receiverThread emits the frameReceived() signal
+		// And I forgot why...
+		///
 		QObject::connect(_receiverThread, SIGNAL(started()), this, SLOT(schedulePboUpdate()));
 	}
 	else {
@@ -605,118 +710,16 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 
 
 
-/*!
-  This will run in a separate thread
-  */
-/***
-void SN_SageStreamWidget::__recvThread() {
-	struct timeval lats, late;
-	struct rusage ru_start, ru_end;
-	if(_perfMon) {
-		_perfMon->getRecvTimer().start(); //QTime::start()
-
-#if defined(Q_OS_LINUX)
-		getrusage(RUSAGE_THREAD, &ru_start); // that of calling thread. Linux specific
-#elif defined(Q_OS_MAC)
-		getrusage(RUSAGE_SELF, &ru_start);
-#endif
-	}
-
-	ssize_t totalread = 0;
-
-	while(!_recvThreadEnd) {
-		// wait for glMapBufferARB
-		pthread_mutex_lock(_pbomutex);
-//		qDebug() << QDateTime::currentMSecsSinceEpoch() << "will wait";
-		while(!__bufferMapped)
-			pthread_cond_wait(_pbobufferready, _pbomutex);
-
-
-		gettimeofday(&lats, 0);
-
-		// receive frame (DMA write to GPU memory)
-		// pointer in the _bufarray must be valid at this point
-		totalread = __recvFrame(streamsocket, _appInfo->frameSizeInByte(), _pbobufarray[_pboBufIdx]);
-		if (totalread <= 0 ) break;
-
-		gettimeofday(&late, 0);
-
-
-		// reset flag
-		__bufferMapped = false;
-
-		// schedule screen update
-		emit frameReady();
-
-
-		if (_perfMon) {
-#if defined(Q_OS_LINUX)
-			getrusage(RUSAGE_THREAD, &ru_end);
-#elif defined(Q_OS_MAC)
-			getrusage(RUSAGE_SELF, &ru_end);
-#endif
-			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001);
-
-			// calculate
-			_perfMon->updateObservedRecvLatency(totalread, networkrecvdelay, ru_start, ru_end);
-			ru_start = ru_end;
-		}
-
-		pthread_mutex_unlock(_pbomutex);
-	}
-	qDebug() << "SN_SageStreamWidget::__recvThread finished\n";
-}
-
-ssize_t SN_SageStreamWidget::__recvFrame(int socket, int byteCount, void *ptr) {
-	Q_ASSERT(socket);
-
-	ssize_t totalread = 0;
-	ssize_t read = 0;
-
-//	gettimeofday(&lats, 0);
-
-	GLubyte *bufptr = (GLubyte *)ptr;
-
-	// PIXEL RECEIVING
-	while (totalread < byteCount ) {
-		// If remaining byte is smaller than user buffer length (which is groupSize)
-		if ( byteCount-totalread < _appInfo->networkUserBufferLength() ) {
-			read = recv(socket, bufptr, byteCount-totalread , MSG_WAITALL);
-		}
-		// otherwise, always read groupSize bytes
-		else {
-			read = recv(socket, bufptr, _appInfo->networkUserBufferLength(), MSG_WAITALL);
-		}
-		if ( read == -1 ) {
-			qDebug("SagePixver::run() : error while reading.");
-			break;
-		}
-		else if ( read == 0 ) {
-			qDebug("SagePiver::run() : sender disconnected");
-			break;
-		}
-		// advance pointer
-		bufptr += read;
-		totalread += read;
-	}
-	if ( totalread < byteCount ) {
-		qDebug() << "totalread < bytecount";
-	}
-
-	return totalread;
-}
-***/
-
-
 
 /**
-  THis slot is invoked by fsManagerMsgThread
+  It runs a function does blocking waiting for the streamer in a separate thread.
+  This slot is invoked by fsManagerMsgThread
   */
 void SN_SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port) {
 //	qDebug() << "\nRunning waitForPixelStreamConnection";
 	_sageAppId = sageappid;
-	_initReceiverFuture = QtConcurrent::run(this, &SN_SageStreamWidget::waitForPixelStreamerConnection, protocol, port, appname);
-	_initReceiverWatcher.setFuture(_initReceiverFuture);
+	_streamerConnected = QtConcurrent::run(this, &SN_SageStreamWidget::waitForPixelStreamerConnection, protocol, port, appname);
+	_initReceiverWatcher.setFuture(_streamerConnected);
 }
 
 
@@ -826,6 +829,11 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 	resize(resX, resY);
 	_appInfo->setFrameSize(resX, resY, getPixelSize((sagePixFmt)pixfmt) * 8);
 
+	if ( (sagePixFmt)pixfmt == PIXFMT_YUV ) {
+		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : PIXFMT_YUV -> no PBO";
+		_usePbo = false;
+	}
+
 
 	qDebug() << "SN_SageStreamWidget : streamer connected. groupSize" << _appInfo->networkUserBufferLength() << "Byte. Framerate" << framerate << "fps";
     _perfMon->setExpectedFps( (qreal)framerate );
@@ -833,7 +841,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 
 
 
-    /* create double buffer */
+    /* create double buffer if PBO is disabled */
 	if (!_usePbo) {
 		if ( createImageBuffer(resX, resY, (sagePixFmt)pixfmt) != 0 ) {
 			qCritical("%s::%s() : imagedoublebuffer is not valid", metaObject()->className(), __FUNCTION__);
@@ -871,9 +879,10 @@ int SN_SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt
 
     qDebug("%s::%s() : recved regMsg. size %d x %d, pixfmt %d, pixelSize %d Byte, bytecount %d Byte", metaObject()->className(), __FUNCTION__, resX, resY, pixfmt, bytePerPixel, resX * bytePerPixel * resY);
 
-	if (!_usePbo)
-		if (!doubleBuffer)
-			doubleBuffer = new ImageDoubleBuffer;
+	Q_ASSERT(!_usePbo);
+
+	if (!doubleBuffer)
+		doubleBuffer = new ImageDoubleBuffer;
 
     /*
          Do not draw ARGB32 images into the raster engine.
@@ -881,6 +890,17 @@ int SN_SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt
          http://labs.qt.nokia.com/2009/12/18/qt-graphics-and-performance-the-raster-engine/
       */
     switch(pixfmt) {
+	case PIXFMT_YUV : {
+		_pixelFormat = GL_LUMINANCE_ALPHA; // internal format is 2
+
+		//
+		// QImage::Format_RGB444 is wrong format for displaying purpose.
+		// It is used anyway because it also is 2 Byte per pixel.
+		// So, for the pixel receiving purpose, this is ok.
+		//
+		if (doubleBuffer) doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB444); // 16 bit (2 Byte per pixel)
+		break;
+	}
     case PIXFMT_888 : { // GL_RGB
 		_pixelFormat = GL_RGB;
         if (doubleBuffer) doubleBuffer->initBuffer(resX, resY, QImage::Format_RGB888);
@@ -926,10 +946,7 @@ int SN_SageStreamWidget::getPixelSize(sagePixFmt type)
 	case PIXFMT_555_INV:
 	case PIXFMT_565:
 	case PIXFMT_565_INV:
-	case PIXFMT_YUV: {
-		bytesPerPixel = 2;
-		break;
-	}
+
 	case PIXFMT_888: {
 		_pixelFormat = GL_RGB;
 		bytesPerPixel = 3;
@@ -952,6 +969,12 @@ int SN_SageStreamWidget::getPixelSize(sagePixFmt type)
 		break;
 	}
 
+	case PIXFMT_YUV: {
+		_pixelFormat = GL_LUMINANCE_ALPHA;
+		bytesPerPixel = 2;
+		break;
+	}
+
 	case PIXFMT_DXT: {
 		bytesPerPixel = 8;
 		break;
@@ -965,6 +988,416 @@ int SN_SageStreamWidget::getPixelSize(sagePixFmt type)
 	}
 	return bytesPerPixel;
 }
+
+
+
+
+
+
+
+
+
+
+int GLSLprintlError(char *file, int line)
+{
+   //
+   // Returns 1 if an OpenGL error occurred, 0 otherwise.
+   //
+   GLenum glErr;
+   int    retCode = 0;
+
+   glErr = glGetError();
+   while (glErr != GL_NO_ERROR)
+   {
+//      fprintf(stderr, "GLSL> glError in file %s @ line %d: %s\n", file, line, gluErrorString(glErr));
+      retCode = 1;
+      glErr = glGetError();
+   }
+   return retCode;
+}
+
+//
+// Print out the information log for a shader object
+//
+static void GLSLprintShaderInfoLog(GLuint shader)
+{
+   int infologLength = 0;
+   int charsWritten  = 0;
+   GLchar *infoLog;
+
+   GLSLprintlError(__FILE__, __LINE__);  // Check for OpenGL errors
+
+   glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infologLength);
+
+   GLSLprintlError(__FILE__, __LINE__);  // Check for OpenGL errors
+
+   if (infologLength > 0)
+   {
+      infoLog = (GLchar *)malloc(infologLength);
+      if (infoLog == NULL)
+      {
+         fprintf(stderr, "GLSL> ERROR: Could not allocate InfoLog buffer\n");
+         exit(1);
+      }
+      glGetShaderInfoLog(shader, infologLength, &charsWritten, infoLog);
+      fprintf(stderr, "GLSL> Shader InfoLog:%s\n", infoLog);
+      free(infoLog);
+   }
+   GLSLprintlError(__FILE__, __LINE__);  // Check for OpenGL errors
+}
+
+//
+// Print out the information log for a program object
+//
+static void GLSLprintProgramInfoLog(GLuint program)
+{
+   int infologLength = 0;
+   int charsWritten  = 0;
+   GLchar *infoLog;
+
+   GLSLprintlError(__FILE__, __LINE__);  // Check for OpenGL errors
+
+   glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infologLength);
+
+   GLSLprintlError(__FILE__, __LINE__);  // Check for OpenGL errors
+
+   if (infologLength > 0)
+   {
+      infoLog = (GLchar *)malloc(infologLength);
+      if (infoLog == NULL)
+      {
+         fprintf(stderr, "GLSL> ERROR: Could not allocate InfoLog buffer\n");
+         exit(1);
+      }
+      glGetProgramInfoLog(program, infologLength, &charsWritten, infoLog);
+      fprintf(stderr, "GLSL> Program InfoLog:%s\n", infoLog);
+      free(infoLog);
+   }
+   GLSLprintlError(__FILE__, __LINE__);  // Check for OpenGL errors
+}
+
+static int GLSLShaderSize(char *fileName, int shaderType)
+{
+   //
+   // Returns the size in bytes of the shader fileName.
+   // If an error occurred, it returns -1.
+   //
+   // File name convention:
+   //
+   // <fileName>.vert
+   // <fileName>.frag
+   //
+   int fd;
+   char name[256];
+   int count = -1;
+
+   memset(name, 0, 256);
+   strcpy(name, fileName);
+
+   switch (shaderType)
+   {
+      case GLSLVertexShader:
+         strcat(name, ".vert");
+         break;
+      case GLSLFragmentShader:
+         strcat(name, ".frag");
+         break;
+      default:
+         fprintf(stderr, "GLSL> ERROR: unknown shader file type\n");
+         exit(1);
+         break;
+   }
+
+   //
+   // Open the file, seek to the end to find its length
+   //
+#ifdef WIN32
+   fd = _open(name, _O_RDONLY);
+   if (fd != -1)
+   {
+      count = _lseek(fd, 0, SEEK_END) + 1;
+      _close(fd);
+   }
+#else
+   fd = open(name, O_RDONLY);
+   if (fd != -1)
+   {
+      count = lseek(fd, 0, SEEK_END) + 1;
+      close(fd);
+   }
+#endif
+   return count;
+}
+
+static
+int GLSLreadShader(char *fileName, int shaderType, char *shaderText, int size)
+{
+   //
+   // Reads a shader from the supplied file and returns the shader in the
+   // arrays passed in. Returns 1 if successful, 0 if an error occurred.
+   // The parameter size is an upper limit of the amount of bytes to read.
+   // It is ok for it to be too big.
+   //
+   FILE *fh;
+   char name[100];
+   int count;
+
+   strcpy(name, fileName);
+
+   switch (shaderType)
+   {
+      case GLSLVertexShader:
+         strcat(name, ".vert");
+         break;
+      case GLSLFragmentShader:
+         strcat(name, ".frag");
+         break;
+      default:
+         fprintf(stderr, "GLSL> ERROR: unknown shader file type\n");
+         exit(1);
+         break;
+   }
+
+   //
+   // Open the file
+   //
+   fh = fopen(name, "r");
+   if (!fh)
+      return -1;
+
+   //
+   // Get the shader from a file.
+   //
+   fseek(fh, 0, SEEK_SET);
+   count = (int) fread(shaderText, 1, size, fh);
+   shaderText[count] = '\0';
+
+   if (ferror(fh))
+      count = 0;
+
+   fclose(fh);
+   return count;
+}
+
+int GLSLreadShaderSource(char *fileName, GLchar **vertexShader, GLchar **fragmentShader)
+{
+   int vSize, fSize;
+
+   //
+   // Allocate memory to hold the source of our shaders.
+   //
+
+   fprintf(stderr, "GLSL> load shader %s\n", fileName);
+   if (vertexShader) {
+      vSize = GLSLShaderSize(fileName, GLSLVertexShader);
+
+      if (vSize == -1) {
+         fprintf(stderr, "GLSL> Cannot determine size of the vertex shader %s\n", fileName);
+         return 0;
+      }
+
+      *vertexShader = (GLchar *) malloc(vSize);
+
+      //
+      // Read the source code
+      //
+      if (!GLSLreadShader(fileName, GLSLVertexShader, *vertexShader, vSize)) {
+         fprintf(stderr, "GLSL> Cannot read the file %s.vert\n", fileName);
+         return 0;
+      }
+   }
+
+   if (fragmentShader) {
+      fSize = GLSLShaderSize(fileName, GLSLFragmentShader);
+
+      if (fSize == -1) {
+         fprintf(stderr, "GLSL> Cannot determine size of the fragment shader %s\n", fileName);
+         return 0;
+      }
+
+      *fragmentShader = (GLchar *) malloc(fSize);
+
+      if (!GLSLreadShader(fileName, GLSLFragmentShader, *fragmentShader, fSize)) {
+         fprintf(stderr, "GLSL> Cannot read the file %s.frag\n", fileName);
+         return 0;
+      }
+   }
+
+   return 1;
+}
+
+GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment)
+{
+   GLuint VS, FS, Prog;   // handles to objects
+   GLint  vertCompiled, fragCompiled;    // status values
+   GLint  linked;
+
+   // Create a program object
+   Prog = glCreateProgram();
+
+   // Create a vertex shader object and a fragment shader object
+   if (Vertex) {
+      VS = glCreateShader(GL_VERTEX_SHADER);
+
+      // Load source code strings into shaders
+      glShaderSource(VS, 1, &Vertex, NULL);
+
+      // Compile the vertex shader, and print out
+      // the compiler log file.
+
+      glCompileShader(VS);
+      GLSLprintlError(__FILE__, __LINE__);  // Check for OpenGL errors
+      glGetShaderiv(VS, GL_COMPILE_STATUS, &vertCompiled);
+      GLSLprintShaderInfoLog(VS);
+
+      if (!vertCompiled)
+         return 0;
+
+      glAttachShader(Prog, VS);
+   }
+
+   if (Fragment) {
+      FS = glCreateShader(GL_FRAGMENT_SHADER);
+
+      glShaderSource(FS, 1, &Fragment, NULL);
+
+      glCompileShader(FS);
+      GLSLprintlError(__FILE__, __LINE__);  // Check for OpenGL errors
+      glGetShaderiv(FS, GL_COMPILE_STATUS, &fragCompiled);
+      GLSLprintShaderInfoLog(FS);
+
+      if (!fragCompiled)
+         return 0;
+
+      glAttachShader(Prog, FS);
+   }
+
+   // Link the program object and print out the info log
+   glLinkProgram(Prog);
+   GLSLprintlError(__FILE__, __LINE__);  // Check for OpenGL errors
+   glGetProgramiv(Prog, GL_LINK_STATUS, &linked);
+   GLSLprintProgramInfoLog(Prog);
+
+   if (!linked)
+      return 0;
+
+   return Prog;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*!
+  This will run in a separate thread
+  */
+/***
+void SN_SageStreamWidget::__recvThread() {
+	struct timeval lats, late;
+	struct rusage ru_start, ru_end;
+	if(_perfMon) {
+		_perfMon->getRecvTimer().start(); //QTime::start()
+
+#if defined(Q_OS_LINUX)
+		getrusage(RUSAGE_THREAD, &ru_start); // that of calling thread. Linux specific
+#elif defined(Q_OS_MAC)
+		getrusage(RUSAGE_SELF, &ru_start);
+#endif
+	}
+
+	ssize_t totalread = 0;
+
+	while(!_recvThreadEnd) {
+		// wait for glMapBufferARB
+		pthread_mutex_lock(_pbomutex);
+//		qDebug() << QDateTime::currentMSecsSinceEpoch() << "will wait";
+		while(!__bufferMapped)
+			pthread_cond_wait(_pbobufferready, _pbomutex);
+
+
+		gettimeofday(&lats, 0);
+
+		// receive frame (DMA write to GPU memory)
+		// pointer in the _bufarray must be valid at this point
+		totalread = __recvFrame(streamsocket, _appInfo->frameSizeInByte(), _pbobufarray[_pboBufIdx]);
+		if (totalread <= 0 ) break;
+
+		gettimeofday(&late, 0);
+
+
+		// reset flag
+		__bufferMapped = false;
+
+		// schedule screen update
+		emit frameReady();
+
+
+		if (_perfMon) {
+#if defined(Q_OS_LINUX)
+			getrusage(RUSAGE_THREAD, &ru_end);
+#elif defined(Q_OS_MAC)
+			getrusage(RUSAGE_SELF, &ru_end);
+#endif
+			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001);
+
+			// calculate
+			_perfMon->updateObservedRecvLatency(totalread, networkrecvdelay, ru_start, ru_end);
+			ru_start = ru_end;
+		}
+
+		pthread_mutex_unlock(_pbomutex);
+	}
+	qDebug() << "SN_SageStreamWidget::__recvThread finished\n";
+}
+
+ssize_t SN_SageStreamWidget::__recvFrame(int socket, int byteCount, void *ptr) {
+	Q_ASSERT(socket);
+
+	ssize_t totalread = 0;
+	ssize_t read = 0;
+
+//	gettimeofday(&lats, 0);
+
+	GLubyte *bufptr = (GLubyte *)ptr;
+
+	// PIXEL RECEIVING
+	while (totalread < byteCount ) {
+		// If remaining byte is smaller than user buffer length (which is groupSize)
+		if ( byteCount-totalread < _appInfo->networkUserBufferLength() ) {
+			read = recv(socket, bufptr, byteCount-totalread , MSG_WAITALL);
+		}
+		// otherwise, always read groupSize bytes
+		else {
+			read = recv(socket, bufptr, _appInfo->networkUserBufferLength(), MSG_WAITALL);
+		}
+		if ( read == -1 ) {
+			qDebug("SagePixver::run() : error while reading.");
+			break;
+		}
+		else if ( read == 0 ) {
+			qDebug("SagePiver::run() : sender disconnected");
+			break;
+		}
+		// advance pointer
+		bufptr += read;
+		totalread += read;
+	}
+	if ( totalread < byteCount ) {
+		qDebug() << "totalread < bytecount";
+	}
+
+	return totalread;
+}
+***/
 
 
 

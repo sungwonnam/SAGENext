@@ -9,21 +9,37 @@
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #include <GL/glext.h>
+#include <GL/glu.h>
 #elif defined(Q_OS_MAC)
 #define GL_GLEXT_PROTOTYPES
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
 #endif
 
-class fsManagerMsgThread;
+#include <fcntl.h>
+
+#include "../sage/fsmanagermsgthread.h"
+
+#include <QFutureWatcher>
+#include <QMutex>
+#include <QWaitCondition>
+
+#define GLSLVertexShader   1
+#define GLSLFragmentShader 2
+
+
+
+int GLSLreadShaderSource(char *fileName, GLchar **vertexShader, GLchar **fragmentShader);
+GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment);
+
+
+
 class DoubleBuffer;
 class SN_SagePixelReceiver;
 class AffinityInfo;
 class QProcess;
 
-#include <QFutureWatcher>
-#include <QMutex>
-#include <QWaitCondition>
+
 
 class SN_SageStreamWidget : public SN_RailawareWidget
 {
@@ -48,8 +64,8 @@ public:
 	inline QProcess * sailAppProc() {return _sailAppProc;}
 
 	/*!
-	  fsManagerMsgThread has to know if receiver (which is this widget) is ready to receive streamer message.
-	  Widget is ready to receive the message if it blocking waits for ::accept()
+	  fsManagerMsgThread has to know if the receiver (which is this widget) is ready to receive the streamer message from SAIL.
+	  The SageStreamWidget is ready to receive the message if it is blocking waiting for SAIL to connect ( ::accept())
 	  */
 	inline bool isWaitingSailToConnect() const {return _readyForStreamer;}
 
@@ -58,52 +74,66 @@ protected:
 //	void resizeEvent(QGraphicsSceneResizeEvent *event);
 
 private:
-//	GLuint texhandle;
 	const QSettings *_settings;
 
+	/*!
+	  The corresponding fsManager msg thread for this widget.
+	  The object pointed by this is the TCP channel between the SAGE application (SAIL) and the receiver (SAGENext)
+	  */
 	fsManagerMsgThread *_fsmMsgThread;
 
 	/**
-	  The local application that sends pixel
+	  The process of local SAGE application (SAIL) that sends pixels.
 	  */
 	QProcess *_sailAppProc;
 
 	quint64 _sageAppId;
 
 	/*!
-	  Pointer to QThread object
+	  The pointer to the QThread object that receives pixels from SAGE application.
 	  */
 	SN_SagePixelReceiver *_receiverThread;
 
 
 	/**
-	  Drawing image is expansive than pixmap. But conversion to pixmap isn't needed
+	  In X11, QPixmap is stored at the X Server. So converting QImage to QPixmap involves converting plus copying data to Xserver, and this is expansive !!.
+	  However, drawing QPixmap is much cheaper.
+	  And we want to make the paint() as light as possible. So, use QPixmap for drawing if you're not using native OpenGL calls.
 	  */
-//	QImage _imageForDrawing;
 	QPixmap _pixmapForDrawing;
-//	QImage *_imagePointer;
 
+	/*!
+	  Texture handle we're going to draw onto the screen
+	  */
 	GLuint _textureid;
+
 
 	GLenum _pixelFormat;
 
+	/*!
+	  Currently this is set automatically if system supports PBO
+	  However, when PIXFMT_YUV is detected then PBO will be disabled
+	  */
 	bool _usePbo;
 
+	/*!
+	  Two pboIds for double buffering
+	  */
 	GLuint _pboIds[2];
 
 	int _pboBufIdx;
 
+	/*!
+	  Initializes mutex needed to synchronize the widget and the pixel receiver when PBO is used.
+	  */
+	bool _initPboMutex();
+
+	/*!
+	  The app side image double buffer.
+	  This won't be created when _usePbo is true
+	  */
 	DoubleBuffer *doubleBuffer;
 
-
-	/**
-	  * QPixmap is for drawing.
-
-	  In X11, QPixmap is stored at the X Server. So converting image to pixmap involves converting plus copy to server.
-	  However, drawing pixmap is cheaper.
-
-	  */
-//	QPixmap _pixmap;
 
 	/**
 	  * pixel receiver socket on which this widget will listen in initialize()
@@ -116,19 +146,13 @@ private:
 	  */
 	int streamsocket;
 
-	/**
-	  * byte count of a frame
+
+	/*!
+	  pixel format enum from SAGE
 	  */
-//	int imageSize;
-
-//	quint64 frameCounter;
-
-//	int _bordersize;
-
 	enum sagePixFmt {PIXFMT_NULL, PIXFMT_555, PIXFMT_555_INV, PIXFMT_565, PIXFMT_565_INV,
 		  PIXFMT_888, PIXFMT_888_INV, PIXFMT_8888, PIXFMT_8888_INV, PIXFMT_RLE, PIXFMT_LUV,
 		  PIXFMT_DXT, PIXFMT_YUV};
-
 
 	int getPixelSize(sagePixFmt pixfmt);
 
@@ -138,18 +162,27 @@ private:
 	int createImageBuffer(int resx, int resy, sagePixFmt pixelFormat);
 
 
-	QFuture<int> _initReceiverFuture;
+	/*!
+	  This is the future of waitForPixelStreamerConnection()
+	  */
+	QFuture<int> _streamerConnected;
+
+	/*!
+	  This monitors _initReceverFuture and starts startReceivingThread() upon _initReceiverFuture finishes.
+	  */
 	QFutureWatcher<int> _initReceiverWatcher;
 
+	/*!
+	  This info comes from SAIL.
+	  Either TCP 0 or UDP 1
+	  */
 	int _streamProtocol;
 
 	/*!
-	  The widget called ::accept() and ready to receive streamer's message.
+	  The widget is about to call ::accept() and will be ready to receive the streamer's message.
 	  This is to let fsManagerMsgThread to know if i'm ready or not.
 	  */
 	volatile bool _readyForStreamer;
-
-
 
 
 
@@ -160,9 +193,7 @@ private:
 
 //	QFuture<void> _recvThreadFuture;
 //	QFutureWatcher<void> _recvThreadWatcher;
-
 //	void __recvThread();
-
 //	ssize_t __recvFrame(int sock, int bytecount, void *ptr);
 
 	bool __firstFrame;
@@ -174,6 +205,12 @@ private:
 	pthread_mutex_t *_pbomutex;
 	pthread_cond_t *_pbobufferready;
 
+
+	/*!
+	  A shader program is used for the image with PIXFMT_YUV
+	  The shader program is located at $SAGE_DIRECTORY/bin/yuv.vert/frag
+	  */
+	GLhandleARB _shaderProgHandle;
 
 signals:
 //	void pixelReceiverFinished();
@@ -200,7 +237,10 @@ public slots:
 
 	  Once this is set, remaining handshaking should be done followed by pixel streaming
 	  */
-	void setFsmMsgThread(fsManagerMsgThread *);
+	void setFsmMsgThread(fsManagerMsgThread *thread) {
+		_fsmMsgThread = thread;
+		_fsmMsgThread->start();
+	}
 
 	/**
 	  This slot is invoked in fsManagerMsgThread::parseMessage().
@@ -212,13 +252,15 @@ public slots:
 
 
 	/**
-	  This slot runs waitForPixelStreamerConnection in separate thread because ::accept() will block in that slot
+	  This slot runs waitForPixelStreamerConnection() in separate thread because ::accept() will block in that slot.
+	  QFuture _streamerConnected is the future of this slot.
 	  */
 	void doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port);
 
 	/**
-	  This slots blocking waits streamer's connection.
-	  Image double buffer is created upon connection
+	  This slot does blocking waiting streamer's connection.
+	  Upon returning, _streamerConnected future will be notified.
+	  Image double buffer is created upon connection if PBO is disabled.
 	  */
 	int waitForPixelStreamerConnection(int protocol, int port, const QString &appname);
 
@@ -252,5 +294,18 @@ public slots:
 	  */
 	void scheduleReceive();
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #endif // SAGESTREAMWIDGET_H
