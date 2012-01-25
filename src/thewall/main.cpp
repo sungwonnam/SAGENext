@@ -352,12 +352,17 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	SN_SchedulerControl *schedcontrol = 0;
 	if ( s.value("system/resourcemonitor").toBool() ) {
 		qDebug() << "Creating ResourceMonitor";
+
 		resourceMonitor = new SN_ResourceMonitor(&s);
+
+		QObject::connect(scene, SIGNAL(destroyed()), resourceMonitor, SLOT(deleteLater()));
 
 		if ( s.value("system/scheduler").toBool() ) {
 			qDebug() << "Creating" << s.value("system/scheduler_type").toString() << "Scheduler";
 
 			schedcontrol = new SN_SchedulerControl(resourceMonitor);
+
+			QObject::connect(resourceMonitor, SIGNAL(destroyed()), schedcontrol, SLOT(deleteLater()));
 
 			a.installEventFilter(schedcontrol); // scheduler will monitor(filter) qApp's event
 
@@ -376,7 +381,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		resourceMonitor->refresh();
 
 		rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, schedcontrol); // No parent widget
-		//		rMonitorWidget->show();
+		rMonitorWidget->show();
 
 		resourceMonitor->setRMonWidget(rMonitorWidget);
 
@@ -526,7 +531,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 
 //	launcher->launch("user", "evl123", 0, "131.193.77.191", 24);
-//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://helloracer.com");
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processing.org/learning/topics/flocking.html");
 //		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
 //		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");

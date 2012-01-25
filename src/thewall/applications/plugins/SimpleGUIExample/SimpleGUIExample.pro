@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui opengl
+QT       += core gui
 
 TARGET = MouseClickExamplePlugin
 TEMPLATE = lib
@@ -18,12 +18,14 @@ BUILD_DIR = build
 MOC_DIR = $$BUILD_DIR
 OBJECTS_DIR = $$BUILD_DIR
 
+INCLUDEPATH += ../../../
 
 SOURCES += \
 simpleguiexample.cpp \
 ../../base/basewidget.cpp \
 ../../base/appinfo.cpp \
 ../../base/perfmonitor.cpp \
+../../base/interactionmonitor.cpp \
 ../../../common/commonitem.cpp
 
 
@@ -33,4 +35,5 @@ simpleguiexample.h \
 ../../base/basewidget.h \
 ../../base/appinfo.h \
 ../../base/perfmonitor.h \
+../../base/interactionmonitor.h \
 ../../../common/commonitem.h

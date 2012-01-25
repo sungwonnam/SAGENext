@@ -33,8 +33,8 @@ public:
 	~SN_TheScene();
 
 	inline void setUiServer(SN_UiServer *u) {_uiserver = u;}
-//	inline void setRMonitor(ResourceMonitor *r) {_rmonitor = r;}
-	inline void setSchedControl(SN_SchedulerControl *s) {_schedcontrol = s;}
+//	inline void setRMonitor(SN_ResourceMonitor *r) {_rmonitor = r;}
+//	inline void setSchedControl(SN_SchedulerControl *s) {_schedcontrol = s;}
 	inline SN_LayoutWidget * rootLayoutWidget() {return _rootLayoutWidget;}
 
 	bool isOnAppRemoveButton(const QPointF &scenepos);
@@ -62,8 +62,8 @@ public:
 private:
 	const QSettings *_settings;
 	SN_UiServer *_uiserver;
-//	ResourceMonitor *_rmonitor;
-	SN_SchedulerControl *_schedcontrol;
+//	SN_ResourceMonitor *_rmonitor;
+//	SN_SchedulerControl *_schedcontrol;
 
 //	PartitionTreeNode *_rootPartition;
 	SN_LayoutWidget *_rootLayoutWidget;

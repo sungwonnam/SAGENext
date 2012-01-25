@@ -60,7 +60,7 @@ public:
 	int launchScheduler(const QString &str, int msec=1000);
 	int launchScheduler();
 
-	void killScheduler();
+
 
 	inline bool isRunning() const {return _isRunning;}
 
@@ -97,6 +97,7 @@ private:
 signals:
 
 public slots:
+	void killScheduler();
 };
 
 

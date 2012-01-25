@@ -140,6 +140,7 @@ SN_FileServer::SN_FileServer(const QSettings *s, SN_Launcher *l, QObject *parent
 SN_FileServer::~SN_FileServer() {
 	close(); // stop listening
 
+	qDebug() << "In ~FileServer(), deleting fileserver threads";
 	foreach(FileServerThread *thread, _uiFileServerThreadMap.values()) {
 		if (thread) {
 			if (thread->isRunning()) {

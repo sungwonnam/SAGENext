@@ -2,7 +2,7 @@
 #define SN_LAYOUTWIDGET_H
 
 #include <QtGui>
-
+#include "common/commondefinitions.h"
 
 class SN_LayoutWidget;
 class SN_Launcher;
@@ -16,13 +16,30 @@ public:
 	inline Qt::Orientation orientation() const {return _orientation;}
 	inline SN_LayoutWidget * ownerNode() {return _ownerNode;}
 
-        enum { Type = QGraphicsItem::UserType + 1 };
-        virtual int type() const { return Type;}
+	/*!
+	  Usually, SN_PolygonArrowPointer will ignore all standard QGraphicsItem.
+	  This means the shared pointer won't be able to interact with the standard QGraphicsItems except ones that inherit SN_BaseWidget.
+	  By settting UserType + 1, this item will be set in SN_PolygonArrowPointer::_item properly in its setAppUnderPointer() function.
+
+	  To be able to be interacted with the shared pointer, a widget needs to set value higher than QGraphicsItem::UserType.
+	  Note that values >= UserType + BASEWIDGET_USER are reserved for user applications.
+	  So, choose UserType < value < UserType+BASEWIDGET_USER for common items on the scene.
+	  */
+	enum { Type = QGraphicsItem::UserType + INTERACTIVE_ITEM };
+	virtual int type() const { return Type;}
 
 protected:
 
 private:
+	/*!
+	  The bar is placed on the _ownerNode.
+	  */
 	SN_LayoutWidget *_ownerNode;
+
+	/*!
+	  Horizontal bar divides the section top and bottom.
+	  Vertical bar divides the section left and right.
+	  */
 	Qt::Orientation _orientation;
 };
 

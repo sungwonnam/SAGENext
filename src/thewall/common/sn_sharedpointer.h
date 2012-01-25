@@ -134,9 +134,10 @@ private:
           */
 	SN_BaseWidget *_basewidget;
 
-		/**
-		  The graphics item under this pointer. This is to keep track general items on the scene
-		  */
+	/**
+	  The graphics item under this pointer. This is to keep track general items on the scene that can be interacted with shared pointer
+	  Such as SN_PartitonBar
+      */
 	QGraphicsItem *_item;
 		
 		/**

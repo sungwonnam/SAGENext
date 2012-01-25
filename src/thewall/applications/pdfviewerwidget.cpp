@@ -30,6 +30,8 @@ SN_PDFViewerWidget::SN_PDFViewerWidget(const QString filename, quint64 globalapp
 		return;
 	}
 
+	setWidgetType(SN_BaseWidget::Widget_Image);
+
 	_appInfo->setFileInfo(filename);
 	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_PDF);
 

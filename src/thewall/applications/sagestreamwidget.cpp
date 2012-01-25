@@ -28,7 +28,6 @@
     B = clip(( 298 * (Y-16) + 516 * (U-128)
 */
 
-
 #include <QGLPixelBuffer>
 
 
@@ -52,14 +51,18 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
     , _streamProtocol(0)
 	, _readyForStreamer(false) // fsm thread polls on this
 
-
     , __firstFrame(true)
     , __bufferMapped(false)
 //    , _recvThreadEnd(false)
+
     , _pbomutex(0)
     , _pbobufferready(0)
 
+    , _useShader(false)
+
 {
+	setWidgetType(SN_BaseWidget::Widget_RealTime);
+
     // this is defined in BaseWidget
     setRMonitor(rm);
 
@@ -73,10 +76,6 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 //	_usePbo = s->value("graphics/openglpbo", false).toBool();
 	if (_useOpenGL) {
 		if (QGLPixelBuffer::hasOpenGLPbuffers()) {
-
-			//
-			// Note that if PIXFMT_YUV then _usePbo will be set to false again
-			//
 			_usePbo = true;
 		}
 	}
@@ -226,256 +225,29 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 
 
 
-void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
-	if (_perfMon) {
-		_perfMon->getDrawTimer().start();
-	}
-
-//	painter->setCompositionMode(QPainter::CompositionMode_Source);
-	
-	if (_useOpenGL && painter->paintEngine()->type() == QPaintEngine::OpenGL2
-	//|| painter->paintEngine()->type() == QPaintEngine::OpenGL
-	)
-	{
-		//
-		// 0 draw latency because it's drawn from the cache
-		// but higher latency in scheduleUpdate()
-		//
-		//	QGLWidget *viewportWidget = (QGLWidget *)w;
-		//	viewportWidget->drawTexture(QPointF(0,0), _textureid);
-
-		/*
-		  this takes lots of time when doing DMA write to GPU memory using QGLBuffer due to the context switching
-		  */
-		painter->beginNativePainting();
-
-		if (_pixelFormat == GL_LUMINANCE_ALPHA ) {
-			glUseProgramObjectARB(_shaderProgHandle);
-			glActiveTexture(GL_TEXTURE0);
-			int h=glGetUniformLocationARB(_shaderProgHandle,"yuvtex");
-			glUniform1iARB(h,0);  /* Bind yuvtex to texture unit 0 */
-			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
-
-			glBegin(GL_QUADS);
-			//
-			// below is same with QGLContext::InvertedYBindOption
-			//
-			glTexCoord2f(0.0, size().height()); glVertex2f(0, size().height());
-			glTexCoord2f(size().width(), size().height()); glVertex2f(size().width(), size().height());
-			glTexCoord2f(size().width(), 0.0); glVertex2f(size().width(), 0);
-			glTexCoord2f(0.0, 0.0); glVertex2f(0, 0);
-
-			//
-			// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
-			//
-			//glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
-			//glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
-			//glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
-			//glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
-
-			glEnd();
-
-			glUseProgramObjectARB(0);
-			glDisable(GL_TEXTURE_RECTANGLE_ARB);
-			glEnable(GL_TEXTURE_2D);
-		}
-		else {
-			glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, _textureid);
-
-			glBegin(GL_QUADS);
-			//
-			// below is same with QGLContext::InvertedYBindOption
-			//
-			glTexCoord2f(0.0, 1.0); glVertex2f(0, size().height());
-			glTexCoord2f(1.0, 1.0); glVertex2f(size().width(), size().height());
-			glTexCoord2f(1.0, 0.0); glVertex2f(size().width(), 0);
-			glTexCoord2f(0.0, 0.0); glVertex2f(0, 0);
-
-			//
-			// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
-			//
-			//glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
-			//glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
-			//glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
-			//glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
-
-			glEnd();
-
-			glBindTexture(GL_TEXTURE_2D, 0);
-			glDisable(GL_TEXTURE_2D);
-		}
-
-
-
-		painter->endNativePainting();
-	}
-	else {
-		/***
-		  On Linux/X11 platforms which support it, Qt will use glX/EGL texture-from-pixmap extension.
-	This means that if your QPixmap has a real X11 pixmap backend, we simply bind that X11 pixmap as a texture and avoid copying it.
-	You will be using the X11 pixmap backend if the pixmap was created with QPixmap::fromX11Pixmap() or you’re using the “native” graphics system.
-	Not only does this avoid overhead but it also allows you to write a composition manager or even a widget which shows previews of all your windows.
-
-
-	QPixmap, unlike QImage, may be hardware dependent.
-	On X11, Mac and Symbian, a QPixmap is stored on the server side while a QImage is stored on the client side
-	(on Windows,these two classes have an equivalent internal representation,
-	i.e. both QImage and QPixmap are stored on the client side and don't use any GDI resources).
-
-	So, drawing pixmap is much faster but QImage has to be converted to QPixmap for every frame which involves converting plus copy to X Server.
-		  ***/
-
-		if (!_pixmapForDrawing.isNull()) {
-			painter->drawPixmap(0, 0, _pixmapForDrawing);
-		}
-	}
-
-	SN_BaseWidget::paint(painter,o,w);
-
-	if (_perfMon)
-		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
-}
-
-
-
-void SN_SageStreamWidget::scheduleReceive() {
-//	qDebug() << "widget wakeOne";
-//	if(wc) wc->wakeOne();
-	_receiverThread->receivePixel();
-}
-
 
 /**
-  This slot connected to the signal SagePixelReceiver::frameReceived() so that this can be called after receiving each image frame
+   This slot is invoked by fsManagerMsgThread right after sending SAIL_INIT_MSG.
+  It runs waitForPixelStreamerConnection() does blocking waiting for the streamer in a separate thread.
   */
-void SN_SageStreamWidget::scheduleUpdate() {
+void SN_SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port) {
+//	qDebug() << "\nRunning waitForPixelStreamConnection";
+	Q_UNUSED(initrect);
+	_sageAppId = sageappid;
 
-    if ( !doubleBuffer || !_receiverThread || _receiverThread->isFinished() || !isVisible() )
-        return;
-
-	//qDebug() << _globalAppId << "scheduleUpdate" << QTime::currentTime().toString("hh:mm:ss.zzz");
-
-	const QImage *constImageRef = static_cast<QImage *>(doubleBuffer->getBackBuffer());
-
-	if ( !constImageRef || constImageRef->isNull()) {
-		qCritical("SageStreamWidget::%s() : globalAppId %llu, sageAppId %llu : imgPtr is null. Failed to retrieve back buffer from double buffer", __FUNCTION__, globalAppId(), _sageAppId);
-		return;
-	}
-
-	_perfMon->getConvTimer().start();
-
-
-	if (_useOpenGL) {
-
-		if (_pixelFormat == GL_LUMINANCE_ALPHA) {
-			// PIXFMT_YUV
-			glDisable(GL_TEXTURE_2D);
-			glEnable(GL_TEXTURE_RECTANGLE_ARB);
-
-			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
-			glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, constImageRef->width(), constImageRef->height(), _pixelFormat, GL_UNSIGNED_BYTE, constImageRef->bits());
-//			pixel_bytes += block->width * block->height * pInfo.bytesPerPixel; // luc
-
-			glDisable(GL_TEXTURE_RECTANGLE_ARB);
-			glEnable(GL_TEXTURE_2D);
-		}
-		else {
-
-			// QGLContext::InvertedYBindOption Because In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
-			//
-			// Below is awfully slow. Probably because QImage::scaled() inside qgl.cpp to convert image size near power of two
-			// _textureid = glContext->bindTexture(constImageRef->convertToFormat(QImage::Format_RGB32), GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
-
-			//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-			//glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, _textureid);
-
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-			//
-			// Note that it's QImage::Format_RGB888 we're getting from SAGE app
-			//
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, constImageRef->width(), constImageRef->height(), _pixelFormat, GL_UNSIGNED_BYTE, constImageRef->bits());
-			//GLenum error = glGetError();
-			//if(error != GL_NO_ERROR) {
-			//		qCritical("texture upload failed. error code 0x%x\n", error);
-			//}
-
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-	}
-	else {
-		/*
-		  // drawing RGB32 is the fastest. But drawing QImage is slower than drawing QPixmap
-		_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32);
-		if (_imageForDrawing.isNull()) {
-			qCritical("SN_SageStreamWidget::%s() : Image conversion failed", __FUNCTION__);
-			return;
-		}
-		*/
-
-		//
-	    // Drawing QPixmap is the fastest. But in X11, this means image is converted and copied to X Server -> slow !
-	    // For static images this is ok but for animations this results bad frame rate
-	    //
-	   /*
-      _pixmap = QPixmap::fromImage(*constImageRef);
-      if (_pixmap.isNull()) {
-	   qCritical("SageStreamWidget::scheduleUpdate() : QPixmap::fromImage() error");
-	   return;
-      }
-      */
-
-		//
-		// Below doesn't work under X11 backend. Use raster backend
-		//
-		_pixmapForDrawing.convertFromImage(*constImageRef, Qt::AutoColor | Qt::ThresholdDither);
-
-
-   //	There's small conversion delay but drawing is faster
-   //	_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32); // faster drawing !!
-   //	_imageForDrawing = constImageRef->convertToFormat(QImage::Format_ARGB32_Premultiplied); // faster drawing !!
-
-	   // Don't create QImage like this. This slot is called frequently
-   //	_imageForDrawing = QImage(rawptr, doubleBuffer->imageWidth(), doubleBuffer->imageHeight(), doubleBuffer->imageFormat()).convertToFormat(QImage::Format_RGB32);
-
-   //	_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32);
-   //	if (_imageForDrawing.isNull()) {
-   //		qCritical("SN_SageStreamWidget::%s() : Image conversion failed", __FUNCTION__);
-   //		return;
-   //	}
-	}
-
-	_perfMon->updateConvDelay();
-
-	setScheduled(false); // reset scheduling flag for SMART scheduler
-
-	//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget : " << frameCounter << " has converted";
-
-	/*
-	  Maybe I should schedule update() and releaseBackBuffer in the scheduler
-	 */
-	doubleBuffer->releaseBackBuffer();
-
-
-	// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
-	// QGraphicsView will process the event
-	update(); // post paint event to myself
-	//qApp->sendPostedEvents(this, QEvent::MetaCall);
-	//qApp->flush();
-	//qApp->processEvents();
-
-	//this->scene()->views().front()->update( mapRectToScene(boundingRect()).toRect() );
+	//
+	// receives REG_MSG from sail
+	//
+	_streamerConnected = QtConcurrent::run(this, &SN_SageStreamWidget::waitForPixelStreamerConnection, protocol, port, appname);
+	_initReceiverWatcher.setFuture(_streamerConnected);
 }
 
 
 
 /**
-  This is invoked after the waitForPixelStreamingConnection thread finishes
+  Now we know all the sail info and streaming channel established !
+
+  This is invoked (by _initReceiverWatcher) after the waitForPixelStreamingConnection() thread finishes.
   */
 void SN_SageStreamWidget::startReceivingThread() {
 	Q_ASSERT(streamsocket > 0);
@@ -484,25 +256,7 @@ void SN_SageStreamWidget::startReceivingThread() {
 
 		glGenTextures(1, &_textureid);
 
-		if (_pixelFormat == GL_LUMINANCE_ALPHA) {
-			// pixfmt PIXFMT_YUV
-			// _usePbo should be false
-
-//			_shaderProgram = new QGLShaderProgram;
-//			if (!_shaderProgram->addShaderFromSourceFile(QGLShader::Vertex, QString("/home/evl/snam5/SAGE/current/usr/local/sage/bin/yuv.vert")))
-//				qDebug() << "compiling vertex shader failed";
-//			qDebug() << _shaderProgram->log();
-//			if (!_shaderProgram->addShaderFromSourceFile(QGLShader::Fragment, QString("/home/evl/snam5/SAGE/current/usr/local/sage/bin/yuv.frag")))
-//				qDebug() << "compiling fragment shader failed";
-//			qDebug() << _shaderProgram->log();
-
-//			_shaderProgram->link(); qDebug() << _shaderProgram->log();
-//			_shaderProgram->bind(); qDebug() << _shaderProgram->log();
-
-//			PHandle = _shaderProgram->programId();
-//			qDebug() << PHandle;
-
-
+		if (_useShader) {
 			GLchar *FragmentShaderSource;
 			GLchar *VertexShaderSource;
 
@@ -519,69 +273,53 @@ void SN_SageStreamWidget::startReceivingThread() {
 			glUseProgramObjectARB(_shaderProgHandle);
 			free(sfn);
 			glUseProgramObjectARB(0);
-
-
-
-			glDisable(GL_TEXTURE_2D);
-			glEnable(GL_TEXTURE_RECTANGLE_ARB);
-			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
-			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, 2, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits());
 		}
-		else {
-			glBindTexture(GL_TEXTURE_2D, _textureid);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0);
-			glBindTexture(GL_TEXTURE_2D, 0);
 
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
 
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
 
-			if ( _usePbo ) {
-				//
-				// init mutex
-				//
-				if ( ! _initPboMutex() ) {
-					qDebug() << "Failed to init mutex !";
-				}
+		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-				qDebug() << "SN_SageStreamWidget : OpenGL pbuffer extension is present. Using PBO";
-				glGenBuffersARB(2, _pboIds);
+		// internal format 2 -> the number of color components in the texture
+		glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0 /*static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits()*/);
+//		glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0);
 
-				glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
-				glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glEnable(GL_TEXTURE_2D);
 
-				glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
-				glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-				glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-
-
-				////////////// receiving thread /////////////////
-				/*
-			connect(&_recvThreadWatcher, SIGNAL(started()), this, SLOT(schedulePboUpdate()));
-			connect(&_recvThreadWatcher, SIGNAL(finished()), this, SLOT(close()));
-			connect(_fsmMsgThread, SIGNAL(finished()), &_recvThreadWatcher, SLOT(cancel()));
-
-			if ( ! connect(this, SIGNAL(frameReady()), this, SLOT(schedulePboUpdate())) ) {
-				qDebug() << "\n\nFailed to connect frameReady() <-> schedulePboUpdate()\n";
-			}
-			else {
-				_recvThreadFuture = QtConcurrent::run(this, &SN_SageStreamWidget::__recvThread);
-				_recvThreadWatcher.setFuture(_recvThreadFuture);
+		if ( _usePbo ) {
+			//
+			// init mutex
+			//
+			if ( ! _initPboMutex() ) {
+				qDebug() << "Failed to init mutex !";
 			}
 
+//			qDebug() << "SN_SageStreamWidget : OpenGL pbuffer extension is present. Using PBO doublebuffering";
+			glGenBuffersARB(2, _pboIds);
 
-			return;
-			*/
-			}
+			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
+			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
+			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 		}
 	}
+
+
+	qDebug() << "SageStreamWidget now starts receiving thread";
+	qDebug() << "\t" << _appInfo->executableName() << "(" << _appInfo->fileInfo().fileName() << ") from" << _appInfo->srcAddr();
+	qDebug() << "\t" << _appInfo->nativeSize().width() <<"x" << _appInfo->nativeSize().height() << _appInfo->bitPerPixel() << "bpp" << _appInfo->frameSizeInByte() << "Byte/frame at" << _perfMon->getExpetctedFps() << "fps";
+	qDebug() << "\t" << "network user buffer length (groupsize)" << _appInfo->networkUserBufferLength() << "Byte";
+	qDebug() << "\t" << "GL pixel format" << _pixelFormat << ",use SHADER" << _useShader << ",use PBO" << _usePbo;
 
 
 	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, doubleBuffer, _usePbo, _pbobufarray, _pbomutex, _pbobufferready, _appInfo, _perfMon, _affInfo, _settings);
@@ -687,9 +425,9 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	// update texture with the pbo buffer
 	//
 //	qDebug() << "update texture" << nextbufidx;
-	glBindTexture(GL_TEXTURE_2D, _textureid);
+	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, _textureid);
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
+	glTexSubImage2D(/*GL_TEXTURE_2D */GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
 
 	//
 	// schedule paintEvent
@@ -699,7 +437,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	//
 	// reset GL state
 	//
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
 	_perfMon->updateConvDelay();
@@ -707,20 +445,210 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 
 
 
+void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
+	if (_perfMon) {
+		_perfMon->getDrawTimer().start();
+	}
+//	painter->setCompositionMode(QPainter::CompositionMode_Source);
+	
+	if (_useOpenGL && painter->paintEngine()->type() == QPaintEngine::OpenGL2
+	//|| painter->paintEngine()->type() == QPaintEngine::OpenGL
+	)
+	{
+		//
+		// 0 draw latency because it's drawn from the cache
+		// but higher latency in scheduleUpdate()
+		//
+		//	QGLWidget *viewportWidget = (QGLWidget *)w;
+		//	viewportWidget->drawTexture(QPointF(0,0), _textureid);
+
+		/*
+		  this takes lots of time when doing DMA write to GPU memory using QGLBuffer due to the context switching
+		  */
+		painter->beginNativePainting();
+
+		if (_useShader) {
+			glUseProgramObjectARB(_shaderProgHandle);
+			glActiveTexture(GL_TEXTURE0);
+			int h=glGetUniformLocationARB(_shaderProgHandle,"yuvtex");
+			glUniform1iARB(h,0);  /* Bind yuvtex to texture unit 0 */
+		}
+
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
+
+		glBegin(GL_QUADS);
+		//
+		// below is same with QGLContext::InvertedYBindOption
+		//
+		glTexCoord2f(0.0,            size().height()); glVertex2f(0,              size().height());
+		glTexCoord2f(size().width(), size().height()); glVertex2f(size().width(), size().height());
+		glTexCoord2f(size().width(), 0.0);             glVertex2f(size().width(), 0);
+		glTexCoord2f(0.0,            0.0);             glVertex2f(0,              0);
+
+		//
+		// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
+		//
+		//glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+		//glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
+		//glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
+		//glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
+
+		glEnd();
+
+		if (_useShader) glUseProgramObjectARB(0);
+
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glEnable(GL_TEXTURE_2D);
+
+		painter->endNativePainting();
+	}
+	else {
+		/***
+		  On Linux/X11 platforms which support it, Qt will use glX/EGL texture-from-pixmap extension.
+	This means that if your QPixmap has a real X11 pixmap backend, we simply bind that X11 pixmap as a texture and avoid copying it.
+	You will be using the X11 pixmap backend if the pixmap was created with QPixmap::fromX11Pixmap() or you’re using the “native” graphics system.
+	Not only does this avoid overhead but it also allows you to write a composition manager or even a widget which shows previews of all your windows.
 
 
+	QPixmap, unlike QImage, may be hardware dependent.
+	On X11, Mac and Symbian, a QPixmap is stored on the server side while a QImage is stored on the client side
+	(on Windows,these two classes have an equivalent internal representation,
+	i.e. both QImage and QPixmap are stored on the client side and don't use any GDI resources).
+
+	So, drawing pixmap is much faster but QImage has to be converted to QPixmap for every frame which involves converting plus copy to X Server.
+		  ***/
+
+		if (!_pixmapForDrawing.isNull()) {
+			painter->drawPixmap(0, 0, _pixmapForDrawing);
+		}
+	}
+
+	SN_BaseWidget::paint(painter,o,w);
+
+	if (_perfMon)
+		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
+}
+
+
+
+void SN_SageStreamWidget::scheduleReceive() {
+//	qDebug() << "widget wakeOne";
+//	if(wc) wc->wakeOne();
+	_receiverThread->receivePixel();
+}
 
 
 /**
-  It runs a function does blocking waiting for the streamer in a separate thread.
-  This slot is invoked by fsManagerMsgThread
+  This slot connected to the signal SagePixelReceiver::frameReceived() so that this can be called after receiving each image frame
   */
-void SN_SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port) {
-//	qDebug() << "\nRunning waitForPixelStreamConnection";
-	_sageAppId = sageappid;
-	_streamerConnected = QtConcurrent::run(this, &SN_SageStreamWidget::waitForPixelStreamerConnection, protocol, port, appname);
-	_initReceiverWatcher.setFuture(_streamerConnected);
+void SN_SageStreamWidget::scheduleUpdate() {
+
+    if ( !doubleBuffer || !_receiverThread || _receiverThread->isFinished() || !isVisible() )
+        return;
+
+	//qDebug() << _globalAppId << "scheduleUpdate" << QTime::currentTime().toString("hh:mm:ss.zzz");
+
+	const QImage *constImageRef = static_cast<QImage *>(doubleBuffer->getBackBuffer());
+
+	if ( !constImageRef || constImageRef->isNull()) {
+		qCritical("SageStreamWidget::%s() : globalAppId %llu, sageAppId %llu : imgPtr is null. Failed to retrieve back buffer from double buffer", __FUNCTION__, globalAppId(), _sageAppId);
+		return;
+	}
+
+	_perfMon->getConvTimer().start();
+
+
+	if (_useOpenGL) {
+
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
+
+		glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, constImageRef->width(), constImageRef->height(), _pixelFormat, GL_UNSIGNED_BYTE, constImageRef->bits());
+
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glEnable(GL_TEXTURE_2D);
+
+
+			// QGLContext::InvertedYBindOption Because In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
+			//
+			// Below is awfully slow. Probably because QImage::scaled() inside qgl.cpp to convert image size near power of two
+			// _textureid = glContext->bindTexture(constImageRef->convertToFormat(QImage::Format_RGB32), GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
+
+//			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+//			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+//			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	}
+	else {
+		/*
+		  // drawing RGB32 is the fastest. But drawing QImage is slower than drawing QPixmap
+		_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32);
+		if (_imageForDrawing.isNull()) {
+			qCritical("SN_SageStreamWidget::%s() : Image conversion failed", __FUNCTION__);
+			return;
+		}
+		*/
+
+		//
+	    // Drawing QPixmap is the fastest. But in X11, this means image is converted and copied to X Server -> slow !
+	    // For static images this is ok but for animations this results bad frame rate
+	    //
+	   /*
+      _pixmap = QPixmap::fromImage(*constImageRef);
+      if (_pixmap.isNull()) {
+	   qCritical("SageStreamWidget::scheduleUpdate() : QPixmap::fromImage() error");
+	   return;
+      }
+      */
+
+		//
+		// Below doesn't work under X11 backend. Use raster backend
+		//
+		_pixmapForDrawing.convertFromImage(*constImageRef, Qt::AutoColor | Qt::ThresholdDither);
+
+
+   //	There's small conversion delay but drawing is faster
+   //	_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32); // faster drawing !!
+   //	_imageForDrawing = constImageRef->convertToFormat(QImage::Format_ARGB32_Premultiplied); // faster drawing !!
+
+	   // Don't create QImage like this. This slot is called frequently
+   //	_imageForDrawing = QImage(rawptr, doubleBuffer->imageWidth(), doubleBuffer->imageHeight(), doubleBuffer->imageFormat()).convertToFormat(QImage::Format_RGB32);
+
+   //	_imageForDrawing = constImageRef->convertToFormat(QImage::Format_RGB32);
+   //	if (_imageForDrawing.isNull()) {
+   //		qCritical("SN_SageStreamWidget::%s() : Image conversion failed", __FUNCTION__);
+   //		return;
+   //	}
+	}
+
+	_perfMon->updateConvDelay();
+
+	setScheduled(false); // reset scheduling flag for SMART scheduler
+
+	//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << " widget : " << frameCounter << " has converted";
+
+	/*
+	  Maybe I should schedule update() and releaseBackBuffer in the scheduler
+	 */
+	doubleBuffer->releaseBackBuffer();
+
+
+	// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
+	// QGraphicsView will process the event
+	update(); // post paint event to myself
+	//qApp->sendPostedEvents(this, QEvent::MetaCall);
+	//qApp->flush();
+	//qApp->processEvents();
+
+	//this->scene()->views().front()->update( mapRectToScene(boundingRect()).toRect() );
 }
+
+
 
 
 /**
@@ -806,7 +734,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
             return -1;
     }
     else if ( read == 0 ) {
-            qCritical("SageStreamWidget::%s() : sender disconnected, while reading 1KB regMsg",__FUNCTION__);
+            qCritical("SageStreamWidget::%s() : sender disconnected, while reading regMsg",__FUNCTION__);
             return -1;
     }
 
@@ -830,15 +758,13 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 	_appInfo->setFrameSize(resX, resY, getPixelSize((sagePixFmt)pixfmt) * 8);
 
 	if ( (sagePixFmt)pixfmt == PIXFMT_YUV ) {
-		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : PIXFMT_YUV -> no PBO";
-		_usePbo = false;
+//		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : PIXFMT_YUV -> use Shader";
+		_useShader = true;
 	}
 
-
-	qDebug() << "SN_SageStreamWidget : streamer connected. groupSize" << _appInfo->networkUserBufferLength() << "Byte. Framerate" << framerate << "fps";
+//	qDebug() << "SN_SageStreamWidget : streamer connected. groupSize" << _appInfo->networkUserBufferLength() << "Byte. Framerate" << framerate << "fps";
     _perfMon->setExpectedFps( (qreal)framerate );
     _perfMon->setAdjustedFps( (qreal)framerate );
-
 
 
     /* create double buffer if PBO is disabled */
@@ -851,11 +777,9 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 			return -1;
 		}
 	}
-	
 
     if(_affInfo)
 		_affInfo->setWidgetID(_sageAppId);
-
 
 //		qDebug("SageStreamWidget::%s() : sageappid %llu, groupsize %d, frameSize(SAIL) %d, frameSize(QImage) %d, expectedFps %.2f", __FUNCTION__, sageAppId, _appInfo->getNetworkUserBufferLength(), imageSize, _appInfo->getFrameBytecount(), _perfMon->getExpetctedFps());
 
@@ -865,7 +789,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     }
     else {
 		// this is done in the Launcher
-//                _appInfo->setMediaType(MEDIA_TYPE_VIDEO);
+//      _appInfo->setMediaType(MEDIA_TYPE_VIDEO);
     }
 
 //	qDebug() << "waitForStreamerConnection returning";
@@ -874,10 +798,9 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 
 
 int SN_SageStreamWidget::createImageBuffer(int resX, int resY, sagePixFmt pixfmt) {
-    int bytePerPixel = getPixelSize(pixfmt);
+//    int bytePerPixel = getPixelSize(pixfmt);
 //    int memwidth = resX * bytePerPixel; //Byte (single row of frame)
-
-    qDebug("%s::%s() : recved regMsg. size %d x %d, pixfmt %d, pixelSize %d Byte, bytecount %d Byte", metaObject()->className(), __FUNCTION__, resX, resY, pixfmt, bytePerPixel, resX * bytePerPixel * resY);
+//    qDebug("%s::%s() : recved regMsg. size %d x %d, pixfmt %d, pixelSize %d Byte, bytecount %d Byte", metaObject()->className(), __FUNCTION__, resX, resY, pixfmt, bytePerPixel, resX * bytePerPixel * resY);
 
 	Q_ASSERT(!_usePbo);
 
@@ -996,9 +919,7 @@ int SN_SageStreamWidget::getPixelSize(sagePixFmt type)
 
 
 
-
-
-int GLSLprintlError(char *file, int line)
+int GLSLprintlError(const char * file, int line)
 {
    //
    // Returns 1 if an OpenGL error occurred, 0 otherwise.
@@ -1009,7 +930,7 @@ int GLSLprintlError(char *file, int line)
    glErr = glGetError();
    while (glErr != GL_NO_ERROR)
    {
-//      fprintf(stderr, "GLSL> glError in file %s @ line %d: %s\n", file, line, gluErrorString(glErr));
+      fprintf(stderr, "GLSL> glError in file %s @ line %d: %s\n", file, line , gluErrorString(glErr));
       retCode = 1;
       glErr = glGetError();
    }

@@ -169,7 +169,7 @@ bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 			SN_BaseWidget::contextMenuEvent(e);
 
 			//
-			// Don't forward this event to gwebview
+			// Don't forward this event to the gwebview
 			//
 			return true;
 		}

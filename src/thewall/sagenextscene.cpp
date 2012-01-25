@@ -18,7 +18,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
     , _settings(s)
     , _uiserver(0)
 //    , _rmonitor(0)
-    , _schedcontrol(0)
+//    , _schedcontrol(0)
     , _rootLayoutWidget(0)
     , _closeFlag(false)
     , _closeButton(0)
@@ -129,6 +129,7 @@ void SN_TheScene::addItemOnTheLayout(SN_BaseWidget *bw, const QPointF &scenepos)
 
 void SN_TheScene::prepareClosing() {
 	if (_closeFlag) {
+		// shared pointers need to be cleared before the scene closes so,
 		// close UiServer so that all the shared pointers can be deleted first
 		if (_uiserver) {
 			qDebug() << "\n[ Scene is deleting UiServer ]\n";
@@ -175,7 +176,7 @@ SN_TheScene::~SN_TheScene() {
 
 	foreach (QGraphicsItem *item, items()) {
 		if (!item) continue;
-		if (item->type() >= QGraphicsItem::UserType + 12) {
+		if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
 			// this is user application
 
 			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
@@ -203,7 +204,7 @@ SN_TheScene::~SN_TheScene() {
 void SN_TheScene::closeAllUserApp() {
 	foreach (QGraphicsItem *item, items()) {
 		if (!item ) continue;
-		if (item->type() >= QGraphicsItem::UserType + 12) {
+		if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
 			// this is user application
 			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 			Q_ASSERT(bw);
@@ -252,7 +253,7 @@ void SN_TheScene::saveSession() {
 		foreach(QGraphicsItem *item, items()) {
 
 			// only consider user application
-			if (!item || item->type() < QGraphicsItem::UserType + 12 ) continue;
+			if (!item || item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 
 			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 			if (!bw) continue;

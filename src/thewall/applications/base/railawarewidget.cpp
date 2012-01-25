@@ -14,7 +14,7 @@ SN_RailawareWidget::SN_RailawareWidget() :
     _widgetClosed(false),
     _scheduled(false)
 {
-	setWidgetType(SN_BaseWidget::Widget_RealTime);
+//	setWidgetType(SN_BaseWidget::Widget_RealTime);
 	setCacheMode(QGraphicsItem::NoCache);
 }
 
@@ -25,7 +25,7 @@ SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, 
     , _widgetClosed(false)
     , _scheduled(false)
 {
-	setWidgetType(SN_BaseWidget::Widget_RealTime);
+//	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
 	failToSchedule = 0;
 
@@ -50,35 +50,35 @@ SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, 
 
 int SN_RailawareWidget::setQuality(qreal newQuality) {
 
-//	qDebug() << _globalAppId << "railwarewidget::setQuality" << newQuality;
+	//qDebug() << _globalAppId << "railwarewidget::setQuality" << newQuality;
 
-        if ( newQuality > 1.0 ) {
-                _quality = 1.0;
-        }
-        else if ( newQuality <= 0.0 ) {
-                _quality = 0.1;
-        }
-        else {
-                _quality = newQuality;
-        }
+	if ( newQuality > 1.0 ) {
+		_quality = 1.0;
+	}
+	else if ( newQuality <= 0.0 ) {
+		_quality = 0.1;
+	}
+	else {
+		_quality = newQuality;
+	}
 
-        if (_perfMon) {
-                // for now frame rate is the quality metric
-                return _perfMon->setAdjustedFps(_perfMon->getExpetctedFps() * _quality);
-        }
-        return -1;
+	if (_perfMon) {
+		// for now frame rate is the quality metric
+		return _perfMon->setAdjustedFps(_perfMon->getExpetctedFps() * _quality);
+	}
+	return -1;
 }
 
 qreal SN_RailawareWidget::observedQuality() {
-        if (_perfMon) {
-//		qDebug() << _perfMon->getCurrRecvFps() << _perfMon->getExpetctedFps() << _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps();
-                return _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps(); // frame rate for now
-        }
-        else return -1;
+	if (_perfMon) {
+		//qDebug() << _perfMon->getCurrRecvFps() << _perfMon->getExpetctedFps() << _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps();
+		return _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps(); // frame rate for now
+	}
+	else return -1;
 }
 
 qreal SN_RailawareWidget::observedQualityAdjusted() {
-        return _perfMon->getCurrRecvFps() / _perfMon->getAdjustedFps();
+	return _perfMon->getCurrRecvFps() / _perfMon->getAdjustedFps();
 }
 
 

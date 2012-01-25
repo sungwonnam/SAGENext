@@ -3,8 +3,9 @@
 
 #include <QtGui>
 
-#include "../../base/SN_plugininterface.h"
-#include "../../base/basewidget.h"
+#include "applications/base/SN_plugininterface.h"
+#include "applications/base/basewidget.h"
+
 
 
 class TrackerItem : public QGraphicsItem

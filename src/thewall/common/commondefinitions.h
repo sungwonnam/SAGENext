@@ -8,13 +8,29 @@
 //#define EXTUI_MSG_BASE 100
 //#define EXTUI_MSG_REG EXTUI_MSG_BASE + 1
 
+//
+// widget inherits SN_BaseWidget and a user application
+//
+#define BASEWIDGET_USER 100000
+
+//
+// widget inherits SN_BaseWidget but NOT a user application
+//
+#define BASEWIDGET_NONUSER 1000
+
+//
+// widget inherits QGraphicsWidget but NOT a regular QGraphicsItem
+// And an item that can be interacted with user shared pointers
+//
+#define INTERACTIVE_ITEM 10
 
 namespace SAGENext {
-
 
 enum MEDIA_TYPE { MEDIA_TYPE_UNKNOWN = 100, MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, MEDIA_TYPE_LOCAL_VIDEO, MEDIA_TYPE_AUDIO, MEDIA_TYPE_PLUGIN , MEDIA_TYPE_VNC, MEDIA_TYPE_WEBURL, MEDIA_TYPE_PDF};
 
 }
+
+
 
 
 //}

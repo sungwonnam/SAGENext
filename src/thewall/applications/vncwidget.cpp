@@ -33,6 +33,8 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 //    , _viewportWidget(0)
 //    , _useGLBuffer(false)
 {
+	setWidgetType(SN_BaseWidget::Widget_RealTime);
+
 	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_VNC);
 	
 	if ( username == "user" )

@@ -119,6 +119,13 @@ private:
 
 	quint64 refreshCount;
 
+
+	void refreshCPUdata();
+
+	void refreshPerAppPerfData();
+
+	void refreshPerAppPriorityData();
+
 //	void layoutButtons();
 
 	/*!

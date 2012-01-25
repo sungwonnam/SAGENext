@@ -1,8 +1,8 @@
 #ifndef IMAGEWIDGETPLUGIN_H
 #define IMAGEWIDGETPLUGIN_H
 
-#include "../../base/SN_plugininterface.h"
-#include "../../base/basewidget.h"
+#include "applications/base/SN_plugininterface.h"
+#include "applications/base/basewidget.h"
 
 #include <QtGui>
 

@@ -1,13 +1,11 @@
 #include "basewidget.h"
+
 #include "appinfo.h"
-#include "../../common/commonitem.h"
 #include "perfmonitor.h"
-
-//#include "../../system/resourcemonitor.h"
+#include "interactionmonitor.h"
 #include "affinityinfo.h"
-//#include "../../system/affinitycontroldialog.h"
 
-#include "../../sagenextscene.h"
+#include "../../common/commonitem.h"
 
 #include <QtGui>
 
@@ -21,16 +19,15 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	, _globalAppId(-1)
 	, _settings(0)
 	, _windowState(SN_BaseWidget::W_NORMAL)
+    , _widgetType(SN_BaseWidget::Widget_Misc)
 	, _appInfo(new AppInfo())
-	, _showInfo(false)
+    , _intMon(new InteractionMonitor(this))
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
-	, infoTextItem(0)
-    , _bordersize(10)
-	, _lastTouch(0)
 	, _rMonitor(0)
 	, _quality(1.0)
 	, _contextMenu(0)
+
     , _showInfoAction(0)
     , _hideInfoAction(0)
     , _minimizeAction(0)
@@ -43,9 +40,14 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
     , pAnim_size(0)
     , _parallelAnimGroup(0)
     , pAnim_opacity(0)
+
     , _timerID(0)
-	, _priority(0.5)
 	, _registerForMouseHover(false)
+    , _bordersize(10)
+    , _showInfo(false)
+    , infoTextItem(0)
+
+    , _priority(0.5)
     , _priorityQuantized(0)
 {
 	init();
@@ -57,16 +59,15 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	, _globalAppId(globalappid)
 	, _settings(s)
 	, _windowState(SN_BaseWidget::W_NORMAL)
+    , _widgetType(SN_BaseWidget::Widget_Misc)
 	, _appInfo(new AppInfo())
-	, _showInfo(false)
+    , _intMon(new InteractionMonitor(this))
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
-	, infoTextItem(0)
-    , _bordersize(10)
-	, _lastTouch(0)
 	, _rMonitor(0)
 	, _quality(1.0)
 	, _contextMenu(0)
+
     , _showInfoAction(0)
     , _hideInfoAction(0)
     , _minimizeAction(0)
@@ -79,9 +80,14 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
     , pAnim_size(0)
     , _parallelAnimGroup(0)
     , pAnim_opacity(0)
+
     , _timerID(0)
-	, _priority(0.5)
 	, _registerForMouseHover(false)
+    , _bordersize(10)
+    , _showInfo(false)
+    , infoTextItem(0)
+
+    , _priority(0.5)
     , _priorityQuantized(0)
 {
 
@@ -130,12 +136,6 @@ SN_BaseWidget::~SN_BaseWidget()
 }
 
 
-void SN_BaseWidget::setWidgetType(Widget_Type wt) {
-    _widgetType = wt;
-    if (_perfMon) {
-        _perfMon->setWidgetType(wt);
-    }
-}
 
 
 void SN_BaseWidget::init()
@@ -260,7 +260,11 @@ QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 
 	QList<QGraphicsItem *> collidingItems = scene()->collidingItems(this);
 	foreach (QGraphicsItem *i, collidingItems) {
-		if ( i->zValue() <= zValue() ) continue;
+		// consider only user application
+		if ( i->type() < QGraphicsItem::UserType + BASEWIDGET_USER ) continue;
+
+		// consider only those apps above this (thereby obstructing portion of this)
+		if ( i->zValue() < zValue() ) continue;
 
 		QRegion overlapped = i->boundingRegion(i->sceneTransform());
 
@@ -271,49 +275,87 @@ QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 	return effectiveRegion;
 }
 
+void SN_BaseWidget::computeEVRInfo(void) {
+//	_evrInfo.evrsize;
+	//	_evrInfo.winsize;
+//	_evrInfo.r_evr_wall;
+//	_evrInfo.r_evr_window;
 
+	QRegion evr = effectiveVisibleRegion();
+	_evrInfo.evrsize = 0;
+	foreach(QRect r, evr.rects()) {
+		_evrInfo.evrsize += (r.width() * r.height()); // quint64 : unsigned long long int
+	}
+
+	QSizeF effectiveSize = size() * scale();
+	_evrInfo.winsize = effectiveSize.width() * effectiveSize.height(); // quint64 : unsigned long long int
+
+	// ratio of EVR to window size (%)
+	_evrInfo.r_evr_window = (100 * _evrInfo.evrsize) / _evrInfo.winsize; // quint16 : unsigned short
+
+	Q_ASSERT(scene());
+	_evrInfo.r_evr_wall = (100 * _evrInfo.evrsize) / (scene()->width() * scene()->height()); // quint16 : unsigned short
+
+//	qDebug() << _evrInfo.evrsize << _evrInfo.winsize << _evrInfo.r_evr_window << _evrInfo.r_evr_wall;
+}
+
+/*!
+  ctepoch : current time since epoch
+  */
 qreal SN_BaseWidget::priority(qint64 ctepoch /* 0 */) {
-        if (!scene()) return 0;
+	if (!scene()) return 0;
 
-        /*******************
-          size of Effective Visible Region
-          *****************/
-        qreal weight1 = 1.0;
-        QRegion effectiveRegion = effectiveVisibleRegion();
+//	/*******************
+//	 size of Effective Visible Region
+//	 *****************/
+//	qreal weight1 = 1.0;
+//	QRegion effectiveRegion = effectiveVisibleRegion();
 
-        int effectiveVisibleSize  = 0;
-        for (int i=0; i<effectiveRegion.rectCount(); ++i ) {
-                QRect rect = effectiveRegion.rects().at(i);
-                effectiveVisibleSize += (rect.size().width() * rect.size().height());
-        }
+//	int effectiveVisibleSize  = 0;
+//	for (int i=0; i<effectiveRegion.rectCount(); ++i ) {
+//		QRect rect = effectiveRegion.rects().at(i);
+//		effectiveVisibleSize += (rect.size().width() * rect.size().height());
+//	}
 
-        if (isObscured()) {
-//		_priority = 0;
-        }
-        else {
-//		_priority = ratioToTheWall()  * (1 + zValue()); // ratio is more important
+//	if (isObscured()) {
+//		//_priority = 0;
+//	}
+//	else {
+//		//_priority = ratioToTheWall()  * (1 + zValue()); // ratio is more important
 
-                _priority = weight1  *  effectiveVisibleSize / (scene()->width() * scene()->height());
-        }
+//		_priority = weight1  *  effectiveVisibleSize / (scene()->width() * scene()->height());
+//	}
 
 
-        /****
-          Time passed since last touch
-          ****/
-        qreal weight2 = 0.4;
-        if ( ctepoch > 0 &&  _lastTouch > 0) {
+//	/****
+//	Time passed since last touch
+//	****/
+//	qreal weight2 = 0.4;
+//	qint64 lastTouch = _intMon->timeLastInteracted();
+//	if ( ctepoch > 0 &&  lastTouch > 0) {
 
-                // _lastTouch is updated in mousePressEvent
-                qreal T_lt = (qreal)(ctepoch - _lastTouch); // msec passed since last touch (current time in epoch - last touched time in epoch)
-                T_lt /= 1000.0; // to second
+//		// _lastTouch is updated in mousePressEvent
+//		qreal T_lt = (qreal)(ctepoch - lastTouch); // msec passed since last touch (current time in epoch - last touched time in epoch)
+//		T_lt /= 1000.0; // to second
 
-//		qDebug() << "[[ Widget" << _globalAppId << weight2 << "/" << T_lt << "=" << weight2/T_lt;
-                _priority += (weight2 / T_lt);
-        }
+//		//qDebug() << "[[ Widget" << _globalAppId << weight2 << "/" << T_lt << "=" << weight2/T_lt;
+//		_priority += (weight2 / T_lt);
+//	}
 
-//	qDebug() << "[[ Widget" << _globalAppId << "priority" << _priority << "]]";
+//	//qDebug() << "[[ Widget" << _globalAppId << "priority" << _priority << "]]";
 
-        return _priority;
+
+	//
+	// compute ratio of EVR
+	//
+	computeEVRInfo();
+
+	//
+	// The visual factor
+	//
+//	quint16 visualfactor = _evrInfo.r_evr_wall + _evrInfo.r_evr_window; // 0 <= x <= 200
+
+	return _priority;
 }
 
 
@@ -414,28 +456,13 @@ void SN_BaseWidget::maximize()
 	_maximizeAction->setEnabled(false);
 	_restoreAction->setEnabled(true);
 
+	//
 	// record current position and scale
+	//
 	Q_ASSERT(_appInfo);
 	_appInfo->setRecentPos(pos());
 	_appInfo->setRecentSize(size());
 	_appInfo->setRecentScale(scale());
-
-	QSizeF s = size(); // current size of the widget. scaling won't change the size of the widget
-
-	qreal scaleFactorW = 0;
-	qreal scaleFactorH = 0;
-
-	if (parentWidget()) {
-		scaleFactorW = parentWidget()->size().width() / s.width();
-		scaleFactorH = parentWidget()->size().height() / s.height();
-	}
-	else {
-		// if there's no SN_LayoutWidget
-		scaleFactorW = scene()->width() / s.width();
-		scaleFactorH = scene()->height() / s.height();
-	}
-	qreal scaleFactor = 1.0;
-	(scaleFactorW < scaleFactorH) ? scaleFactor = scaleFactorW : scaleFactor = scaleFactorH;
 
 
 	if ( isWindow() ) {
@@ -462,6 +489,29 @@ void SN_BaseWidget::maximize()
 		}
 	}
 	else {
+		//
+		// Determine the maximized window size
+		//
+
+		QSizeF s = size(); // current size of the widget. scaling won't change the size of the widget
+
+		qreal scaleFactorW = 0;
+		qreal scaleFactorH = 0;
+
+		if (parentWidget()) {
+			// SN_LayoutWidget is the parent widget
+			scaleFactorW = parentWidget()->size().width() / s.width();
+			scaleFactorH = parentWidget()->size().height() / s.height();
+		}
+		else {
+			// if there's no SN_LayoutWidget
+			scaleFactorW = scene()->width() / s.width();
+			scaleFactorH = scene()->height() / s.height();
+		}
+		qreal scaleFactor = 1.0;
+		(scaleFactorW < scaleFactorH) ? scaleFactor = scaleFactorW : scaleFactor = scaleFactorH;
+
+
 		if (pAnim_pos && pAnim_scale && _parallelAnimGroup) {
 			/*
 			pAnim_scale->setStartValue(scale());
@@ -572,7 +622,7 @@ void SN_BaseWidget::setTopmost()
 		//qDebug() << typeid(*item).name() << ". And this is " << typeid(*this).name();
 
 		// only consider real app -> excluding buttons pointers, and so on
-		if ( !item ||  item->type() < UserType + 12 ) continue;
+		if ( !item ||  item->type() < UserType + BASEWIDGET_USER ) continue;
 
 		if ( item == this ) continue;
 
@@ -616,17 +666,15 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 {
 	qreal currentScale = scale();
 
-
 	QSizeF currentVisibleSize = currentScale * size();
 	qreal currentArea = currentVisibleSize.width() * currentVisibleSize.height();
 
-	// shouldn't be too small
+	// The application window shouldn't be too small
 	if ( tick < 0  &&  (currentScale <= 0.05 || currentArea <= 400)) return;
 
 	qreal delta = (qreal)tick * factor;
 
 	currentScale += delta;
-
 
 	// Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees,
 	//the child's total transformation will be 180 degrees.
@@ -637,14 +685,13 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 
 	/***********
 	  Below is for when the transformOriginPoint() is default (0,0) but we want to make users feel like transform origin is center.
-	  I don't use setTransformOriginPoint() because it's very problematic when item is scaled
+	  I don't use setTransformOriginPoint() because it's very problematic when an item is scaled
 	  ****/
 	qreal dx = (size().width() * -delta)/2.0;
 	qreal dy = (size().height() * -delta)/2.0;
 	moveBy(dx,dy);
 //	QTransform t(currentScale, 0, 0, currentScale, dx, dy);
 //	setTransform(t, true);
-
 
 	//! optional
 //	appInfo->setRecentScale(currentScale);
@@ -659,6 +706,188 @@ QRectF SN_BaseWidget::resizeHandleRect() const
 	QPointF pos( boundingRect().right() - size.width(), boundingRect().bottom() - size.height());
 //	return mapRectToScene(QRectF(pos, size));
 	return QRectF(pos, size);
+}
+
+
+
+void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
+	Q_UNUSED(pointer);
+	Q_UNUSED(point);
+	Q_UNUSED(btn);
+
+	setTopmost();
+}
+
+void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
+	Q_UNUSED(pointer);
+
+	if (btn == Qt::LeftButton) {
+		if (resizeHandleRect().contains(point)) {
+			if (isWindow()) {
+				// do resize
+				resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);
+			}
+			else {
+				// do scale.
+				// For now, resizeHandleSceneRect is always bottom right corner of the widget
+
+				//
+				// keep updating resize rectangle
+				//
+			}
+//			_intMon->setLastInteraction(InteractionMonitor::RESIZE);
+//			_intMon->setLastInteractionType(InteractionMonitor::RESIZE);
+		}
+		else {
+			//
+			// widget is moved with pointer dragging
+			//
+			moveBy(pointerDeltaX, pointerDeltaY);
+//			_intMon->setLastInteractionType(InteractionMonitor::MOVE);
+//			_intMon->setLastInteraction(InteractionMonitor::MOVE);
+		}
+	}
+}
+
+
+void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
+
+	/**
+	  changing painter state will hurt performance
+	  */
+//	QPen pen;
+//	pen.setWidth(6); // pen width is ignored when rendering
+//	if (isSelected()) {
+//		pen.setColor(QColor(170, 170, 5, 200));
+//	}
+//	else {
+//		pen.setColor(QColor(100, 100, 100, 128));
+//	}
+//	painter->setPen(pen);
+//	painter->drawRect(windowFrameRect());
+	
+
+
+	if (! isWindow()) {
+
+		QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
+		if (isSelected()) {
+			lg.setColorAt(0, QColor(250, 250, 0, 164));
+			lg.setColorAt(1, QColor(200, 0, 0, 164));
+		}
+		else {
+			lg.setColorAt(0, QColor(230, 230, 230, 164));
+			lg.setColorAt(1, QColor(20, 20, 20, 164));
+		}
+		QBrush brush(lg);
+
+
+
+		/**********
+		  Below draws rectangle around widget's content (using boundingRect)
+		  Because of this, it has to set Pen (which chagens painter state)
+		  ********/
+
+		QPen pen;
+		pen.setWidth( _bordersize );
+		pen.setBrush(brush);
+
+		painter->setPen(pen);
+		painter->drawRect(boundingRect()/*.adjusted(1, 1, -2, -2)*/);
+
+
+		/***************
+		  Below fills rectangle (works as background) so it has to be called BEFORE any drawing code
+		  ***********/
+//		painter->fillRect(boundingRect(), brush);
+	}
+
+
+
+
+
+
+	/* info overlay */
+	if ( _showInfo  &&  !infoTextItem->isVisible() ) {
+#if defined(Q_OS_LINUX)
+		_appInfo->setDrawingThreadCpu(sched_getcpu());
+#endif
+		Q_ASSERT(infoTextItem);
+		//painter->setBrush(Qt::black);
+		//painter->drawRect(infoTextItem->boundingRect());
+		infoTextItem->show();
+	}
+	else if (!_showInfo && infoTextItem->isVisible()){
+		Q_ASSERT(infoTextItem);
+		infoTextItem->hide();
+	}
+}
+
+void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
+//    qDebug() << "size" << size() << "boundingrect" << boundingRect() << "geometry" << geometry();
+
+    QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
+	if (isSelected()) {
+		lg.setColorAt(0, QColor(250, 250, 0, 164));
+		lg.setColorAt(1, QColor(200, 0, 0, 164));
+	}
+	else {
+		lg.setColorAt(0, QColor(230, 230, 230, 164));
+		lg.setColorAt(1, QColor(20, 20, 20, 164));
+	}
+	painter->setBrush(QBrush(lg));
+    painter->drawRect(windowFrameRect());
+
+	// I'm not using base implementation
+//    QGraphicsWidget::paintWindowFrame(painter, option, widget);
+}
+
+
+
+/**
+  drawInfo() will start the timer
+  */
+void SN_BaseWidget::timerEvent(QTimerEvent *e) {
+//	qDebug("BaseWidget::%s()", __FUNCTION__);
+	if (e->timerId() == _timerID) {
+		updateInfoTextItem();
+	}
+}
+
+
+void SN_BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
+//	Q_UNUSED(event);
+	//qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
+	if ( mapRectToScene(boundingRect()).contains(event->scenePos()) ) {
+		maximize(); // window will be restored if it is in maximized state already
+		_intMon->setLastInteraction(InteractionMonitor::RESIZE);
+	}
+}
+
+void SN_BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
+	_contextMenu->exec(event->screenPos());
+}
+
+void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
+	// positive delta : rotated forward away from user
+	int numDegrees = event->delta() / 8;
+	int numTicks = numDegrees / 15;
+	//	qreal scaleFactor = 0.03; // 3 %
+	//	qDebug("BaseWidget::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
+	//	qDebug() << "BGW wheel event" << event->pos() << event->scenePos() << event->screenPos() << event->buttons() << event->modifiers();
+
+	if (isWindow()) {
+		// do nothing
+	}
+	else {
+		reScale(numTicks, 0.05);
+		_intMon->setLastInteraction(InteractionMonitor::RESIZE);
+	}
+
+	// reimplementation will accept the event
 }
 
 
@@ -766,216 +995,6 @@ void SN_BaseWidget::createActions()
 	connect(_restoreAction, SIGNAL(triggered()), this, SLOT(restore()));
 //	connect(_closeAction, SIGNAL(triggered()), this, SLOT(fadeOutClose()));
 	connect(_closeAction, SIGNAL(triggered()), this, SLOT(close()));
-}
-
-
-
-void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
-	Q_UNUSED(pointer);
-	Q_UNUSED(point);
-	Q_UNUSED(btn);
-
-#if QT_VERSION < 0x040700
-	struct timeval tv;
-	gettimeofday(&tv, 0);
-	_lastTouch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
-#else
-	_lastTouch = QDateTime::currentMSecsSinceEpoch();
-#endif
-
-	setTopmost();
-}
-
-void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
-	Q_UNUSED(pointer);
-
-	if (btn == Qt::LeftButton) {
-		if (resizeHandleRect().contains(point)) {
-			if (isWindow()) {
-				// do resize
-				resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);
-			}
-			else {
-				// do scale.
-				// For now, resizeHandleSceneRect is always bottom right corner of the widget
-			}
-		}
-		else {
-			moveBy(pointerDeltaX, pointerDeltaY);
-		}
-	}
-}
-
-
-
-
-
-
-void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
-
-	/**
-	  changing painter state will hurt performance
-	  */
-//	QPen pen;
-//	pen.setWidth(6); // pen width is ignored when rendering
-//	if (isSelected()) {
-//		pen.setColor(QColor(170, 170, 5, 200));
-//	}
-//	else {
-//		pen.setColor(QColor(100, 100, 100, 128));
-//	}
-//	painter->setPen(pen);
-//	painter->drawRect(windowFrameRect());
-	
-
-
-	if (! isWindow()) {
-
-		QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
-		if (isSelected()) {
-			lg.setColorAt(0, QColor(250, 250, 0, 164));
-			lg.setColorAt(1, QColor(200, 0, 0, 164));
-		}
-		else {
-			lg.setColorAt(0, QColor(230, 230, 230, 164));
-			lg.setColorAt(1, QColor(20, 20, 20, 164));
-		}
-		QBrush brush(lg);
-
-
-
-		/**********
-		  Below draws rectangle around widget's content (using boundingRect)
-		  Because of this, it has to set Pen (which chagens painter state)
-		  ********/
-
-		QPen pen;
-		pen.setWidth( _bordersize );
-		pen.setBrush(brush);
-
-		painter->setPen(pen);
-		painter->drawRect(boundingRect()/*.adjusted(1, 1, -2, -2)*/);
-
-
-		/***************
-		  Below fills rectangle (works as background) so it has to be called BEFORE any drawing code
-		  ***********/
-//		painter->fillRect(boundingRect(), brush);
-	}
-
-
-
-
-
-
-	/* info overlay */
-	if ( _showInfo  &&  !infoTextItem->isVisible() ) {
-#if defined(Q_OS_LINUX)
-		_appInfo->setDrawingThreadCpu(sched_getcpu());
-#endif
-		Q_ASSERT(infoTextItem);
-		//painter->setBrush(Qt::black);
-		//painter->drawRect(infoTextItem->boundingRect());
-		infoTextItem->show();
-	}
-	else if (!_showInfo && infoTextItem->isVisible()){
-		Q_ASSERT(infoTextItem);
-		infoTextItem->hide();
-	}
-}
-
-
-void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-    Q_UNUSED(option);
-    Q_UNUSED(widget);
-
-//    qDebug() << "size" << size() << "boundingrect" << boundingRect() << "geometry" << geometry();
-
-    QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
-	if (isSelected()) {
-		lg.setColorAt(0, QColor(250, 250, 0, 164));
-		lg.setColorAt(1, QColor(200, 0, 0, 164));
-	}
-	else {
-		lg.setColorAt(0, QColor(230, 230, 230, 164));
-		lg.setColorAt(1, QColor(20, 20, 20, 164));
-	}
-	painter->setBrush(QBrush(lg));
-    painter->drawRect(windowFrameRect());
-
-	// I'm not using base implementation
-//    QGraphicsWidget::paintWindowFrame(painter, option, widget);
-}
-
-
-
-/**
-  drawInfo() will start the timer
-  */
-void SN_BaseWidget::timerEvent(QTimerEvent *e) {
-//	qDebug("BaseWidget::%s()", __FUNCTION__);
-	if (e->timerId() == _timerID)
-		updateInfoTextItem();
-
-        /*
-        if ( affControl && affControl->isVisible() ) {
-                affControl->updateInfo();
-        }
-        */
-}
-
-//void SN_BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *) {
-
-	/**
-	  setting transform origin to center is very problematic when scaled.
-	  Because item's scenePos() DOES change while pos() remains unchanged
-	  */
-//	setTransformOriginPoint(e->newSize().width() / 2, e->newSize().height() / 2);
-//	setTransformOriginPoint(boundingRect().center());
-
-//	qDebug() << "SN_BaseWidget::resizeEvent() : bw's transform origin point" << transformOriginPoint();
-//}
-
-void SN_BaseWidget::setLastTouch() {
-#if QT_VERSION < 0x040700
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    _lastTouch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
-#else
-    _lastTouch = QDateTime::currentMSecsSinceEpoch();
-#endif
-}
-
-
-
-
-void SN_BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
-//	Q_UNUSED(event);
-	//qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
-	if ( mapRectToScene(boundingRect()).contains(event->scenePos()) )
-		maximize();
-}
-
-void SN_BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
-	_contextMenu->exec(event->screenPos());
-}
-
-void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
-	// positive delta : rotated forward away from user
-	int numDegrees = event->delta() / 8;
-	int numTicks = numDegrees / 15;
-	//	qreal scaleFactor = 0.03; // 3 %
-	//	qDebug("BaseWidget::%s() : delta %d numDegrees %d numTicks %d", __FUNCTION__, event->delta(), numDegrees, numTicks);
-	//	qDebug() << "BGW wheel event" << event->pos() << event->scenePos() << event->screenPos() << event->buttons() << event->modifiers();
-
-	if (isWindow()) {
-		// do nothing
-	}
-	else {
-		reScale(numTicks, 0.05);
-	}
-
-	// reimplementation will accept the event
 }
 
 

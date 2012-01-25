@@ -285,10 +285,16 @@ SN_RailawareWidget * SN_ResourceMonitor::getEarliestDeadlineWidget() {
 SN_ResourceMonitor::~SN_ResourceMonitor() {
 	//	if (procTree) delete procTree;
 
+	if (_rMonWidget) {
+		_rMonWidget->close();
+		_rMonWidget->deleteLater();
+	}
+
 	if (schedcontrol) {
 		schedcontrol->killScheduler();
 		delete schedcontrol;
 	}
+
 
 	if (procVec) {
 		SN_ProcessorNode *pn =0;

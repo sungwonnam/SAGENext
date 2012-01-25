@@ -157,7 +157,7 @@ void SN_LayoutWidget::reparentMyChildBasewidgets(SN_LayoutWidget *newParent) {
 		foreach(QGraphicsItem *item, childItems()) {
 			// exclude all the child but user application
 //			if (item == _bar || item == _tileButton || item == _hButton || item == _vButton || item == _xButton || item==_firstChildLayout || item==_secondChildLayout) continue;
-			if (item->type() < QGraphicsItem::UserType + 12) continue;
+			if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 
 			//
 			// this item's pos() which is in this layoutWidget's coordinate to newParent's coordinate
@@ -374,7 +374,7 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 ////			qDebug() << "createChildlayout skipping myself, buttons and bar";
 //			continue;
 //		}
-		if (item->type() < QGraphicsItem::UserType + 12) continue;
+		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 
 		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 
@@ -452,7 +452,7 @@ void SN_LayoutWidget::adjustChildPos(int direction, const QSizeF &delta /* = QSi
 	foreach(QGraphicsItem *item, childItems()) {
 
 		// skip everything other than SN_BaseWidget
-		if (item->type() < QGraphicsItem::UserType + 12) continue;
+		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 
 		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 
@@ -578,7 +578,7 @@ void SN_LayoutWidget::doTile() {
 
 	qreal sumWHratio = 0.0;
 	foreach(QGraphicsItem *item, childItems()) {
-		if (item->type() < QGraphicsItem::UserType + 12) continue;
+		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 		itemcount++;
 
@@ -609,7 +609,7 @@ void SN_LayoutWidget::doTile() {
 
 	int row = 0, col = 0;
 	foreach(QGraphicsItem *item, childItems()) {
-		if (item->type() < QGraphicsItem::UserType + 12) continue;
+		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 
 		SN_BaseWidget * bw = static_cast<SN_BaseWidget *>(item);
 
@@ -642,7 +642,7 @@ void SN_LayoutWidget::doTile() {
 	int row = 0;
 	int col = 0;
 	foreach(QGraphicsItem *item, childItems()) {
-		if (item->type() < QGraphicsItem::UserType + 12) continue;
+		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 
 		SN_BaseWidget * bw = static_cast<SN_BaseWidget *>(item);
 
@@ -711,7 +711,7 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 			}
 
 			// only consider user application
-			if (item->type() < QGraphicsItem::UserType + 12 ) continue;
+			if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER ) continue;
 
 			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 			if (!bw) continue;

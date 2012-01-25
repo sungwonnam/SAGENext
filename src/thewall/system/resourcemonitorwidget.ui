@@ -98,6 +98,9 @@
    <item>
     <layout class="QVBoxLayout" name="tablePlotVLayoutOnTheRight">
      <item>
+      <widget class="QTableWidget" name="perAppPriorityTable"/>
+     </item>
+     <item>
       <widget class="QTableWidget" name="perAppPerfTable"/>
      </item>
     </layout>

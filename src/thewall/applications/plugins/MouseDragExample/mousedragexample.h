@@ -9,9 +9,6 @@
 #include <applications/base/basewidget.h>
 #include <applications/base/SN_plugininterface.h>
 
-
-
-
 /**
   A draggable item
   */

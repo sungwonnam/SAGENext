@@ -284,6 +284,17 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 //			proc->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
 
 			QStringList args;
+
+			//
+			// mplayer converts image frame to RGB24 using CPU
+			//
+//			args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" << "4" << "-identify" << "-vf" << "format=rgb24" << filename;
+
+			//
+			// with current mplayer-svn.zip, UYUV will be used
+			// conversion at the mplayer is cheaper
+			// and image is converted to RGB using shader program
+			//
 			args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" << "4" << "-identify" << filename;
 
 			sws->appInfo()->setCmdArgs(args);
@@ -348,7 +359,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 		if (dpi) {
 			w = dpi->createInstance();
 
-			qDebug() << w;
+			qDebug() << "SN_Launcher launching a plugin" << w;
 			w->setSettings(_settings);
 			w->setGlobalAppId(_globalAppId);
 			w->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_PLUGIN);

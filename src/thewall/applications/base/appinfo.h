@@ -47,8 +47,12 @@ public:
 	inline void setWebUrl(const QUrl &url) {_webUrl = url;}
 	inline QUrl webUrl() const {return _webUrl;}
 
+
+
 	inline void setNativeSize(const QSize &s) { _nativeSize = s;}
 	inline QSize nativeSize() const {return _nativeSize;}
+
+
 
 	/**
 	  sender ip address for VNCWidget and SageStreamWidget
@@ -132,7 +136,7 @@ private:
 	QPointF _recentPos;
 
 	/**
-	  QGraphicsWidget size
+	  QGraphicsWidget size for widget type window flag is Qt::WindowFlags
 	  */
 	QSizeF _recentSize;
 

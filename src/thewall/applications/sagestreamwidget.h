@@ -7,9 +7,10 @@
 #if defined(Q_OS_LINUX)
 //#define GLEW_STATIC 1
 #define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glext.h>
+//#include <GL/gl.h>
 #include <GL/glu.h>
+//#include <GL/glut.h>
+//#include <GL/glext.h>
 #elif defined(Q_OS_MAC)
 #define GL_GLEXT_PROTOTYPES
 #include <OpenGL/gl.h>
@@ -205,6 +206,10 @@ private:
 	pthread_mutex_t *_pbomutex;
 	pthread_cond_t *_pbobufferready;
 
+	/*!
+	  If uyuv from mplayer then use shader to convert it to rgb
+	  */
+	bool _useShader;
 
 	/*!
 	  A shader program is used for the image with PIXFMT_YUV

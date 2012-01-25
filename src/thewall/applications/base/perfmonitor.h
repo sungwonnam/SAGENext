@@ -12,7 +12,7 @@ class PerfMonitor : public QObject
 	Q_OBJECT
 
 public:
-	explicit PerfMonitor( QObject *parent=0);
+	explicit PerfMonitor(QObject *parent=0);
 //	~PerfMonitor();
 
 	/*!
@@ -72,7 +72,7 @@ public:
 	  */
 	void reset();
 
-	inline void setWidgetType(SN_BaseWidget::Widget_Type wt) {widgetType = wt;}
+//	inline void setWidgetType(SN_BaseWidget::Widget_Type wt) {widgetType = wt;}
 
 
 
@@ -144,7 +144,8 @@ public:
 	inline long getEndMinflt() const {return ruend_minflt;}
 
 private:
-	SN_BaseWidget::Widget_Type widgetType;
+//	SN_BaseWidget::Widget_Type widgetType;
+	SN_BaseWidget *_widget;
 
 	/*!
 	  A QTimer object to measure delay of recv() in stream receiver.

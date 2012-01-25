@@ -51,11 +51,12 @@ public:
 
 	/**
 	  This is to distinguish user application from other items in the scene.
-	  User applications have UserType + 12
+	  User applications have UserType + BASEWIDGET_USER
 
-	  Items reside between UserType < x < UserType + 12 are items that inherits SN_BaseWidget but not a user application.
+	  Items reside between UserType + BASEWIDGET_NONUSER <= x < UserType + BASEWIDGET_USER are items that inherits SN_BaseWidget but should not be regarded as a user application.
+	  meaning that the widget shouldn't be affected by the scheduler.
 	  */
-	enum { Type = QGraphicsItem::UserType + 11 };
+	enum { Type = QGraphicsItem::UserType + BASEWIDGET_NONUSER };
     virtual int type() const { return Type;}
 
 
