@@ -137,6 +137,9 @@ public slots:
 		  This slot should be running in a separate thread
 		  */
 		void launchRecording(const QString &recordingFilename);
+
+
+		void launchRatkoUserStudyData(const QString &datafile);
 };
 
 

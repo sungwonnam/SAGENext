@@ -55,7 +55,12 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 //	QPixmap closeIcon(":/resources/powerbutton_black_64x64.png");
 //	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(sceneRect.width() * 0.02));
 	_closeButton = new SN_PixmapButton(closeIcon, _settings->value("gui/iconwidth").toDouble());
-	connect(_closeButton, SIGNAL(clicked()), this, SLOT(prepareClosing()));
+	/*
+	  The signature of a signal must match the signature of the receiving slot. (In fact a slot may have a shorter signature than the signal it receives because it can ignore extra arguments.)
+	  */
+	if ( ! QObject::connect(_closeButton, SIGNAL(clicked(int)), this, SLOT(prepareClosing())) ) {
+		qDebug() << "SN_TheScene::SN_TheScene() : couldn't connect _closeButton - prepareClosing()";
+	}
 //	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
 //	opacity->setOpacity(0.2);
 //	closeButton->setGraphicsEffect(opacity);

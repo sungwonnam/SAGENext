@@ -4,11 +4,14 @@
 #include <QtGui>
 
 /**
-  * The general button pixmap that emits signal when clicked
+  * The general button pixmap that emits signal when clicked.
+  This item reacts to the system mouse event (press/release)
+  So, this item can be interacted with SN_PolygonArrowPointer because the Pointer generates system mouse event(press/release) upon receiving mouseClick event from uiclient
   */
 class SN_PixmapButton : public QGraphicsWidget
 {
 	Q_OBJECT
+	Q_PROPERTY(int priorityOverride READ priorityOverride WRITE setPriorityOverride)
 public:
 	/**
 	  creates button with resource
@@ -27,18 +30,33 @@ public:
 
 	~SN_PixmapButton();
 
+	inline void setPriorityOverride(int v) {_priorityOverride = v;}
+	inline int priorityOverride() const {return _priorityOverride;}
+
 private:
 	QPixmap _normalPixmap;
 	QPixmap _hoveredPixmap;
 
 	void _attachLabel(const QString &labeltext, QGraphicsItem *parent);
 
+	/*!
+	  set to true if mousePressEvent on this widget
+	  */
+	bool _mousePressFlag;
+
+	/*!
+	  1 : indicate clicking this button should raise the priority of the application owns this button
+	  0 : default
+	  -1 : indicate clicking this button should lower the priority of the application owns this button
+	  */
+	int _priorityOverride;
+
 protected:
 	void mousePressEvent(QGraphicsSceneMouseEvent *event);
 	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
 signals:
-	void clicked();
+	void clicked(int);
 };
 
 

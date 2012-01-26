@@ -4,6 +4,8 @@
 
 SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
+    , _mousePressFlag(false)
+    , _priorityOverride(0)
 {
 	QPixmap orgPixmap(res);
 	if (desiredWidth) {
@@ -77,11 +79,16 @@ void SN_PixmapButton::_attachLabel(const QString &labeltext, QGraphicsItem *pare
 
 void SN_PixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {
 //	setOpacity(1);
+	// this isn't perfect solution
+	// because flag will still be true if mouse was pressed on this widget and released at somewhere else (outside of this widget)
+	// then following mouse release (which was pressed at outside of this widget) will emit the signal because of the true flag
+	_mousePressFlag = true;
 }
 void SN_PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 //	setOpacity(0.5);
 //	qDebug() << "pixmapbutton emitting signal";
-	emit clicked();
+	if (_mousePressFlag)
+		emit clicked(_priorityOverride);
 }
 
 

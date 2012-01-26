@@ -63,7 +63,11 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 {
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
-    // this is defined in BaseWidget
+	//
+    // This function is defined in BaseWidget
+	// Write a note about why this is needed !!
+	// Probably because the widget needs to unregister itself from the resourceMonitor upon deletion (see destructor)
+	//
     setRMonitor(rm);
 
 	_appInfo->setFileInfo(filename);

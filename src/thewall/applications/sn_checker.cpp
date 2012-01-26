@@ -6,31 +6,46 @@
 #include <sys/time.h>
 
 #include <QtGui>
+#include <QGLPixelBuffer>
 
 SN_Checker::SN_Checker(const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wFlags)
-    : SN_BaseWidget(appid, s, parent, wFlags)
-    , _image(0)
-    , _gltexture(0)
+    : SN_RailawareWidget(appid, s, parent, wFlags)
+    , _end(false)
+    , _textureid(0)
     , _init(false)
-//    , _glbuffer(0)
-//    , _pbuffer(0)
     , _frate(framerate)
+    , _useOpenGL(true)
+    , _usePbo(false)
+    , __firstFrame(true)
+    , _pboBufIdx(0)
+    , _pbomutex(0)
+    , _pbobufferready(0)
 {
-	_image = new QImage(imagesize , QImage::Format_RGB32);
-	qDebug() << "SN_Checker : bytecount" << _image->byteCount() << "Byte";
-	qDebug() << "SN_Checker : depth" << _image->depth() << "bpp";
-	qDebug() << "SN_Checker : w x h" << _image->width() * _image->height();
+
+	setWidgetType(SN_BaseWidget::Widget_RealTime);
+
+
+	if (QGLPixelBuffer::hasOpenGLPbuffers()) {
+		_usePbo = true;
+	}
+
+	_pixelFormat = GL_RGB;
+	int bpp = 24;
+
 
 //	int fmargin = _settings->value("gui/framemargin", 0).toInt();
 //	resize(_image->width() + fmargin*2, _image->height() + fmargin * 2 );
-	resize(_image->size());
+	resize(imagesize);
 
-	_appInfo->setFrameSize(_image->width(), _image->height(), _image->depth());
+	_appInfo->setFrameSize(imagesize.width(), imagesize.height(), bpp);
 	_perfMon->setExpectedFps(framerate);
 	_perfMon->setAdjustedFps(framerate);
 
-	_timerid = startTimer(1000/framerate);
-//	qDebug() << _timerid;
+
+	qDebug() << "SN_Checker : depth" << _appInfo->bitPerPixel() << "bpp";
+	qDebug() << "SN_Checker : w x h" << _appInfo->nativeSize() << imagesize.width() << imagesize.height();
+	qDebug() << "SN_Checker : bytecount" << _appInfo->frameSizeInByte() << "Byte";
+
 
 //	connect(&_timer, SIGNAL(timeout()), this, SLOT(doUpdate()));
 //	_timer.start(1000/framerate);
@@ -40,186 +55,300 @@ SN_Checker::SN_Checker(const QSize &imagesize, qreal framerate, const quint64 ap
 	}
 
 
-//	if (!QObject::connect(&_fwatcher, SIGNAL(finished()), this, SLOT(close()))) {
-//		qCritical() << "connect failed";
-//	}
-//	QObject::connect(this, SIGNAL(destroyed()), &_fwatcher, SLOT(cancel()));
-//	_future = QtConcurrent::run(this, &SN_Checker::recvPixel);
-//	_fwatcher.setFuture(_future);
+	if (!QObject::connect(&_fwatcher, SIGNAL(finished()), this, SLOT(close()))) {
+		qCritical() << "connect failed";
+	}
+
+
+	// _doInit() needs to be called AFTER constructor finishes and this widget is added to the scene
+	// otherwise, this widget won't be seeing valid opengl context
+	QTimer::singleShot(200, this, SLOT(_doInit()));
 }
 
 SN_Checker::~SN_Checker() {
 //	killTimer(_timerid);
-	if (_image) delete _image;
+//	if (_image) delete _image;
 //	if (_glbuffer) {
 //		_glbuffer->destroy();
 //		delete _glbuffer;
 //	}
 
-	if (glIsTexture(_gltexture)) {
-		glDeleteTextures(1, &_gltexture);
+	_end = true;
+
+	if (glIsTexture(_textureid)) {
+		glDeleteTextures(1, &_textureid);
 	}
+
+	if (_usePbo) {
+		pthread_mutex_unlock(_pbomutex);
+		if ( pthread_mutex_destroy(_pbomutex) != 0) {
+			qDebug() << "failed to destory pbomutex mutex";
+		}
+
+		if ( pthread_cond_destroy(_pbobufferready) != 0 ) {
+			qDebug() << "failed to destroy pbobufferready condition variable";
+		}
+
+		free(_pbomutex);
+		free(_pbobufferready);
+
+
+		glDeleteBuffersARB(2, _pboIds);
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+	}
+
+	qDebug() << "~SN_Checker()";
 }
 
 void SN_Checker::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
-
 	if (_perfMon) {
 		_perfMon->getDrawTimer().start();
 		//perfMon->startPaintEvent();
 	}
-
 	SN_BaseWidget::paint(painter,o,w);
 
-	
 	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
-		if (glIsTexture(_gltexture)) {
 
-			painter->beginNativePainting();
+		painter->beginNativePainting();
 
-//			glMatrixMode(GL_PROJECTION);
-//			glLoadIdentity();
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
 
-//			glOrtho();
-//			glMatrixMode(GL_MODELVIEW);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.0,            size().height()); glVertex2f(0, 0);
+		glTexCoord2f(size().width(), size().height()); glVertex2f(_appInfo->nativeSize().width(), 0);
+		glTexCoord2f(size().width(), 0.0);             glVertex2f(_appInfo->nativeSize().width(), _appInfo->nativeSize().height());
+		glTexCoord2f(0.0,            0.0);             glVertex2f(0, _appInfo->nativeSize().height());
+		glEnd();
 
-			glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, _gltexture);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glEnable(GL_TEXTURE_2D);
 
-			glBegin(GL_QUADS);
-			glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
-			glTexCoord2f(1.0, 1.0); glVertex2f(_image->width(), 0);
-			glTexCoord2f(1.0, 0.0); glVertex2f(_image->width(), _image->height());
-			glTexCoord2f(0.0, 0.0); glVertex2f(0, _image->height());
-			glEnd();
-
-			painter->endNativePainting();
-
-//			QGLWidget *viewportWidget = (QGLWidget *)w;
-//			QRectF target = QRect(0, 0, _image->width(), _image->height());
-//			viewportWidget->drawTexture(target, _gltexture);
-		}
-
-//		if(_glbuffer && _glbuffer->bufferId()) {
-//			QGLWidget *viewportWidget = (QGLWidget *)w;
-//			viewportWidget->drawTexture(QPointF(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt()), _glbuffer->bufferId());
-//		}
-
-//		if (_pbuffer) {
-//			_pbuffer->drawTexture(QPointF(0,0), _dynamic);
-//		}
+		painter->endNativePainting();
 	}
 	else {
-		if (_image && !_image->isNull()) {
-			painter->drawImage(_settings->value("gui/framemargin", 0).toInt(), _settings->value("gui/framemargin", 0).toInt(), *_image);
-		}
+		qDebug() << "No OpenGL";
 	}
-	
 
 	if (_perfMon)
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
-void SN_Checker::timerEvent(QTimerEvent *e) {
-
-	if (e->timerId() == _timerid) {
-
-		if (!_init) {
-			_doInit();
-		}
-
-		gettimeofday(&lats, 0);
-
-		_doRecvPixel();
-
-		gettimeofday(&late, 0);
-		update();
-
-
-		if (_perfMon) {
-			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001);
-			_perfMon->updateObservedRecvLatency(_image->byteCount(), networkrecvdelay, ru_start, ru_end);
-		}
-	}
-
-	SN_BaseWidget::timerEvent(e);
-}
 
 
 void SN_Checker::recvPixel() {
-	forever {
+	while(!_end) {
+		if (_usePbo) {
+			// wait for glMapBufferARB
+			pthread_mutex_lock(_pbomutex);
+			while(!__bufferMapped)
+				pthread_cond_wait(_pbobufferready, _pbomutex);
+		}
+
+//		qDebug() << "pboBufIdx" << _pboBufIdx << "thread woken up";
 
 		_doRecvPixel();
 
-		update();
+		if (_usePbo) {
+			__bufferMapped = false; // reset flag
+
+//			qDebug() << "done writing emitting signal";
+
+			emit frameReady(); // trigger schedulePboUpdate
+			pthread_mutex_unlock(_pbomutex);
+		}
 
 		::usleep(1000000 * 1.0/_frate);
 	}
 }
 
+bool SN_Checker::_initPboMutex() {
+	if (!_usePbo) return false;
+
+	_pbomutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+	if ( pthread_mutex_init(_pbomutex, 0) != 0 ) {
+		perror("pthread_mutex_init");
+		return false;
+	}
+	if ( pthread_mutex_unlock(_pbomutex) != 0 ) {
+		perror("pthread_mutex_unlock");
+		return false;
+	}
+
+	_pbobufferready = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
+	if ( pthread_cond_init(_pbobufferready, 0) != 0 ) {
+		perror("pthread_cond_init");
+		return false;
+	}
+
+	return true;
+}
 
 void SN_Checker::_doInit() {
 
-	Q_ASSERT(_image);
+	if (_useOpenGL) {
 
-	const QImage *constRef = _image; // to avoid detach()
-	//_gltexture = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
+		glGenTextures(1, &_textureid);
 
-	if (glIsTexture(_gltexture)) {
-		glDeleteTextures(1, &_gltexture);
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
+
+		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+		// internal format 2 -> the number of color components in the texture
+		glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0 /*static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits()*/);
+//		glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0);
+
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glEnable(GL_TEXTURE_2D);
+
+		if ( _usePbo ) {
+			//
+			// init mutex
+			//
+			if ( ! _initPboMutex() ) {
+				qDebug() << "Failed to init mutex !";
+			}
+
+//			qDebug() << "SN_SageStreamWidget : OpenGL pbuffer extension is present. Using PBO doublebuffering";
+			glGenBuffersARB(2, _pboIds);
+
+			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
+			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
+			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+
+			QObject::connect(this, SIGNAL(frameReady()), this, SLOT(schedulePboUpdate()));
+			schedulePboUpdate();
+		}
 	}
-	glGenTextures(1, &_gltexture);
-	glBindTexture(GL_TEXTURE_2D, _gltexture);
+	_init = true;
 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//	glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
+	_future = QtConcurrent::run(this, &SN_Checker::recvPixel);
+	_fwatcher.setFuture(_future);
+}
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, constRef->width(), constRef->height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef->bits());
 
-	glBindTexture(GL_TEXTURE_2D, 0);
+void SN_Checker::schedulePboUpdate() {
+
+	Q_ASSERT(_pbomutex);
+	Q_ASSERT(_pbobufferready);
+	Q_ASSERT(_appInfo);
+
+	_perfMon->getConvTimer().start();
+
+	//
+	// flip array index
+	//
+	_pboBufIdx = (_pboBufIdx + 1) % 2;
+	int nextbufidx = (_pboBufIdx + 1) % 2;
 
 	GLenum error = glGetError();
-	if(error != GL_NO_ERROR) {
-		qWarning("texture upload failed. error code 0x%x\n", error);
+
+	//
+	// unmap previous buffer
+	//
+	if (!__firstFrame) {
+//		qDebug() << "unmap" << nextbufidx;
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
+		if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
+			qDebug() << "schedulePboUpdate() : glUnmapBufferARB() failed";
+		}
+	}
+	else {
+		__firstFrame = false;
 	}
 
-	// check if pbo supported
-	bool pboSupported = true;
 
-	if (pboSupported) {
-//		glGenBuffersARB(2, pboIds);
+	//
+	// update texture with the pbo buffer
+	//
+//	qDebug() << "update texture" << nextbufidx;
+	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, _textureid);
+	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
+	glTexSubImage2D(/*GL_TEXTURE_2D */GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
+
+	//
+	// schedule paintEvent
+	//
+	update();
+
+
+
+
+	//
+	// map buffer
+	//
+//	qDebug() << "map" << _pboBufIdx;
+	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
+	error = glGetError();
+	if(error != GL_NO_ERROR) qCritical("glBindBufferARB() error code 0x%x\n", error);
+
+	glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+	error = glGetError();
+	if(error != GL_NO_ERROR) qCritical("glBufferDataARB() error code 0x%x\n", error);
+
+	void *ptr = glMapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+	error = glGetError();
+	if(error != GL_NO_ERROR) qCritical("glMapBufferARB() error code 0x%x\n", error);
+
+	if (ptr) {
+		_pbobufarray[_pboBufIdx] = ptr;
+
+		//
+		// signal thread
+		//
+		pthread_mutex_lock(_pbomutex);
+
+		__bufferMapped = true;
+//		_receiverThread->flip(_pboBufIdx);
+
+//		qDebug() << "pboBufIdx" << _pboBufIdx << "signaling thread";
+
+		pthread_cond_signal(_pbobufferready);
+	//	qDebug() << QDateTime::currentMSecsSinceEpoch() << "signaled";
+		pthread_mutex_unlock(_pbomutex);
+	}
+	else {
+		qCritical() << "glMapBUffer failed()";
 	}
 
-	_init = true;
+
+
+	//
+	// reset GL state
+	//
+	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
+	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+
+	_perfMon->updateConvDelay();
 }
+
+
 
 void SN_Checker::_doRecvPixel() {
 
-	if (!_image) {
-		return;
-	}
+//	if (!_image) {
+//		qDebug() << "doRecvPixel() : image is null. returning";
+//		return;
+//	}
 
-	//		if (!_glbuffer) {
-	//			_glbuffer = new QGLBuffer();
-	//			if ( ! _glbuffer->create() ) {
-	//				qCritical() << "SN_Checker : couldn't create QGLBuffer";
-	//				deleteLater();
-	//			}
-	//			else {
-	//				_glbuffer->allocate(_image->byteCount());
-	////				if (!_glbuffer->bind()) {
-	////					qCritical() << "SN_Checker::timerEvent() : glbuffer->bind() failed";
-	////				}
-	//			}
-	//		}
-
-
+	unsigned char *bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
 	//unsigned char *buffer = _image->bits();
 
 	//int byteperpixel = _image->depth() / 8;
-	int numpixel = _image->width() * _image->height();
+//	int numpixel = _appInfo->nativeSize().width() * _appInfo->nativeSize().height();
 	//int numpixel = _image->byteCount() / (_image->depth() / 8); // image size (in Byte) / Byte per pixel
 
 	//
@@ -230,67 +359,16 @@ void SN_Checker::_doRecvPixel() {
 	unsigned char blue = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
 
 	//
-	// for each pixel. This loop is expensive because of the internal detach()
-	// so use QRgb * instead of unsigned char *
-	//
-	//			for (int i=0; i<numpixel; i++) {
-	//				buffer[byteperpixel * i + 3] = 0xff; // alpha
-	//				buffer[byteperpixel * i + 2] = red; // red
-	//				buffer[byteperpixel * i + 1] = green; // green
-	//				buffer[byteperpixel * i + 0] = blue; // blue
-	//			}
-
-
-	//
 	// write new pixel data
 	//
-	QRgb *rgb = (QRgb *)(_image->scanLine(0)); // An ARGB quadruplet on the format #AARRGGBB, equivalent to an unsigned int.
-	for (int i=0; i<numpixel; i++) {
-		rgb[i] = qRgb(red, green, blue);
+//	QRgb *rgb = (QRgb *)(_image->scanLine(0)); // An ARGB quadruplet on the format #AARRGGBB, equivalent to an unsigned int.
+	for (int i=0; i<_appInfo->frameSizeInByte(); i++) {
+//		rgb[i] = qRgb(red, green, blue);
+		bufptr[i] = red;
 	}
-
-	//
-	// now _image is complete
-	//
+}
 
 
-	QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
-	if(glContext) {
-
-		const QImage &constRef = *_image; // to avoid detach()
-		//_gltexture = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
-
-		if (glIsTexture(_gltexture)) {
-			glDeleteTextures(1, &_gltexture);
-		}
-		glGenTextures(1, &_gltexture);
-		glBindTexture(GL_TEXTURE_2D, _gltexture);
-
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//		glTexParameterf(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_FALSE);
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _image->width(), _image->height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, constRef.bits());
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-//		GLenum error = glGetError();
-//		if(error != GL_NO_ERROR) {
-//			qWarning("texture upload failed. error code 0x%x\n", error);
-//		}
-	}
-
-	//Q_ASSERT(_glbuffer);
-	//_glbuffer->write(0, constRef.bits(), constRef.byteCount());
-
-
-	/*
- _pbuffer->makeCurrent();
- _gltexture = _pbuffer->bindTexture(*_image);
- _dynamic = _pbuffer->generateDynamicTexture();
-
- QGLContext *glContext = const_cast<QGLContext *>(QGLContext::currentContext());
- glContext->makeCurrent();
- */
+void SN_Checker::endThread() {
+	_end = true;
 }

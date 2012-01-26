@@ -1,13 +1,17 @@
 #ifndef SN_CHECKER_H
 #define SN_CHECKER_H
 
-#include "base/basewidget.h"
+#include "base/railawarewidget.h"
 #include <QTimer>
-#include <QtOpenGL>
+#include <QFuture>
+#include <QFutureWatcher>
+
+#define GL_GLEXT_PROTOTYPES
+#include <GL/glu.h>
 
 #include <sys/resource.h>
 
-class SN_Checker : public SN_BaseWidget
+class SN_Checker : public SN_RailawareWidget
 {
 	Q_OBJECT
 public:
@@ -17,30 +21,35 @@ public:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 protected:
-	void timerEvent(QTimerEvent *);
 
 private:
-	QImage *_image;
-	
-	GLuint _gltexture;
+	bool _end;
 
-	GLuint pboIds[2];
+	GLuint _textureid;
+
+	/*!
+	  PBO buffer id
+	  */
+	GLuint _pboIds[2];
+
+	/*!
+	  The mapped double buffer for mapped pbo
+	  */
+	void * _pbobufarray[2];
+
 
 	bool _init;
 
-//	GLuint _dynamic;
-
-//	QGLBuffer *_glbuffer;
-
-//	QGLPixelBuffer *_pbuffer;
-
-	int _timerid;
-
+	/*!
+	  frame rate
+	  */
 	qreal _frate;
 
-//	QTimer _timer;
+	bool _useOpenGL;
 
+	bool _usePbo;
 
+	GLenum _pixelFormat;
 
 	QFuture<void> _future;
 	QFutureWatcher<void> _fwatcher;
@@ -51,13 +60,53 @@ private:
 	struct rusage ru_start;
 	struct rusage ru_end;
 
-	void _doInit();
+
+	bool __firstFrame;
+
+	/*!
+	  which buffer index is writable ?
+	  1 - _pboBufIdx is used to display on the screen.
+	  */
+	int _pboBufIdx;
+
+	/*!
+	  Is one of the buffer idx is ready to write?
+	  */
+	bool __bufferMapped;
+
+	bool _initPboMutex();
+	pthread_mutex_t *_pbomutex;
+	pthread_cond_t *_pbobufferready;
+
+
+	/*!
+	  Writes pixel data to the mapped buffer
+	  */
 	void _doRecvPixel();
 
-public slots:
-//	void doUpdate();
+signals:
+	void frameReady();
 
+public slots:
+	/*!
+	  init pbo double buffer
+	  */
+	void _doInit();
+
+	/*!
+	  Worker thread calling _doRecvPixel()
+	  */
 	void recvPixel();
+
+	/*!
+	  swap double buffer.
+	  schedule repaint by calling update().
+	  map new buffer.
+	  signal thread
+	  */
+	void schedulePboUpdate();
+
+	void endThread();
 };
 
 
