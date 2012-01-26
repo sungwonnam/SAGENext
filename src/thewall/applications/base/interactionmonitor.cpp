@@ -1,40 +1,40 @@
 #include "interactionmonitor.h"
 
 
-InteractionMonitor::InteractionMonitor(QObject *parent)
+SN_Priority::SN_Priority(QObject *parent)
     : QObject(parent)
-    , _timeLast(0)
-    , _timeFirst(QDateTime::currentMSecsSinceEpoch())
-    , _counter(0)
+    , _timeLastIntr(0)
+    , _timeFirstIntr(QDateTime::currentMSecsSinceEpoch())
+    , _intrCounter(0)
 //    , _ipm(0.0)
 {
 }
 
-qreal InteractionMonitor::ipm() const {
+qreal SN_Priority::ipm() const {
 	qint64 now = QDateTime::currentMSecsSinceEpoch();
-	qreal durationInMin = qreal(now - _timeFirst) / (60.0 * 60.0); // minute
-	return qreal(_counter) / durationInMin;
+	qreal durationInMin = qreal(now - _timeFirstIntr) / (60.0 * 60.0); // minute
+	return qreal(_intrCounter) / durationInMin;
 }
 
-void InteractionMonitor::setLastInteraction(InteractionMonitor::IntrType t /* = NOINTR */, qint64 time /* = 0 */) {
-	++_counter;
+void SN_Priority::setLastInteraction(SN_Priority::IntrType t /* = NOINTR */, qint64 time /* = 0 */) {
+	++_intrCounter;
 
 	if (time > 0) {
-		_timeLast = time;
+		_timeLastIntr = time;
 	}
 	else {
-		_timeLast = QDateTime::currentMSecsSinceEpoch();
+		_timeLastIntr = QDateTime::currentMSecsSinceEpoch();
 	}
 
-	InteractionMonitor::IntrType type;
-	if ( t == InteractionMonitor::NOINTR) {
-		type = _typeLast;
+	SN_Priority::IntrType type;
+	if ( t == SN_Priority::NOINTR) {
+		type = _typeLastIntr;
 	}
 	else {
 		type = t;
 	}
 
-	_history.insert(_timeLast, type);
+	_intrHistory.insert(_timeLastIntr, type);
 
 //	_ipm = qreal(_counter)/ (qreal(_timeLast - _timeFirst) / (60.0 * 60.0)); // per minute
 

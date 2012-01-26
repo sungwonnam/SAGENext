@@ -3,24 +3,25 @@
 
 #include <QtCore>
 
-class InteractionMonitor : public QObject
+
+class SN_Priority : public QObject
 {
 	Q_OBJECT
 	Q_ENUMS(IntrType)
 public:
-	explicit InteractionMonitor(QObject *parent = 0);
+	explicit SN_Priority(QObject *parent = 0);
 
 	enum IntrType {NOINTR, MOVE, RESIZE, CLICK};
 
 	/*!
 	  All the member variables will be filled in this function.
 	  */
-	void setLastInteraction(InteractionMonitor::IntrType t = InteractionMonitor::NOINTR, qint64 time = 0);
+	void setLastInteraction(SN_Priority::IntrType t = SN_Priority::NOINTR, qint64 time = 0);
 
-	inline qint64 timeLastInteracted() const {return _timeLast;}
-	inline IntrType lastInteractionType() const {return _typeLast;}
+	inline qint64 timeLastInteracted() const {return _timeLastIntr;}
+	inline IntrType lastInteractionType() const {return _typeLastIntr;}
 
-	inline void setLastInteractionType(InteractionMonitor::IntrType t) {_typeLast = t;}
+	inline void setLastInteractionType(SN_Priority::IntrType t) {_typeLastIntr = t;}
 
 	qreal ipm() const;
 
@@ -28,22 +29,22 @@ protected:
 	/*!
 	  When is the last time(msec since epoch) it is interacted
 	  */
-	qint64 _timeLast;
+	qint64 _timeLastIntr;
 
 	/*!
 	  This is set when the object is instantiated
 	  */
-	const qint64 _timeFirst;
+	const qint64 _timeFirstIntr;
 
 	/*!
 	  This is continuously updated by SN_BaseWidget to keep track of the most recent interaction type
 	  */
-	IntrType _typeLast;
+	IntrType _typeLastIntr;
 
 	/*!
 	  A counter for interaction. This is equal to _interactionHistory.size()
 	  */
-	quint64 _counter;
+	quint64 _intrCounter;
 
 	/*!
 	  how many interactions per minute
@@ -53,7 +54,7 @@ protected:
 	/*!
 	  A list of (msec since epoch, the type of interaction) tuple
 	  */
-	QMap<qint64, InteractionMonitor::IntrType> _history;
+	QMap<qint64, SN_Priority::IntrType> _intrHistory;
 	
 signals:
 	
