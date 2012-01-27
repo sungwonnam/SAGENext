@@ -9,6 +9,8 @@
 #include <QList>
 #include <QVector>
 
+#include "prioritygrid.h"
+
 class QSettings;
 class AffinityInfo;
 class SN_SimpleTextItem;
@@ -112,31 +114,7 @@ private:
 
 
 
-class ROIRectF : public QRectF {
-public:
-	explicit ROIRectF(int id) : _priority(0.0),_id(id) {}
-	~ROIRectF() {}
 
-	/*!
-	  At every scheduling instance, _priority is updated
-	  */
-	inline qreal priority() const {return _priority;}
-
-	/*!
-	  This function will update rectangle's priority information. This data reflects historical changes.
-	  */
-	void update();
-
-	inline int id() const {return _id;}
-
-protected:
-	/*!
-	  should reflect usage history on this rectangle
-	  */
-	qreal _priority;
-
-	const int _id;
-};
 
 
 /*!
@@ -147,13 +125,13 @@ class SN_ResourceMonitor : public QObject
 	Q_OBJECT
 public:
 //	explicit ResourceMonitor( const quint64 gaid,const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wf = 0);
-	explicit SN_ResourceMonitor(const QSettings *s);
+	explicit SN_ResourceMonitor(const QSettings *s, QGraphicsScene *scene, QObject *parent=0);
 	~SN_ResourceMonitor();
 
 	inline QVector<SN_ProcessorNode *> * getProcVec() const {return procVec;}
 	inline Numa_Info * getNumaInfo() const {return numaInfo;}
 
-	inline void addROIRectF(ROIRectF *f) {roiRectFs.push_back(f);}
+//	inline void addROIRectF(ROIRectF *f) {roiRectFs.push_back(f);}
 
 
 	/*!
@@ -196,10 +174,26 @@ public:
 	inline void setRMonWidget(ResourceMonitorWidget *rmw) {_rMonWidget = rmw;}
 	inline ResourceMonitorWidget * rMonWidget() {return _rMonWidget;}
 
+
+	/*!
+	  this was for prelim exam
+	  */
 	inline bool printDataFlag() const {return _printDataFlag;}
 	inline void setPrintDataFlag(bool b = true) {_printDataFlag = b;}
 
+
+	/*!
+	  Heat map of the wall
+	  */
+	PriorityGrid *_priorityGrid;
+
 protected:
+	/*!
+	  calls this->refresh()
+	  and rmonitorWidget->refresh()
+
+	  The timer of this object if started at the main.cpp
+	  */
 	void timerEvent(QTimerEvent *);
 
 
@@ -210,6 +204,8 @@ private:
 	QVector<SN_ProcessorNode *> *procVec;
 
 	const QSettings *settings;
+
+	QGraphicsScene *_theScene;
 
 	/*!
 	  A pointer to the scheduler control object
@@ -245,7 +241,7 @@ private:
 	/*!
 	  ROI rectangle container
 	  */
-	QList<ROIRectF *> roiRectFs;
+//	QList<ROIRectF *> roiRectFs;
 
 
 	/**
@@ -256,6 +252,7 @@ private:
 
 	/**
 	  write all data to a file ?
+	  This was for the exp. data for the prelim exam
 	  */
 	bool _printDataFlag;
 

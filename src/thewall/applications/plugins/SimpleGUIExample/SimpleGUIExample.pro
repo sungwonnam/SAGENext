@@ -25,7 +25,7 @@ simpleguiexample.cpp \
 ../../base/basewidget.cpp \
 ../../base/appinfo.cpp \
 ../../base/perfmonitor.cpp \
-../../base/interactionmonitor.cpp \
+../../base/sn_priority.cpp \
 ../../../common/commonitem.cpp
 
 
@@ -35,5 +35,5 @@ simpleguiexample.h \
 ../../base/basewidget.h \
 ../../base/appinfo.h \
 ../../base/perfmonitor.h \
-../../base/interactionmonitor.h \
+../../base/sn_priority.h \
 ../../../common/commonitem.h

@@ -120,6 +120,10 @@ public slots:
           */
 		SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &scenepos = QPointF(30,30));
 
+		SN_BaseWidget * launch(void *vbw, const QPointF &scenepos = QPointF(30,30)) {
+			return launch(static_cast<SN_BaseWidget *>(vbw), scenepos);
+		}
+
 		/**
 		  Only with filename, this slot launches all sorts of things (media, session, recording,..)
 		  */
@@ -139,7 +143,15 @@ public slots:
 		void launchRecording(const QString &recordingFilename);
 
 
-		void launchRatkoUserStudyData(const QString &datafile);
+		/*!
+		  This must run in a separate thread
+		  */
+		void launchRatkoUserStudyData(const QString &datafile, const QString &srcaddr="", const QString &mediafile="");
+
+		void runRatkoSlot() {
+			QtConcurrent::run(this, &SN_Launcher::launchRatkoUserStudyData, QString("/home/evl/snam5/.sagenext/group1.log"), QString(), QString());
+//			launchRatkoUserStudyData(QString("/home/evl/snam5/.sagenext/group1.log"), QString(), QString());
+		}
 };
 
 

@@ -375,7 +375,7 @@ int SMART_EventScheduler::insertIntoWorkingSet(SN_RailawareWidget *newtask, qrea
 		higher_task = *it;
 		Q_ASSERT(higher_task);
 
-		if ( higher_task->priority() > newtask->priority() ) {
+		if ( higher_task->priorityData() > newtask->priorityData() ) {
 
 			qreal higher_task_deadline = higher_task->perfMon()->ts_nextframe();
 			qreal higher_task_avglatency = higher_task->perfMon()->getCurrRecvLatency() + higher_task->perfMon()->getAvgConvDelay();
@@ -706,8 +706,7 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 		// sorted by priority descendant (high priority first)
 		if (!rw || !rw->perfMon()) continue;
 
-		int rwPriority = priorityBias * rw->priority(currMsecSinceEpoch);
-		rw->setPriorityQuantized(rwPriority);
+		int rwPriority = rw->priorityQuantized(currMsecSinceEpoch, priorityBias);
 
 		//
 		  //priority offset based on ROI can be applied here

@@ -15,7 +15,7 @@
 
 #include "applications/base/affinityinfo.h"
 #include "applications/mediabrowser.h"
-//#include "applications/sn_checker.h"
+#include "applications/sn_checker.h"
 //#include "applications/sn_pboexample.h"
 #include "applications/vncwidget.h"
 
@@ -39,6 +39,7 @@ extern void qt_x11_set_global_double_buffer(bool);
 #include <unistd.h>
 
 void setViewAttr(SN_Viewport *view, const QSettings &s);
+
 
 
 
@@ -353,7 +354,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	if ( s.value("system/resourcemonitor").toBool() ) {
 		qDebug() << "Creating ResourceMonitor";
 
-		resourceMonitor = new SN_ResourceMonitor(&s);
+		resourceMonitor = new SN_ResourceMonitor(&s , scene);
 
 		QObject::connect(scene, SIGNAL(destroyed()), resourceMonitor, SLOT(deleteLater()));
 
@@ -362,7 +363,10 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 			schedcontrol = new SN_SchedulerControl(resourceMonitor);
 
-			QObject::connect(resourceMonitor, SIGNAL(destroyed()), schedcontrol, SLOT(deleteLater()));
+			//
+			// scheduler will be killed and deleted in resourceMonitor's destructor
+			//
+//			QObject::connect(resourceMonitor, SIGNAL(destroyed()), schedcontrol, SLOT(deleteLater()));
 
 			a.installEventFilter(schedcontrol); // scheduler will monitor(filter) qApp's event
 
@@ -371,12 +375,18 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 			schedcontrol->launchScheduler( s.value("system/scheduler_type").toString(), s.value("system/scheduler_freq").toInt() );
 		}
 
+
+		//
+		// write perf. data to a file
+		//
 		char *val = getenv("EXP_DATA_FILE");
 		if ( val ) {
 			qWarning("EXP_DATA_FILE is defined. Performance data will be written by the ResourceMonitor.");
 			resourceMonitor->setPrintDataFlag(true);
 			resourceMonitor->printPrelimDataHeader();
 		}
+
+
 
 		resourceMonitor->refresh();
 
@@ -539,7 +549,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 //	launcher->launchScenario( QDir::homePath() + "/.sagenext/test.scenario" );
 
-//	SN_Checker *ccc  = new SN_Checker(QSize(1920,1080), 30, 0, &s);
+//	SN_BaseWidget *ccc  = new SN_Checker(false, QSize(1920,1080), 24, 0, &s);
+//	ccc->setRMonitor(resourceMonitor);
 //	launcher->launch(ccc);
 
 //	SN_PBOtexture *pbo = new SN_PBOtexture(QSize(1920, 1080), 2, glFormat, 0, &s);
@@ -555,9 +566,6 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 //	SN_VNCClientWidget *w = new SN_VNCClientWidget(0, "131.193.77.191", 0, "user", "evl123", 24, &s);
 
 //	launcher->launch(w);
-
-
-
 
 
 //	SN_DrawingTool *dt = new SN_DrawingTool(0, &s);
@@ -644,6 +652,9 @@ void setViewAttr(SN_Viewport *gvm, const QSettings &s) {
 	
 //	gvm->viewport()->setAttribute(Qt::WA_NoSystemBackground);
 }
+
+
+
 
 
 /**

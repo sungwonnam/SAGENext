@@ -28,5 +28,6 @@
         <file>resources/arrow-right-64x64.png</file>
         <file>resources/minus_64x64.png</file>
         <file>resources/plus_64x64.png</file>
+        <file>resources/media-pause-128x128.png</file>
     </qresource>
 </RCC>

@@ -2,7 +2,7 @@
 
 #include "sn_layoutwidget.h"
 #include "../applications/base/basewidget.h"
-#include "../applications/base/interactionmonitor.h"
+#include "../applications/base/sn_priority.h"
 #include "../sagenextscene.h"
 
 //#include "sn_drawingwidget.h"
@@ -479,8 +479,8 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 			// But then I need to reimplement its mouseReleaseEvent() which I don't want
 			// or define handlePointerClick() which will be confusing because pointer generates the real mouse event which makes handling pointer click implicit.
 			///
-			Q_ASSERT(_basewidget->intMon());
-			_basewidget->intMon()->setLastInteraction(InteractionMonitor::CLICK);
+			Q_ASSERT(_basewidget->priorityData());
+			_basewidget->priorityData()->setLastInteraction(SN_Priority::CLICK);
 		}
 
 		QGraphicsView *view = eventReceivingViewport(scenePos);

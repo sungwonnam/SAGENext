@@ -4,16 +4,33 @@
 
 namespace OldSage {
 
-const int REG_APP = 1;
+const int REG_APP = 1; // from SAIL to fsm
 //const int REG_MSG_SIZE = 1024; // previously google code version
 const int REG_MSG_SIZE = 128; // cube Ratko version and google code version is now 128 Byte as well
 const int NOTIFY_APP_SHUTDOWN = 7;
-const int SAIL_INIT_MSG = 30102;
-const int SAIL_CONNECT_TO_RCV = 30101;
-const int SAIL_SHUTDOWN = 30003;
-const int SAIL_INIT_STREAM = 30009;
-const int SAIL_SET_RAIL = 30110;
-const int APP_QUIT = 33000;
+
+
+/**
+  message to sail offset
+  */
+const int SAIL_MESSAGE = 30000;
+const int SAIL_INIT_MSG = SAIL_MESSAGE + 102; // from fsm to SAIL
+const int SAIL_CONNECT_TO_RCV = SAIL_MESSAGE + 101; // from fsm to SAIL
+const int SAIL_CONNECT_TO_RCV_PORT = SAIL_MESSAGE + 109;
+const int SAIL_CONNECTED_TO_RCV = SAIL_MESSAGE + 5;
+const int SAIL_SHUTDOWN = SAIL_MESSAGE + 3; // from SAIL to fsm
+const int SAIL_INIT_STREAM = SAIL_MESSAGE + 9;
+const int SAIL_SET_RAIL = SAIL_MESSAGE + 110;
+
+
+
+/**
+  app message offset. The message code larger than this will be queued in the appMsgQueue of SAIL.
+  An application periodically calls SAIL::checkMsg() to pop from appMsgQueue
+  */
+const int APP_MESSAGE = 31000;
+const int APP_QUIT = 33000; // from FSM to app
+const int EVT_KEY = APP_MESSAGE + 7; // from UI to App. App will be able to read by runngin SAIL::checkMsg()
 
 const int MESSAGE_FIELD_SIZE = 9;
 const int MESSAGE_HEADER_SIZE = 36;

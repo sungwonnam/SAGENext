@@ -7,6 +7,8 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const Q
     , _mousePressFlag(false)
     , _priorityOverride(0)
 {
+	setFlag(QGraphicsItem::ItemIgnoresTransformations);
+
 	QPixmap orgPixmap(res);
 	if (desiredWidth) {
 		orgPixmap = orgPixmap.scaledToWidth(desiredWidth);
@@ -26,6 +28,8 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const Q
 SN_PixmapButton::SN_PixmapButton(const QPixmap &pixmap, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
 {
+	setFlag(QGraphicsItem::ItemIgnoresTransformations);
+
 	QGraphicsPixmapItem *p = 0;
 	if ( desiredWidth ) {
 		p = new QGraphicsPixmapItem(pixmap.scaledToWidth(desiredWidth), this);
@@ -48,6 +52,8 @@ SN_PixmapButton::SN_PixmapButton(const QPixmap &pixmap, qreal desiredWidth, cons
 SN_PixmapButton::SN_PixmapButton(const QString &res, const QSize &size, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
 {
+	setFlag(QGraphicsItem::ItemIgnoresTransformations);
+
 	QPixmap pixmap(res);
 	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(pixmap.scaled(size), this);
 

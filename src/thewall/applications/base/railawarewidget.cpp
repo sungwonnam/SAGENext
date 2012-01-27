@@ -122,25 +122,31 @@ void SN_RailawareWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 
 
 void SN_RailawareWidget::showAffCtrlDialog() {
-        if ( affCtrlDialog ) {
-                affCtrlDialog->updateInfo();
-                affCtrlDialog->show();
-                return;
-        }
+	if ( affCtrlDialog ) {
+		affCtrlDialog->updateInfo();
+		affCtrlDialog->show();
+		return;
+	}
 
-        Q_ASSERT(_affInfo);
-        Q_ASSERT(_settings);
-        Q_ASSERT(globalAppId() > 0);
-        /* will modify mask through affInfo pointer and sets the flag */
-        affCtrlDialog = new AffinityControlDialog(_globalAppId, _affInfo, _settings);
-        affCtrlDialog->show();
+	Q_ASSERT(_affInfo);
+	Q_ASSERT(_settings);
+	Q_ASSERT(globalAppId() > 0);
+	/* will modify mask through affInfo pointer and sets the flag */
+	affCtrlDialog = new AffinityControlDialog(_globalAppId, _affInfo, _settings);
+	affCtrlDialog->show();
 }
 
 
 
 SN_RailawareWidget::~SN_RailawareWidget()
 {
-        if (_affInfo) delete _affInfo;
+        if (_affInfo) {
+			//
+			// todo :  explain why
+			//
+			_affInfo->disconnect();
+			delete _affInfo;
+		}
         if (affCtrlDialog) delete affCtrlDialog;
 
         qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);

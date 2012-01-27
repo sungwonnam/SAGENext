@@ -2,7 +2,7 @@
 
 #include "appinfo.h"
 #include "perfmonitor.h"
-#include "interactionmonitor.h"
+#include "sn_priority.h"
 #include "affinityinfo.h"
 
 #include "../../common/commonitem.h"
@@ -21,7 +21,7 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	, _windowState(SN_BaseWidget::W_NORMAL)
     , _widgetType(SN_BaseWidget::Widget_Misc)
 	, _appInfo(new AppInfo())
-    , _intMon(new InteractionMonitor(this))
+    , _priorityData(new SN_Priority(this))
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, _rMonitor(0)
@@ -46,9 +46,6 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
     , _bordersize(10)
     , _showInfo(false)
     , infoTextItem(0)
-
-    , _priority(0.5)
-    , _priorityQuantized(0)
 {
 	init();
 }
@@ -61,7 +58,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	, _windowState(SN_BaseWidget::W_NORMAL)
     , _widgetType(SN_BaseWidget::Widget_Misc)
 	, _appInfo(new AppInfo())
-    , _intMon(new InteractionMonitor(this))
+    , _priorityData(new SN_Priority(this))
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, _rMonitor(0)
@@ -86,9 +83,6 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
     , _bordersize(10)
     , _showInfo(false)
     , infoTextItem(0)
-
-    , _priority(0.5)
-    , _priorityQuantized(0)
 {
 
 	// This will affect boundingRect(), windowFrameRect() of the widget.
@@ -238,20 +232,6 @@ void SN_BaseWidget::init()
 }
 
 
-qreal SN_BaseWidget::ratioToTheWall() const {
-	if(!scene()) return 0.0;
-
-	QSizeF sceneSize = scene()->sceneRect().size();
-	QSizeF currentSize = size() * scale();
-
-	qreal sceneArea = sceneSize.width() * sceneSize.height();
-	qreal currentArea = currentSize.width() * currentSize.height();
-
-	if ( currentArea > sceneArea ) return 1;
-
-	return currentArea / sceneArea;
-}
-
 QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 	QRegion effectiveRegion;
 	if (!scene()) return effectiveRegion; // return empty region
@@ -275,87 +255,17 @@ QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 	return effectiveRegion;
 }
 
-void SN_BaseWidget::computeEVRInfo(void) {
-//	_evrInfo.evrsize;
-	//	_evrInfo.winsize;
-//	_evrInfo.r_evr_wall;
-//	_evrInfo.r_evr_window;
-
-	QRegion evr = effectiveVisibleRegion();
-	_evrInfo.evrsize = 0;
-	foreach(QRect r, evr.rects()) {
-		_evrInfo.evrsize += (r.width() * r.height()); // quint64 : unsigned long long int
-	}
-
-	QSizeF effectiveSize = size() * scale();
-	_evrInfo.winsize = effectiveSize.width() * effectiveSize.height(); // quint64 : unsigned long long int
-
-	// ratio of EVR to window size (%)
-	_evrInfo.r_evr_window = (100 * _evrInfo.evrsize) / _evrInfo.winsize; // quint16 : unsigned short
-
-	Q_ASSERT(scene());
-	_evrInfo.r_evr_wall = (100 * _evrInfo.evrsize) / (scene()->width() * scene()->height()); // quint16 : unsigned short
-
-//	qDebug() << _evrInfo.evrsize << _evrInfo.winsize << _evrInfo.r_evr_window << _evrInfo.r_evr_wall;
-}
 
 /*!
   ctepoch : current time since epoch
   */
 qreal SN_BaseWidget::priority(qint64 ctepoch /* 0 */) {
-	if (!scene()) return 0;
+	Q_ASSERT(_priorityData);
+	return _priorityData->priority(ctepoch);
+}
 
-//	/*******************
-//	 size of Effective Visible Region
-//	 *****************/
-//	qreal weight1 = 1.0;
-//	QRegion effectiveRegion = effectiveVisibleRegion();
-
-//	int effectiveVisibleSize  = 0;
-//	for (int i=0; i<effectiveRegion.rectCount(); ++i ) {
-//		QRect rect = effectiveRegion.rects().at(i);
-//		effectiveVisibleSize += (rect.size().width() * rect.size().height());
-//	}
-
-//	if (isObscured()) {
-//		//_priority = 0;
-//	}
-//	else {
-//		//_priority = ratioToTheWall()  * (1 + zValue()); // ratio is more important
-
-//		_priority = weight1  *  effectiveVisibleSize / (scene()->width() * scene()->height());
-//	}
-
-
-//	/****
-//	Time passed since last touch
-//	****/
-//	qreal weight2 = 0.4;
-//	qint64 lastTouch = _intMon->timeLastInteracted();
-//	if ( ctepoch > 0 &&  lastTouch > 0) {
-
-//		// _lastTouch is updated in mousePressEvent
-//		qreal T_lt = (qreal)(ctepoch - lastTouch); // msec passed since last touch (current time in epoch - last touched time in epoch)
-//		T_lt /= 1000.0; // to second
-
-//		//qDebug() << "[[ Widget" << _globalAppId << weight2 << "/" << T_lt << "=" << weight2/T_lt;
-//		_priority += (weight2 / T_lt);
-//	}
-
-//	//qDebug() << "[[ Widget" << _globalAppId << "priority" << _priority << "]]";
-
-
-	//
-	// compute ratio of EVR
-	//
-	computeEVRInfo();
-
-	//
-	// The visual factor
-	//
-//	quint16 visualfactor = _evrInfo.r_evr_wall + _evrInfo.r_evr_window; // 0 <= x <= 200
-
-	return _priority;
+int SN_BaseWidget::priorityQuantized(qint64 currTimeEpoch, int bias /* 1 */) {
+	return bias * priority(currTimeEpoch);
 }
 
 
@@ -863,7 +773,7 @@ void SN_BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 	//qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
 	if ( mapRectToScene(boundingRect()).contains(event->scenePos()) ) {
 		maximize(); // window will be restored if it is in maximized state already
-		_intMon->setLastInteraction(InteractionMonitor::RESIZE);
+		_priorityData->setLastInteraction(SN_Priority::RESIZE);
 	}
 }
 
@@ -884,7 +794,7 @@ void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	}
 	else {
 		reScale(numTicks, 0.05);
-		_intMon->setLastInteraction(InteractionMonitor::RESIZE);
+		_priorityData->setLastInteraction(SN_Priority::RESIZE);
 	}
 
 	// reimplementation will accept the event
@@ -906,7 +816,7 @@ void SN_BaseWidget::updateInfoTextItem()
 	QRectF rect = geometry();
 
 	if (_appInfo) {
-		sprintf(infotext.data(), "Global App ID %llu\nNative WxHxbpp: %ux%ux%u (%u KB)\nCurr Geometry: (%.0f,%.0f)(%.0fx%.0f)\nCurr Scale: %.1f\nRatio to wall %.3f"
+		sprintf(infotext.data(), "Global App ID %llu\nNative WxHxbpp: %ux%ux%u (%u KB)\nCurr Geometry: (%.0f,%.0f)(%.0fx%.0f)\nCurr Scale: %.1f"
 		        /*qPrintable(appInfo->getFilename()),*/
 		        /* SizeRatio: %u %%\n */
 		        , _globalAppId
@@ -916,7 +826,6 @@ void SN_BaseWidget::updateInfoTextItem()
 		        , scale()
 		        //appInfo->ratioToTheScene( scene()->width() * scene()->height() ),
 		        /*_appInfo->getDrawingThreadCpu()*/
-		        , ratioToTheWall()
 		        );
 		text.append( infotext );
 	}

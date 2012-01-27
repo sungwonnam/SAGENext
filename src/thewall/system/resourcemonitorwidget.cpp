@@ -9,7 +9,7 @@
 #include "../applications/base/railawarewidget.h"
 //#include "../applications/sagestreamwidget.h"
 #include "../applications/base/perfmonitor.h"
-#include "../applications/base/interactionmonitor.h"
+#include "../applications/base/sn_priority.h"
 
 #include <sys/time.h>
 
@@ -141,13 +141,13 @@ void ResourceMonitorWidget::refreshPerAppPriorityData() {
 				item->setData(Qt::DisplayRole, (int)(100 * rw->priority(0)));
 				break;
 			case 2:
-				item->setData(Qt::DisplayRole, rw->evrInfo()->r_evr_window);
+				item->setData(Qt::DisplayRole, rw->priorityData()->evrToWin());
 				break;
 			case 3:
-				item->setData(Qt::DisplayRole, rw->evrInfo()->r_evr_wall);
+				item->setData(Qt::DisplayRole, rw->priorityData()->evrToWall());
 				break;
 			case 4:
-				item->setData(Qt::DisplayRole, rw->intMon()->ipm());
+				item->setData(Qt::DisplayRole, rw->priorityData()->ipm());
 				break;
 			default:
 				break;

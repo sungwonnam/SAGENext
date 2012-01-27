@@ -87,7 +87,28 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 		_usePbo = false;
 	}
 
+	_rewindButton = new SN_PixmapButton(":/resources/media-forward-rtl_128x128.png", 0, "", this);
+	_pauseButton = new SN_PixmapButton(":/resources/media-pause-128x128.png", 0, "", this);
+	_playButton = new SN_PixmapButton(":/resources/media-play-ltr_128x128.png", 0, "", this);
+	_playButton->hide();
+	_fforwardButton = new SN_PixmapButton(":/resources/media-forward-ltr_128x128.png", 0, "", this);
+
+	_rewindButton->setPriorityOverride(1);
+	_playButton->setPriorityOverride(1);
+	_pauseButton->setPriorityOverride(-1);
+	_fforwardButton->setPriorityOverride(1);
+
+	_pauseButton->setPos(_rewindButton->geometry().topRight());
+	_playButton->setPos(_rewindButton->geometry().topRight());
+	_fforwardButton->setPos(_playButton->geometry().topRight());
+
+	connect(_rewindButton, SIGNAL(clicked(int)), this, SLOT(rewindMplayer(int)));
+	connect(_pauseButton, SIGNAL(clicked(int)), this, SLOT(pauseMplayer(int)));
+	connect(_playButton, SIGNAL(clicked(int)), this, SLOT(playMplayer(int)));
+	connect(_fforwardButton, SIGNAL(clicked(int)), this, SLOT(fforwardMplayer(int)));
 }
+
+
 
 bool SN_SageStreamWidget::_initPboMutex() {
 	if (!_usePbo) return false;
@@ -319,7 +340,7 @@ void SN_SageStreamWidget::startReceivingThread() {
 	}
 
 
-	qDebug() << "SageStreamWidget now starts receiving thread";
+	qDebug() << "SageStreamWidget" << _globalAppId << _sageAppId << "now starts receiving thread";
 	qDebug() << "\t" << _appInfo->executableName() << "(" << _appInfo->fileInfo().fileName() << ") from" << _appInfo->srcAddr();
 	qDebug() << "\t" << _appInfo->nativeSize().width() <<"x" << _appInfo->nativeSize().height() << _appInfo->bitPerPixel() << "bpp" << _appInfo->frameSizeInByte() << "Byte/frame at" << _perfMon->getExpetctedFps() << "fps";
 	qDebug() << "\t" << "network user buffer length (groupsize)" << _appInfo->networkUserBufferLength() << "Byte";
@@ -919,6 +940,36 @@ int SN_SageStreamWidget::getPixelSize(sagePixFmt type)
 
 
 
+void SN_SageStreamWidget::rewindMplayer(int p) {
+	Q_ASSERT(_fsmMsgThread);
+	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("rewind")));
+	_playButton->hide();
+	_pauseButton->show();
+}
+
+void SN_SageStreamWidget::pauseMplayer(int p) {
+	Q_ASSERT(_fsmMsgThread);
+	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("pause")));
+	_pauseButton->hide();
+	_playButton->show();
+}
+
+void SN_SageStreamWidget::playMplayer(int p) {
+	Q_ASSERT(_fsmMsgThread);
+//	_fsmMsgThread->sendSailMsg(OldSage::EVT_KEY, "play");
+	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("play")));
+	_playButton->hide();
+	_pauseButton->show();
+}
+
+void SN_SageStreamWidget::fforwardMplayer(int p) {
+	Q_ASSERT(_fsmMsgThread);
+	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("forward")));
+	_playButton->hide();
+	_pauseButton->show();
+}
+
+
 
 
 
@@ -1208,9 +1259,6 @@ GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment)
 
    return Prog;
 }
-
-
-
 
 
 

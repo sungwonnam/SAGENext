@@ -177,46 +177,96 @@ void SN_ProcessorNode::printOverhead() const {
 
 
 
-SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s) :
-        procVec(0),
-        settings(s),
-        schedcontrol(0),
-        numaInfo(0),
-        _rMonWidget(0),
-        _printDataFlag(false)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, QGraphicsScene *scene, QObject *parent)
+    : QObject(parent)
+    , procVec(0)
+    , settings(s)
+    , _theScene(scene)
+    , schedcontrol(0)
+    , numaInfo(0)
+    , _rMonWidget(0)
+    , _printDataFlag(false)
 {
-        buildProcVector();
-        Q_ASSERT(procVec);
+	buildProcVector();
+	Q_ASSERT(procVec);
 
-        if (settings->value("system/numnumanodes").toInt() > 1) {
-                numaInfo = (Numa_Info *)malloc(sizeof(Numa_Info) * settings->value("system/numnumanodes").toInt());
-                for (int i=0; i<settings->value("system/numnumanodes").toInt(); ++i) {
-                        numaInfo[i].local_node = 0;
-                        numaInfo[i].numa_hit = 0;
-                        numaInfo[i].numa_miss = 0;
-                        numaInfo[i].numa_foreign = 0;
-                        numaInfo[i].other_node = 0;
-                        numaInfo[i].hit = 0;
-                        numaInfo[i].miss = 0;
-                        numaInfo[i].foreign = 0;
-                        numaInfo[i].local = 0;
-                        numaInfo[i].other = 0;
-                }
-        }
+	if (settings->value("system/numnumanodes").toInt() > 1) {
+		numaInfo = (Numa_Info *)malloc(sizeof(Numa_Info) * settings->value("system/numnumanodes").toInt());
+		for (int i=0; i<settings->value("system/numnumanodes").toInt(); ++i) {
+			numaInfo[i].local_node = 0;
+			numaInfo[i].numa_hit = 0;
+			numaInfo[i].numa_miss = 0;
+			numaInfo[i].numa_foreign = 0;
+			numaInfo[i].other_node = 0;
+			numaInfo[i].hit = 0;
+			numaInfo[i].miss = 0;
+			numaInfo[i].foreign = 0;
+			numaInfo[i].local = 0;
+			numaInfo[i].other = 0;
+		}
+	}
 
-//	widgetMultiMap.clear();
-        widgetList.clear();
-        widgetListRWlock.unlock();
+	//	widgetMultiMap.clear();
+	widgetList.clear();
+	widgetListRWlock.unlock();
+
+	_priorityGrid = new PriorityGrid(QSize(480, 400), _theScene , this);
+}
+
+SN_ResourceMonitor::~SN_ResourceMonitor() {
+	//	if (procTree) delete procTree;
+	if (_rMonWidget) {
+		_rMonWidget->close();
+		_rMonWidget->deleteLater();
+	}
+
+	if (schedcontrol) {
+		schedcontrol->killScheduler();
+		delete schedcontrol;
+	}
+
+	if (procVec) {
+		SN_ProcessorNode *pn =0;
+		for (int i=0; i<procVec->size(); ++i) {
+			pn = procVec->at(i);
+			if(pn) {
+				//				qDebug() << "3";
+				delete pn;
+			}
+		}
+		delete procVec;
+	}
+
+	/* I shouldn't delete numaInfoTextItem here */
+
+	if (numaInfo) free(numaInfo);
+
+	if (_dataFile.isOpen()) {
+		_dataFile.flush();
+		_dataFile.close();
+	}
+
+	qDebug("ResourceMonitor::%s()", __FUNCTION__);
 }
 
 void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
-//	qDebug() << "timerEvent at resourceMonitor";
-        refresh(); // update all data
-        if (_rMonWidget && _rMonWidget->isVisible()) _rMonWidget->refresh();
+	//	qDebug() << "timerEvent at resourceMonitor";
+	refresh(); // update all data
+	if (_rMonWidget && _rMonWidget->isVisible()) _rMonWidget->refresh();
 
-        if (_printDataFlag) {
-                printPrelimData();
-        }
+	if (_priorityGrid) {
+		_priorityGrid->updatePriorities();
+	}
+
+	if (_printDataFlag) {
+		printPrelimData();
+	}
 }
 
 void SN_ResourceMonitor::addSchedulableWidget(SN_RailawareWidget *rw) {
@@ -281,45 +331,6 @@ SN_RailawareWidget * SN_ResourceMonitor::getEarliestDeadlineWidget() {
         return result;
 }
 
-
-SN_ResourceMonitor::~SN_ResourceMonitor() {
-	//	if (procTree) delete procTree;
-
-	if (_rMonWidget) {
-		_rMonWidget->close();
-		_rMonWidget->deleteLater();
-	}
-
-	if (schedcontrol) {
-		schedcontrol->killScheduler();
-		delete schedcontrol;
-	}
-
-
-	if (procVec) {
-		SN_ProcessorNode *pn =0;
-		for (int i=0; i<procVec->size(); ++i) {
-			pn = procVec->at(i);
-			if(pn) {
-				//				qDebug() << "3";
-				delete pn;
-			}
-		}
-		delete procVec;
-	}
-
-	/* I shouldn't delete numaInfoTextItem here */
-
-	if (numaInfo) free(numaInfo);
-
-	if (_dataFile.isOpen()) {
-		_dataFile.flush();
-		_dataFile.close();
-	}
-
-	qDebug("ResourceMonitor::%s()", __FUNCTION__);
-}
-
 //void ResourceMonitor::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
 //	Q_UNUSED(option);
 //	Q_UNUSED(widget);
@@ -350,13 +361,6 @@ void SN_ResourceMonitor::refresh() {
 			//qApp->sendPostedEvents(); // looks like this makes user interaction slow
 		}
 	}
-
-	/* update ROI */
-	/**
-		foreach (ROIRectF *r, roiRectFs) {
-				if (r) r->update();
-		}
-		**/
 }
 
 //ProcessorNode * ResourceMonitor::findNode(quint64 appid) {
@@ -366,38 +370,38 @@ void SN_ResourceMonitor::refresh() {
 
 
 void SN_ResourceMonitor::printPrelimDataHeader() {
-        QDir::setCurrent(QDir::homePath() + "/.sagenext");
+	QDir::setCurrent(QDir::homePath() + "/.sagenext");
 #if QT_VERSION >= 0x040700
-        _dataFile.setFileName( QString::number(QDateTime::currentMSecsSinceEpoch()) + ".data" );
+	_dataFile.setFileName( QString::number(QDateTime::currentMSecsSinceEpoch()) + ".data" );
 #else
-        _dataFile.setFileName( QDateTime::currentDateTime().toString("MM.dd.yyyy_hh.mm.ss.zzz") + ".data");
+	_dataFile.setFileName( QDateTime::currentDateTime().toString("MM.dd.yyyy_hh.mm.ss.zzz") + ".data");
 #endif
-        if ( ! _dataFile.open(QIODevice::ReadWrite) ) {
-                qDebug() << "can't open prelim data file" << _dataFile.fileName();
-        }
-        QString dataHeader = "";
-        if ( schedcontrol && schedcontrol->isRunning() ) {
-                SN_SelfAdjustingScheduler *sas = static_cast<SN_SelfAdjustingScheduler *>(schedcontrol->scheduler());
-                dataHeader.append("Scheduler (");
-                // freq, sensitivity, aggression, greediness
-                dataHeader.append("Frequency: " + QString::number(schedcontrol->scheduler()->frequency()) );
-                dataHeader.append(" Sensitivity: " + QString::number(sas->getQTH()));
-                dataHeader.append(" Aggression: " + QString::number(sas->getDecF()));
-                dataHeader.append(" Greediness: " + QString::number(sas->getIncF()));
-                dataHeader.append(")");
-        }
-        else {
-                dataHeader.append("No Scheduler");
-        }
+	if ( ! _dataFile.open(QIODevice::ReadWrite) ) {
+		qDebug() << "can't open prelim data file" << _dataFile.fileName();
+	}
+	QString dataHeader = "";
+	if ( schedcontrol && schedcontrol->isRunning() ) {
+		SN_SelfAdjustingScheduler *sas = static_cast<SN_SelfAdjustingScheduler *>(schedcontrol->scheduler());
+		dataHeader.append("Scheduler (");
+		// freq, sensitivity, aggression, greediness
+		dataHeader.append("Frequency: " + QString::number(schedcontrol->scheduler()->frequency()) );
+		dataHeader.append(" Sensitivity: " + QString::number(sas->getQTH()));
+		dataHeader.append(" Aggression: " + QString::number(sas->getDecF()));
+		dataHeader.append(" Greediness: " + QString::number(sas->getIncF()));
+		dataHeader.append(")");
+	}
+	else {
+		dataHeader.append("No Scheduler");
+	}
 
-        if (settings->value("system/sailaffinity").toBool()) {
-                dataHeader.append(", SAIL Affinity");
-        }
-        if (settings->value("system/threadaffinityonirq").toBool()) {
-                dataHeader.append(", Thread Affinity on IRQ");
-        }
-        dataHeader.append("\n");
-        _dataFile.write( qPrintable(dataHeader) );
+	if (settings->value("system/sailaffinity").toBool()) {
+		dataHeader.append(", SAIL Affinity");
+	}
+	if (settings->value("system/threadaffinityonirq").toBool()) {
+		dataHeader.append(", Thread Affinity on IRQ");
+	}
+	dataHeader.append("\n");
+	_dataFile.write( qPrintable(dataHeader) );
 }
 
 /*!
@@ -413,43 +417,42 @@ void SN_ResourceMonitor::printPrelimData() {
 //		return;
 //	}
 
-        if (widgetList.size() == 0 ) return;
+	if (widgetList.size() == 0 ) return;
 
+	int count = 0;
+	widgetListRWlock.lockForRead();
 
-        int count = 0;
-        widgetListRWlock.lockForRead();
+	// # of apps
+	_dataFile.write( qPrintable(QString::number(widgetList.size())) );
+	_dataFile.write(",");
 
-        // # of apps
-        _dataFile.write( qPrintable(QString::number(widgetList.size())) );
-        _dataFile.write(",");
+	// cpu usage aggregate
+	qreal cpuUsageSum = 0.0;
+	foreach (SN_RailawareWidget *rw, widgetList) {
+		cpuUsageSum += rw->perfMon()->getCpuUsage();
+	}
+	cpuUsageSum *= 100; // convert to percentage
+	_dataFile.write( qPrintable(QString::number(cpuUsageSum)) );
+	_dataFile.write(",");
 
-        // cpu usage aggregate
-        qreal cpuUsageSum = 0.0;
-        foreach (SN_RailawareWidget *rw, widgetList) {
-                cpuUsageSum += rw->perfMon()->getCpuUsage();
-        }
-        cpuUsageSum *= 100; // convert to percentage
-        _dataFile.write( qPrintable(QString::number(cpuUsageSum)) );
-        _dataFile.write(",");
+	foreach (SN_RailawareWidget *rw, widgetList) {
+		++count;
+		// time slice is implicit (each row = single time slice)
 
-        foreach (SN_RailawareWidget *rw, widgetList) {
-                ++count;
-                // time slice is implicit (each row = single time slice)
+		// Observed quality of each app
+		if ( rw->observedQuality() >= 1 )
+			_dataFile.write( "1.0" );
+		else
+			_dataFile.write( qPrintable(QString::number(rw->observedQuality())) );
 
-                // Observed quality of each app
-                if ( rw->observedQuality() >= 1 )
-                        _dataFile.write( "1.0" );
-                else
-                        _dataFile.write( qPrintable(QString::number(rw->observedQuality())) );
+		if (count < widgetList.size())
+			_dataFile.write(",");
 
-                if (count < widgetList.size())
-                        _dataFile.write(",");
+	}
+	_dataFile.write("\n");
+	widgetListRWlock.unlock();
 
-        }
-        _dataFile.write("\n");
-        widgetListRWlock.unlock();
-
-        // file is closed at the calling function
+	// file is closed at the calling function
 }
 
 

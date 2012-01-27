@@ -20,6 +20,7 @@
 #include <fcntl.h>
 
 #include "../sage/fsmanagermsgthread.h"
+#include "../common/commonitem.h"
 
 #include <QFutureWatcher>
 #include <QMutex>
@@ -88,6 +89,9 @@ private:
 	  */
 	QProcess *_sailAppProc;
 
+	/*!
+	  This is determined at the fsManager and given to me
+	  */
 	quint64 _sageAppId;
 
 	/*!
@@ -186,7 +190,6 @@ private:
 	volatile bool _readyForStreamer;
 
 
-
 	/*!
 	  double buffer for mapped pbo
 	  */
@@ -217,23 +220,13 @@ private:
 	  */
 	GLhandleARB _shaderProgHandle;
 
+
+	SN_PixmapButton *_pauseButton;
+	SN_PixmapButton *_playButton;
+	SN_PixmapButton *_fforwardButton;
+	SN_PixmapButton *_rewindButton;
+
 signals:
-//	void pixelReceiverFinished();
-
-	/*!
-	  * This signal is emited in the destructor and connected to fsManager::shutdownSail() by GraphicsViewMain::startSageApp()
-	  * It is to send APP_QUIT to sail
-	  */
-//	void destructor(quint64 sageappid);
-
-	/*!
-	  To pause thread
-	  */
-	void pauseThread();
-
-	void resumeThread();
-
-	void frameReady();
 
 public slots:
 	/**
@@ -298,6 +291,12 @@ public slots:
 	  Wake waitCondition
 	  */
 	void scheduleReceive();
+
+
+	void pauseMplayer(int priotiry);
+	void playMplayer(int priotiry);
+	void fforwardMplayer(int priotiry);
+	void rewindMplayer(int priotiry);
 };
 
 

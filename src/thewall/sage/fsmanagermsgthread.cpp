@@ -17,28 +17,26 @@
 #include <netinet/tcp.h> // TCP_NODELY
 
 
-fsManagerMsgThread::fsManagerMsgThread(const quint64 sageappId, int sockfd, const QSettings *settings, QObject *parent) :
-                QThread(parent),
-                settings(settings),
-        _sageWidget(0),
-                sageAppId(sageappId)
+fsManagerMsgThread::fsManagerMsgThread(const quint64 sageappId, int sockfd, const QSettings *settings, QObject *parent)
+    : QThread(parent)
+    , _settings(settings)
+    , _sageWidget(0)
+    , socket(sockfd)
+    , _end(false)
+    , _sageAppId(sageappId)
 {
-        this->_end = false;
-        this->socket = sockfd;
-//	this->fsmParam = fsmParam;
-
-        int optval = 1;
-        //socket.setSocketOption(QAbstractSocket::LowDelayOption, (const QVariant *)&optval);
-        if ( setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
-                qWarning("%s() : setsockopt SO_REUSEADDR failed", __FUNCTION__);
-        }
-        if ( setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, (socklen_t)sizeof(optval)) != 0 ) {
-                qWarning("%s() : setsockopt SO_KEEPALIVE failed", __FUNCTION__);
-        }
-        if ( setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &optval, (socklen_t)sizeof(optval)) != 0 ) {
-                qWarning("%s() : setsockopt TCP_NODELAY failed", __FUNCTION__);
-        }
-        //qDebug("%s() : socket error %d", __FUNCTION__, socket.error());
+	int optval = 1;
+	//socket.setSocketOption(QAbstractSocket::LowDelayOption, (const QVariant *)&optval);
+	if ( setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
+		qWarning("%s() : setsockopt SO_REUSEADDR failed", __FUNCTION__);
+	}
+	if ( setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, (socklen_t)sizeof(optval)) != 0 ) {
+		qWarning("%s() : setsockopt SO_KEEPALIVE failed", __FUNCTION__);
+	}
+	if ( setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &optval, (socklen_t)sizeof(optval)) != 0 ) {
+		qWarning("%s() : setsockopt TCP_NODELAY failed", __FUNCTION__);
+	}
+	//qDebug("%s() : socket error %d", __FUNCTION__, socket.error());
 }
 
 fsManagerMsgThread::~fsManagerMsgThread() {
@@ -57,15 +55,15 @@ fsManagerMsgThread::~fsManagerMsgThread() {
 }
 
 void fsManagerMsgThread::breakWhileLoop() {
-        _end = true;
+	_end = true;
 }
 
 void fsManagerMsgThread::sendSailShutdownMsg() {
-        sendSailShutdownMsg(sageAppId);
+	sendSailShutdownMsg(_sageAppId);
 }
 
 void fsManagerMsgThread::sendSailShutdownMsg(quint64 sageappid) {
-        if ( sageAppId != sageappid ) return;
+        if ( _sageAppId != sageappid ) return;
 
         OldSage::sageMessage msg;
         msg.init(36); // MESSAGE_HEADER_SIZE (4 * 9Byte)
@@ -83,7 +81,7 @@ void fsManagerMsgThread::sendSailShutdownMsg(quint64 sageappid) {
 
 void fsManagerMsgThread::sendSailSetRailMsg(AffinityInfo *aff, quint64 sageappid) {
         if (!aff) return;
-        if ( sageAppId != sageappid) return;
+        if ( _sageAppId != sageappid) return;
 
         QString data = "";
         data.append(QString::number( aff->getNumCpus()) );
@@ -118,15 +116,22 @@ void fsManagerMsgThread::sendSailMsg(OldSage::sageMessage &msg) {
         msg.setCode(SAIL_SET_RAIL); // send APP_QUIT to sail. sail will send SAIL_SHUTDOWN
         */
 //	msg.setDest(sageappid);
-        send(socket, (char *)msg.getBuffer(), msg.getBufSize(), 0);
+	send(socket, (char *)msg.getBuffer(), msg.getBufSize(), 0);
 //	msg.destroy();
+}
+
+void fsManagerMsgThread::sendSailMsg(int msgcode, const QString &msgdata) {
+	OldSage::sageMessage msg;
+	msg.init(_sageAppId, msgcode, 0, msgdata.length(), qPrintable(msgdata));
+	sendSailMsg(msg);
+	msg.destroy();
 }
 
 void fsManagerMsgThread::run() {
 //	qDebug("fsManagerMsgThread::%s() : msgThread starting. sageAppId %llu, sockfd %d",  __FUNCTION__, sageAppId, socket);
 
-        OldSage::sageMessage sageMsg;
-        QByteArray msgStr(OldSage::MESSAGE_FIELD_SIZE, '\0');
+	OldSage::sageMessage sageMsg;
+	QByteArray msgStr(OldSage::MESSAGE_FIELD_SIZE, '\0');
 
         /*
         while (!_end) {
@@ -181,40 +186,40 @@ void fsManagerMsgThread::run() {
         }
         */
 
-        int read=0;
-        while(!_end) {
-                if ( (read = recv(socket, (void *)msgStr.data(), OldSage::MESSAGE_FIELD_SIZE, MSG_WAITALL)) == -1 ) {
-                        qCritical("fsManagerMsgThread::%s() : socket error", __FUNCTION__);
-                        _end=true;
-                }
-                else if ( read == 0 ) {
-                        qDebug("fsManagerMsgThread::%s() : socket disconnected while receiving 9Byte", __FUNCTION__);
-                        _end=true;
-                }
-                if (_end) break;
+	int read=0;
+	while(!_end) {
+		if ( (read = recv(socket, (void *)msgStr.data(), OldSage::MESSAGE_FIELD_SIZE, MSG_WAITALL)) == -1 ) {
+			qCritical("fsManagerMsgThread::%s() : socket error", __FUNCTION__);
+			_end=true;
+		}
+		else if ( read == 0 ) {
+			qDebug("fsManagerMsgThread::%s() : socket disconnected while receiving 9Byte", __FUNCTION__);
+			_end=true;
+		}
+		if (_end) break;
 
-//		qDebug("fsManagerMsgThread::%s() : received msg field [%s]", __FUNCTION__, msgStr.data());
+		//qDebug("fsManagerMsgThread::%s() : received msg field [%s]", __FUNCTION__, msgStr.data());
 
-                sageMsg.init(atoi(msgStr.data()));
-                int datasize = atoi(msgStr.data());
-                datasize = datasize - OldSage::MESSAGE_FIELD_SIZE;
+		sageMsg.init(atoi(msgStr.data()));
+		int datasize = atoi(msgStr.data());
+		datasize = datasize - OldSage::MESSAGE_FIELD_SIZE;
 
-                if ( (read = recv(socket, (char *)sageMsg.getBuffer() + OldSage::MESSAGE_FIELD_SIZE, datasize, MSG_WAITALL)) == -1 ) {
-                        qCritical("fsManagerMsgThread::%s() : socket error", __FUNCTION__);
-                        _end=true;
-                }
-                else if ( read == 0 ) {
-                        qDebug("fsManagerMsgThread::%s() : socket disconnected", __FUNCTION__);
-                        _end=true;
-                }
-                if (_end) break;
+		if ( (read = recv(socket, (char *)sageMsg.getBuffer() + OldSage::MESSAGE_FIELD_SIZE, datasize, MSG_WAITALL)) == -1 ) {
+			qCritical("fsManagerMsgThread::%s() : socket error", __FUNCTION__);
+			_end=true;
+		}
+		else if ( read == 0 ) {
+			qDebug("fsManagerMsgThread::%s() : socket disconnected", __FUNCTION__);
+			_end=true;
+		}
+		if (_end) break;
 
-//		qDebug("fsManagerMsgThread::%s() : received sageMessage, size %d, dest %d, code %d, appCode %d", __FUNCTION__, sageMsg.getSize(), sageMsg.getDest(), sageMsg.getCode(), sageMsg.getAppCode());
+		//qDebug("fsManagerMsgThread::%s() : received sageMessage, size %d, dest %d, code %d, appCode %d", __FUNCTION__, sageMsg.getSize(), sageMsg.getDest(), sageMsg.getCode(), sageMsg.getAppCode());
 
-                parseMessage(sageMsg);
-                sageMsg.destroy();
-        }
-        qDebug("fsManagerMsgThread::%s() : msgThread for sageAppId %llu exit the loop", __FUNCTION__, sageAppId);
+		parseMessage(sageMsg);
+		sageMsg.destroy();
+	}
+	qDebug("fsManagerMsgThread::%s() : msgThread for sageAppId %llu exit the loop", __FUNCTION__, _sageAppId);
 }
 
 void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
@@ -273,12 +278,12 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                         OldSage::sageMessage sageMsg;
                         QByteArray initMsg(32, '\0');
                         sprintf(initMsg.data(), "%d %d %d %d",
-                                        (int)sageAppId,
-                                        settings->value("network/recvwindow", 16777216).toInt(),
-                                        settings->value("network/sendwindow", 1048576).toInt(),
-                                        settings->value("network/mtu", 1450).toInt()); // snd/rcv network socket size followed by MTU
+                                        (int)_sageAppId,
+                                        _settings->value("network/recvwindow", 16777216).toInt(),
+                                        _settings->value("network/sendwindow", 1048576).toInt(),
+                                        _settings->value("network/mtu", 1450).toInt()); // snd/rcv network socket size followed by MTU
 
-                        if (sageMsg.init(sageAppId, OldSage::SAIL_INIT_MSG, 0, initMsg.size(), initMsg.data()) < 0) {
+                        if (sageMsg.init(_sageAppId, OldSage::SAIL_INIT_MSG, 0, initMsg.size(), initMsg.data()) < 0) {
                                 qCritical("fsManagerMsgThread::%s() : failed to init sageMessage", __FUNCTION__);
                                 _end=true;
                                 break;
@@ -305,7 +310,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                         QString appName(appn);
 
                         // fsm stream base port is fsm port + 3. This is set in settingsDialog::onsavebuttonclicked()
-                        int streamPort = settings->value("general/fsmstreambaseport", 20005).toInt() + sageAppId;
+                        int streamPort = _settings->value("general/fsmstreambaseport", 20005).toInt() + _sageAppId;
                         if(streamPort > 65535) {
                                 qCritical("\nfsManagerMsgThread::%s() : streamPort  has set to %d\n", __FUNCTION__, streamPort);
                                 return;
@@ -318,7 +323,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
 
 //						qDebug() << "fsmsgthread invoking doInitReceiver() for sage app" << sageAppId << "streamport" << streamPort << QTime::currentTime().toString("hh:mm:ss.zzz");
                         QMetaObject::invokeMethod(_sageWidget, "doInitReceiver", Qt::QueuedConnection,
-                                                                          Q_ARG(quint64, sageAppId),
+                                                                          Q_ARG(quint64, _sageAppId),
                                                                           Q_ARG(QString, appName),
                                                                           Q_ARG(QRect, initRect),
                                                                           Q_ARG(int, protocol),
@@ -351,10 +356,10 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                                         streamPort, // streamer port
                                         1, // number of SDM
 //					qobject_cast<QTcpServer *>(parent())->serverAddress().toString().toAscii().constData(),
-                                        qPrintable(settings->value("general/fsmip").toString()), // ip addr of receiver (which can be different from fsManager IP)
+                                        qPrintable(_settings->value("general/fsmip").toString()), // ip addr of receiver (which can be different from fsManager IP)
                                         0); // SDM id
 
-                        if (sageMsg.init(sageAppId, OldSage::SAIL_CONNECT_TO_RCV, 0, initMsg.size(), initMsg.constData()) < 0) {
+                        if (sageMsg.init(_sageAppId, OldSage::SAIL_CONNECT_TO_RCV, 0, initMsg.size(), initMsg.constData()) < 0) {
                                 qCritical("fsManagerMsgThread::%s() : failed to init sageMessage", __FUNCTION__);
                                 _end=true;
                                 break;

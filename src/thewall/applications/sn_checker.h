@@ -15,7 +15,7 @@ class SN_Checker : public SN_RailawareWidget
 {
 	Q_OBJECT
 public:
-    explicit SN_Checker(const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
+    explicit SN_Checker(bool usepbo, const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
 	~SN_Checker();
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -24,6 +24,11 @@ protected:
 
 private:
 	bool _end;
+
+	/*!
+	  if !_useOpenGL
+	  */
+	QImage *_image;
 
 	GLuint _textureid;
 
@@ -44,8 +49,6 @@ private:
 	  frame rate
 	  */
 	qreal _frate;
-
-	bool _useOpenGL;
 
 	bool _usePbo;
 
@@ -105,6 +108,8 @@ public slots:
 	  signal thread
 	  */
 	void schedulePboUpdate();
+
+	void scheduleUpdate();
 
 	void endThread();
 };

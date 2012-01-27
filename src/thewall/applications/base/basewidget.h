@@ -4,35 +4,6 @@
 #include <QGraphicsWidget>
 #include "../../common/commondefinitions.h"
 
-/*!
-  Information on application window
-  */
-typedef struct {
-	/*!
-	  The size (in # pixels) of the effective visible region of the application window
-	  */
-	quint64 evrsize;
-
-	/*!
-	  The size (in # pixels) of the application window
-	  */
-	quint64 winsize;
-
-	/*!
-	  Ratio of EVR to Window Size.
-	  This tells how much contents of mine is exposed
-	  */
-	quint16 r_evr_window;
-
-	/*!
-	  Ratio of EVR to Wall Size.
-	  This tells how much I am occupyig the wall.
-	  */
-	quint16 r_evr_wall;
-
-} EVRInfo;
-
-
 
 class QSettings;
 class QPropertyAnimation;
@@ -41,7 +12,7 @@ class QParallelAnimationGroup;
 class SN_ResourceMonitor;
 class AppInfo;
 class PerfMonitor;
-class InteractionMonitor;
+class SN_Priority;
 class AffinityInfo;
 
 class SN_SimpleTextItem;
@@ -107,10 +78,7 @@ public:
 
         inline PerfMonitor * perfMon() const {return _perfMon;}
 
-		inline InteractionMonitor * intMon() const {return _intMon;}
-
-		inline EVRInfo * evrInfo() {return &_evrInfo;}
-
+		inline SN_Priority * priorityData() {return _priorityData;}
 
 
 		/**
@@ -163,7 +131,6 @@ public:
 
 
 
-
         /*!
           If shared pointer calls mouseClick() in response to ui client's mousePress followed by mouseRelease event, then it means theat the real mouse events are not generated.
 
@@ -181,22 +148,11 @@ public:
 //        virtual void setProxyWidget(QGraphicsProxyWidget *proxyWidget);
 
 
-        /*!
-          How big is this image compared to the wall
-          */
-        qreal ratioToTheWall() const;
 
         /*!
           How much is actually visible to a user
           */
         QRegion effectiveVisibleRegion() const;
-
-
-
-		/*!
-		  Calcuate EVR related info and fill the data
-		  */
-		void computeEVRInfo(void);
 
 
 
@@ -208,10 +164,9 @@ public:
           @param current time in msec since Epoch
           */
         qreal priority(qint64 currTimeEpoch = 0);
-        inline void setPriority(qreal p) {_priority=p;}
 
-        inline int priorityQuantized() const {return _priorityQuantized;}
-        inline void setPriorityQuantized(int p) {_priorityQuantized = p;}
+        int priorityQuantized(qint64 currTimeEpoch = 0, int bias = 1);
+
 
 
 
@@ -340,7 +295,7 @@ protected:
 		/*!
 		  Interaction monitor
 		  */
-		InteractionMonitor *_intMon;
+		SN_Priority *_priorityData;
 
 
         /*!
@@ -505,18 +460,6 @@ private:
 		void init();
 
 
-		/*!
-          Always between 0 and 1. 1 means the highest priority
-          */
-        qreal _priority;
-
-
-        /*!
-          To store _priority * offset (for quantization)
-          Getting this value is much faster
-          */
-        int _priorityQuantized;
-
 
 		/*!
           The effective visible region of the widget (this is used to calculate priority)
@@ -527,11 +470,6 @@ private:
 //        QRegion _effectiveVisibleRegion;
 
 
-
-		/*!
-		  Info on visible window state
-		  */
-		EVRInfo _evrInfo;
 
         void createActions();
 

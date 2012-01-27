@@ -17,10 +17,12 @@ class fsManagerMsgThread : public QThread {
 	Q_OBJECT
 
 public:
-	fsManagerMsgThread(const quint64 sageAppId, int sockfd, const QSettings *settings, QObject *parent = 0);
+	fsManagerMsgThread(const quint64 _sageAppId, int sockfd, const QSettings *_settings, QObject *parent = 0);
 	~fsManagerMsgThread();
 
 	inline void setSageWidget(SN_SageStreamWidget *s) {_sageWidget = s;}
+
+	inline quint64 sageAppId() const {return _sageAppId;}
 
 	/**
 	  * fsCore::checkClient()
@@ -30,13 +32,17 @@ public:
 //	int getSocketFd() const { return socket; }
 
 private:
-	const QSettings *settings;
+	const QSettings *_settings;
 
 	SN_SageStreamWidget *_sageWidget;
 
 	int socket;
 	bool _end;
-	const quint64 sageAppId;
+
+	/*!
+	  This is determined at the fsManager and given to me
+	  */
+	const quint64 _sageAppId;
 //	const fsManagerParam *fsmParam;
 
 	/**
@@ -64,6 +70,7 @@ public slots:
 	void sendSailShutdownMsg(quint64 sageappid);
 	void sendSailSetRailMsg(AffinityInfo*,quint64);
 	void sendSailMsg(OldSage::sageMessage &msg);
+	void sendSailMsg(int msgcode, const QString &msgdata);
 };
 
 #endif // FSMANAGERMSGTHREAD_H

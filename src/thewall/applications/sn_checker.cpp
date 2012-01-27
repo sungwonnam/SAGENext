@@ -8,25 +8,29 @@
 #include <QtGui>
 #include <QGLPixelBuffer>
 
-SN_Checker::SN_Checker(const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wFlags)
+SN_Checker::SN_Checker(bool usepbo, const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wFlags)
     : SN_RailawareWidget(appid, s, parent, wFlags)
     , _end(false)
+    , _image(0)
     , _textureid(0)
     , _init(false)
     , _frate(framerate)
-    , _useOpenGL(true)
-    , _usePbo(false)
+    , _usePbo(usepbo)
     , __firstFrame(true)
     , _pboBufIdx(0)
     , _pbomutex(0)
     , _pbobufferready(0)
 {
-
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
 
-	if (QGLPixelBuffer::hasOpenGLPbuffers()) {
-		_usePbo = true;
+	if (!QGLPixelBuffer::hasOpenGLPbuffers()) {
+		qDebug() << "SN_Checker : pbo not supported";
+		_usePbo = false;
+	}
+
+	if (!_usePbo) {
+		_image = new QImage(imagesize.width(), imagesize.height(), QImage::Format_RGB888);
 	}
 
 	_pixelFormat = GL_RGB;
@@ -42,9 +46,8 @@ SN_Checker::SN_Checker(const QSize &imagesize, qreal framerate, const quint64 ap
 	_perfMon->setAdjustedFps(framerate);
 
 
-	qDebug() << "SN_Checker : depth" << _appInfo->bitPerPixel() << "bpp";
-	qDebug() << "SN_Checker : w x h" << _appInfo->nativeSize() << imagesize.width() << imagesize.height();
-	qDebug() << "SN_Checker : bytecount" << _appInfo->frameSizeInByte() << "Byte";
+	qDebug() << "SN_Checker : w x h" << _appInfo->nativeSize() << "at" << _appInfo->bitPerPixel() << "bpp";
+	qDebug() << "SN_Checker : Overhead" << _appInfo->frameSizeInByte() << "Byte @" << framerate << "fps";
 
 
 //	connect(&_timer, SIGNAL(timeout()), this, SLOT(doUpdate()));
@@ -56,13 +59,14 @@ SN_Checker::SN_Checker(const QSize &imagesize, qreal framerate, const quint64 ap
 
 
 	if (!QObject::connect(&_fwatcher, SIGNAL(finished()), this, SLOT(close()))) {
-		qCritical() << "connect failed";
+		qCritical() << "SN_Checker() : connect failed";
+		deleteLater();
 	}
 
 
 	// _doInit() needs to be called AFTER constructor finishes and this widget is added to the scene
 	// otherwise, this widget won't be seeing valid opengl context
-	QTimer::singleShot(200, this, SLOT(_doInit()));
+	QTimer::singleShot(50, this, SLOT(_doInit()));
 }
 
 SN_Checker::~SN_Checker() {
@@ -88,10 +92,8 @@ SN_Checker::~SN_Checker() {
 		if ( pthread_cond_destroy(_pbobufferready) != 0 ) {
 			qDebug() << "failed to destroy pbobufferready condition variable";
 		}
-
 		free(_pbomutex);
 		free(_pbobufferready);
-
 
 		glDeleteBuffersARB(2, _pboIds);
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
@@ -139,7 +141,15 @@ void SN_Checker::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWi
 
 
 void SN_Checker::recvPixel() {
+
+	struct timeval t1,t2;
+	qreal tu1, tu2;
+
 	while(!_end) {
+
+		gettimeofday(&t1, 0);
+		tu1 = (qreal)t1.tv_sec + 0.000001 * (qreal)t1.tv_usec; // second
+
 		if (_usePbo) {
 			// wait for glMapBufferARB
 			pthread_mutex_lock(_pbomutex);
@@ -159,8 +169,14 @@ void SN_Checker::recvPixel() {
 			emit frameReady(); // trigger schedulePboUpdate
 			pthread_mutex_unlock(_pbomutex);
 		}
+		else {
+			emit frameReady();
+		}
 
-		::usleep(1000000 * 1.0/_frate);
+		gettimeofday(&t2, 0);
+		tu2 = (qreal)t2.tv_sec + 0.000001 * (qreal)t2.tv_usec; // second
+
+		::usleep( (1000000/_frate) - 1000000*(tu2-tu1) );
 	}
 }
 
@@ -232,9 +248,25 @@ void SN_Checker::_doInit() {
 			QObject::connect(this, SIGNAL(frameReady()), this, SLOT(schedulePboUpdate()));
 			schedulePboUpdate();
 		}
+		else {
+			QObject::connect(this, SIGNAL(frameReady()), this, SLOT(scheduleUpdate()));
+		}
 	}
 	_init = true;
 
+
+	if(_perfMon) {
+		_perfMon->getRecvTimer().start(); //QTime::start()
+
+#if defined(Q_OS_LINUX)
+		getrusage(RUSAGE_THREAD, &ru_start); // that of calling thread. Linux specific
+#elif defined(Q_OS_MAC)
+		getrusage(RUSAGE_SELF, &ru_start);
+#endif
+	}
+
+
+	qDebug() << "SN_Checker::_doInit() : starting recv thread";
 	_future = QtConcurrent::run(this, &SN_Checker::recvPixel);
 	_fwatcher.setFuture(_future);
 }
@@ -263,7 +295,7 @@ void SN_Checker::schedulePboUpdate() {
 //		qDebug() << "unmap" << nextbufidx;
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
 		if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
-			qDebug() << "schedulePboUpdate() : glUnmapBufferARB() failed";
+			qDebug() << "SN_Checker::schedulePboUpdate() : glUnmapBufferARB() failed";
 		}
 	}
 	else {
@@ -321,10 +353,8 @@ void SN_Checker::schedulePboUpdate() {
 		pthread_mutex_unlock(_pbomutex);
 	}
 	else {
-		qCritical() << "glMapBUffer failed()";
+		qCritical() << "SN_Checker::schedulePboUpdate() : glMapBuffer failed()";
 	}
-
-
 
 	//
 	// reset GL state
@@ -335,37 +365,115 @@ void SN_Checker::schedulePboUpdate() {
 	_perfMon->updateConvDelay();
 }
 
+void SN_Checker::scheduleUpdate() {
+	_perfMon->getConvTimer().start();
+
+	if (_useOpenGL) {
+		const QImage &constImageRef = *_image;
+
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
+
+		glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, constImageRef.width(), constImageRef.height(), _pixelFormat, GL_UNSIGNED_BYTE, constImageRef.bits());
+
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glEnable(GL_TEXTURE_2D);
+	}
+	update();
+
+	_perfMon->updateConvDelay();
+}
 
 
 void SN_Checker::_doRecvPixel() {
 
-//	if (!_image) {
-//		qDebug() << "doRecvPixel() : image is null. returning";
-//		return;
-//	}
+	gettimeofday(&lats, 0);
 
-	unsigned char *bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
-	//unsigned char *buffer = _image->bits();
-
-	//int byteperpixel = _image->depth() / 8;
-//	int numpixel = _appInfo->nativeSize().width() * _appInfo->nativeSize().height();
-	//int numpixel = _image->byteCount() / (_image->depth() / 8); // image size (in Byte) / Byte per pixel
+	int numpixel = _appInfo->nativeSize().width() * _appInfo->nativeSize().height();
+	int byteperpixel = _appInfo->frameSizeInByte() / numpixel;
 
 	//
 	// determine new pixel data
 	//
-	unsigned char red = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
-	unsigned char green = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
-	unsigned char blue = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
+//	unsigned char red = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
+//	unsigned char green = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
+//	unsigned char blue = (unsigned char)(255 * ((qreal)qrand() / (qreal)RAND_MAX));
+
+	static unsigned char red , green, blue;
+
+	unsigned char *bufptr = 0;
+	if (_usePbo) {
+		bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
+	}
+	else {
+		Q_ASSERT(_image);
+		bufptr = _image->bits();
+
+		//
+		// write new pixel data
+		//
+//		QRgb *rgb = (QRgb *)(_image->scanLine(0)); // An ARGB quadruplet on the format #AARRGGBB, equivalent to an unsigned int.
+//		for (int i=0; i<numpixel; ++i) {
+//			rgb[i] = qRgb(red, green, blue); // based on 4 Byte per pixel
+//		}
+
+		/*
+		for (int k =0 ; k<numpixel; k++) {
+	     // QImage::Format_RGB32 : 0xffRRGGBB
+	     rgbbuffer[4*k + 3] = 0xff;
+	     rgbbuffer[4*k + 2] = srcbuffer[ 4*k + 0]; // red
+	     rgbbuffer[4*k + 1] = srcbuffer[ 4*k + 1]; // green
+	     rgbbuffer[4*k + 0] = srcbuffer[ 4*k + 2]; // blue
+		 */
+	}
 
 	//
 	// write new pixel data
 	//
-//	QRgb *rgb = (QRgb *)(_image->scanLine(0)); // An ARGB quadruplet on the format #AARRGGBB, equivalent to an unsigned int.
-	for (int i=0; i<_appInfo->frameSizeInByte(); i++) {
-//		rgb[i] = qRgb(red, green, blue);
-		bufptr[i] = red;
+	for (int i=0; i<numpixel; ++i) {
+		bufptr[byteperpixel * i + 0] = red;
+		bufptr[byteperpixel * i + 1] = green;
+		bufptr[byteperpixel * i + 2] = blue;
 	}
+
+	if (red == 255) {
+		if (green == 255) {
+			if (blue == 255) {
+				red = 0; green = 0; blue = 0;
+			}
+			else {
+				++blue;
+				--green;
+			}
+		}
+		else {
+			++green;
+		}
+	}
+	else {
+		++red;
+	}
+
+	gettimeofday(&late, 0);
+
+
+	if (_perfMon) {
+#if defined(Q_OS_LINUX)
+		getrusage(RUSAGE_THREAD, &ru_end);
+#elif defined(Q_OS_MAC)
+		getrusage(RUSAGE_SELF, &ru_end);
+#endif
+
+		qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001);
+
+		// calculate
+		_perfMon->updateObservedRecvLatency(_appInfo->frameSizeInByte(), networkrecvdelay, ru_start, ru_end);
+		ru_start = ru_end;
+	}
+
+//	qDebug() << red << green << blue;
 }
 
 
