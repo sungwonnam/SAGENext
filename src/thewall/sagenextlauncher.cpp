@@ -130,13 +130,12 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 	  */
 	if (sw && sw->affInfo() && _rMonitor)
 	{
-		QObject::connect(sw->affInfo(), SIGNAL(cpuOfMineChanged(SN_RailawareWidget *,int,int)), _rMonitor, SLOT(updateAffInfo(SN_RailawareWidget *,int,int)));
-
 		// Below won't be necessary because BaseWidget::fadeOutClose() takes care widget removal from resource monitor
 		// It's moved to fadeOutClose() because removal has to be handled early
 		//connect(sageWidget->getAffInfoPtr(), SIGNAL(destroyed(QObject*)), resourceMonitor, SLOT(removeApp(QObject *)));
 
 		/*******
+		  SAGE specific !!
 		  This is used to send affinity info to sender (sail) so that sender can set proper affinity based on receivers affinity setting. This should be connected only when mplayer is run localy
 		  *********/
 		QObject::connect(sw->affInfo(), SIGNAL(streamerAffInfoChanged(AffinityInfo*, quint64)), fsmThread, SLOT(sendSailSetRailMsg(AffinityInfo*,quint64)));
@@ -145,7 +144,7 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 		//resourceMonitor->assignProcessor(sageWidget);
 
 		// update QList<RailawareWidget *> ResourceMonitor::widgetList
-		_rMonitor->addSchedulableWidget(sw);
+//		_rMonitor->addSchedulableWidget(sw);
 		//resourceMonitor->updateAffInfo(sageWidget, -1, -1);
 	}
 
@@ -605,142 +604,6 @@ void SN_Launcher::launchRecording(const QString &scenarioFilename) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-ScenarioThread::ScenarioThread(SN_Launcher *launcher, const QString &file, QObject *parent)
-	: QThread(parent)
-	, _launcher(launcher)
-{
-	_scenarioFile.setFileName(file);
-}
-ScenarioThread::~ScenarioThread()
-{
-	wait();
-}
-
-void ScenarioThread::run() {
-	Q_ASSERT(_launcher);
-	if (!_scenarioFile.exists()) {
-		qDebug() << _scenarioFile.fileName() << "doesn't exist";
-		return;
-	}
-
-	if (!_scenarioFile.open(QIODevice::ReadOnly)) {
-		qDebug() << "can't open" << _scenarioFile.fileName();
-		return;
-	}
-
-	// the very first line contains start time
-	char line[64];
-	qint64 read = _scenarioFile.readLine(line, 64);
-	qint64 starttime;
-	sscanf(line, "%lld", &starttime);
-
-	qint64 offset = QDateTime::currentMSecsSinceEpoch() - starttime;
-	qDebug() << "Playback a recording:" << _scenarioFile.fileName() << ", Time offset:" << offset << "msec";
-
-	forever {
-		char line[512];
-		qint64 read = _scenarioFile.readLine(line, 512);
-
-		if (read == 0) {
-			qDebug() << "scenario thread : readLine returned" << read;
-			break;
-		}
-		else if (read < 0) {
-			qDebug() << "scenario thread : readLine returned" << read;
-			break;
-		}
-
-		qint64 when;
-		int type;
-		sscanf(line, "%lld %d", &when, &type);
-
-		qint64 sleep = (when + offset) - QDateTime::currentMSecsSinceEpoch();
-		if (sleep > 0) QThread::msleep((unsigned long)sleep);
-
-
-		quint32 pointerid;
-		int x,y;
-		int button;
-		SN_PolygonArrowPointer *pointer = 0;
-
-
-
-		switch(type) {
-
-		case 0: // NEW WIDGET
-		{
-			int mtype;
-			char filename[256];
-			int x,y;
-			sscanf(line, "%lld %d %d %s %d %d", &when, &type, &mtype, filename, &x, &y);
-//			qDebug() << "NEW_WIDGET" << mtype << filename;
-//			_launcher->launch(mtype, QString(filename));
-			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(int, mtype), Q_ARG(QString, QString(filename)), Q_ARG(QPointF, QPointF(x,y)));
-			break;
-		}
-		case 1: // NEW POINTER
-		{
-			quint32 uiclientid;
-			char pname[128];
-			char color[16];
-			sscanf(line, "%lld %d %u %s %s", &when, &type, &uiclientid, pname, color);
-			qDebug() << "NEW_POINTER" << uiclientid << pname << color;
-			SN_PolygonArrowPointer *pointer = _launcher->launchPointer(uiclientid, QString(pname), QColor(QString(color)));
-			_launcher->_pointerMap.insert(uiclientid, pointer);
-//			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(quint64, uiclientid), Q_ARG(QString, QString(pname)), Q_ARG(QColor, QColor(QString(color))));
-			break;
-		}
-		case 11: { // POINTER_UNSHARE
-			sscanf(line, "%lld %d %u", &when, &type, &pointerid);
-			pointer = _launcher->_pointerMap.value(pointerid);
-			if (pointer) {
-				qDebug() << "POINTER_UNSHARE" << pointer->id() << pointer->name();
-				_launcher->_pointerMap.remove(pointerid);
-				delete pointer;
-			}
-			break;
-		}
-		case 2: // move
-		case 3: // press
-		case 4: // release
-		case 5: // click
-		case 6: // dbl click
-		case 7: // wheel
-		{
-			sscanf(line, "%lld %d %u %d %d %d", &when, &type, &pointerid, &x, &y, &button);
-			pointer = _launcher->_pointerMap.value(pointerid);
-			Q_ASSERT(pointer);
-
-			Qt::MouseButton btn = Qt::NoButton;
-			if (button == 1) btn = Qt::LeftButton;
-			else if (button == 2) btn = Qt::RightButton;
-
-			Qt::MouseButtons btnflag = btn | Qt::NoButton;
-
-			pointer->pointerOperation(type-2, QPointF(x,y), btn, button, btnflag);
-
-			break;
-		}
-
-		} // end of switch
-	}
-
-	qDebug() << "Scenario Thread finished. \n";
-}
-
-
 /*!
   SECTION data is wrong. Don't use it.
   WINDOW NEW is generated by Ratko.
@@ -992,12 +855,10 @@ void SN_Launcher::launchRatkoUserStudyData(const QString &file, const QString &s
 					break;
 				}
 				case 2: { // sagenext checker
-					bw = new SN_Checker(/* usePbo */ false, QSize(resx, resy), 24, 0, _settings);
-					bw->setRMonitor(_rMonitor);
+					bw = new SN_Checker(/* usePbo */ false, QSize(resx, resy), 24, 0, _settings, _rMonitor);
 					QMetaObject::invokeMethod(this, "launch", Qt::QueuedConnection, Q_ARG(void *, bw), Q_ARG(QPointF, QPointF(left,top)));
 //					launch(bw , QPointF(left, top));
-//					qApp->flush();
-					qApp->processEvents();
+					qApp->sendPostedEvents();
 					break;
 				}
 				}
@@ -1064,3 +925,159 @@ void SN_Launcher::launchRatkoUserStudyData(const QString &file, const QString &s
 //	process.waitForFinished();
 	qDebug() << "\n\n------------ Scenario finished in" << (simulend - simulstart) / 1000 << "sec. TimeShrink was" << timeShrink << "Total" << linenumber << "lines.\n\n";
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ScenarioThread::ScenarioThread(SN_Launcher *launcher, const QString &file, QObject *parent)
+	: QThread(parent)
+	, _launcher(launcher)
+{
+	_scenarioFile.setFileName(file);
+}
+ScenarioThread::~ScenarioThread()
+{
+	wait();
+}
+
+void ScenarioThread::run() {
+	Q_ASSERT(_launcher);
+	if (!_scenarioFile.exists()) {
+		qDebug() << _scenarioFile.fileName() << "doesn't exist";
+		return;
+	}
+
+	if (!_scenarioFile.open(QIODevice::ReadOnly)) {
+		qDebug() << "can't open" << _scenarioFile.fileName();
+		return;
+	}
+
+	// the very first line contains start time
+	char line[64];
+	qint64 read = _scenarioFile.readLine(line, 64);
+	qint64 starttime;
+	sscanf(line, "%lld", &starttime);
+
+	qint64 offset = QDateTime::currentMSecsSinceEpoch() - starttime;
+	qDebug() << "Playback a recording:" << _scenarioFile.fileName() << ", Time offset:" << offset << "msec";
+
+	forever {
+		char line[512];
+		qint64 read = _scenarioFile.readLine(line, 512);
+
+		if (read == 0) {
+			qDebug() << "scenario thread : readLine returned" << read;
+			break;
+		}
+		else if (read < 0) {
+			qDebug() << "scenario thread : readLine returned" << read;
+			break;
+		}
+
+		qint64 when;
+		int type;
+		sscanf(line, "%lld %d", &when, &type);
+
+		qint64 sleep = (when + offset) - QDateTime::currentMSecsSinceEpoch();
+		if (sleep > 0) QThread::msleep((unsigned long)sleep);
+
+
+		quint32 pointerid;
+		int x,y;
+		int button;
+		SN_PolygonArrowPointer *pointer = 0;
+
+
+
+		switch(type) {
+
+		case 0: // NEW WIDGET
+		{
+			int mtype;
+			char filename[256];
+			int x,y;
+			sscanf(line, "%lld %d %d %s %d %d", &when, &type, &mtype, filename, &x, &y);
+//			qDebug() << "NEW_WIDGET" << mtype << filename;
+//			_launcher->launch(mtype, QString(filename));
+			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(int, mtype), Q_ARG(QString, QString(filename)), Q_ARG(QPointF, QPointF(x,y)));
+			break;
+		}
+		case 1: // NEW POINTER
+		{
+			quint32 uiclientid;
+			char pname[128];
+			char color[16];
+			sscanf(line, "%lld %d %u %s %s", &when, &type, &uiclientid, pname, color);
+			qDebug() << "NEW_POINTER" << uiclientid << pname << color;
+			SN_PolygonArrowPointer *pointer = _launcher->launchPointer(uiclientid, QString(pname), QColor(QString(color)));
+			_launcher->_pointerMap.insert(uiclientid, pointer);
+//			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(quint64, uiclientid), Q_ARG(QString, QString(pname)), Q_ARG(QColor, QColor(QString(color))));
+			break;
+		}
+		case 11: { // POINTER_UNSHARE
+			sscanf(line, "%lld %d %u", &when, &type, &pointerid);
+			pointer = _launcher->_pointerMap.value(pointerid);
+			if (pointer) {
+				qDebug() << "POINTER_UNSHARE" << pointer->id() << pointer->name();
+				_launcher->_pointerMap.remove(pointerid);
+				delete pointer;
+			}
+			break;
+		}
+		case 2: // move
+		case 3: // press
+		case 4: // release
+		case 5: // click
+		case 6: // dbl click
+		case 7: // wheel
+		{
+			sscanf(line, "%lld %d %u %d %d %d", &when, &type, &pointerid, &x, &y, &button);
+			pointer = _launcher->_pointerMap.value(pointerid);
+			Q_ASSERT(pointer);
+
+			Qt::MouseButton btn = Qt::NoButton;
+			if (button == 1) btn = Qt::LeftButton;
+			else if (button == 2) btn = Qt::RightButton;
+
+			Qt::MouseButtons btnflag = btn | Qt::NoButton;
+
+			pointer->pointerOperation(type-2, QPointF(x,y), btn, button, btnflag);
+
+			break;
+		}
+
+		} // end of switch
+	}
+
+	qDebug() << "Scenario Thread finished. \n";
+}
+

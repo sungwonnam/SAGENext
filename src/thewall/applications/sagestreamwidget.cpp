@@ -32,7 +32,7 @@
 
 
 SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
-    : SN_RailawareWidget(globalappid, s, parent, wFlags)
+    : SN_RailawareWidget(globalappid, s, rm, parent, wFlags)
     , _settings(s)
     , _fsmMsgThread(0)
     , _sailAppProc(0) // QProcess *
@@ -62,13 +62,6 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 
 {
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
-
-	//
-    // This function is defined in BaseWidget
-	// Write a note about why this is needed !!
-	// Probably because the widget needs to unregister itself from the resourceMonitor upon deletion (see destructor)
-	//
-    setRMonitor(rm);
 
 	_appInfo->setFileInfo(filename);
 	_appInfo->setSrcAddr(senderIP);
@@ -145,7 +138,7 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
     if (_rMonitor) {
         //_affInfo->disconnect();
         _rMonitor->removeSchedulableWidget(this); // remove this from ResourceMonitor::widgetMultiMap
-        _rMonitor->removeApp(this); // will emit appRemoved(int) which is connected to Scheduler::loadBalance()
+//        _rMonitor->removeApp(this); // will emit appRemoved(int) which is connected to Scheduler::loadBalance()
         //qDebug() << "affInfo removed from resourceMonitor";
     }
 

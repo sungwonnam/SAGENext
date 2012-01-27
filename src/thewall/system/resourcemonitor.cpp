@@ -270,32 +270,32 @@ void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 }
 
 void SN_ResourceMonitor::addSchedulableWidget(SN_RailawareWidget *rw) {
-        widgetListRWlock.lockForWrite();
-        /* shouldn't allow duplicate item */
+	widgetListRWlock.lockForWrite();
+	/* shouldn't allow duplicate item */
 
-//	ProcessorNode *pn = getMostUnderloadedProcessor();
+	//	ProcessorNode *pn = getMostUnderloadedProcessor();
 
-        if (rw) {
-//		if (pn) {
-//			rw->affInfo()->setReadyBit(AffinityInfo::CPU_MASK, pn->getID());
-//		}
-//		widgetMultiMap.insert(rw->priority(), rw);
-//		widgetMultiMap.insert(rw->ratioToTheWall(), rw);
-                widgetList.push_front(rw);
-        }
+	if (rw) {
+		//		if (pn) {
+		//			rw->affInfo()->setReadyBit(AffinityInfo::CPU_MASK, pn->getID());
+		//		}
+		//		widgetMultiMap.insert(rw->priority(), rw);
+		//		widgetMultiMap.insert(rw->ratioToTheWall(), rw);
+		widgetList.push_front(rw);
+	}
 
-        widgetListRWlock.unlock();
+	widgetListRWlock.unlock();
 }
 
 void SN_ResourceMonitor::removeSchedulableWidget(SN_RailawareWidget *rw) {
-        widgetListRWlock.lockForWrite();
-        if(rw) {
-//		if ( widgetMultiMap.remove(rw->priority(), rw) != 1 ) {
-//			qDebug("ResourceMonitor::%s() : failed to remove", __FUNCTION__);
-//		}
-                widgetList.removeAll(rw);
-        }
-        widgetListRWlock.unlock();
+	widgetListRWlock.lockForWrite();
+	if(rw) {
+		//		if ( widgetMultiMap.remove(rw->priority(), rw) != 1 ) {
+		//			qDebug("ResourceMonitor::%s() : failed to remove", __FUNCTION__);
+		//		}
+		widgetList.removeAll(rw);
+	}
+	widgetListRWlock.unlock();
 }
 
 //void ResourceMonitor::rearrangeWidgetMultiMap(BaseWidget *bw, int oldpriority) {

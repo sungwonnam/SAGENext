@@ -24,10 +24,10 @@ class SN_MediaStorage;
 
 class SN_Launcher : public QObject
 {
-        Q_OBJECT
+	Q_OBJECT
 public:
-        explicit SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage *mediaStorage, SN_ResourceMonitor *rm = 0, SN_SchedulerControl *sc = 0, QFile *scenarioFile = 0, QObject *parent = 0);
-        ~SN_Launcher();
+	explicit SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage *mediaStorage, SN_ResourceMonitor *rm = 0, SN_SchedulerControl *sc = 0, QFile *scenarioFile = 0, QObject *parent = 0);
+	~SN_Launcher();
 
 	/**
 	  This is temporary for scenario stuff
@@ -36,27 +36,27 @@ public:
 	QMap<quint64, SN_PolygonArrowPointer *> _pointerMap;
 
 private:
-        const QSettings *_settings;
+	const QSettings *_settings;
 
         /*!
           * global
           */
-        quint64 _globalAppId;
+	quint64 _globalAppId;
 
         /**
           The pointer to the scene
           */
-        SN_TheScene *_scene;
+	SN_TheScene *_scene;
 
         /**
           The pointer to the media storage
           */
-        SN_MediaStorage *_mediaStorage;
+	SN_MediaStorage *_mediaStorage;
 
         /**
           fsServer::checkClient()
           */
-        fsManager *_fsm;
+	fsManager *_fsm;
 
         /**
           Launcher creates sageWidget before firing SAIL application. So the sageWidget is waiting for actual SAIL connection to run.
@@ -70,88 +70,88 @@ private:
           This is because there's no way to co-relate sageWidget to SAIL connection...
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!
           */
-        QList<SN_SageStreamWidget *> _sageWidgetQueue;
+	QList<SN_SageStreamWidget *> _sageWidgetQueue;
 
-		QList<QPointF> _sageWidgetPosQueue;
+	QList<QPointF> _sageWidgetPosQueue;
 
 		/**
 		  This is called once in the Constructor. It starts fsManager (QTcpServer)
 		  */
-        void createFsManager();
+	void createFsManager();
 
-        SN_ResourceMonitor *_rMonitor;
+	SN_ResourceMonitor *_rMonitor;
 
-        SN_SchedulerControl *_schedCtrl;
+	SN_SchedulerControl *_schedCtrl;
 
 		/**
 		  To record new widget/pointer starts.
 		  This will be passed to polygonArrows
 		  */
-		QFile *_scenarioFile;
+	QFile *_scenarioFile;
 
-		QMap<QString, SN_PluginInterface *> _pluginMap;
+	QMap<QString, SN_PluginInterface *> _pluginMap;
 
 		/**
 		  This is called once in the constructor.
 		  To launch an actual instance, call SN_PluginInterface::createInstance()
 		  */
-		void loadPlugins();
+	void loadPlugins();
 
 
 public slots:
         /**
           This slot is invoked by the signal fsManager::incomingSail() in fsManager::incomingConnection
           */
-        SN_BaseWidget * launch(fsManagerMsgThread *);
+	SN_BaseWidget * launch(fsManagerMsgThread *);
 
         /**
           this is general launch function
           */
-		SN_BaseWidget * launch(int mediatype, QString filename, const QPointF &scenepos = QPointF(30,30), qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
+	SN_BaseWidget * launch(int mediatype, QString filename, const QPointF &scenepos = QPointF(30,30), qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
 
         /**
           just for VNC widget
           */
-        SN_BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30));
+	SN_BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30));
 
         /**
           The widget is added to the scene in here.
           _globalAppId is incremented by 1 in here
           */
-		SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &scenepos = QPointF(30,30));
+	SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &scenepos = QPointF(30,30));
 
-		SN_BaseWidget * launch(void *vbw, const QPointF &scenepos = QPointF(30,30)) {
-			return launch(static_cast<SN_BaseWidget *>(vbw), scenepos);
-		}
+	SN_BaseWidget * launch(void *vbw, const QPointF &scenepos = QPointF(30,30)) {
+		return launch(static_cast<SN_BaseWidget *>(vbw), scenepos);
+	}
 
 		/**
 		  Only with filename, this slot launches all sorts of things (media, session, recording,..)
 		  */
-		SN_BaseWidget * launch(const QStringList &fileList);
+	SN_BaseWidget * launch(const QStringList &fileList);
 
 
-		SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
+	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
 
 		/**
 		  Load a saved session
 		  */
-		void launchSavedSession(const QString &sessionfilename);
+	void launchSavedSession(const QString &sessionfilename);
 
 		/**
 		  This slot should be running in a separate thread
 		  */
-		void launchRecording(const QString &recordingFilename);
+	void launchRecording(const QString &recordingFilename);
 
 
 		/*!
 		  This must run in a separate thread
 		  */
-		void launchRatkoUserStudyData(const QString &datafile, const QString &srcaddr="", const QString &mediafile="");
+	void launchRatkoUserStudyData(const QString &datafile, const QString &srcaddr="", const QString &mediafile="");
 
-		void runRatkoSlot() {
-			QtConcurrent::run(this, &SN_Launcher::launchRatkoUserStudyData, QString("/home/evl/snam5/.sagenext/group1.log"), QString(), QString());
+	void runRatkoSlot() {
+		QtConcurrent::run(this, &SN_Launcher::launchRatkoUserStudyData, QString("/home/evl/snam5/.sagenext/group1.log"), QString(), QString());
 //			launchRatkoUserStudyData(QString("/home/evl/snam5/.sagenext/group1.log"), QString(), QString());
-		}
+	}
 };
 
 

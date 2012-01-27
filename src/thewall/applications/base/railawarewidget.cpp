@@ -8,17 +8,17 @@
 #include "../../system/sagenextscheduler.h"
 
 
-SN_RailawareWidget::SN_RailawareWidget() :
-    affCtrlDialog(0),
-    _affCtrlAction(0),
-    _widgetClosed(false),
-    _scheduled(false)
+SN_RailawareWidget::SN_RailawareWidget()
+    : affCtrlDialog(0)
+    , _affCtrlAction(0)
+    , _widgetClosed(false)
+    , _scheduled(false)
 {
 //	setWidgetType(SN_BaseWidget::Widget_RealTime);
 	setCacheMode(QGraphicsItem::NoCache);
 }
 
-SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
+SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rmonitor, QGraphicsItem *parent, Qt::WindowFlags wflags)
     : SN_BaseWidget(globalappid, s, parent, wflags)
     , affCtrlDialog(0)
     , _affCtrlAction(0)
@@ -40,9 +40,15 @@ SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, 
 	//	qDebug() << "gaid" << globalappid;
 	//	qDebug() << "rail on?" << s->value("system/rail").toBool();
 
-	if (s && s->value("system/resourcemonitor").toBool()) {
-		//		qDebug() << "RailawareWidget() : creating affinity instance";
+	_rMonitor = rmonitor;
+
+	if (_rMonitor) {
+		_rMonitor->addSchedulableWidget(this);
+
 		createAffInstances();
+		if ( ! QObject::connect(_affInfo, SIGNAL(cpuOfMineChanged(SN_RailawareWidget *,int,int)), _rMonitor, SLOT(updateAffInfo(SN_RailawareWidget *,int,int))) ) {
+			qDebug() << "SN_RailawareWidget() : connection _affInfo::cpuOfMineChanged() -> _rMonitor::updateAffInfo() failed";
+		}
 	}
 }
 
@@ -140,14 +146,16 @@ void SN_RailawareWidget::showAffCtrlDialog() {
 
 SN_RailawareWidget::~SN_RailawareWidget()
 {
-        if (_affInfo) {
-			//
-			// todo :  explain why
-			//
-			_affInfo->disconnect();
-			delete _affInfo;
-		}
-        if (affCtrlDialog) delete affCtrlDialog;
+	if (_rMonitor) _rMonitor->removeSchedulableWidget(this);
 
-        qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
+	if (_affInfo) {
+		//
+		// todo :  explain why
+		//
+		_affInfo->disconnect();
+		delete _affInfo;
+	}
+	if (affCtrlDialog) delete affCtrlDialog;
+
+	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }

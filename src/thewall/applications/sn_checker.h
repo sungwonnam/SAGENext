@@ -2,6 +2,8 @@
 #define SN_CHECKER_H
 
 #include "base/railawarewidget.h"
+#include "../system/resourcemonitor.h"
+
 #include <QTimer>
 #include <QFuture>
 #include <QFutureWatcher>
@@ -15,7 +17,7 @@ class SN_Checker : public SN_RailawareWidget
 {
 	Q_OBJECT
 public:
-    explicit SN_Checker(bool usepbo, const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
+    explicit SN_Checker(bool usepbo, const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
 	~SN_Checker();
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);

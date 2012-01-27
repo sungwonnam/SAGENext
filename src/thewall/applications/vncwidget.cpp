@@ -18,7 +18,7 @@ QString SN_VNCClientWidget::username = "";
 QString SN_VNCClientWidget::vncpasswd = "evl123";
 
 SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int frate, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
-	: SN_RailawareWidget(globalappid, s, parent, wflags)
+	: SN_RailawareWidget(globalappid, s, 0, parent, wflags)
 	, vncclient(0)
 	, serverPort(5900)
 	, _image(0)

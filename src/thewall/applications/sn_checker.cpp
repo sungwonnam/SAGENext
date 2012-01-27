@@ -8,8 +8,8 @@
 #include <QtGui>
 #include <QGLPixelBuffer>
 
-SN_Checker::SN_Checker(bool usepbo, const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wFlags)
-    : SN_RailawareWidget(appid, s, parent, wFlags)
+SN_Checker::SN_Checker(bool usepbo, const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
+    : SN_RailawareWidget(appid, s, rm, parent, wFlags)
     , _end(false)
     , _image(0)
     , _textureid(0)
@@ -76,6 +76,10 @@ SN_Checker::~SN_Checker() {
 //		_glbuffer->destroy();
 //		delete _glbuffer;
 //	}
+
+	this->disconnect();
+
+	if (_priorityData) delete _priorityData;
 
 	_end = true;
 
