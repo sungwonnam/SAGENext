@@ -260,7 +260,8 @@ QRegion SN_BaseWidget::effectiveVisibleRegion() const {
   ctepoch : current time since epoch
   */
 qreal SN_BaseWidget::priority(qint64 ctepoch /* 0 */) {
-	Q_ASSERT(_priorityData);
+//	Q_ASSERT(_priorityData);
+	if (!_priorityData) return 0.0;
 	return _priorityData->priority(ctepoch);
 }
 

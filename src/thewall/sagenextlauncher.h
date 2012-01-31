@@ -104,15 +104,17 @@ public slots:
           */
 	SN_BaseWidget * launch(fsManagerMsgThread *);
 
+	SN_BaseWidget * launchSageApp(int mtype, const QString &filename, const QPointF &scenepos = QPointF(30,30), const QString &senderIP = "127.0.0.1", const QString &args = QString(), const QString &sageappname = QString());
+
         /**
           this is general launch function
           */
-	SN_BaseWidget * launch(int mediatype, QString filename, const QPointF &scenepos = QPointF(30,30), qint64 filesize=0, QString senderIP="127.0.0.1", QString recvIP="", quint16 recvPort=0);
+	SN_BaseWidget * launch(int mediatype, const QString &filename, const QPointF &scenepos = QPointF(30,30));
 
         /**
           just for VNC widget
           */
-	SN_BaseWidget * launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30));
+	SN_BaseWidget * launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30));
 
         /**
           The widget is added to the scene in here.
@@ -146,12 +148,8 @@ public slots:
 		/*!
 		  This must run in a separate thread
 		  */
-	void launchRatkoUserStudyData(const QString &datafile, const QString &srcaddr="", const QString &mediafile="");
+	void launchRatkoUserStudyData(const QString &datafile="/home/evl/snam5/.sagenext/group1.log", const QString &srcaddr="", const QString &mediafile="");
 
-	void runRatkoSlot() {
-		QtConcurrent::run(this, &SN_Launcher::launchRatkoUserStudyData, QString("/home/evl/snam5/.sagenext/group1.log"), QString(), QString());
-//			launchRatkoUserStudyData(QString("/home/evl/snam5/.sagenext/group1.log"), QString(), QString());
-	}
 };
 
 

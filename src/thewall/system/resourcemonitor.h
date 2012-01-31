@@ -4,12 +4,11 @@
 //#include "../common/commondefinitions.h"
 //#include "../common/commonitem.h"
 
-
 #include <QtGui>
-#include <QList>
-#include <QVector>
 
 #include "prioritygrid.h"
+
+extern PriorityGrid SAGENextPriorityGrid;
 
 class QSettings;
 class AffinityInfo;
@@ -17,7 +16,6 @@ class SN_SimpleTextItem;
 class SN_BaseWidget;
 class SN_RailawareWidget;
 class SN_SchedulerControl;
-//class GraphicsViewMain;
 class ResourceMonitorWidget;
 
 typedef struct {
@@ -36,7 +34,6 @@ typedef struct {
 } Numa_Info;
 
 
-
 /*!
   ProcessorNode class maintains a list of pointers to railaware widgets on a processor that this class represents
   */
@@ -49,7 +46,7 @@ public:
 	inline void setNodeType(int t) {nodeType = t;}
 	inline void setID(int i) {id = i;}
 
-		inline void setSMTSiblingID(int i) {smt_sibling_id = i;}
+	inline void setSMTSiblingID(int i) {smt_sibling_id = i;}
 
 //	int addChild(ProcessorNode *c);
 //	int addSibling(ProcessorNode *s);
@@ -98,7 +95,7 @@ private:
 		/*!
 		  If it's SMT core there must be sibling who shares L1 cache
 		  */
-		int smt_sibling_id;
+	int smt_sibling_id;
 
 		/*!
 	  * list of apps running on this cpu
@@ -109,6 +106,7 @@ private:
 	  ::refresh() updates below members with perf->curr____()
 	  */
 	qreal cpuUsage;
+
 	qreal bandwidth;
 };
 
@@ -118,7 +116,7 @@ private:
 
 
 /*!
-  ResourceMonitor has list of ProcessorNode classes and responsible for updating widget's processor affinity info.
+  ResourceMonitor has a list of ProcessorNode classes and responsible for updating widget's processor affinity info.
   */
 class SN_ResourceMonitor : public QObject
 {
@@ -131,7 +129,26 @@ public:
 	inline QVector<SN_ProcessorNode *> * getProcVec() const {return procVec;}
 	inline Numa_Info * getNumaInfo() const {return numaInfo;}
 
-//	inline void addROIRectF(ROIRectF *f) {roiRectFs.push_back(f);}
+
+	inline void setScheduler(SN_SchedulerControl *sc) {schedcontrol = sc;}
+
+	inline void setRMonWidget(ResourceMonitorWidget *rmw) {_rMonWidget = rmw;}
+	inline ResourceMonitorWidget * rMonWidget() {return _rMonWidget;}
+
+	/*!
+	  returns a copy of the widget list.
+	  */
+	inline QList<SN_RailawareWidget *> getWidgetList() {return widgetList;}
+
+	inline QReadWriteLock * getWidgetListRWLock() {return &_widgetListRWlock;}
+
+	/*!
+	  this was for prelim exam
+	  */
+	inline bool printDataFlag() const {return _printDataFlag;}
+	inline void setPrintDataFlag(bool b = true) {_printDataFlag = b;}
+
+
 
 
 	/*!
@@ -139,22 +156,23 @@ public:
 	  */
 	void refresh();
 
-//	inline QTreeWidget * getProcTree() {return procTree;}
-
 	/*!
 	  returns current most underloaded processor
 	  */
 	SN_ProcessorNode * getMostUnderloadedProcessor();
 
+	/*!
+	  returns the processNode with given processorId
+	  */
 	SN_ProcessorNode * processor(int pid);
 
 	/*!
-	  writer's lock
+	  writer's lock needs to be acquired
 	  */
 	void addSchedulableWidget(SN_RailawareWidget *rw);
 
 	/*!
-	  writer's lock
+	  writer's lock needs to be acquired
 	  */
 	void removeSchedulableWidget(SN_RailawareWidget *rw);
 
@@ -165,27 +183,10 @@ public:
 	SN_RailawareWidget * getEarliestDeadlineWidget();
 
 	/*!
-	  returns a copy of list
-	  */
-	inline QList<SN_RailawareWidget *> getWidgetList() {return widgetList;}
-
-	inline void setScheduler(SN_SchedulerControl *sc) {schedcontrol = sc;}
-
-	inline void setRMonWidget(ResourceMonitorWidget *rmw) {_rMonWidget = rmw;}
-	inline ResourceMonitorWidget * rMonWidget() {return _rMonWidget;}
-
-
-	/*!
-	  this was for prelim exam
-	  */
-	inline bool printDataFlag() const {return _printDataFlag;}
-	inline void setPrintDataFlag(bool b = true) {_printDataFlag = b;}
-
-
-	/*!
 	  Heat map of the wall
 	  */
-	PriorityGrid *_priorityGrid;
+//	PriorityGrid *_priorityGrid;
+
 
 protected:
 	/*!
@@ -235,28 +236,22 @@ private:
 	/*!
 	  read/write lock for accessing widgetList
 	  */
-	QReadWriteLock widgetListRWlock;
+	QReadWriteLock _widgetListRWlock;
 
 
 	/*!
-	  ROI rectangle container
-	  */
-//	QList<ROIRectF *> roiRectFs;
-
-
-	/**
 	  Widget to show data
 	  */
 	ResourceMonitorWidget *_rMonWidget;
 
 
-	/**
+	/*!
 	  write all data to a file ?
 	  This was for the exp. data for the prelim exam
 	  */
 	bool _printDataFlag;
 
-	/**
+	/*!
 	  print prelimData... writes on this
 	  */
 	QFile _dataFile;
@@ -321,9 +316,12 @@ public slots:
 	void resetProcessorAllocation();
 
 
+	/*!
+	  This is experimental and incomplete
+	  */
 	void loadBalance();
 
-	/**
+	/*!
 	  print perf data header
 	  This slot shoud be called once
 	  */

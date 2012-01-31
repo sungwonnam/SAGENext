@@ -73,7 +73,7 @@ void SN_PointerUI_SendThread::sendMedia(const QUrl url) {
 //	qDebug() << "sendMedia() : urlstr is" << urlStr;
 
 	if (urlStr.contains(QRegExp("^http", Qt::CaseInsensitive)) ) {
-		::sprintf(header, "%d %s %lld", (int)MEDIA_TYPE_WEBURL, qPrintable(urlStr), (qint64)0);
+		::sprintf(header, "%d %s %lld", (int)SAGENext::MEDIA_TYPE_WEBURL, qPrintable(urlStr), (qint64)0);
 		_dataSock.write(header, sizeof(header));
 	}
 	else if (urlStr.contains(QRegExp("^file://", Qt::CaseSensitive)) ) {
@@ -85,16 +85,16 @@ void SN_PointerUI_SendThread::sendMedia(const QUrl url) {
 		qDebug() << "sendMedia() : filePath" << fi.filePath() << "fileName" << fi.fileName();
 
 		if (fi.suffix().contains(_rxImage)) {
-			mediatype = (int)MEDIA_TYPE_IMAGE;
+			mediatype = (int)SAGENext::MEDIA_TYPE_IMAGE;
 		}
 		else if (fi.suffix().contains(_rxVideo)) {
-			mediatype = (int)MEDIA_TYPE_LOCAL_VIDEO; // because the file is going to be copied at the wall
+			mediatype = (int)SAGENext::MEDIA_TYPE_LOCAL_VIDEO; // because the file is going to be copied at the wall
 		}
 		else if (fi.suffix().contains(_rxPdf)) {
-			mediatype = (int)MEDIA_TYPE_PDF;
+			mediatype = (int)SAGENext::MEDIA_TYPE_PDF;
 		}
 		else if (fi.suffix().contains(_rxPlugin)) {
-			mediatype = (int)MEDIA_TYPE_PLUGIN;
+			mediatype = (int)SAGENext::MEDIA_TYPE_PLUGIN;
 		}
 
 		QString noSpaceFilename = fi.fileName().replace(QChar(' '), QChar('_'), Qt::CaseInsensitive);

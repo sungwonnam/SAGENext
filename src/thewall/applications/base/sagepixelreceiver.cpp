@@ -1,13 +1,12 @@
 #include "sagepixelreceiver.h"
 
-#include "base/railawarewidget.h"
-#include "base/appinfo.h"
-#include "base/perfmonitor.h"
-#include "base/affinityinfo.h"
+#include "railawarewidget.h"
+#include "appinfo.h"
+#include "perfmonitor.h"
+#include "affinityinfo.h"
 
-#include "../common/imagedoublebuffer.h"
-
-#include "../sage/fsmanagermsgthread.h"
+#include "../../common/imagedoublebuffer.h"
+#include "../../sage/fsmanagermsgthread.h"
 
 #include <QTcpSocket>
 #include <QUdpSocket>

@@ -1,16 +1,14 @@
 #include "sagestreamwidget.h"
 #include "sagepixelreceiver.h"
 
-#include "../sage/sagecommondefinitions.h"
+#include "appinfo.h"
+#include "affinityinfo.h"
+#include "perfmonitor.h"
 
-#include "../common/commonitem.h"
-#include "../common/imagedoublebuffer.h"
-
-#include "base/appinfo.h"
-#include "base/affinityinfo.h"
-#include "base/perfmonitor.h"
-
-#include "../system/resourcemonitor.h"
+#include "../../sage/sagecommondefinitions.h"
+#include "../../common/commonitem.h"
+#include "../../common/imagedoublebuffer.h"
+#include "../../system/resourcemonitor.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -31,9 +29,8 @@
 #include <QGLPixelBuffer>
 
 
-SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
+SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
     : SN_RailawareWidget(globalappid, s, rm, parent, wFlags)
-    , _settings(s)
     , _fsmMsgThread(0)
     , _sailAppProc(0) // QProcess *
     , _sageAppId(0)
@@ -63,8 +60,8 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 {
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
-	_appInfo->setFileInfo(filename);
-	_appInfo->setSrcAddr(senderIP);
+//	_appInfo->setFileInfo(filename);
+//	_appInfo->setSrcAddr(senderIP);
 
 	if ( ! QObject::connect(&_initReceiverWatcher, SIGNAL(finished()), this, SLOT(startReceivingThread())) ) {
 		qCritical("SN_SageStreamWidget constructor : Failed to connect _initReceiverWatcher->finished() signal to this->startReceivingThread() slot");
@@ -79,26 +76,6 @@ SN_SageStreamWidget::SN_SageStreamWidget(QString filename, const quint64 globala
 	else {
 		_usePbo = false;
 	}
-
-	_rewindButton = new SN_PixmapButton(":/resources/media-forward-rtl_128x128.png", 0, "", this);
-	_pauseButton = new SN_PixmapButton(":/resources/media-pause-128x128.png", 0, "", this);
-	_playButton = new SN_PixmapButton(":/resources/media-play-ltr_128x128.png", 0, "", this);
-	_playButton->hide();
-	_fforwardButton = new SN_PixmapButton(":/resources/media-forward-ltr_128x128.png", 0, "", this);
-
-	_rewindButton->setPriorityOverride(1);
-	_playButton->setPriorityOverride(1);
-	_pauseButton->setPriorityOverride(-1);
-	_fforwardButton->setPriorityOverride(1);
-
-	_pauseButton->setPos(_rewindButton->geometry().topRight());
-	_playButton->setPos(_rewindButton->geometry().topRight());
-	_fforwardButton->setPos(_playButton->geometry().topRight());
-
-	connect(_rewindButton, SIGNAL(clicked(int)), this, SLOT(rewindMplayer(int)));
-	connect(_pauseButton, SIGNAL(clicked(int)), this, SLOT(pauseMplayer(int)));
-	connect(_playButton, SIGNAL(clicked(int)), this, SLOT(playMplayer(int)));
-	connect(_fforwardButton, SIGNAL(clicked(int)), this, SLOT(fforwardMplayer(int)));
 }
 
 
@@ -249,7 +226,7 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
   It runs waitForPixelStreamerConnection() does blocking waiting for the streamer in a separate thread.
   */
 void SN_SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port) {
-//	qDebug() << "\nRunning waitForPixelStreamConnection";
+//	qDebug() << "\nSN_SageStreamWidget::doInitReceiver() : Running waitForPixelStreamConnection() in a separate thread";
 	Q_UNUSED(initrect);
 	_sageAppId = sageappid;
 
@@ -259,8 +236,6 @@ void SN_SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appna
 	_streamerConnected = QtConcurrent::run(this, &SN_SageStreamWidget::waitForPixelStreamerConnection, protocol, port, appname);
 	_initReceiverWatcher.setFuture(_streamerConnected);
 }
-
-
 
 /**
   Now we know all the sail info and streaming channel established !
@@ -298,6 +273,8 @@ void SN_SageStreamWidget::startReceivingThread() {
 
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
 
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
 		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
 		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
 		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -332,9 +309,8 @@ void SN_SageStreamWidget::startReceivingThread() {
 		}
 	}
 
-
-	qDebug() << "SageStreamWidget" << _globalAppId << _sageAppId << "now starts receiving thread";
-	qDebug() << "\t" << _appInfo->executableName() << "(" << _appInfo->fileInfo().fileName() << ") from" << _appInfo->srcAddr();
+	qDebug() << "SN_SageStreamWidget (" << _globalAppId << _sageAppId << ") now starts its receiving thread.";
+	qDebug() << "\t" << _appInfo->executableName() << _appInfo->fileInfo().fileName() << "from" << _appInfo->srcAddr();
 	qDebug() << "\t" << _appInfo->nativeSize().width() <<"x" << _appInfo->nativeSize().height() << _appInfo->bitPerPixel() << "bpp" << _appInfo->frameSizeInByte() << "Byte/frame at" << _perfMon->getExpetctedFps() << "fps";
 	qDebug() << "\t" << "network user buffer length (groupsize)" << _appInfo->networkUserBufferLength() << "Byte";
 	qDebug() << "\t" << "GL pixel format" << _pixelFormat << ",use SHADER" << _useShader << ",use PBO" << _usePbo;
@@ -462,103 +438,6 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 }
 
 
-
-void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
-	if (_perfMon) {
-		_perfMon->getDrawTimer().start();
-	}
-//	painter->setCompositionMode(QPainter::CompositionMode_Source);
-	
-	if (_useOpenGL && painter->paintEngine()->type() == QPaintEngine::OpenGL2
-	//|| painter->paintEngine()->type() == QPaintEngine::OpenGL
-	)
-	{
-		//
-		// 0 draw latency because it's drawn from the cache
-		// but higher latency in scheduleUpdate()
-		//
-		//	QGLWidget *viewportWidget = (QGLWidget *)w;
-		//	viewportWidget->drawTexture(QPointF(0,0), _textureid);
-
-		/*
-		  this takes lots of time when doing DMA write to GPU memory using QGLBuffer due to the context switching
-		  */
-		painter->beginNativePainting();
-
-		if (_useShader) {
-			glUseProgramObjectARB(_shaderProgHandle);
-			glActiveTexture(GL_TEXTURE0);
-			int h=glGetUniformLocationARB(_shaderProgHandle,"yuvtex");
-			glUniform1iARB(h,0);  /* Bind yuvtex to texture unit 0 */
-		}
-
-		glDisable(GL_TEXTURE_2D);
-		glEnable(GL_TEXTURE_RECTANGLE_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
-
-		glBegin(GL_QUADS);
-		//
-		// below is same with QGLContext::InvertedYBindOption
-		//
-		glTexCoord2f(0.0,            size().height()); glVertex2f(0,              size().height());
-		glTexCoord2f(size().width(), size().height()); glVertex2f(size().width(), size().height());
-		glTexCoord2f(size().width(), 0.0);             glVertex2f(size().width(), 0);
-		glTexCoord2f(0.0,            0.0);             glVertex2f(0,              0);
-
-		//
-		// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
-		//
-		//glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
-		//glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
-		//glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
-		//glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
-
-		glEnd();
-
-		if (_useShader) glUseProgramObjectARB(0);
-
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
-		glDisable(GL_TEXTURE_RECTANGLE_ARB);
-		glEnable(GL_TEXTURE_2D);
-
-		painter->endNativePainting();
-	}
-	else {
-		/***
-		  On Linux/X11 platforms which support it, Qt will use glX/EGL texture-from-pixmap extension.
-	This means that if your QPixmap has a real X11 pixmap backend, we simply bind that X11 pixmap as a texture and avoid copying it.
-	You will be using the X11 pixmap backend if the pixmap was created with QPixmap::fromX11Pixmap() or you’re using the “native” graphics system.
-	Not only does this avoid overhead but it also allows you to write a composition manager or even a widget which shows previews of all your windows.
-
-
-	QPixmap, unlike QImage, may be hardware dependent.
-	On X11, Mac and Symbian, a QPixmap is stored on the server side while a QImage is stored on the client side
-	(on Windows,these two classes have an equivalent internal representation,
-	i.e. both QImage and QPixmap are stored on the client side and don't use any GDI resources).
-
-	So, drawing pixmap is much faster but QImage has to be converted to QPixmap for every frame which involves converting plus copy to X Server.
-		  ***/
-
-		if (!_pixmapForDrawing.isNull()) {
-			painter->drawPixmap(0, 0, _pixmapForDrawing);
-		}
-	}
-
-	SN_BaseWidget::paint(painter,o,w);
-
-	if (_perfMon)
-		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
-}
-
-
-
-void SN_SageStreamWidget::scheduleReceive() {
-//	qDebug() << "widget wakeOne";
-//	if(wc) wc->wakeOne();
-	_receiverThread->receivePixel();
-}
-
-
 /**
   This slot connected to the signal SagePixelReceiver::frameReceived() so that this can be called after receiving each image frame
   */
@@ -578,9 +457,7 @@ void SN_SageStreamWidget::scheduleUpdate() {
 
 	_perfMon->getConvTimer().start();
 
-
 	if (_useOpenGL) {
-
 		glDisable(GL_TEXTURE_2D);
 		glEnable(GL_TEXTURE_RECTANGLE_ARB);
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
@@ -664,6 +541,95 @@ void SN_SageStreamWidget::scheduleUpdate() {
 	//qApp->processEvents();
 
 	//this->scene()->views().front()->update( mapRectToScene(boundingRect()).toRect() );
+}
+
+
+
+void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
+	if (_perfMon) {
+		_perfMon->getDrawTimer().start();
+	}
+//	painter->setCompositionMode(QPainter::CompositionMode_Source);
+
+	if (_useOpenGL && painter->paintEngine()->type() == QPaintEngine::OpenGL2
+	//|| painter->paintEngine()->type() == QPaintEngine::OpenGL
+	)
+	{
+		//
+		// 0 draw latency because it's drawn from the cache
+		// but higher latency in scheduleUpdate()
+		//
+		//	QGLWidget *viewportWidget = (QGLWidget *)w;
+		//	viewportWidget->drawTexture(QPointF(0,0), _textureid);
+
+		/*
+		  this takes lots of time when doing DMA write to GPU memory using QGLBuffer due to the context switching
+		  */
+		painter->beginNativePainting();
+
+		if (_useShader) {
+			glUseProgramObjectARB(_shaderProgHandle);
+			glActiveTexture(GL_TEXTURE0);
+			int h=glGetUniformLocationARB(_shaderProgHandle,"yuvtex");
+			glUniform1iARB(h,0);  /* Bind yuvtex to texture unit 0 */
+		}
+
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
+
+		glBegin(GL_QUADS);
+		//
+		// below is same with QGLContext::InvertedYBindOption
+		//
+		glTexCoord2f(0.0,            size().height()); glVertex2f(0,              size().height());
+		glTexCoord2f(size().width(), size().height()); glVertex2f(size().width(), size().height());
+		glTexCoord2f(size().width(), 0.0);             glVertex2f(size().width(), 0);
+		glTexCoord2f(0.0,            0.0);             glVertex2f(0,              0);
+
+		//
+		// below is normal (In OpenGL, 0,0 is bottom-left, In Qt, 0,0 is top-left)
+		//
+		//glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
+		//glTexCoord2f(1.0, 1.0); glVertex2f(_imagePointer->width(), 0);
+		//glTexCoord2f(1.0, 0.0); glVertex2f(_imagePointer->width(), _imagePointer->height());
+		//glTexCoord2f(0.0, 0.0); glVertex2f(0, _imagePointer->height());
+
+		glEnd();
+
+		if (_useShader) glUseProgramObjectARB(0);
+
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+		glEnable(GL_TEXTURE_2D);
+
+		painter->endNativePainting();
+	}
+	else {
+		/***
+		  On Linux/X11 platforms which support it, Qt will use glX/EGL texture-from-pixmap extension.
+	This means that if your QPixmap has a real X11 pixmap backend, we simply bind that X11 pixmap as a texture and avoid copying it.
+	You will be using the X11 pixmap backend if the pixmap was created with QPixmap::fromX11Pixmap() or you’re using the “native” graphics system.
+	Not only does this avoid overhead but it also allows you to write a composition manager or even a widget which shows previews of all your windows.
+
+
+	QPixmap, unlike QImage, may be hardware dependent.
+	On X11, Mac and Symbian, a QPixmap is stored on the server side while a QImage is stored on the client side
+	(on Windows,these two classes have an equivalent internal representation,
+	i.e. both QImage and QPixmap are stored on the client side and don't use any GDI resources).
+
+	So, drawing pixmap is much faster but QImage has to be converted to QPixmap for every frame which involves converting plus copy to X Server.
+		  ***/
+
+		if (!_pixmapForDrawing.isNull()) {
+			painter->drawPixmap(0, 0, _pixmapForDrawing);
+		}
+	}
+
+	SN_BaseWidget::paint(painter,o,w);
+
+	if (_perfMon)
+		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
 
@@ -802,13 +768,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 //		qDebug("SageStreamWidget::%s() : sageappid %llu, groupsize %d, frameSize(SAIL) %d, frameSize(QImage) %d, expectedFps %.2f", __FUNCTION__, sageAppId, _appInfo->getNetworkUserBufferLength(), imageSize, _appInfo->getFrameBytecount(), _perfMon->getExpetctedFps());
 
     _appInfo->setExecutableName( appname );
-    if ( appname == "imageviewer" ) {
-		_appInfo->setMediaType(SAGENext::MEDIA_TYPE_IMAGE);
-    }
-    else {
-		// this is done in the Launcher
-//      _appInfo->setMediaType(MEDIA_TYPE_VIDEO);
-    }
+
 
 //	qDebug() << "waitForStreamerConnection returning";
 	return streamsocket;
@@ -933,34 +893,6 @@ int SN_SageStreamWidget::getPixelSize(sagePixFmt type)
 
 
 
-void SN_SageStreamWidget::rewindMplayer(int p) {
-	Q_ASSERT(_fsmMsgThread);
-	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("rewind")));
-	_playButton->hide();
-	_pauseButton->show();
-}
-
-void SN_SageStreamWidget::pauseMplayer(int p) {
-	Q_ASSERT(_fsmMsgThread);
-	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("pause")));
-	_pauseButton->hide();
-	_playButton->show();
-}
-
-void SN_SageStreamWidget::playMplayer(int p) {
-	Q_ASSERT(_fsmMsgThread);
-//	_fsmMsgThread->sendSailMsg(OldSage::EVT_KEY, "play");
-	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("play")));
-	_playButton->hide();
-	_pauseButton->show();
-}
-
-void SN_SageStreamWidget::fforwardMplayer(int p) {
-	Q_ASSERT(_fsmMsgThread);
-	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("forward")));
-	_playButton->hide();
-	_pauseButton->show();
-}
 
 
 

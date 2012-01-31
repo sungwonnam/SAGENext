@@ -241,9 +241,13 @@ void ResourceMonitorWidget::refresh() {
 
 	refreshCPUdata();
 
+	rMonitor->getWidgetListRWLock()->lockForRead();
+
 	refreshPerAppPriorityData();
 
 	refreshPerAppPerfData();
+
+	rMonitor->getWidgetListRWLock()->unlock();
 
 
 	// must be called only after perAppPerfTable has sorted

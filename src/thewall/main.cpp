@@ -22,6 +22,7 @@
 #include "system/sagenextscheduler.h"
 #include "system/resourcemonitor.h"
 #include "system/resourcemonitorwidget.h"
+#include "system/prioritygrid.h"
 
 #include <QGLWidget>
 #include <QGLFormat>
@@ -29,6 +30,7 @@
 
 #ifdef Q_OS_LINUX
 #include <numa.h>
+#include <GL/glu.h>
 #endif
 
 #ifdef Q_WS_X11
@@ -40,6 +42,9 @@ extern void qt_x11_set_global_double_buffer(bool);
 
 void setViewAttr(SN_Viewport *view, const QSettings &s);
 
+
+
+PriorityGrid SAGENextPriorityGrid;
 
 
 
@@ -354,8 +359,17 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	if ( s.value("system/resourcemonitor").toBool() ) {
 		qDebug() << "Creating ResourceMonitor";
 
+		//
+		// enable priorityGrid
+		//
+		SAGENextPriorityGrid.setScene(scene);
+		SAGENextPriorityGrid.setRectSize(480, 400);
+
 		resourceMonitor = new SN_ResourceMonitor(&s , scene);
 
+		//
+		// resource monitor should be deleted when scene is closing
+		//
 		QObject::connect(scene, SIGNAL(destroyed()), resourceMonitor, SLOT(deleteLater()));
 
 		if ( s.value("system/scheduler").toBool() ) {
@@ -539,33 +553,19 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		}
 	}
 
-
-//	launcher->launch("user", "evl123", 0, "131.193.77.191", 24);
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://helloracer.com");
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processing.org/learning/topics/flocking.html");
-//		launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
-//		launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
-//		launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
+//	launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
+//	launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
+//	launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
 
 //	launcher->launchScenario( QDir::homePath() + "/.sagenext/test.scenario" );
 
-//	SN_BaseWidget *ccc  = new SN_Checker(false, QSize(1920,1080), 24, 0, &s);
-//	ccc->setRMonitor(resourceMonitor);
-//	launcher->launch(ccc);
+//	launcher->launch(new SN_CheckerGL_Old(true, QSize(1920,1080), 24, 0, &s, resourceMonitor));
+//	launcher->launch(new SN_CheckerGLPBO(GL_RGB, QSize(1920,1080), 24, 0, &s, resourceMonitor));
 
-//	SN_PBOtexture *pbo = new SN_PBOtexture(QSize(1920, 1080), 2, glFormat, 0, &s);
-//	launcher->launch(pbo);
-
-//	SN_FBOtexture *fbo = new SN_FBOtexture(QSize(1920, 1080), 2, 0, &s);
-//	launcher->launch(fbo);
-
-//	SN_GLBufferExample *glb = new SN_GLBufferExample(QSize(1920, 1080), 2, 0, &s);
-//	launcher->launch(glb);
-
-
-//	SN_VNCClientWidget *w = new SN_VNCClientWidget(0, "131.193.77.191", 0, "user", "evl123", 24, &s);
-
-//	launcher->launch(w);
+//	launcher->launch("user", "evl123", 0, "131.193.77.191", 24);
+//	launcher->launch(new SN_VNCClientWidget(0, "131.193.77.191", 0, "user", "evl123", 24, &s));
 
 
 //	SN_DrawingTool *dt = new SN_DrawingTool(0, &s);
@@ -574,7 +574,9 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 //	launcher->launch(dt);
 
 
+	//
 	// starts the event loop
+	//
 	int ret = a.exec();
 
 
@@ -582,7 +584,6 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		recordingFile->flush();
 		recordingFile->close();
 	}
-
 
 
 	if (fileServer) delete fileServer;

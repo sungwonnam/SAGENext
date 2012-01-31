@@ -111,6 +111,26 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 
 }
 
+SN_BaseWidget * SN_TheScene::getUserWidget(quint64 gaid) {
+	QList<QGraphicsItem *>::const_iterator  it;
+	SN_BaseWidget *bw = 0;
+	for (it = items().constBegin(); it != items().constEnd(); it++) {
+		QGraphicsItem *gi = (*it);
+		if (!gi) continue;
+
+		if (gi->type() < QGraphicsItem::UserType + BASEWIDGET_USER)
+			continue;
+
+		bw = static_cast<SN_BaseWidget *>(gi);
+		Q_ASSERT(bw);
+
+		if ( bw->globalAppId() == gaid) {
+			return bw;
+		}
+	}
+	return 0;
+}
+
 bool SN_TheScene::isOnAppRemoveButton(const QPointF &scenepos) {
 	if (!_appRemoveButton) return false;
 
@@ -264,6 +284,7 @@ void SN_TheScene::saveSession() {
 			if (!bw) continue;
 
 			AppInfo *ai = bw->appInfo();
+//			bw->appInfo()->mediaType()
 
 			// common
 			out << QString("ITEM") << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
@@ -320,12 +341,13 @@ void SN_TheScene::loadSession(QDataStream &in, SN_Launcher *launcher) {
 				in >> srcaddr >> user >> pass;
 				bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos);
 			}
+			else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
+				in >> file;
+				bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, file, scenepos);
+			}
 			else {
 				in >> file;
 				bw = launcher->launch(mtype, file, scenepos);
-				if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO || mtype == SAGENext::MEDIA_TYPE_VIDEO) {
-					::usleep(300 * 1000);
-				}
 			}
 			if (!bw) {
 				qDebug() << "SN_TheScene::loadSession() : Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;

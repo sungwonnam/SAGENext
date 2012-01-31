@@ -214,9 +214,9 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, QGraphicsScene *scene
 
 	//	widgetMultiMap.clear();
 	widgetList.clear();
-	widgetListRWlock.unlock();
+	_widgetListRWlock.unlock();
 
-	_priorityGrid = new PriorityGrid(QSize(480, 400), _theScene , this);
+//	_priorityGrid = new PriorityGrid(QSize(480, 400), _theScene , this);
 }
 
 SN_ResourceMonitor::~SN_ResourceMonitor() {
@@ -258,11 +258,12 @@ SN_ResourceMonitor::~SN_ResourceMonitor() {
 void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 	//	qDebug() << "timerEvent at resourceMonitor";
 	refresh(); // update all data
-	if (_rMonWidget && _rMonWidget->isVisible()) _rMonWidget->refresh();
 
-	if (_priorityGrid) {
-		_priorityGrid->updatePriorities();
+	if (SAGENextPriorityGrid.isEnabled()) {
+		SAGENextPriorityGrid.updatePriorities();
 	}
+
+	if (_rMonWidget && _rMonWidget->isVisible()) _rMonWidget->refresh();
 
 	if (_printDataFlag) {
 		printPrelimData();
@@ -270,7 +271,7 @@ void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 }
 
 void SN_ResourceMonitor::addSchedulableWidget(SN_RailawareWidget *rw) {
-	widgetListRWlock.lockForWrite();
+	_widgetListRWlock.lockForWrite();
 	/* shouldn't allow duplicate item */
 
 	//	ProcessorNode *pn = getMostUnderloadedProcessor();
@@ -284,18 +285,16 @@ void SN_ResourceMonitor::addSchedulableWidget(SN_RailawareWidget *rw) {
 		widgetList.push_front(rw);
 	}
 
-	widgetListRWlock.unlock();
+	_widgetListRWlock.unlock();
 }
 
 void SN_ResourceMonitor::removeSchedulableWidget(SN_RailawareWidget *rw) {
-	widgetListRWlock.lockForWrite();
+	_widgetListRWlock.lockForWrite();
 	if(rw) {
-		//		if ( widgetMultiMap.remove(rw->priority(), rw) != 1 ) {
-		//			qDebug("ResourceMonitor::%s() : failed to remove", __FUNCTION__);
-		//		}
+		removeApp(rw);
 		widgetList.removeAll(rw);
 	}
-	widgetListRWlock.unlock();
+	_widgetListRWlock.unlock();
 }
 
 //void ResourceMonitor::rearrangeWidgetMultiMap(BaseWidget *bw, int oldpriority) {
@@ -312,23 +311,23 @@ void SN_ResourceMonitor::removeSchedulableWidget(SN_RailawareWidget *rw) {
 //}
 
 SN_RailawareWidget * SN_ResourceMonitor::getEarliestDeadlineWidget() {
-        widgetListRWlock.lockForRead();
-        qreal temp = -1;
-        SN_RailawareWidget *result = 0;
-//	QMultiMap<int, RailawareWidget *>::iterator it;
-        QList<SN_RailawareWidget *>::iterator it;
-//	for(it=widgetMultiMap.begin(); it!=widgetMultiMap.end(); it++) {
-        for(it=widgetList.begin(); it!=widgetList.end(); it++) {
-//		RailawareWidget *r = it.value();
-                SN_RailawareWidget *r = *it;
-                if ( temp == -1 || temp > r->perfMon()->ts_nextframe() ) {
-                        temp = r->perfMon()->ts_nextframe();
-                        result = r;
-                }
-        }
+	_widgetListRWlock.lockForRead();
+	qreal temp = -1;
+	SN_RailawareWidget *result = 0;
+	//	QMultiMap<int, RailawareWidget *>::iterator it;
+	QList<SN_RailawareWidget *>::iterator it;
+	//	for(it=widgetMultiMap.begin(); it!=widgetMultiMap.end(); it++) {
+	for(it=widgetList.begin(); it!=widgetList.end(); it++) {
+		//RailawareWidget *r = it.value();
+		SN_RailawareWidget *r = *it;
+		if ( temp == -1 || temp > r->perfMon()->ts_nextframe() ) {
+			temp = r->perfMon()->ts_nextframe();
+			result = r;
+		}
+	}
 
-        widgetListRWlock.unlock();
-        return result;
+	_widgetListRWlock.unlock();
+	return result;
 }
 
 //void ResourceMonitor::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
@@ -420,7 +419,7 @@ void SN_ResourceMonitor::printPrelimData() {
 	if (widgetList.size() == 0 ) return;
 
 	int count = 0;
-	widgetListRWlock.lockForRead();
+	_widgetListRWlock.lockForRead();
 
 	// # of apps
 	_dataFile.write( qPrintable(QString::number(widgetList.size())) );
@@ -450,7 +449,7 @@ void SN_ResourceMonitor::printPrelimData() {
 
 	}
 	_dataFile.write("\n");
-	widgetListRWlock.unlock();
+	_widgetListRWlock.unlock();
 
 	// file is closed at the calling function
 }
@@ -475,44 +474,44 @@ void SN_ResourceMonitor::removeApp(SN_RailawareWidget *rw) {
   this slot connected to AffinityInfo::cpuOfMineChanged signal
   */
 void SN_ResourceMonitor::updateAffInfo(SN_RailawareWidget *rw, int oldproc, int newproc) {
-//	affinf->getGlobalAppId();
-//	affinf->getCpuOfMine();
+	//	affinf->getGlobalAppId();
+	//	affinf->getCpuOfMine();
 
-        if ( !procVec ) return;
+	if ( !procVec ) return;
 
-        SN_ProcessorNode *pn = 0;
+	SN_ProcessorNode *pn = 0;
 
-        // O(1)
-        if ( oldproc >= 0 && newproc >= 0 ) {
-                Q_ASSERT( 0 <= oldproc && oldproc < procVec->size() );
-                pn = procVec->at(oldproc);
-                Q_ASSERT(pn && oldproc == pn->getID());
-                pn->removeApp(rw);
-                pn = 0;
+	// O(1)
+	if ( oldproc >= 0 && newproc >= 0 ) {
+		Q_ASSERT( 0 <= oldproc && oldproc < procVec->size() );
+		pn = procVec->at(oldproc);
+		Q_ASSERT(pn && oldproc == pn->getID());
+		pn->removeApp(rw);
+		pn = 0;
 
-                Q_ASSERT( 0 <= newproc && newproc < procVec->size() );
-                pn = procVec->at(newproc);
-                Q_ASSERT(pn && newproc == pn->getID());
-//		qDebug() << "rMonitor::updateAffInfo() : ----------- adding app id " << rw->globalAppId() << " to proc " << pn->getID();
-                pn->addApp(rw);
-        }
-        // for each processor, O(n)
-        else {
-                for (int i=0; i<procVec->size(); ++i) {
-                        pn = procVec->at(i);
-                        Q_ASSERT(pn);
+		Q_ASSERT( 0 <= newproc && newproc < procVec->size() );
+		pn = procVec->at(newproc);
+		Q_ASSERT(pn && newproc == pn->getID());
+		//qDebug() << "rMonitor::updateAffInfo() : ----------- adding app id " << rw->globalAppId() << " to proc " << pn->getID();
+		pn->addApp(rw);
+	}
+	// for each processor, O(n)
+	else {
+		for (int i=0; i<procVec->size(); ++i) {
+			pn = procVec->at(i);
+			Q_ASSERT(pn);
 
-                        // if affinityInfo of this widget tells it is affine to processor i then
-                        if ( i == rw->affInfo()->cpuOfMine() ) {
-                                Q_ASSERT( i == pn->getID() );
-//				qDebug() << "rMonitor::updateAffInfo() : ----------- adding app id " << rw->globalAppId() << " to proc " << pn->getID();
-                                pn->addApp(rw);
-                        }
-                        else {
-                                pn->removeApp(rw);
-                        }
-                }
-        }
+			// if affinityInfo of this widget tells it is affine to processor i then
+			if ( i == rw->affInfo()->cpuOfMine() ) {
+				Q_ASSERT( i == pn->getID() );
+				//qDebug() << "rMonitor::updateAffInfo() : ----------- adding app id " << rw->globalAppId() << " to proc " << pn->getID();
+				pn->addApp(rw);
+			}
+			else {
+				pn->removeApp(rw);
+			}
+		}
+	}
 }
 
 
@@ -566,49 +565,49 @@ void ResourceMonitor::buildProcTree() {
 
 
 void SN_ResourceMonitor::buildProcVector() {
-        int totalCpu = settings->value("system/numcpus").toInt();
+	int totalCpu = settings->value("system/numcpus").toInt();
 
-        Q_ASSERT(!procVec);
-        procVec = new QVector<SN_ProcessorNode *>();
+	Q_ASSERT(!procVec);
+	procVec = new QVector<SN_ProcessorNode *>();
 
-        SN_ProcessorNode *pn = 0;
-        for (int i=0; i<totalCpu; ++i) {
-                pn = new SN_ProcessorNode(SN_ProcessorNode::PHY_CORE, i);
-                                if ( settings->value("system/threadpercpu").toInt() > 1 ) {
-                                        pn->setNodeType(SN_ProcessorNode::SMT_CORE);
+	SN_ProcessorNode *pn = 0;
+	for (int i=0; i<totalCpu; ++i) {
+		pn = new SN_ProcessorNode(SN_ProcessorNode::PHY_CORE, i);
+		if ( settings->value("system/threadpercpu").toInt() > 1 ) {
+			pn->setNodeType(SN_ProcessorNode::SMT_CORE);
 
-                                        /******
-                                          only works in venom (two intel quad core smt cpus)
-                                          *****/
-                                        if ( i < 8 ) {
-                                                pn->setSMTSiblingID( i + 8 );
-                                        }
-                                        else {
-                                                pn->setSMTSiblingID(i - 8);
-                                        }
+			/******
+			  only works in venom (two intel quad core smt cpus)
+			  *****/
+			if ( i < 8 ) {
+				pn->setSMTSiblingID( i + 8 );
+			}
+			else {
+				pn->setSMTSiblingID(i - 8);
+			}
 
-                                }
-                procVec->push_back(pn);
-        }
-//	qDebug() << "rMonitor::buildProcVector() : " << procVec->size() << "processors";
+		}
+		procVec->push_back(pn);
+	}
+	//	qDebug() << "rMonitor::buildProcVector() : " << procVec->size() << "processors";
 }
 
 
 SN_ProcessorNode * SN_ResourceMonitor::getMostUnderloadedProcessor() {
-        SN_ProcessorNode *pn = 0;
-        SN_ProcessorNode *result = 0;
-        qreal temp = INT_MAX;
-        for (int i=0; i<procVec->size(); ++i) {
-                pn = procVec->at(i);
-                pn->refresh();
+	SN_ProcessorNode *pn = 0;
+	SN_ProcessorNode *result = 0;
+	qreal temp = INT_MAX;
+	for (int i=0; i<procVec->size(); ++i) {
+		pn = procVec->at(i);
+		pn->refresh();
 
-                if ( pn->getBW() < temp ) {
-                        temp = pn->getBW();
-                        result = pn;
-                }
-        }
-        qDebug("%s::%s() : returning pid %d", metaObject()->className(), __FUNCTION__, result->getID());
-        return result;
+		if ( pn->getBW() < temp ) {
+			temp = pn->getBW();
+			result = pn;
+		}
+	}
+	qDebug("%s::%s() : returning pid %d", metaObject()->className(), __FUNCTION__, result->getID());
+	return result;
 }
 
 
@@ -639,12 +638,12 @@ int SN_ResourceMonitor::assignProcessor(SN_RailawareWidget *rw, SN_ProcessorNode
 }
 
 int SN_ResourceMonitor::assignProcessor(SN_RailawareWidget *rw) {
-        if (!rw || !rw->affInfo()) return -1;
+	if (!rw || !rw->affInfo()) return -1;
 
-        SN_ProcessorNode *pn = getMostUnderloadedProcessor();
-        if (!pn) return -1;
+	SN_ProcessorNode *pn = getMostUnderloadedProcessor();
+	if (!pn) return -1;
 
-        return assignProcessor(rw, pn);
+	return assignProcessor(rw, pn);
 }
 
 /*!
@@ -714,87 +713,87 @@ int SN_ResourceMonitor::assignProcessor() {
 }
 
 void SN_ResourceMonitor::resetProcessorAllocation(SN_RailawareWidget *rw) {
-        if (rw && rw->affInfo())
-                rw->affInfo()->setAllReadyBit();
+	if (rw && rw->affInfo())
+		rw->affInfo()->setAllReadyBit();
 }
 
 void SN_ResourceMonitor::resetProcessorAllocation() {
-        QList<SN_RailawareWidget *>::iterator it;
-        SN_RailawareWidget *rw = 0;
+	QList<SN_RailawareWidget *>::iterator it;
+	SN_RailawareWidget *rw = 0;
 
-        widgetListRWlock.lockForRead();
-        for(it=widgetList.begin(); it!=widgetList.end();  it++) {
-                rw = *it;
-                rw->perfMon()->reset(); // reset perf data
-                resetProcessorAllocation(rw);
-        }
-        widgetListRWlock.unlock();
+	_widgetListRWlock.lockForRead();
+	for(it=widgetList.begin(); it!=widgetList.end();  it++) {
+		rw = *it;
+		rw->perfMon()->reset(); // reset perf data
+		resetProcessorAllocation(rw);
+	}
+	_widgetListRWlock.unlock();
 }
 
 
 SN_ProcessorNode * SN_ResourceMonitor::processor(int pid) {
-        if (!procVec) {
-                qCritical("%s::%s() : procVec is null", metaObject()->className(), __FUNCTION__);
-                return 0;
-        }
+	if (!procVec) {
+		qCritical("%s::%s() : procVec is null", metaObject()->className(), __FUNCTION__);
+		return 0;
+	}
 
-        return procVec->at(pid);
+	return procVec->at(pid);
 
 }
 
 
 void SN_ResourceMonitor::loadBalance() {
-        // find the most overloaded processor
-        SN_ProcessorNode *pn_high = 0, *pn_low=0;
-        qreal loadhigh = 0.0, loadlow = 100.0;
+	// find the most overloaded processor
+	SN_ProcessorNode *pn_high = 0, *pn_low=0;
+	qreal loadhigh = 0.0, loadlow = 100.0;
 
-        if (!procVec || procVec->isEmpty()) return;
-
-
-        // for each processor
-        for (int i=0; i<procVec->size(); ++i) {
-                SN_ProcessorNode *tmp = procVec->at(i);
-
-                if (tmp->getCpuUsage() > loadhigh) {
-                        loadhigh = tmp->getCpuUsage();
-                        pn_high = tmp;
-                }
-                else if (tmp->getCpuUsage() < loadlow) {
-                        loadlow = tmp->getCpuUsage();
-                        pn_low = tmp;
-                }
-        }
-        qDebug("ResourceMonitor::%s() : H: (%d, %.3f),  L: (%d, %.3f)", __FUNCTION__, pn_high->getID(), loadhigh, pn_low->getID(), loadlow);
+	if (!procVec || procVec->isEmpty()) return;
 
 
-        // Is load factor greater than 0.9 ? otherwise no migratino needed.
-        if (loadhigh <= 0.9) {
-                // do nothing
+	// for each processor
+	for (int i=0; i<procVec->size(); ++i) {
+		SN_ProcessorNode *tmp = procVec->at(i);
 
-                // What if pn_low has no widget ?? Isn't it better to migrate to pn_low ?
+		if (tmp->getCpuUsage() > loadhigh) {
+			loadhigh = tmp->getCpuUsage();
+			pn_high = tmp;
+		}
+		else if (tmp->getCpuUsage() < loadlow) {
+			loadlow = tmp->getCpuUsage();
+			pn_low = tmp;
+		}
+	}
+	qDebug("ResourceMonitor::%s() : H: (%d, %.3f),  L: (%d, %.3f)", __FUNCTION__, pn_high->getID(), loadhigh, pn_low->getID(), loadlow);
 
-                return;
-        }
 
-        if (pn_high == pn_low) return;
+	// Is load factor greater than 0.9 ? otherwise no migratino needed.
+	if (loadhigh <= 0.9) {
+		// do nothing
+
+		// What if pn_low has no widget ?? Isn't it better to migrate to pn_low ?
+
+		return;
+	}
+
+	if (pn_high == pn_low) return;
 
 
         /*************************************
           Which processor to migrate ?????????
           *************************************/
 
-        // for now, find the lowest priority widget from heavily loaded processor
-        int priority = INT_MAX;
-        SN_RailawareWidget *rw = 0;
-        QList<SN_RailawareWidget *> *wlist = pn_high->appList();
-        for (int i=0; i<wlist->size(); ++i) {
-                SN_RailawareWidget *w = wlist->at(i);
-                if (!w) continue;
-                if ( w->priority() < priority ) {
-                        priority = w->priority();
-                        rw = w;
-                }
-        }
+	// for now, find the lowest priority widget from heavily loaded processor
+	int priority = INT_MAX;
+	SN_RailawareWidget *rw = 0;
+	QList<SN_RailawareWidget *> *wlist = pn_high->appList();
+	for (int i=0; i<wlist->size(); ++i) {
+		SN_RailawareWidget *w = wlist->at(i);
+		if (!w) continue;
+		if ( w->priority() < priority ) {
+			priority = w->priority();
+			rw = w;
+		}
+	}
 
-        if (rw) assignProcessor(rw, pn_low);
+	if (rw) assignProcessor(rw, pn_low);
 }

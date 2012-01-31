@@ -46,8 +46,6 @@ public:
 	void addItemOnTheLayout(SN_BaseWidget *bw, const QPointF &scenepos = QPointF(30,30));
 
 
-
-
 	/**
 	  BaseWidget can register for mousehover by setting _registerMouseHover to true. The registration is done by SAGENextLauncher
 	  SAGENext pointers will iterate over this list in pointerMove() function
@@ -55,6 +53,11 @@ public:
 	  */
 	QList<SN_BaseWidget *> hoverAcceptingApps;
 
+
+	/*!
+	  retrieve widget with globalAppId
+	  */
+	SN_BaseWidget * getUserWidget(quint64 gaid);
 
 //	inline SN_DrawingWidget * drawingCanvas() {return _drawingCanvas;}
 

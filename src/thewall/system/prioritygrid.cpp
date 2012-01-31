@@ -5,24 +5,30 @@
 PriorityGrid::PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject *parent)
     : QObject(parent)
     , _thescene(scene)
+    , _rectSize(rectSize)
+    , _isEnabled(false)
 {
-	Q_ASSERT(scene);
+}
 
-	int wallwidth = scene->width();
-	int wallheight = scene->height();
+int PriorityGrid::buildRectangles() {
+	Q_ASSERT(_thescene);
+	Q_ASSERT(!_rectSize.isEmpty());
+
+	int wallwidth = _thescene->width();
+	int wallheight = _thescene->height();
 
 	int dimx,dimy;
-	if ( wallwidth % rectSize.width() != 0 ) {
+	if ( wallwidth % _rectSize.width() != 0 ) {
 		qWarning() << "PriorityGrid() : wall width isn't mutiple of rect width";
 		deleteLater();
 	}
-	else if (wallheight % rectSize.height() != 0) {
+	else if (wallheight % _rectSize.height() != 0) {
 		qWarning() << "PriorityGrid() : wall height isn't mutiple of rect height";
 		deleteLater();
 	}
 	else {
-		dimx = wallwidth / rectSize.width();
-		dimy = wallheight / rectSize.height();
+		dimx = wallwidth / _rectSize.width();
+		dimy = wallheight / _rectSize.height();
 	}
 
 //	ROIRect rects[dimx*dimy];
@@ -32,11 +38,11 @@ PriorityGrid::PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject
 	int col = 0;
 	for (int i=0; i<dimx*dimy; i++) {
 
-		int posx = col * rectSize.width();
-		int posy = row * rectSize.height();
+		int posx = col * _rectSize.width();
+		int posy = row * _rectSize.height();
 
 		_priorityVec.push_back(0.0);
-		rects[i] = QRect(posx, posy, rectSize.width(), rectSize.height());
+		rects[i] = QRect(posx, posy, _rectSize.width(), _rectSize.height());
 
 		++col;
 		if ( col == dimx ) {
@@ -47,7 +53,8 @@ PriorityGrid::PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject
 	}
 
 	_theSceneRegion.setRects(rects, dimx*dimy);
-//	qDebug() << "PriorityGrid() : " << _theSceneRegion.rects();
+
+	_isEnabled = true;
 }
 
 void PriorityGrid::updatePriorities() {

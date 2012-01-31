@@ -488,6 +488,4 @@ public slots:
 };
 
 
-
-
 #endif // BASEWIDGET_H

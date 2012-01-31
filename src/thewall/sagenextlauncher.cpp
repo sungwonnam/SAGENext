@@ -14,15 +14,27 @@
 #include "applications/base/appinfo.h"
 #include "applications/base/perfmonitor.h"
 #include "applications/base/affinityinfo.h"
+#include "applications/base/sagestreamwidget.h"
 
+#include "applications/sn_sagestreammplayer.h"
 #include "applications/pdfviewerwidget.h"
 #include "applications/pixmapwidget.h"
 #include "applications/vncwidget.h"
 #include "applications/webwidget.h"
-#include "applications/sagestreamwidget.h"
 #include "applications/sn_checker.h"
 
 #include "applications/base/SN_plugininterface.h"
+
+
+/*
+  this is for launchRatko..()
+
+  sagewidget is invoked using QMetaObject::invokeMethod() from launchRatko..() thread
+  And I can't get return value using invokeMethod()....
+
+  So, temporarily store recently launched widget pointer here
+  */
+SN_BaseWidget *theLastLaunched;
 
 
 SN_Launcher::SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage *mediaStorage, SN_ResourceMonitor *rm /*= 0*/, SN_SchedulerControl *sc /* = 0*/, QFile *scenarioFile, QObject *parent /*0*/)
@@ -43,9 +55,6 @@ SN_Launcher::SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage
 
 	// start listening for sage message
 	createFsManager();
-
-
-//	QTimer::singleShot(1000, this, SLOT(runRatkoSlot()));
 }
 
 SN_Launcher::~SN_Launcher() {
@@ -95,19 +104,32 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 	SN_SageStreamWidget *sw = 0;
 	QPointF pos;
 
+	//
+	// This means the SAGE application was NOT started by the launcher but manually by a user.
+	// For instance, running mplayer in console terminal will make the fsManager to emit incomingSail(fsmThread *)
+	// which is connected to this slot
+	//
 	if (_sageWidgetQueue.isEmpty()) {
-		// This means the SAGE application was NOT started by the launcher but manually by a user.
-		// For instance, running mplayer in console terminal will make the fsManager to emit incomingSail(fsmThread *)
-		// which is connected to this slot
+
+		quint64 gaid = _globalAppId++;
 
 		// create new sageWidget
-		sw = new SN_SageStreamWidget("", _globalAppId++, _settings, "127.0.0.1", _rMonitor); // 127.0.0.1 ??????????
-	}
-	else {
-		// This means the the SAGE application was started by the launcher.
-		// For instances, through mediaBrowser, or drag&drop on sageNextPointer's drop frame.
-		// So this is typical way to launch sage app
+		sw = new SN_SageStreamWidget(gaid, _settings, _rMonitor); // 127.0.0.1 ??????????
 
+		fsmThread->setGlobalAppId(gaid);
+
+		/*
+		  for launchRatko..()
+		  */
+		theLastLaunched = sw;
+	}
+
+	//
+	// This means the the SAGE application was started by the launcher.
+	// For instances, through mediaBrowser, or drag&drop on sageNextPointer's drop frame.
+	// So this is typical way to launch sage app
+	//
+	else {
 		// Therefore, there's already a SN_SageStreamWidget waiting for SAIL connection
 		sw = _sageWidgetQueue.front();
 		_sageWidgetQueue.pop_front();
@@ -152,10 +174,146 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 }
 
 
+
+
+SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, const QPointF &scenepos, const QString &senderIP, const QString &args, const QString &sageappname) {
+
+	SN_SageStreamWidget *sws = 0;
+
+	QString cmd = "ssh -fx ";
+	cmd.append(senderIP); cmd.append(" ");
+	cmd.append(sageappname); cmd.append(" ");
+	cmd.append(args);
+
+	switch (mtype) {
+
+	//
+	// This is a general sage stream. SN_SageStreamWidget is used to receive/display
+	// ssh is used to fire sage application at the source address
+	//
+	// Args needed : senderIP and optional filename
+	//
+	case SAGENext::MEDIA_TYPE_SAGE_STREAM: {
+
+		if (senderIP.isNull() || senderIP.isEmpty())  {
+			qWarning() << "SN_Launcher::launch() : source IP addr is required for MEDIA_TYPE_SAGE_STREAM";
+			return 0;
+		}
+
+		sws = new SN_SageStreamWidget(_globalAppId++, _settings, _rMonitor);
+
+		sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_SAGE_STREAM);
+
+		break;
+	}
+
+	case SAGENext::MEDIA_TYPE_LOCAL_VIDEO:
+	{
+		//
+		// Play media file in my local storage using SAIL (mplayer)
+		// Args needed : filename
+		//
+		// mplayer is running in this machine
+		//		qDebug("%s::%s() : MEDIA_TYPE_LOCAL_VIDEO %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
+
+		if ( filename.isNull() || filename.isEmpty() ) {
+			qWarning() << "SN_Launcher::launch() : I need filename to play..";
+			return 0;
+		}
+
+		//
+		// override command cause we don't need to ssh to localmachine
+		//
+		cmd = "mplayer";
+
+		/**
+		  create sageWidget
+		  */
+		sws = new SN_SageStreamMplayer(_globalAppId++, _settings, _rMonitor);
+		sws->appInfo()->setFileInfo(filename);
+		sws->appInfo()->setSrcAddr("localhost");
+
+			//
+			// mplayer converts image frame to RGB24 using CPU
+			// Use this if viewport isn't OpenGL widget !
+			//
+//		QGLContext *ctx = const_cast<QGLContext *>(QGLContext::currentContext());
+//		args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" << "4" << "-identify" << "-vf" << "format=rgb24" << filename;
+
+			//
+			// with current mplayer-svn.zip, UYUV will be used
+			// conversion at the mplayer is cheaper
+			// and image is converted to RGB using shader program
+			//
+		cmd.append(" -vo sage -nosound -loop 0 -sws 4 -identify ");
+		cmd.append(filename);
+//		cmdargs << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" << "4" << "-identify" << filename;
+
+		sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_LOCAL_VIDEO);
+
+		break;
+	}
+	}
+
+	qDebug() << cmd;
+
+	/**
+      add the widget to the queue
+      */
+	_sageWidgetQueue.push_back(sws);
+	_sageWidgetPosQueue.push_back(scenepos);
+
+	/**
+      initiate SAIL process
+      */
+	QProcess *proc = new QProcess(this);
+	//proc->setWorkingDirectory("$SAGE_DIRECTORY");
+	//proc->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
+
+	sws->appInfo()->setSrcAddr(senderIP);
+	sws->appInfo()->setCmdArgs(args.split(QRegExp("\\s+"), QString::SkipEmptyParts));
+
+	//
+	// this will invoke sail (outside of SAGENext) which will trigger fsManager::incomingSail(fsmThread *) signal which is connected to launch(fsmThread *)
+	//
+	//qDebug() << proc->environment();
+
+	//proc->setWorkingDirectory(qApp->applicationDirPath());
+	//qDebug() << qApp->applicationDirPath();
+
+	proc->start(cmd);
+
+	sws->appInfo()->setExecutableName(sageappname);
+	sws->setSailAppProc(proc);
+
+	if (!proc->waitForStarted(-1)) {
+		qCritical() << "SN_Launcher::launch() : Failed to start remote process !!" << proc->workingDirectory();
+		qDebug() << proc->readAllStandardError();
+		qDebug() << proc->readAllStandardOutput();
+
+		_sageWidgetQueue.pop_back();
+		_sageWidgetPosQueue.pop_back();
+
+		sws->deleteLater();
+
+		return 0;
+	}
+	else {
+
+	//
+	///
+	//// launch(w) will be called in launch(fsmMessageThread *)
+	//// Because of this, scenepos in savedSession has no effect !!! That's why _sageWidgetScenePosQueue has to be maintained
+	//
+		return sws;
+	}
+}
+
+
 /**
   * UiServer triggers this slot
   */
-SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &scenepos/* = QPointF()*/, qint64 fsize /* 0 */, QString senderIP /* 127.0.0.1 */, QString recvIP /* "" */, quint16 recvPort /* 0 */) {
+SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPointF &scenepos/* = QPointF()*/) {
 	//qDebug("%s::%s() : filesize %lld, senderIP %s, recvIP %s, recvPort %hd", metaObject()->className(), __FUNCTION__, fsize, qPrintable(senderIP), qPrintable(recvIP), recvPort);
 
 //	qDebug() << "SN_Launcher::launch() :" << type << filename << scenepos;
@@ -180,14 +338,16 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 
 
 
-
-
 	SN_BaseWidget *w = 0;
+
+
+
 	switch(type) {
 	case SAGENext::MEDIA_TYPE_IMAGE: {
 		//
 		// streaming from ui client. This isn't used.
 		//
+		/***
 		if ( fsize > 0 && !recvIP.isEmpty() && recvPort > 0) {
 
 			// fire file receiving function
@@ -198,11 +358,13 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 			if(_mediaStorage)
 				_mediaStorage->insertNewMediaToHash(filename);
 		}
+		***/
 
 		//
 		// from local storage
+		// Args needed : filename
 		//
-		else if ( !filename.isEmpty() ) {
+		if ( !filename.isEmpty() ) {
 
 //			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			w = new SN_PixmapWidget(filename, _globalAppId++, _settings);
@@ -216,145 +378,25 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 		break;
 	}
 
-		//
-		//
-		// This doesn't work !!! Don't use it.
-		//
-		//
-	case SAGENext::MEDIA_TYPE_VIDEO:
-	{
-		// Assumes that the remote side (senderIP) has maplyer (compiled with SAIL) already
-		// So, this is the case where media file is not in local disk
 
-		if (!filename.isEmpty() && !senderIP.isEmpty()) {
-			SN_SageStreamWidget *sws = new SN_SageStreamWidget(filename, _globalAppId++, _settings, senderIP, _rMonitor);
-			sws->appInfo()->setFileInfo(filename);
-			w = sws;
-
-			//
-			// add widget to the queue for launch(fsmThread *)
-			//
-			_sageWidgetQueue.push_back(sws);
-			_sageWidgetPosQueue.push_back(scenepos);
-
-			// invoke sail remotely
-			QProcess *proc1 = new QProcess(this);
-			QStringList args1;
-			//	args1 << "-xf" << senderIP << "\"cd $HOME/.sageConfig;$SAGE_DIRECTORY/bin/mplayer -vo sage -nosound -loop 0\"";
-			args1 << "-xf" << senderIP << "$SAGE_DIRECTORY/bin/mplayer" <<  "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" <<  "4" << filename;
-
-			sws->appInfo()->setCmdArgs(args1);
-
-			//
-			// this will invoke sail (outside of SAGENext) which will trigger fsManager::incomingSail(fsmThread *) signal which is connected to launch(fsmThread *)
-			//
-			proc1->start("ssh",  args1);
-			if (!proc1->waitForStarted(-1) ) {
-				qDebug() << "Failed to start mplayer process" << proc1->workingDirectory();
-				qDebug() << proc1->readAllStandardError();
-				qDebug() << proc1->readAllStandardOutput();
-			}
-			sws->appInfo()->setExecutableName("ssh");
-			sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_VIDEO);
-			sws->setSailAppProc(proc1);
-
-			//
-			///
-			//// launch(w) will be called in launch(fsmMessageThread *)
-			///  Because of this, scenepos in savedSession has no effect !!!
-			//
-			return sws;
-		}
-		break;
-	}
-
-
-	case SAGENext::MEDIA_TYPE_LOCAL_VIDEO:
-	{
-		// media file is in my disk
-		// mplayer is running in this machine
-//		qDebug("%s::%s() : MEDIA_TYPE_LOCAL_VIDEO %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
-
-		if ( ! filename.isEmpty() ) {
-			/**
-			  create sageWidget
-			*/
-			SN_SageStreamWidget *sws = new SN_SageStreamWidget(filename, _globalAppId++, _settings, "127.0.0.1", _rMonitor);
-			sws->appInfo()->setFileInfo(filename);
-			w = sws;
-
-			/**
-		      add the widget to the queue
-			*/
-			_sageWidgetQueue.push_back(sws);
-			_sageWidgetPosQueue.push_back(scenepos);
-
-			/**
-	          initiate SAIL process
-			*/
-			QProcess *proc = new QProcess(this);
-//			proc->setWorkingDirectory("$SAGE_DIRECTORY");
-//			proc->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
-
-			QStringList args;
-
-			//
-			// mplayer converts image frame to RGB24 using CPU
-			//
-//			args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" << "4" << "-identify" << "-vf" << "format=rgb24" << filename;
-
-			//
-			// with current mplayer-svn.zip, UYUV will be used
-			// conversion at the mplayer is cheaper
-			// and image is converted to RGB using shader program
-			//
-			args << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" << "4" << "-identify" << filename;
-
-			sws->appInfo()->setCmdArgs(args);
-
-			//
-			// this will invoke sail (outside of SAGENext) which will trigger fsManager::incomingSail(fsmThread *) signal which is connected to launch(fsmThread *)
-			//
-//			qDebug() << proc->environment();
-
-
-//			proc->setWorkingDirectory(qApp->applicationDirPath());
-//			qDebug() << qApp->applicationDirPath();
-
-
-			proc->start("mplayer",  args);
-
-			if (!proc->waitForStarted(-1)) {
-				qDebug() << "Failed to start mplayer process" << proc->workingDirectory();
-				qDebug() << proc->readAllStandardError();
-				qDebug() << proc->readAllStandardOutput();
-			}
-
-
-			sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_LOCAL_VIDEO);
-			sws->appInfo()->setExecutableName("mplayer");
-			sws->setSailAppProc(proc);
-
-			//
-			///
-			//// launch(w) will be called in launch(fsmMessageThread *)
-			//// Because of this, scenepos in savedSession has no effect !!! That's why _sageWidgetScenePosQueue has to be maintained
-			//
-			return sws;
-		}
-		break;
-	}
-
+	//
+	// QtWebKit module is needed for SN_WebWidget
+	// Args needed : filename
+	//
+	// filename is used for web url string
+	//
 	case SAGENext::MEDIA_TYPE_WEBURL: {
-		//
-		// filename is web url string
-		//
+
 		SN_WebWidget *ww = new SN_WebWidget(_globalAppId++, _settings, 0, Qt::Window);
 		w = ww;
 		ww->setUrl( filename );
 		break;
 	}
 
+		//
+		// poppler-qt4 library is needed for SN_PDFViewerWidget
+		// Args needed : filename
+		//
 	case SAGENext::MEDIA_TYPE_PDF: {
 		SN_PDFViewerWidget *pdfviewer = new SN_PDFViewerWidget(filename, _globalAppId++, _settings, 0, Qt::Widget);
 		w = pdfviewer;
@@ -368,6 +410,9 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 		break;
 	}
 
+		//
+		// Args needed : filename
+		//
 	case SAGENext::MEDIA_TYPE_PLUGIN: {
 //		qDebug() << "MEDIA_TYPE_PLUGIN" << filename;
 		SN_PluginInterface *dpi = _pluginMap.value(filename);
@@ -385,14 +430,14 @@ SN_BaseWidget * SN_Launcher::launch(int type, QString filename, const QPointF &s
 		}
 
 		break;
-	} // end MEDIA_TYPE_PLUGIN
+	}
 
 	} // end switch
 
 	return launch(w, scenepos);
 }
 
-SN_BaseWidget * SN_Launcher::launch(QString username, QString vncPasswd, int display, QString vncServerIP, int framerate, const QPointF &scenepos /*= QPointF()*/) {
+SN_BaseWidget * SN_Launcher::launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate, const QPointF &scenepos /*= QPointF()*/) {
 	//	qDebug() << "launch" << username << vncPasswd;
 	SN_BaseWidget *w = new SN_VNCClientWidget(_globalAppId++, vncServerIP, display, username, vncPasswd, framerate, _settings);
 	return launch(w, scenepos);
@@ -459,7 +504,7 @@ SN_BaseWidget * SN_Launcher::launch(const QStringList &fileList) {
 //			w = new PhononWidget(filename, globalAppId, settings);
 //			QFuture<void> future = QtConcurrent::run(qobject_cast<PhononWidget *>(w), &PhononWidget::threadInit, filename);
 
-			return launch((int)SAGENext::MEDIA_TYPE_LOCAL_VIDEO, filename);
+			return launchSageApp((int)SAGENext::MEDIA_TYPE_LOCAL_VIDEO, filename);
 		}
 
 		/*!
@@ -505,15 +550,10 @@ SN_BaseWidget * SN_Launcher::launch(const QStringList &fileList) {
 		}
 
 		/*!
-		  Ratko data
+		  Run Ratko data
 		  */
 		else if (filename.contains(rxRatkoData) ) {
-			//loadSavedScenario(filename);
-			/*
-			QFuture<void> future = QtConcurrent::run(this, &GraphicsViewMain::loadSavedScenario, filename);
-			*/
-//			RatkoDataSimulator *rdsThread = new RatkoDataSimulator(filename);
-//			rdsThread->start();
+			QtConcurrent::run(this, &SN_Launcher::launchRatkoUserStudyData, filename, QString("127.0.0.1"), QString());
 		}
 
 		else if ( QDir(filename).exists() ) {
@@ -654,6 +694,8 @@ void SN_Launcher::launchRatkoUserStudyData(const QString &file, const QString &s
 	// 2 - sagenext verion of checker (SAGENext internal)
 	int application;
 	QString program = "";
+	QString sageAppIp = "127.0.0.1";
+	int checkerfps = 24;
 
 	if ( srcaddr.isEmpty() && mediafile.isEmpty() ) {
 		// then it's SN_Checker
@@ -722,6 +764,9 @@ void SN_Launcher::launchRatkoUserStudyData(const QString &file, const QString &s
 #endif
 
 	while( scenarioFile.readLine(buff, sizeof(buff)) > 0 ) {
+
+		qApp->sendPostedEvents();
+
 		QString line(buff);
 		line = line.trimmed();
 
@@ -831,21 +876,35 @@ void SN_Launcher::launchRatkoUserStudyData(const QString &file, const QString &s
 				qDebug() << linenumber << ") -------------invoking new app";
 
 				switch(application) {
-				/*
 				case 0: { // checker
 					//
 					// Below launches checker manually
 					//
-					QStringList args;
-					args << "-xf" << srcaddr << "$SAGE_DIRECTORY/bin/checker" << "0" << QString::number(resx) << QString::number(resy) << "24";
-					QProcess *proc = new QProcess(this);
-					proc->start("ssh", args);
-					if (!proc->waitForStarted(-1)) {
-						qDebug() << "Failed to start checker process";
+					// assumes checker is in $PATH at the srcaddr
+
+					QString arg = "0 ";
+					arg.append(QString::number(resx)); arg.append(" ");
+					arg.append(QString::number(resy)); arg.append(" ");
+					arg.append(QString::number(checkerfps));
+//					bw = launchSageApp(SAGENext::MEDIA_TYPE_SAGE_STREAM, "", QPointF(left,top), sageAppIp, arg, "checker");
+
+					if ( ! QMetaObject::invokeMethod(this, "launchSageApp", Qt::QueuedConnection
+					                          , Q_ARG(int, (int)SAGENext::MEDIA_TYPE_SAGE_STREAM)
+					                          , Q_ARG(QString, "")
+					                          , Q_ARG(QPointF, QPointF(left,top))
+					                          , Q_ARG(QString, sageAppIp)
+					                          , Q_ARG(QString, arg)
+					                          , Q_ARG(QString, "checker")) ) {
+						qDebug() << "\n !! Failed to invoke sage app";
 					}
+					while(!theLastLaunched) {
+						::usleep(10000); // 10 msec
+					}
+					bw = theLastLaunched;
+					theLastLaunched = 0;
+
 					break;
 				}
-				*/
 				case 1: { // mplayer
 					//
 					// Below launches mplayer
@@ -855,14 +914,26 @@ void SN_Launcher::launchRatkoUserStudyData(const QString &file, const QString &s
 					break;
 				}
 				case 2: { // sagenext checker
-					bw = new SN_Checker(/* usePbo */ false, QSize(resx, resy), 24, 0, _settings, _rMonitor);
-					QMetaObject::invokeMethod(this, "launch", Qt::QueuedConnection, Q_ARG(void *, bw), Q_ARG(QPointF, QPointF(left,top)));
-//					launch(bw , QPointF(left, top));
-					qApp->sendPostedEvents();
+//					SN_CheckerGL_Old *cgw = new SN_CheckerGL_Old(/* usePbo */ false, QSize(resx, resy), 24, _globalAppId++, _settings, _rMonitor);
+					SN_CheckerGL *cgw = new SN_CheckerGL(GL_RGB, QSize(resx, resy), 24, _globalAppId++, _settings, _rMonitor);
+
+					/*
+					  The widget needs to have valid opengl context
+					  So move it to main GUI thread
+					  */
+					cgw->moveToThread(QApplication::instance()->thread());
+
+					bw = launch(cgw, QPointF(left, top));
+//					QMetaObject::invokeMethod(this, "launch", Qt::QueuedConnection, Q_ARG(void *, bw), Q_ARG(QPointF, QPointF(left,top)));
+//					while (! cgw->scene()) {
+//						::usleep(10000);
+//					}
+					QMetaObject::invokeMethod(cgw, "doInit", Qt::QueuedConnection);
 					break;
 				}
 				}
 
+				Q_ASSERT(bw);
 				appMap.insert(sageappid, bw); // sageappid in Ratko's data file and corresponding SN_BaseWidget pointer
 
 				qDebug() << linenumber << ") --------------sage app started";
@@ -879,8 +950,10 @@ void SN_Launcher::launchRatkoUserStudyData(const QString &file, const QString &s
 //			qDebug("%llu) CHANGE : App id %d, WxH (%d x %d), native (%d x %d), scale %.2f", linenumber, sageappid,width,height,resx,resy, (qreal)width / (qreal)resx);
 
 			// change geometry ( window move, window resize )
-			bw->setPos(left, top);
-			bw->setScale((qreal)width / (qreal)resx);
+			if (bw) {
+				bw->setPos(left, top);
+				bw->setScale((qreal)width / (qreal)resx);
+			}
 		}
 
 		//

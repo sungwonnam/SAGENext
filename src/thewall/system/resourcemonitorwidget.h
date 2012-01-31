@@ -1,8 +1,10 @@
 #ifndef RESOURCEMONITORWIDGET_H
 #define RESOURCEMONITORWIDGET_H
 
-#include <QtCore>
 #include <QtGui>
+#include "prioritygrid.h"
+
+extern PriorityGrid SAGENextPriorityGrid;
 
 /*
 #include <qwt_plot.h>

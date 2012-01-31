@@ -1,9 +1,7 @@
 #include "uiserver.h"
-//#include "../applications/base/basegraphicswidget.h"
 #include "../sagenextscene.h"
 #include "../sagenextlauncher.h"
 #include "../applications/base/basewidget.h"
-#include "../common/filereceivingrunnable.h"
 #include "../common/sn_sharedpointer.h"
 
 #include <QGraphicsScene>
@@ -130,6 +128,63 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
     case MSG_NULL: {
         break;
     }
+
+	case WIDGET_CHANGE: {
+		quint64 gaid = 0;
+
+		int sx, sy;
+		int rx, ry, rw, rh;
+		int z;
+
+		::sscanf(msg.constData(), "%d %llu %d %d %d %d %d %d %d", &code, &gaid, &sx, &sy, &rx, &ry, &rw, &rh, &z);
+		QSize nativesize(sx, sy);
+		QRect winrect(rx, ry, rw, rh);
+
+		qDebug() << "CHANGE" << gaid << nativesize << winrect;
+
+		SN_BaseWidget *bw = _scene->getUserWidget(gaid);
+		if (bw) {
+			//
+			// below assumes single SN_LayoutWidget covering entire scene
+			//
+			bw->setPos(rx, ry);
+//			bw->setPos(  bw->parentItem()->mapFromScene(rx,ry)  );
+
+			bw->setScale( (qreal)rw / (qreal)sx );
+		}
+		else {
+			qDebug() << "Couldn't find the app" << gaid << "\n";
+		}
+
+		break;
+	}
+	case WIDGET_REMOVE: {
+		quint64 gaid = 0;
+		::sscanf(msg.constData(), "%d %llu", &code, &gaid);
+		qDebug() << "REMOVE" << gaid;
+		SN_BaseWidget *bw = _scene->getUserWidget(gaid);
+		if (bw) {
+			bw->close();
+		}
+		else {
+			qDebug() << "Couldn't find the app" << gaid << "\n";
+		}
+		break;
+	}
+	case WIDGET_Z: {
+		quint64 gaid = 0;
+		qreal z = 0.0;
+		::sscanf(msg.constData(), "%d %llu %lf", &code, &gaid, &z);
+		qDebug() << "Z" << gaid << z;
+		SN_BaseWidget *bw = _scene->getUserWidget(gaid);
+		if (bw) {
+			bw->setZValue(z);
+		}
+		else {
+			qDebug() << "Couldn't find the app" << gaid << "\n";
+		}
+		break;
+	}
 
 		/*************
     case REG_FROM_UI: {

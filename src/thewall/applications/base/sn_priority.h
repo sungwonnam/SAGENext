@@ -3,34 +3,7 @@
 
 #include <QtCore>
 #include "basewidget.h"
-
-/*!
-  Information on application window
-  */
-typedef struct {
-	/*!
-	  The size (in # pixels) of the effective visible region of the application window
-	  */
-	quint64 evrsize;
-
-	/*!
-	  The size (in # pixels) of the application window
-	  */
-	quint64 winsize;
-
-	/*!
-	  Ratio of EVR to Window Size.
-	  This tells how much contents of mine is exposed
-	  */
-	quint16 r_evr_window;
-
-	/*!
-	  Ratio of EVR to Wall Size.
-	  This tells how much I am occupyig the wall.
-	  */
-	quint16 r_evr_wall;
-
-} EVRInfo;
+#include "../../system/prioritygrid.h"
 
 
 class SN_Priority : public QObject
@@ -108,6 +81,11 @@ protected:
 private:
 	SN_BaseWidget const *_widget;
 
+	static PriorityGrid _priorityGrid;
+
+	/*!
+	  Ratio of effective visible region to the window size
+	  */
 	int _evr_to_win;
 	int _evr_to_wall;
 

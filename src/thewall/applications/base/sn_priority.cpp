@@ -59,7 +59,7 @@ qreal SN_Priority::priority(qint64 currTimeEpoch) {
 
 	qreal visualfactor = 0.3 * (qreal)_evr_to_win +  0.7 * (qreal)_evr_to_wall;
 
-	_priority = visualfactor;
+	_priority = visualfactor + ipm();
 
 	return _priority;
 }
@@ -109,9 +109,15 @@ void SN_Priority::computeEvrInfo(void) {
 	QSizeF effectiveSize = _widget->size() * _widget->scale();
 	quint64 winsize = effectiveSize.width() * effectiveSize.height(); // quint64 : unsigned long long int
 
-	// ratio of EVR to window size (%)
-	_evr_to_win = (100 * evrsize) / winsize; // quint16 : unsigned short
+//	qDebug() << _widget->size() << _widget->scale();
 
-	Q_ASSERT(_widget->scene());
-	_evr_to_wall = (100 * evrsize) / (_widget->scene()->width() * _widget->scene()->height()); // quint16 : unsigned short
+	// ratio of EVR to window size (%)
+//	Q_ASSERT(winsize > 0);
+	if (winsize > 0) {
+		_evr_to_win = (100 * evrsize) / winsize; // quint16 : unsigned short
+	}
+
+	if (_widget->scene()) {
+		_evr_to_wall = (100 * evrsize) / (_widget->scene()->width() * _widget->scene()->height()); // quint16 : unsigned short
+	}
 }

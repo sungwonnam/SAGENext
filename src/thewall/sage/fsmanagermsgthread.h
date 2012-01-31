@@ -24,6 +24,11 @@ public:
 
 	inline quint64 sageAppId() const {return _sageAppId;}
 
+	inline QString sageAppName() const {return _sageAppName;}
+
+	inline void setGlobalAppId(quint64 v) {_globalAppId = v;}
+	quint64 globalAppId() const {return _globalAppId;}
+
 	/**
 	  * fsCore::checkClient()
 	  */
@@ -39,11 +44,17 @@ private:
 	int socket;
 	bool _end;
 
+	QString _sageAppName;
+
 	/*!
 	  This is determined at the fsManager and given to me
 	  */
 	const quint64 _sageAppId;
-//	const fsManagerParam *fsmParam;
+
+	/*!
+	  global add id of the basewidget
+	  */
+	quint64 _globalAppId;
 
 	/**
 	  * fsCore::parseMessage()

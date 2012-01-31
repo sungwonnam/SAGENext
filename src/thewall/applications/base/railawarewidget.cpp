@@ -52,7 +52,43 @@ SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, 
 	}
 }
 
+SN_RailawareWidget::~SN_RailawareWidget()
+{
+	if (_rMonitor) _rMonitor->removeSchedulableWidget(this);
 
+	if (_affInfo) {
+		//
+		// todo :  explain why
+		//
+		_affInfo->disconnect();
+		delete _affInfo;
+	}
+	if (affCtrlDialog) delete affCtrlDialog;
+
+	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
+}
+
+void SN_RailawareWidget::createAffInstances()
+{
+	if (!_affInfo)
+		_affInfo = new AffinityInfo(this);
+
+	if (!_affCtrlAction) {
+		_affCtrlAction = new QAction("Affinity Control", this);
+		_affCtrlAction->setEnabled(false);
+		_contextMenu->addAction(_affCtrlAction);
+		QObject::connect(_affCtrlAction, SIGNAL(triggered()), this, SLOT(showAffCtrlDialog()));
+	}
+
+	//	Q_ASSERT(_affInfo);
+	//	if ( rMonitor ) {
+	//		if ( connect(_affInfo, SIGNAL(cpuOfMineChanged(RailawareWidget *,int,int)), rMonitor, SLOT(updateAffInfo(RailawareWidget *,int,int))) ) {
+	//		}
+	//		else {
+	//			qCritical("RailawareWidget::%s() : connecting AffinityInfo::affInfoChanged() to ResourceMonitor::updateAffInfo() failed", __FUNCTION__);
+	//		}
+	//	}
+}
 
 int SN_RailawareWidget::setQuality(qreal newQuality) {
 
@@ -89,30 +125,6 @@ qreal SN_RailawareWidget::observedQualityAdjusted() {
 
 
 
-
-void SN_RailawareWidget::createAffInstances()
-{
-	if (!_affInfo)
-		_affInfo = new AffinityInfo(this);
-
-	if (!_affCtrlAction) {
-		_affCtrlAction = new QAction("Affinity Control", this);
-		_affCtrlAction->setEnabled(false);
-		_contextMenu->addAction(_affCtrlAction);
-		connect(_affCtrlAction, SIGNAL(triggered()), this, SLOT(showAffCtrlDialog()));
-	}
-
-	//	Q_ASSERT(_affInfo);
-	//	if ( rMonitor ) {
-	//		if ( connect(_affInfo, SIGNAL(cpuOfMineChanged(RailawareWidget *,int,int)), rMonitor, SLOT(updateAffInfo(RailawareWidget *,int,int))) ) {
-	//		}
-	//		else {
-	//			qCritical("RailawareWidget::%s() : connecting AffinityInfo::affInfoChanged() to ResourceMonitor::updateAffInfo() failed", __FUNCTION__);
-	//		}
-	//	}
-}
-
-
 void SN_RailawareWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
 	if ( _affInfo && _affCtrlAction ) {
@@ -143,19 +155,3 @@ void SN_RailawareWidget::showAffCtrlDialog() {
 }
 
 
-
-SN_RailawareWidget::~SN_RailawareWidget()
-{
-	if (_rMonitor) _rMonitor->removeSchedulableWidget(this);
-
-	if (_affInfo) {
-		//
-		// todo :  explain why
-		//
-		_affInfo->disconnect();
-		delete _affInfo;
-	}
-	if (affCtrlDialog) delete affCtrlDialog;
-
-	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
-}

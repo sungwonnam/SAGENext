@@ -1,8 +1,7 @@
 #ifndef SAGESTREAMWIDGET_H
 #define SAGESTREAMWIDGET_H
 
-#include "base/railawarewidget.h"
-//#include "common/imagedoublebuffer.h"
+#include "railawarewidget.h"
 
 #if defined(Q_OS_LINUX)
 //#define GLEW_STATIC 1
@@ -19,21 +18,20 @@
 
 #include <fcntl.h>
 
-#include "../sage/fsmanagermsgthread.h"
-#include "../common/commonitem.h"
+#include "../../sage/fsmanagermsgthread.h"
+#include "../../common/commonitem.h"
 
 #include <QFutureWatcher>
 #include <QMutex>
 #include <QWaitCondition>
 
+/**
+  below is for when sage app streams YUV
+  */
 #define GLSLVertexShader   1
 #define GLSLFragmentShader 2
-
-
-
 int GLSLreadShaderSource(char *fileName, GLchar **vertexShader, GLchar **fragmentShader);
 GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment);
-
 
 
 class DoubleBuffer;
@@ -42,23 +40,25 @@ class AffinityInfo;
 class QProcess;
 
 
-
 class SN_SageStreamWidget : public SN_RailawareWidget
 {
 	Q_OBJECT
+	Q_ENUMS(sagePixFmt)
 
 public:
 //	SageStreamWidget(const quint64 sageappid,QString appName, int protocol, int receiverPort, const QRect initRect, const quint64 globalAppId, const QSettings *s, ResourceMonitor *rm=0, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
 
-	SN_SageStreamWidget(QString filename, const quint64 globalappid, const QSettings *s, QString senderIP = "127.0.0.1", SN_ResourceMonitor *rm = 0, QGraphicsItem *parent = 0, Qt::WindowFlags wFlags = 0);
+	SN_SageStreamWidget(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm = 0, QGraphicsItem *parent = 0, Qt::WindowFlags wFlags = 0);
 
 	~SN_SageStreamWidget();
 
-//	quint16 getRatioToTheWall() const;
+	/*!
+	  pixel format enum from SAGE
+	  */
+	enum sagePixFmt {PIXFMT_NULL, PIXFMT_555, PIXFMT_555_INV, PIXFMT_565, PIXFMT_565_INV,
+		  PIXFMT_888, PIXFMT_888_INV, PIXFMT_8888, PIXFMT_8888_INV, PIXFMT_RLE, PIXFMT_LUV,
+		  PIXFMT_DXT, PIXFMT_YUV};
 
-//	inline int getImageSize() const { return imageSize; }
-//	inline AppInfo * getAppInfoPtr() { return appInfo; }
-//	inline PerfMonitor * getPerfMonPtr() { return perfMon; }
 
 	inline quint64 sageAppId() const {return _sageAppId;}
 
@@ -71,12 +71,21 @@ public:
 	  */
 	inline bool isWaitingSailToConnect() const {return _readyForStreamer;}
 
+	/**
+	  fsManager creates fsManagerMsgThread instance once a SAIL connected
+	  Launcher attaches fsManagerMsgThread to sageWidget.
+
+	  Once this is set, remaining handshaking should be done followed by pixel streaming
+	  */
+	inline void setFsmMsgThread(fsManagerMsgThread *thread) {
+		_fsmMsgThread = thread;
+		_fsmMsgThread->start();
+	}
+
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-//	void resizeEvent(QGraphicsSceneResizeEvent *event);
 
-private:
-	const QSettings *_settings;
+
 
 	/*!
 	  The corresponding fsManager msg thread for this widget.
@@ -152,13 +161,6 @@ private:
 	int streamsocket;
 
 
-	/*!
-	  pixel format enum from SAGE
-	  */
-	enum sagePixFmt {PIXFMT_NULL, PIXFMT_555, PIXFMT_555_INV, PIXFMT_565, PIXFMT_565_INV,
-		  PIXFMT_888, PIXFMT_888_INV, PIXFMT_8888, PIXFMT_8888_INV, PIXFMT_RLE, PIXFMT_LUV,
-		  PIXFMT_DXT, PIXFMT_YUV};
-
 	int getPixelSize(sagePixFmt pixfmt);
 
 	/**
@@ -220,38 +222,10 @@ private:
 	  */
 	GLhandleARB _shaderProgHandle;
 
-
-	SN_PixmapButton *_pauseButton;
-	SN_PixmapButton *_playButton;
-	SN_PixmapButton *_fforwardButton;
-	SN_PixmapButton *_rewindButton;
-
-signals:
-
 public slots:
 	/**
-	  fsManager creates fsManagerMsgThread instance once a SAIL connected
-	  Launcher attaches fsManagerMsgThread to sageWidget.
-
-	  Once this is set, remaining handshaking should be done followed by pixel streaming
-	  */
-	void setFsmMsgThread(fsManagerMsgThread *thread) {
-		_fsmMsgThread = thread;
-		_fsmMsgThread->start();
-	}
-
-	/**
-	  This slot is invoked in fsManagerMsgThread::parseMessage().
-	  It creates image buffer and pixel streaming socket is created in this function.
-
-	  receiverThread is created and started in here
-	  */
-//	int initialize(quint64 sageappid, QString appname, QRect initrect, int protocol, int port);
-
-
-	/**
 	  This slot runs waitForPixelStreamerConnection() in separate thread because ::accept() will block in that slot.
-	  QFuture _streamerConnected is the future of this slot.
+	  fsManagerMsgThread invokes this slot. QFuture _streamerConnected is the future of this slot.
 	  */
 	void doInitReceiver(quint64 sageappid, const QString &appname, const QRect &initrect, int protocol, int port);
 
@@ -266,6 +240,15 @@ public slots:
 	  This slot starts pixel receiving thread and is called after waitForPixelStreamerConnection() finished
 	  */
 	void startReceivingThread();
+
+
+	/**
+	  This slot is invoked in fsManagerMsgThread::parseMessage().
+	  It creates image buffer and pixel streaming socket is created in this function.
+
+	  receiverThread is created and started in here
+	  */
+//	int initialize(quint64 sageappid, QString appname, QRect initrect, int protocol, int port);
 
 	/*!
 	  This slot is called (Qt::QueuedConnection) by pixel receiving thread whenever the thread received a frame.
@@ -285,31 +268,7 @@ public slots:
 	  texture update with previous buffer
 	  */
 	void schedulePboUpdate();
-
-
-	/*!
-	  Wake waitCondition
-	  */
-	void scheduleReceive();
-
-
-	void pauseMplayer(int priotiry);
-	void playMplayer(int priotiry);
-	void fforwardMplayer(int priotiry);
-	void rewindMplayer(int priotiry);
 };
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #endif // SAGESTREAMWIDGET_H

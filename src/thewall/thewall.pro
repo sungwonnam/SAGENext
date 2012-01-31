@@ -1,7 +1,7 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-04-08T11:36:20
 # -------------------------------------------------
-QT += network webkit opengl
+QT += network opengl webkit
 TARGET = sagenext
 TEMPLATE = app
 
@@ -9,6 +9,14 @@ TEMPLATE = app
 #CONFIG += thread
 #CONFIG += copy_dir_files
 
+#
+# QtWebKit is built separately from WebKit source code using Tools/Scripts/build-webkit --qt --3d-canvas --3d-rendering --accelerated-2d-canvas
+#
+#WEBKITPATH = $$(HOME)/Downloads/WebKit_SVN/WebKitBuild/Release
+#INCLUDEPATH += $$WEBKITPATH/include/QtWebKit
+#LIBS += -L$$WEBKITPATH/lib -lQtWebKit
+
+LIBS += -lGL -lGLU
 
 # If unix (linux, mac)
 # use pkg-config
@@ -157,8 +165,6 @@ SOURCES += \
         sage/sageLegacy.cpp \
         applications/webwidget.cpp \
         applications/pixmapwidget.cpp \
-        applications/sagestreamwidget.cpp \
-        applications/sagepixelreceiver.cpp \
         applications/mediabrowser.cpp \
         applications/vncwidget.cpp \
 		applications/pdfviewerwidget.cpp \
@@ -166,6 +172,8 @@ SOURCES += \
         applications/base/appinfo.cpp \
         applications/base/basewidget.cpp \
         applications/base/railawarewidget.cpp \
+applications/base/sagestreamwidget.cpp \
+applications/base/sagepixelreceiver.cpp \
         applications/base/affinityinfo.cpp \
         applications/base/affinitycontroldialog.cpp \
         sagenextscene.cpp \
@@ -173,8 +181,11 @@ SOURCES += \
         sagenextlauncher.cpp \
         settingstackeddialog.cpp \
     common/sn_layoutwidget.cpp \
-#    applications/sn_checker.cpp \
-    common/sn_sharedpointer.cpp
+    applications/sn_checker.cpp \
+    common/sn_sharedpointer.cpp \
+    applications/base/sn_priority.cpp \
+    system/prioritygrid.cpp \
+    applications/sn_sagestreammplayer.cpp
 #    common/sn_drawingwidget.cpp
 #    applications/sn_pboexample.cpp
 
@@ -185,36 +196,41 @@ HEADERS += \
         common/commondefinitions.h \
         common/imagedoublebuffer.h \
 #        common/thumbnailthread.h \
+    common/sn_layoutwidget.h \
+    common/sn_sharedpointer.h \
         uiserver/uiserver.h \
         uiserver/uimsgthread.h \
 		uiserver/fileserver.h \
         system/resourcemonitor.h \
         system/resourcemonitorwidget.h \
         system/sagenextscheduler.h \
+system/prioritygrid.h \
         sage/fsManager.h \
         sage/fsmanagermsgthread.h \
         sage/sagecommondefinitions.h \
         applications/webwidget.h \
         applications/pixmapwidget.h \
-        applications/sagestreamwidget.h \
-        applications/sagepixelreceiver.h \
         applications/vncwidget.h \
 		applications/pdfviewerwidget.h \
+applications/mediabrowser.h \
+applications/sn_checker.h \
         applications/base/appinfo.h \
         applications/base/perfmonitor.h \
         applications/base/affinityinfo.h \
         applications/base/affinitycontroldialog.h \
         applications/base/basewidget.h \
         applications/base/railawarewidget.h \
+applications/base/sagestreamwidget.h \
+applications/base/sagepixelreceiver.h \
+applications/base/sn_priority.h \
         sagenextscene.h \
         sagenextviewport.h \
         sagenextlauncher.h \
         mediastorage.h \
-    applications/mediabrowser.h \
     settingstackeddialog.h \
-    common/sn_layoutwidget.h \
-#    applications/sn_checker.h \
-    common/sn_sharedpointer.h
+    applications/sn_sagestreammplayer.h
+
+
 #    common/sn_drawingwidget.h \
 #    applications/sn_pboexample.h
 

@@ -40,10 +40,19 @@ class PriorityGrid : public QObject
 {
 	Q_OBJECT
 public:
+	explicit PriorityGrid(QObject *parent=0) : QObject(parent), _thescene(0), _isEnabled(false) {}
+
 	/*!
 	  rectSize defines the size of each rectangle in the grid
 	  */
 	explicit PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject *parent = 0);
+
+	inline void setScene(QGraphicsScene *s) {_thescene = s;}
+
+	inline void setRectSize(const QSize &s) {_rectSize = s;}
+	inline void setRectSize(int w, int h) {_rectSize = QSize(w, h);}
+
+	inline bool isEnabled() const {return _isEnabled;}
 
 	/*!
 	  An application adds its priority to the rects intersects with its window
@@ -59,6 +68,15 @@ private:
 	QVector<qreal> _priorityVec;
 
 	QGraphicsScene *_thescene;
+
+	QSize _rectSize;
+
+	/*!
+	  false until buildRectangle() returns
+	  */
+	bool _isEnabled;
+
+	int buildRectangles();
 
 signals:
 	

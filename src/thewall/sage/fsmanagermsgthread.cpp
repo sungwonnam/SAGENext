@@ -2,7 +2,7 @@
 //#include "sage/fsManager.h"
 //#include "sage/sageLegacy.h"
 
-#include "../applications/sagestreamwidget.h"
+#include "../applications/base/sagestreamwidget.h"
 #include "../applications/base/affinityinfo.h"
 
 #include <QStringList>
@@ -307,7 +307,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                         /**
                          starts SageStreamWidget
                         **/
-                        QString appName(appn);
+						_sageAppName = QString(appn);
 
                         // fsm stream base port is fsm port + 3. This is set in settingsDialog::onsavebuttonclicked()
                         int streamPort = _settings->value("general/fsmstreambaseport", 20005).toInt() + _sageAppId;
@@ -324,7 +324,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
 //						qDebug() << "fsmsgthread invoking doInitReceiver() for sage app" << sageAppId << "streamport" << streamPort << QTime::currentTime().toString("hh:mm:ss.zzz");
                         QMetaObject::invokeMethod(_sageWidget, "doInitReceiver", Qt::QueuedConnection,
                                                                           Q_ARG(quint64, _sageAppId),
-                                                                          Q_ARG(QString, appName),
+                                                                          Q_ARG(QString, _sageAppName),
                                                                           Q_ARG(QRect, initRect),
                                                                           Q_ARG(int, protocol),
                                                                           Q_ARG(int, streamPort));
