@@ -22,7 +22,10 @@
 #include <OpenGL/glext.h>
 #endif
 
-
+/*!
+  This class uses LibVNCServer library to receive
+  image from a vncserver.
+  */
 class SN_VNCClientWidget : public SN_RailawareWidget
 {
 	Q_OBJECT
@@ -53,16 +56,34 @@ private:
 		  */
 		GLuint _texid;
 
+		/*!
+		  We're going to do doublebuffering with pbo
+		  */
 		GLuint _pboIds[2];
 
+		/*!
+		  true if the OpenGL system has PBO extension
+		  */
 		bool _usePbo;
 
+		/*!
+		  thread will wait on this condition
+		  */
+		bool __bufferMapped;
+
+		unsigned char *_mappedBufferPtr;
+
+		bool __firstFrame;
+
+		/*!
+		  The current pbo buffer array (_pboIds[]) index
+		  we're going to WRITE
+		  */
 		int _pboBufIdx;
 
-//		QImage _imageForDrawing;
 
         /*!
-          paint() will draw this
+          paint() will draw this if OpenGL isn't enabled
           */
         QPixmap _pixmapForDrawing;
 
@@ -83,21 +104,12 @@ private:
         QFuture<void> future;
 
 
-		/*!
-		  Double OpenGL buffers. This buffers are created in the server side.
-		  So writing to these buffers is DMA to GPU memory
-		  */
-		/*
-		QGLBuffer **_glbuffers;
-		int initGLBuffers(int bytecount);
-
-		QGLWidget *_myGlWidget;
-		QGLWidget *_viewportWidget;
-
-		bool _useGLBuffer;
-*/
+		bool initPboMutex();
+		pthread_mutex_t *_pbomutex;
+		pthread_cond_t *_pbobufferready;
 
 
+		void initGL(bool usepbo);
 
 		static rfbCredential * getCredential(struct _rfbClient *client, int credentialType);
 
@@ -136,5 +148,40 @@ public slots:
           */
         void scheduleReceive() {}
 };
+
+
+
+/***
+class VNCClientThread : public QThread {
+	Q_OBJECT
+public:
+	VNCClientThread(rfbClient *client, QObject *parent=0);
+	~VNCClientThread();
+
+	inline void setPerfMon(PerfMonitor *pm) {_perfMon = pm;}
+
+	inline void setRgbBuffer(unsigned char *b) {_rgbBuffer = b;}
+
+private:
+	rfbClient *_vncclient;
+
+	PerfMonitor *_perfMon;
+
+	unsigned char *_rgbBuffer;
+
+protected:
+	void run();
+
+signals:
+	void frameReady();
+
+	void vncError();
+
+public slots:
+	void terminateThread();
+
+	void receiveFrame();
+};
+**/
 
 #endif // VNCWIDGET_H

@@ -24,14 +24,13 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	, _image(0)
     , _texid(-1)
     , _usePbo(true)
+    , __bufferMapped(false)
+    , _mappedBufferPtr(0)
+    , __firstFrame(true)
     , _pboBufIdx(0)
 	, _end(false)
 	, _framerate(frate)
     , _buttonMask(0)
-//    , _glbuffers(0)
-//    , _myGlWidget(0)
-//    , _viewportWidget(0)
-//    , _useGLBuffer(false)
 {
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
@@ -110,66 +109,21 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 		_perfMon->setAdjustedFps( (qreal)_framerate );
 	}
 
-	_usePbo = s->value("graphics/openglpbo", false).toBool();
+//	_usePbo = s->value("graphics/openglpbo", false).toBool();
+	if (QGLPixelBuffer::hasOpenGLPbuffers()) {
+		_usePbo = true;
+	}
+	else {
+		_usePbo = false;
+	}
 
+	/*
+	  This is to make sure OpenGL related codes to run after the widget is added to the scene.
+	  A widget can have access to valid OpenGL context only after it is added to the scene that has OpenGL viewport.
+	  */
 	QTimer::singleShot(10, this, SLOT(startThread()));
 }
 
-
-void SN_VNCClientWidget::startThread() {
-	/***********
-	//
-	// QGLContext is accessible from this widget ONLY after the constructor returns
-	//
-	QGLContext *context = const_cast<QGLContext *>(QGLContext::currentContext());
-	if (context && context->isValid())
-		 _viewportWidget = static_cast<QGLWidget *>(context->device());
-
-	if (_viewportWidget && _viewportWidget->paintEngine()->type() == QPaintEngine::OpenGL2) {
-//		qDebug() << "\n\nOpenGL viewport available\n\n";
-
-		_useGLBuffer = true;
-	}
-	else {
-		// this is going to be the pixel buffer when OpenGL isn't available
-		_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
-		_useGLBuffer = false;
-	}
-	************/
-
-
-	if (_useOpenGL) {
-
-		glGenTextures(1, &_texid);
-		glBindTexture(GL_TEXTURE_2D, _texid);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size().width(), size().height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, (void *)0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		_pboIds[0] = -1;
-		_pboIds[1] = -1;
-
-		if (_usePbo) {
-
-			qDebug() << "VNCWidget : OpenGL pbuffer extension is present. Using PBO";
-			glGenBuffersARB(2, _pboIds);
-
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
-			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
-			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-		}
-	}
-
-	// starting thread.
-	future = QtConcurrent::run(this, &SN_VNCClientWidget::receivingThread);
-}
 
 SN_VNCClientWidget::~SN_VNCClientWidget() {
 	_end = true;
@@ -188,71 +142,67 @@ SN_VNCClientWidget::~SN_VNCClientWidget() {
 
 	if (_usePbo) {
 		glDeleteBuffersARB(2, _pboIds);
-	}
 
-	/*
-	if (_glbuffers) {
-		for (int i=0; i<2; i++) {
-			_glbuffers[i]->release();
-			_glbuffers[i]->destroy();
-			delete _glbuffers[i];
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+
+		if (_pbobufferready) {
+			__bufferMapped = true;
+			pthread_cond_signal(_pbobufferready);
 		}
-		free(_glbuffers);
-	}
+		if (_pbomutex) {
+			pthread_mutex_unlock(_pbomutex);
+			//		pthread_mutex_destroy(_mutex);
+		}
 
-	if (_myGlWidget) {
-		delete _myGlWidget;
+		free(_pbobufferready);
+		free(_pbomutex);
 	}
-	*/
 }
 
-/*
-int SN_VNCClientWidget::initGLBuffers(int bytecount) {
-	if (!_viewportWidget) return -1;
+void SN_VNCClientWidget::initGL(bool usepbo) {
+	glGenTextures(1, &_texid);
+	glBindTexture(GL_TEXTURE_2D, _texid);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size().width(), size().height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, (void *)0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
-	if (_viewportWidget->paintEngine()->type() != QPaintEngine::OpenGL2) {
-		qWarning("%s::%s() : OpenGL2 paintEngine is not available");
-		return -1;
+	_pboIds[0] = -1;
+	_pboIds[1] = -1;
+
+	if (usepbo) {
+//		qDebug() << "VNCWidget : OpenGL pbuffer extension is present. Using PBO";
+		glGenBuffersARB(2, _pboIds);
+
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
+		glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
+		glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+
+		initPboMutex();
 	}
 
-	_myGlWidget = new QGLWidget(QGLFormat::defaultFormat(), 0, _viewportWidget);
-	_myGlWidget->makeCurrent();
-
-	//
-	// init glbuffer (at the GLServer)
-	//
-	_glbuffers = (QGLBuffer **)malloc(sizeof(QGLBuffer *) * 2);
-	for (int i=0; i<2; i++) {
-		_glbuffers[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
-		_glbuffers[i]->setUsagePattern(QGLBuffer::StreamDraw);
-
-		//
-		// glGenBufferARB
-		//
-		if (!_glbuffers[i]->create()) {
-			qDebug() << "glbuffer->create() failed";
-			return -1;
-		}
-
-		//
-		// glBindBufferARB
-		//
-		if (!_glbuffers[i]->bind()) {
-			qDebug() << "glbuffer->bind() failed";
-			return -1;
-		}
-
-		//
-		// glBufferDataARB
-		//
-		_glbuffers[i]->allocate(bytecount);
-
-		_glbuffers[i]->release();
-	}
-
-	return 0;
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
-*/
+
+void SN_VNCClientWidget::startThread() {
+	if (_useOpenGL) {
+		initGL(_usePbo);
+	}
+
+	// starting the thread.
+	// if _usePbo then the thread will wait on condition __bufferMapped
+	future = QtConcurrent::run(this, &SN_VNCClientWidget::receivingThread);
+
+	scheduleUpdate();
+}
+
+
 
 void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 	if (_perfMon) {
@@ -317,8 +267,6 @@ void SN_VNCClientWidget::scheduleUpdate() {
         qDebug("VNCClientWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
 #endif
 */
-
-
 	_perfMon->getConvTimer().start();
 
 	if (_useOpenGL && !_usePbo) {
@@ -331,10 +279,10 @@ void SN_VNCClientWidget::scheduleUpdate() {
 		//glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, _texid);
 
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+//		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+//		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 		//
 		// Note that it's QImage::Format_RGB888 we're getting from SAGE app
@@ -348,23 +296,70 @@ void SN_VNCClientWidget::scheduleUpdate() {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 	else if (_useOpenGL && _usePbo) {
+		//
+		// flip the buffer
+		//
 		_pboBufIdx = (_pboBufIdx + 1) % 2;
 		int nextbufidx = (_pboBufIdx + 1) % 2;
 
-		glBindTexture(GL_TEXTURE_2D, _texid);
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vncclient->width, vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+		//
+		// unmap previous buffer
+		//
+		if (!__firstFrame) {
+//			qDebug() << "unmap buffer" << _pboBufIdx;
+			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
+			if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
+				qDebug() << "SN_Checker::schedulePboUpdate() : glUnmapBufferARB() failed";
+			}
+		}
+		else {
+			__firstFrame = false;
+		}
 
 
-
+		//
+		// map the other buffer
+		//
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
 		glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
 		GLubyte *ptr = (GLubyte *)glMapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY_ARB);
 		if (ptr) {
-			::memcpy(ptr, vncclient->frameBuffer, _appInfo->frameSizeInByte());
-			glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB);
+			//
+			// signal thread
+			//
+			pthread_mutex_lock(_pbomutex);
+
+			__bufferMapped = true;
+
+			_mappedBufferPtr = ptr;
+
+//			qDebug() << "buffer" << nextbufidx << "mapped" << _mappedBufferPtr;
+			pthread_cond_signal(_pbobufferready);
+
+			pthread_mutex_unlock(_pbomutex);
 		}
+
+
+
+		//
+		// bind the texture
+		//
+		glBindTexture(GL_TEXTURE_2D, _texid);
+		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vncclient->width, vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+		update();
+
+
+
+		//
+		// reset OpenGL state
+		//
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		return;
 	}
 	else {
 		if (!_image || _image->isNull()) {
@@ -395,22 +390,26 @@ void SN_VNCClientWidget::receivingThread() {
 #endif
 	}
 
-/*
-	if (_useGLBuffer) {
-		if ( initGLBuffers(_appInfo->frameSizeInByte()) != 0 ) {
-			_useGLBuffer = false;
-			_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
-			_texid = 0;
-			_viewportWidget = 0;
-		}
-	}
-	QGLBuffer *currGLBuf = 0;
-	int bufidx = 0;
-	unsigned char *bufptr = 0; // I will copy to this buffer
-*/
-
 	while (!_end) {
-//		if (_perfMon) gettimeofday(&lats, 0);
+
+
+
+		if ( _usePbo) {
+			Q_ASSERT(_pbomutex);
+			Q_ASSERT(_pbobufferready);
+
+			pthread_mutex_lock(_pbomutex);
+
+			while(!__bufferMapped) {
+//				qDebug() << "thread waiting for signal";
+				pthread_cond_wait(_pbobufferready, _pbomutex);
+			}
+
+			__bufferMapped = false; // reset the flag
+		}
+
+
+
 
 		// sleep to ensure desired fps
 		qint64 now = 0;
@@ -429,7 +428,7 @@ void SN_VNCClientWidget::receivingThread() {
 				break;
 			}
 
-            int i = WaitForMessage(vncclient, 100000); // 100 microsecond == 0.1 msec
+            int i = WaitForMessage(vncclient, 1000000); // 1000 microsecond == 1 msec
 			if ( i<0 ) {
 				rfbClientLog("VNC error. quit\n");
 				_end = true;
@@ -461,15 +460,12 @@ void SN_VNCClientWidget::receivingThread() {
 		if (_perfMon)
 			gettimeofday(&lats, 0);
 
+
 		unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
 
-		if ( _useOpenGL) {
-			// do nothing
-		}
-		else {
+		if (!_useOpenGL) {
 			QRgb *rgbbuffer = (QRgb *)(_image->scanLine(0)); // A RGB32 quadruplet on the format 0xffRRGGBB, equivalent to an unsigned int.
 			Q_ASSERT(vncpixels && rgbbuffer);
-
 				/*
 	  for (int k =0 ; k<vncclient->width * vncclient->height; k++) {
 	   // QImage::Format_RGB32 format : 0xffRRGGBB
@@ -479,17 +475,36 @@ void SN_VNCClientWidget::receivingThread() {
 	   rgbbuffer[4*k + 0] = vncpixels[ 4*k + 2]; // blue
 
 	   // QImage::Format_RGB888
-	//			buffer[3*k + 0] = vncpixels[ 4*k + 0];
-	//			buffer[3*k + 1] = vncpixels[ 4*k + 1];
-	//			buffer[3*k + 2] = vncpixels[ 4*k + 2];
+	//buffer[3*k + 0] = vncpixels[ 4*k + 0];
+	//buffer[3*k + 1] = vncpixels[ 4*k + 1];
+	//buffer[3*k + 2] = vncpixels[ 4*k + 2];
 	  }
 	  */
 			for (int i=0; i<vncclient->width * vncclient->height; i++) {
 				rgbbuffer[i] = qRgb(vncpixels[4*i+0], vncpixels[4*i+1], vncpixels[4*i+2]);
 			}
 		}
+		else {
+			// If OpenGL then vnc pixels will be writen to GPU in scheduleUpdate
+
+			if (_usePbo) {
+				Q_ASSERT(_mappedBufferPtr);
+//				qDebug() << "thread writing pixel to buffer" << _mappedBufferPtr;
+				::memcpy(_mappedBufferPtr, vncpixels, _appInfo->frameSizeInByte());
+
+				Q_ASSERT(_pbomutex);
+				pthread_mutex_unlock(_pbomutex);
+			}
+		}
+
+
+
 
 		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
+
+
+
+
 
 		if (_perfMon) {
 			gettimeofday(&late, 0);
@@ -599,6 +614,28 @@ void SN_VNCClientWidget::update_func(rfbClient* client,int x,int y,int w,int h)
         //rfbClientLog("Received an update for %d,%d,%d,%d.\n",x,y,w,h);
 }
 
+bool SN_VNCClientWidget::initPboMutex() {
+	if (!_usePbo) return false;
+
+	_pbomutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+	if ( pthread_mutex_init(_pbomutex, 0) != 0 ) {
+		perror("pthread_mutex_init");
+		return false;
+	}
+	if ( pthread_mutex_unlock(_pbomutex) != 0 ) {
+		perror("pthread_mutex_unlock");
+		return false;
+	}
+
+	_pbobufferready = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
+	if ( pthread_cond_init(_pbobufferready, 0) != 0 ) {
+		perror("pthread_cond_init");
+		return false;
+	}
+
+	return true;
+}
+
 /*
 void SN_VNCClientWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier mod) {
 	Q_UNUSED(btn);
@@ -647,4 +684,169 @@ void SN_VNCClientWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 	_buttonMask &= ~(rfbButton4Mask | rfbButton5Mask);
 }
 
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+VNCClientThread::VNCClientThread(rfbClient *client, QObject *parent)
+    : QThread(parent)
+    , _vncclient(client)
+    , _perfMon(0)
+    , _rgbBuffer(0)
+{
+
+}
+
+VNCClientThread::~VNCClientThread() {
+
+}
+
+void VNCClientThread::receiveFrame() {
+
+
+	while (!_end) {
+		qint64 now = 0;
+
+#if QT_VERSION < 0x040700
+        struct timeval tv;
+        gettimeofday(&tv, 0);
+        now = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#else
+        now = QDateTime::currentMSecsSinceEpoch();
+#endif
+        qint64 time = 0;
+		forever {
+			if (!vncclient) {
+				_end = true;
+				break;
+			}
+
+            int i = WaitForMessage(vncclient, 100000); // 100 microsecond == 0.1 msec
+			if ( i<0 ) {
+				rfbClientLog("VNC error. quit\n");
+				_end = true;
+				break;
+			}
+
+			if (i) {
+				if(!HandleRFBServerMessage(vncclient)) {
+					rfbClientLog("HandleRFBServerMessage quit\n");
+					_end = true;
+					break;
+				}
+			}
+
+#if QT_VERSION < 0x040700
+            struct timeval tv;
+            gettimeofday(&tv, 0);
+            time = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#else
+            time = QDateTime::currentMSecsSinceEpoch();
+#endif
+            if ( (time-now) >= (1000/_framerate) ) break;
+
+		}
+		if (_end) break;
+
+
+
+		if (_perfMon)
+			gettimeofday(&lats, 0);
+
+		unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
+
+		if ( _useOpenGL) {
+			// do nothing
+		}
+		else {
+			QRgb *rgbbuffer = (QRgb *)(_image->scanLine(0)); // A RGB32 quadruplet on the format 0xffRRGGBB, equivalent to an unsigned int.
+			Q_ASSERT(vncpixels && rgbbuffer);
+
+			for (int i=0; i<vncclient->width * vncclient->height; i++) {
+				rgbbuffer[i] = qRgb(vncpixels[4*i+0], vncpixels[4*i+1], vncpixels[4*i+2]);
+			}
+		}
+
+		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
+
+		if (_perfMon) {
+			gettimeofday(&late, 0);
+#if defined(Q_OS_LINUX)
+			getrusage(RUSAGE_THREAD, &ru_end);
+#elif defined(Q_OS_MAC)
+			getrusage(RUSAGE_SELF, &ru_end);
+#endif
+			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001); // second
+
+			// calculate
+			_perfMon->updateObservedRecvLatency(vncclient->width * vncclient->height, networkrecvdelay, ru_start, ru_end);
+
+			ru_start = ru_end;
+			lats = late;
+		}
+
+
+	} // end of while (_end)
+
+	QMetaObject::invokeMethod(this, "close", Qt::QueuedConnection);
+}
+
+void VNCClientThread::run() {
+
+	struct timeval lats, late;
+	struct rusage ru_start, ru_end;
+
+	if(_perfMon) {
+		_perfMon->getRecvTimer().start(); //QTime::start()
+
+#if defined(Q_OS_LINUX)
+		getrusage(RUSAGE_THREAD, &ru_start); // that of calling thread. Linux specific
+#elif defined(Q_OS_MAC)
+		getrusage(RUSAGE_SELF, &ru_start);
+#endif
+	}
+
+
+	exec();
+}
+
+void VNCClientThread::terminateThread() {
+	quit();
+}
 */
