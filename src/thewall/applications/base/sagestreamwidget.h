@@ -85,6 +85,11 @@ public:
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
+	/*!
+	  Override virtual function temporarily to display priority related info
+	  */
+	void updateInfoTextItem();
+
 
 
 	/*!

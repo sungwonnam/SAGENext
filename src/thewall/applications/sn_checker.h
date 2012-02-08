@@ -149,7 +149,9 @@ public slots:
 
 
 
-
+/*!
+  OpenGL PBO
+  */
 class SN_CheckerGLPBO : public SN_Checker {
 	Q_OBJECT
 public:

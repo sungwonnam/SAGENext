@@ -2,22 +2,24 @@
 #include "common/commondefinitions.h"
 #include "applications/base/basewidget.h"
 
-PriorityGrid::PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject *parent)
+SN_PriorityGrid::SN_PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject *parent)
     : QObject(parent)
+    , _dimx(0)
+    , _dimy(0)
     , _thescene(scene)
     , _rectSize(rectSize)
     , _isEnabled(false)
 {
+	buildRectangles();
 }
 
-int PriorityGrid::buildRectangles() {
+void SN_PriorityGrid::buildRectangles() {
 	Q_ASSERT(_thescene);
 	Q_ASSERT(!_rectSize.isEmpty());
 
 	int wallwidth = _thescene->width();
 	int wallheight = _thescene->height();
 
-	int dimx,dimy;
 	if ( wallwidth % _rectSize.width() != 0 ) {
 		qWarning() << "PriorityGrid() : wall width isn't mutiple of rect width";
 		deleteLater();
@@ -27,43 +29,46 @@ int PriorityGrid::buildRectangles() {
 		deleteLater();
 	}
 	else {
-		dimx = wallwidth / _rectSize.width();
-		dimy = wallheight / _rectSize.height();
+		_dimx = wallwidth / _rectSize.width();
+		_dimy = wallheight / _rectSize.height();
 	}
 
 //	ROIRect rects[dimx*dimy];
-	QRect *rects = new QRect[dimx*dimy];
+	QRect *rects = new QRect[_dimx * _dimy];
 
 	int row = 0;
 	int col = 0;
-	for (int i=0; i<dimx*dimy; i++) {
+	for (int i=0; i<_dimx*_dimy; i++) {
 
 		int posx = col * _rectSize.width();
 		int posy = row * _rectSize.height();
 
+		_priorityRawVec.push_back(0.0);
 		_priorityVec.push_back(0.0);
 		rects[i] = QRect(posx, posy, _rectSize.width(), _rectSize.height());
 
 		++col;
-		if ( col == dimx ) {
+		if ( col == _dimx ) {
 			// move to next row
 			col = 0;
 			++row;
 		}
 	}
 
-	_theSceneRegion.setRects(rects, dimx*dimy);
+	_theSceneRegion.setRects(rects, _dimx * _dimy);
 
 	_isEnabled = true;
 }
 
-void PriorityGrid::updatePriorities() {
+void SN_PriorityGrid::updatePriorities() {
 	const QVector<QRect> rects = _theSceneRegion.rects();
+
+	// this is to normalize aggregate value
+	qreal currentMax = 0.0;
 
 	for (int i=0; i<_theSceneRegion.rectCount(); i++) {
 
 		const QRect rect = rects.at(i);
-		_priorityVec[i] = 0.0; // reset priority of this rect
 
 		//
 		// For all basewidget that intersects with current rect
@@ -74,16 +79,65 @@ void PriorityGrid::updatePriorities() {
 			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(gi);
 
 			// intersected rectangle
-			QRect irect = rect & bw->mapRectToScene(bw->boundingRect()).toRect();
+//			QRect irect = rect & bw->mapRectToScene(bw->boundingRect()).toRect();
+			QRect irect = rect & bw->sceneBoundingRect().toRect();
 
 			qreal irectsize = irect.width() * irect.height();
 			qreal rectsize = rect.width() * rect.height();
 
-			_priorityVec[i] += (bw->priority() * (irectsize/rectsize));
+//			qDebug() << "grid rect" << rect << " irect" << irect;
+
+			/*
+			  priority of the application whose window intersect with the current grid
+			  multiplied by
+			  the ratio of intersected rectangle to the grid rectangle
+			  */
+			qreal priorityPortion = bw->priority() * (irectsize/rectsize);
+
+			// since the priority value kept added
+			// the value could be very high !
+			// this value will later be normalized
+			// so absolute value is meaningless anyway
+			priorityPortion *= 0.001;
+
+			_priorityRawVec[i] += priorityPortion;
+
+			currentMax = qMax(currentMax, _priorityRawVec.at(i));
 
 //			qDebug() << "Rect" << rect.topLeft() << "intersects:" << 100.0 * irectsize/rectsize << "%.." << bw->mapRectToScene(bw->boundingRect()).toRect() << bw->scale();
 		}
 	}
+
+	for (int i=0; i<_priorityVec.size(); i++) {
+		_priorityVec[i] = _priorityRawVec.at(i) / currentMax;
+	}
+}
+
+qreal SN_PriorityGrid::getPriorityOffset(const QRect &scenerect) {
+	const QVector<QRect> rects = _theSceneRegion.rects();
+
+	qreal result = 0.0;
+
+	for (int i=0; i<_theSceneRegion.rectCount(); i++) {
+		const QRect gridrect = rects.at(i);
+
+		const QRect irect = gridrect.intersected(scenerect);
+
+		if (!irect.isNull() && !irect.isEmpty()) {
+			qreal ratio = qreal(irect.width() * irect.height()) / qreal(scenerect.width() * scenerect.height());
+			result += (ratio * _priorityVec.at(i));
+		}
+	}
+	return result;
+}
+
+qreal SN_PriorityGrid::getPriorityOffset(int row, int col) {
+	int arrayindex = col + (_dimx * row);
+	if (arrayindex < 0 || arrayindex >= _priorityVec.size()) {
+		qDebug() << "PriorityGrid::getPriorityOffset() : arrayindex out of bound" << arrayindex;
+		return 0;
+	}
+	return _priorityVec.at(arrayindex);
 }
 
 //int PriorityGrid::addPriority(const QRect &windowSceneRect, qreal priorityvalue) {

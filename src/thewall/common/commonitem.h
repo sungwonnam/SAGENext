@@ -68,7 +68,9 @@ class SN_SimpleTextItem : public QGraphicsSimpleTextItem
 {
 public:
 	SN_SimpleTextItem(int pointSize=0, const QColor &fontcolor = QColor(Qt::black), const QColor &bgcolor = QColor(Qt::gray), QGraphicsItem *parent=0);
-	~SN_SimpleTextItem();
+	~SN_SimpleTextItem() {}
+
+	void setFontPointSize(int ps);
 
 private:
 	QColor _fontcolor;

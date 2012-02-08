@@ -47,6 +47,7 @@ enum EXTUI_MSG_TYPE { MSG_NULL
 	                  , WIDGET_Z
 	                  , WIDGET_REMOVE
 	                  , WIDGET_CHANGE
+	                  , WIDGET_CLOSEALL
                     };
 
 

@@ -26,10 +26,13 @@ public:
 
 
 	/*!
-	  physical recv latency + delay enforced by scheduler
-	  This is observed frame recv rate
+	  System call recv() latency + delay enforced by scheduler. CPU usage is measured here as well.
+
+	  netlatency represents pure recv() delay and is passed from a caller.
+
+	  This function assumes the recvTimer.start() had called !
 	  */
-	void updateObservedRecvLatency(ssize_t read, qreal netlatency, struct rusage rus, struct rusage rue);
+	void updateObservedRecvLatency(ssize_t byteread, qreal netlatency, struct rusage rus, struct rusage rue);
 
 	/*!
 	  Increments updateCount and measure currDispFps, calculate avgDispFps
@@ -43,7 +46,11 @@ public:
 	  */
 	qreal updateDrawLatency();
 
-	qreal updateConvDelay();
+	/*!
+	  If OpenGL, delay of binding new texture
+	  else delay of converting QImage to QPixmap
+	  */
+	qreal updateUpdateDelay();
 
 	qreal updateEQDelay();
 
@@ -81,7 +88,7 @@ public:
 	inline QTime & getRecvTimer() { return recvTimer; }
 	inline QTime & getDrawTimer() { return drawTimer; }
 	inline QTime & getDispTimer() { return dispTimer; }
-	inline QTime & getConvTimer() { return convTimer; }
+	inline QTime & getUpdtTimer() { return updateTimer; }
 	inline QTime & getEqTimer() {return eqTimer;}
 
 	inline quint64 getRecvCount() const {return recvFrameCount;}
@@ -116,8 +123,8 @@ public:
 	inline qreal getCurrDrawLatency() const { return currDrawLatency; }
 	inline qreal getAvgDrawLatency() const { return avgDrawLatency; }
 
-	inline qreal getCurrConvDelay() const {return currConvDelay;}
-	inline qreal getAvgConvDelay() const {return avgConvDelay;}
+	inline qreal getCurrConvDelay() const {return currUpdateDelay;}
+	inline qreal getAvgConvDelay() const {return avgUpdateDelay;}
 
 	inline qreal getCurrEqDelay() const {return currEqDelay;}
 	inline qreal getAvgEqDelay() const {return avgEqDelay;}
@@ -167,14 +174,18 @@ private:
 
 	/*!
 	  * Tells frame receiving rate. This is not actual display frame rate.
+	  This FPS is calculated with ObservedDelay.
+	  ObservedDelay = network recv() delay + any other delay during frame receive
 	  */
 	qreal currRecvFps;
 	qreal aggrRecvFps;
 	qreal avgRecvFps;
 
 	/*!
-	  This is calculated from observed frame rate.
-	  in Mbps
+	  This is calculated from observed frame rate. (Mbps)
+
+	  The current bandwidth is calculated using byteRead (frame size in Byte) and ObservedDelay.
+	  ObservedDelay = network recv() delay + any other delay during frame receive
 	  */
 	qreal currBandwidth;
 
@@ -196,7 +207,7 @@ private:
 	quint64 drawCount;
 
 	/*!
-	  * latency of drawing using the painter in the paintEvent
+	  * latency of drawing using the QPainter in the QGraphicsItem::paint()
 	  */
 	qreal currDrawLatency;
 	qreal avgDrawLatency;
@@ -218,7 +229,7 @@ private:
 	  This tells how many times the update event has queued.
 	  Note that Qt can merge multiple update event into one.
 	  */
-	quint64 updateCount;
+	quint64 updateDispCount;
 
 	/*!
 	  This tells the rate at which widget's(streaing app's) update event is DISPATCHED from main event queue through event dispatcher
@@ -233,18 +244,19 @@ private:
 
 
 	/*!
-	  A QTime object to measure pixmap conversion delay in streaming widget.
-	  Pixels are downloaded into QImage buffer by stream receiver (SagePixelReceiver).
-	  It is then converted to QPixmap (SageStreamWidget::updateWidget()) to minimize painting latency.
+	  If OpenGL it's used to measure texture uploading delay.
+	  If OpenGL PBO it's used to measure texture binding plus buffer mapping delay.
+	  If no OpenGL it's used to measure the delay of converting QImage to QPixmap.
 
-	  Note that this conversion latency corresponds to texture downloading (from main mem to VRAM) delay.
+	  Note that in X11, QPixmap is stored at the X Server thus drawing QPixmap is cheap.
+	  So, converting QImage to QPixmap means uploading image to X Server
 	  */
-	QTime convTimer;
+	QTime updateTimer;
 
-	quint64 convCount;
-	qreal currConvDelay;
-	qreal aggrConvDelay;
-	qreal avgConvDelay;
+	quint64 updateCount;
+	qreal currUpdateDelay;
+	qreal aggrUpdateDelay;
+	qreal avgUpdateDelay;
 
 
 
@@ -272,10 +284,14 @@ private:
 
 
 	/*!
-	  framerate field in the sail register msg.
-This is what sender wants ideally, so this can be different from the actual sending rate.
+	  framerate field in the sail register msg sets the expectedFps.
+      This is what sender wants, so this can be different from the actual sending rate.
 	  */
 	qreal expectedFps;
+
+	/*!
+	  FPS adjusted(demanded) by the scheduler.
+	  */
 	qreal adjustedFps;
 
 	/*!
@@ -309,6 +325,10 @@ This is what sender wants ideally, so this can be different from the actual send
 	  timestamp in seconds
 	  */
 	qreal _ts_currframe;
+
+	/*!
+	  deadline for the next frame
+	  */
 	qreal _ts_nextframe;
 
 	/*!

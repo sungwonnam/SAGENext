@@ -6,16 +6,13 @@
 
 #include <QtGui>
 
-#include "prioritygrid.h"
-
-extern PriorityGrid SAGENextPriorityGrid;
-
 class QSettings;
 class AffinityInfo;
 class SN_SimpleTextItem;
 class SN_BaseWidget;
 class SN_RailawareWidget;
 class SN_SchedulerControl;
+class SN_PriorityGrid;
 class ResourceMonitorWidget;
 
 typedef struct {
@@ -132,6 +129,8 @@ public:
 
 	inline void setScheduler(SN_SchedulerControl *sc) {schedcontrol = sc;}
 
+	inline void setPriorityGrid(SN_PriorityGrid *p) {_pGrid = p;}
+
 	inline void setRMonWidget(ResourceMonitorWidget *rmw) {_rMonWidget = rmw;}
 	inline ResourceMonitorWidget * rMonWidget() {return _rMonWidget;}
 
@@ -213,6 +212,11 @@ private:
 	  */
 	SN_SchedulerControl *schedcontrol;
 
+	/*!
+	  Priority Grid aka priority heatmap
+	  */
+	SN_PriorityGrid *_pGrid;
+
 
 //	ProcessorNode * findNode(quint64 appid);
 
@@ -232,6 +236,11 @@ private:
 	  Accessing to this list is protected by rwlock
 	  */
 	QList<SN_RailawareWidget *> widgetList;
+
+	/*!
+	  items in a QMap is sorted by key (Ascendant order)
+	  */
+	QMap<quint64, SN_RailawareWidget *> _widgetMap;
 
 	/*!
 	  read/write lock for accessing widgetList
@@ -267,7 +276,7 @@ signals:
 public slots:
 	/*!
 	  This function is called at RailawareWidget::fadeOutClose(), it calls ProcessorNode::removeApp()
-	  The signal appRemoved(int) is emitted in this function
+	  The signal appRemoved(int) is emitted in this function.
 	  */
 	void removeApp(SN_RailawareWidget *);
 
@@ -310,8 +319,9 @@ public slots:
 	void resetProcessorAllocation(SN_RailawareWidget *rw);
 
 	/*!
-	  overloaded function.
-	  Assign FFFF for all widgets
+	  overloaded function. Assign FFFF for all widgets.
+
+	  This function will acquire _widgetListRWlock for read
 	  */
 	void resetProcessorAllocation();
 
@@ -332,6 +342,9 @@ public slots:
 	  This slot should be called periodically
 	  */
 	void printPrelimData();
+
+
+	void printData();
 };
 
 #endif // RESOURCEMONITOR_H

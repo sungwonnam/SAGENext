@@ -3,6 +3,8 @@
 #include "sagenextscene.h"
 #include "applications/base/basewidget.h"
 
+#include "common/commondefinitions.h"
+
 SN_Viewport::SN_Viewport(SN_TheScene *s, int viewportId, SN_Launcher *l, QWidget *parent) :
     QGraphicsView(s, parent),
     _viewportID(viewportId),
@@ -36,6 +38,13 @@ SN_Viewport::SN_Viewport(SN_TheScene *s, int viewportId, SN_Launcher *l, QWidget
 		_closeAllAction = new QAction(this);
 		_closeAllAction->setShortcut( QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_W) );
 		connect(_closeAllAction, SIGNAL(triggered()), _sageNextScene, SLOT(closeAllUserApp()));
+//		addAction(_closeAllAction);
+
+
+		_showInfoAction = new QAction(this);
+		_showInfoAction->setShortcut( QKeySequence(Qt::CTRL + Qt::Key_I) );
+		QObject::connect(_showInfoAction, SIGNAL(triggered()), this, SLOT(showInfo()));
+		addAction(_showInfoAction);
 	}
 
 //	_swapBufferTimerId = startTimer(30); // every 30 msec
@@ -59,3 +68,12 @@ void SN_Viewport::on_actionOpen_Media_triggered()
 		_fdialog->show();
 }
 
+void SN_Viewport::showInfo() {
+	foreach(QGraphicsItem *gi, items()) {
+		if (gi->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
+			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(gi);
+			Q_ASSERT(bw);
+			bw->drawInfo();
+		}
+	}
+}

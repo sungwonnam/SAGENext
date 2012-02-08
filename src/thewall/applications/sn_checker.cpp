@@ -127,7 +127,9 @@ void WorkerThread::writeData() {
 
 			latency = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001); // in Second
 
-			// calculate
+			// calculate recv() delay
+			// QTimer::restart() will be called in this function
+			// So, QTimer::start() must have been called somewhere
 			_perfMon->updateObservedRecvLatency(_appInfo->frameSizeInByte(), latency, ru_start, ru_end);
 			ru_start = ru_end;
 		}
@@ -289,7 +291,7 @@ void SN_CheckerGL::doInit() {
 }
 
 void SN_CheckerGL::scheduleUpdate() {
-	_perfMon->getConvTimer().start();
+	_perfMon->getUpdtTimer().start();
 
 	const QImage &constImageRef = *_image;
 
@@ -304,7 +306,8 @@ void SN_CheckerGL::scheduleUpdate() {
 	glDisable(GL_TEXTURE_RECTANGLE_ARB);
 	glEnable(GL_TEXTURE_2D);
 
-	_perfMon->updateConvDelay();
+	// measure texture uploading delay
+	_perfMon->updateUpdateDelay();
 
 	update(); // schedule paint()
 
@@ -316,6 +319,7 @@ void SN_CheckerGL::scheduleUpdate() {
 
 void SN_CheckerGL::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 	if (_perfMon) {
+		// this is to measure drawing delay
 		_perfMon->getDrawTimer().start();
 		//perfMon->startPaintEvent();
 	}
@@ -511,7 +515,6 @@ void SN_CheckerGLPBO::doInit() {
 	scheduleUpdate();
 
 
-
 	// writeData() will call itself continuously (as long as the eventloop of the thread is running)
 //	if ( ! QMetaObject::invokeMethod(_workerThread, "writeData", Qt::QueuedConnection) ) {
 //		qDebug() << "SN_CheckerGL::doInit() : Failed to invoke Worker::writeData()";
@@ -524,7 +527,7 @@ void SN_CheckerGLPBO::scheduleUpdate() {
 	Q_ASSERT(_pbobufferready);
 	Q_ASSERT(_appInfo);
 
-	_perfMon->getConvTimer().start();
+	_perfMon->getUpdtTimer().start();
 
 	//
 	// flip array index
@@ -608,7 +611,7 @@ void SN_CheckerGLPBO::scheduleUpdate() {
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
-	_perfMon->updateConvDelay();
+	_perfMon->updateUpdateDelay();
 }
 
 void SN_CheckerGLPBO::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
@@ -954,7 +957,7 @@ void SN_CheckerGL_Old::schedulePboUpdate() {
 		qCritical() << "\n\n !! SN_CheckerGL_Old::schedulePboUpdate() : no OpenGL context !!";
 	}
 
-	_perfMon->getConvTimer().start();
+	_perfMon->getUpdtTimer().start();
 
 	//
 	// flip array index
@@ -1038,11 +1041,11 @@ void SN_CheckerGL_Old::schedulePboUpdate() {
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
-	_perfMon->updateConvDelay();
+	_perfMon->updateUpdateDelay();
 }
 
 void SN_CheckerGL_Old::scheduleUpdate() {
-	_perfMon->getConvTimer().start();
+	_perfMon->getUpdtTimer().start();
 
 	if (_useOpenGL) {
 		QGLContext *ctx = const_cast<QGLContext *>(QGLContext::currentContext());
@@ -1064,7 +1067,7 @@ void SN_CheckerGL_Old::scheduleUpdate() {
 	}
 	update();
 
-	_perfMon->updateConvDelay();
+	_perfMon->updateUpdateDelay();
 }
 
 

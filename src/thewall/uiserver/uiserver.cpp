@@ -4,6 +4,8 @@
 #include "../applications/base/basewidget.h"
 #include "../common/sn_sharedpointer.h"
 
+#include "../applications/base/sn_priority.h"
+
 #include <QGraphicsScene>
 #include <QGraphicsItem>
 #include <QSettings>
@@ -147,10 +149,19 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 			//
 			// below assumes single SN_LayoutWidget covering entire scene
 			//
-			bw->setPos(rx, ry);
+			if ( bw->pos() != QPointF(rx,ry) ) {
+				qDebug() << "\tMOVED to" << rx << ry;
+				bw->setPos(rx, ry);
 //			bw->setPos(  bw->parentItem()->mapFromScene(rx,ry)  );
+				bw->priorityData()->setLastInteraction(SN_Priority::MOVE);
+			}
 
-			bw->setScale( (qreal)rw / (qreal)sx );
+			qreal newscale = (qreal)rw / (qreal)sx;
+			if (bw->scale() != newscale) {
+				qDebug() << "\tRESCALED" << newscale;
+				bw->setScale(newscale);
+				bw->priorityData()->setLastInteraction(SN_Priority::RESIZE);
+			}
 		}
 		else {
 			qDebug() << "Couldn't find the app" << gaid << "\n";
@@ -178,11 +189,22 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		qDebug() << "Z" << gaid << z;
 		SN_BaseWidget *bw = _scene->getUserWidget(gaid);
 		if (bw) {
+			if (z > bw->zValue()) {
+				qDebug() << "\tZ UP" << z;
+				bw->priorityData()->setLastInteraction(SN_Priority::CLICK);
+			}
 			bw->setZValue(z);
+
 		}
 		else {
 			qDebug() << "Couldn't find the app" << gaid << "\n";
 		}
+		break;
+	}
+	case WIDGET_CLOSEALL: {
+//		::sscanf(msg.constData(), "%d", &code);
+		qDebug() << "WIDGET_CLOSEALL";
+		_scene->closeAllUserApp();
 		break;
 	}
 

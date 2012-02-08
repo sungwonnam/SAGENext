@@ -201,9 +201,12 @@ void SN_SagePixelReceiver::run() {
 		if (_usePbo) {
 			// wait for glMapBufferARB
 			pthread_mutex_lock(_pboMutex);
-			while(!__bufferMapped)
+			while(!__bufferMapped) {
+//				qDebug() << "thread waiting ..";
 				pthread_cond_wait(_pboCond, _pboMutex);
+			}
 			bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
+//			qDebug() << "thread writing to" << _pboBufIdx << bufptr;
 		}
 
 

@@ -15,12 +15,15 @@
 
 //
 // widget inherits SN_BaseWidget but NOT a user application
+// e.g. mediabrowser
+// So, it shouldn't be affected by the scheduler
 //
 #define BASEWIDGET_NONUSER 1000
 
 //
-// widget inherits QGraphicsWidget but NOT a regular QGraphicsItem
-// And an item that can be interacted with user shared pointers
+// widget inherits QGraphicsWidget so it's not a user application
+// But an item that can be interacted with user shared pointers
+// e.g. SN_PartitionBar
 //
 #define INTERACTIVE_ITEM 10
 

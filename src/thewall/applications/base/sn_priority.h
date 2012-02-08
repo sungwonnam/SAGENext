@@ -81,12 +81,17 @@ protected:
 private:
 	SN_BaseWidget const *_widget;
 
-	static PriorityGrid _priorityGrid;
+	static SN_PriorityGrid _priorityGrid;
 
 	/*!
 	  Ratio of effective visible region to the window size
+	  This tells how much the application is revealing its content
 	  */
 	int _evr_to_win;
+
+	/*!
+	  This tells how much the application window covering the wall
+	  */
 	int _evr_to_wall;
 
 	/*!

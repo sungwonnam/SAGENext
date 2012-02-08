@@ -59,8 +59,29 @@ public:
 	  */
 	SN_BaseWidget * getUserWidget(quint64 gaid);
 
-//	inline SN_DrawingWidget * drawingCanvas() {return _drawingCanvas;}
+	/*!
+	  returns the number of user application (UserType + BASEWIDGET_USER)
+	  Note that the number of application the resourceMonitor reports doesn't include non-schedulable widget
+	  */
+	int getNumUserWidget() const;
 
+	/*!
+	  return the average window size of user applications. (taking the scale() into an account)
+	  */
+	QSizeF getAvgWinSize() const;
+
+	/*!
+	  returns the ratio of the empty space to the scene size
+	  */
+	qreal getRatioEmptySpace() const;
+
+	/*!
+	  returns the ratio of the overlapped window size to the scene size
+	  how to calculate this ?
+	  */
+	qreal getRatioOverlapped() const;
+
+//	inline SN_DrawingWidget * drawingCanvas() {return _drawingCanvas;}
 
 private:
 	const QSettings *_settings;
@@ -102,7 +123,7 @@ public slots:
 	void prepareClosing();
 
 	/**
-	  save current app layout
+	  save current app layout when SN_LayoutWidget is not present
 	  */
 	void saveSession();
 

@@ -122,7 +122,7 @@ void SN_PDFViewerWidget::nextPage() {
 void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 	if (pageNumber < 0  || pageNumber >=  _document->numPages()) return;
 
-	_perfMon->getConvTimer().start();
+	_perfMon->getUpdtTimer().start();
 
 //	if (_currentPage) {
 //		delete _currentPage;
@@ -164,7 +164,7 @@ void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 
 //	qDebug() << "setCurrentPage() : _pixmaps size" << _pixmaps.size();
 
-	_perfMon->updateConvDelay();
+	_perfMon->updateUpdateDelay();
 
 	update();
 }

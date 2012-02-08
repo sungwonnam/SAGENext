@@ -2,9 +2,6 @@
 #define RESOURCEMONITORWIDGET_H
 
 #include <QtGui>
-#include "prioritygrid.h"
-
-extern PriorityGrid SAGENextPriorityGrid;
 
 /*
 #include <qwt_plot.h>
@@ -17,6 +14,7 @@ extern PriorityGrid SAGENextPriorityGrid;
 class SN_ResourceMonitor;
 class SN_SchedulerControl;
 class SN_AbstractScheduler;
+class SN_PriorityGrid;
 
 //class GraphicsViewMain;
 
@@ -75,7 +73,7 @@ class ResourceMonitorWidget : public QWidget
 {
 	Q_OBJECT
 public:
-	explicit ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, QWidget *parent = 0);
+	explicit ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, SN_PriorityGrid *pg, QWidget *parent = 0);
 	~ResourceMonitorWidget();
 
 	inline void setNumWidgets(int i) {_numWidgets=i;}
@@ -89,6 +87,8 @@ private:
 
 	SN_ResourceMonitor *rMonitor;
 	SN_SchedulerControl *schedcontrol;
+
+	SN_PriorityGrid *_pGrid;
 
 	/*!
 	  how many widgets do you want to load
@@ -127,6 +127,8 @@ private:
 	void refreshPerAppPerfData();
 
 	void refreshPerAppPriorityData();
+
+	void refreshPriorityGridData();
 
 //	void layoutButtons();
 

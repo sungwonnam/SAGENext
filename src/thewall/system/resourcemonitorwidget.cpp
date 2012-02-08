@@ -1,9 +1,13 @@
+
+
 #include "resourcemonitorwidget.h"
-#include "resourcemonitor.h"
-#include "sagenextscheduler.h"
+
 #include "ui_resourcemonitorwidget.h"
 
-#include "../graphicsviewmainwindow.h"
+#include "resourcemonitor.h"
+#include "sagenextscheduler.h"
+#include "prioritygrid.h"
+
 
 #include "../applications/base/basewidget.h"
 #include "../applications/base/railawarewidget.h"
@@ -13,18 +17,19 @@
 
 #include <sys/time.h>
 
-ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, QWidget *parent)
+ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, SN_PriorityGrid *pg, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::ResourceMonitorWidget)
     , rMonitor(rm)
     , schedcontrol(sc)
+    , _pGrid(pg)
     , _numWidgets(0)
     , isAllocationEnabled(false)
     , isScheduleEnabled(false)
     , refreshCount(0)
 {
 	ui->setupUi(this);
-//	setAttribute(Qt::WA_DeleteOnClose); // comment out in case the widget is closed before resourceMonitor
+	setAttribute(Qt::WA_DeleteOnClose);
 //	pidList.clear();
 
 //	if (schedcontrol) {
@@ -46,16 +51,17 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 
 
 	/**
-	  per widget priority table
+	  per widget perf data sorted by priority rank table on the bottom left
 	  */
-	ui->perAppPriorityTable->setColumnCount(5); // app id, priority, evr/winsize, evr/wallsize, ipm
-	ui->perAppPriorityTable->setRowCount(0);
-	QStringList headers_p;
-	headers_p << "Id" << "Priority" << "evr/win" << "evr/wall" << "IPM";
-	ui->perAppPriorityTable->setHorizontalHeaderLabels(headers_p);
+	ui->perfPerPriorityRankTable->setColumnCount(5); // rank, recvfps, observed quality, cpu usage, count
+	ui->perfPerPriorityRankTable->setRowCount(0);
+	QStringList headers2;
+	headers2 << "Rank" << "Avg FPS" << "Avg Quality" << "Avg CPU" << "count";
+	ui->perfPerPriorityRankTable->setHorizontalHeaderLabels(headers2);
+
 
 	/****
-	  per widget data table
+	  per widget perf data table
 	 *****/
 	ui->perAppPerfTable->setColumnCount(6); // app id,  priority, cpu usage, curr recv FPS, curr quality, desired quality
 	ui->perAppPerfTable->setRowCount(0);
@@ -63,14 +69,39 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 	headers << "Id" << "Priority" << "CurrRecvFPS" << "CPUusage" << "Observed Q" << "Adjusted Q";
 	ui->perAppPerfTable->setHorizontalHeaderLabels(headers);
 
+	/**
+	  per widget priority data table
+	  */
+	ui->perAppPriorityTable->setColumnCount(5); // app id, priority, evr/winsize, evr/wallsize, ipm
+	ui->perAppPriorityTable->setRowCount(0);
+	QStringList headers_p;
+	headers_p << "Id" << "Priority" << "evr/win" << "evr/wall" << "IPM";
+	ui->perAppPriorityTable->setHorizontalHeaderLabels(headers_p);
 
 
-	ui->perfPerPriorityRankTable->setColumnCount(5); // rank, recvfps, observed quality, cpu usage, count
-	ui->perfPerPriorityRankTable->setRowCount(0);
-	QStringList headers2;
-	headers2 << "Rank" << "Avg FPS" << "Avg Quality" << "Avg CPU" << "count";
-	ui->perfPerPriorityRankTable->setHorizontalHeaderLabels(headers2);
+	/**
+	  priority grid (QFrame)
+	  */
+	if (_pGrid && _pGrid->isEnabled()) {
+		QGridLayout *grid = new QGridLayout;
+		int row = 0;
+		int col = 0;
+		int numrect = _pGrid->dimx() * _pGrid->dimy();
+		for (int i=0; i<numrect; i++) {
+			QLabel *l = new QLabel;
+			l->setFrameShape(QFrame::Box);
 
+			grid->addWidget(l, row, col);
+
+			++col;
+			if ( col == _pGrid->dimx() ) {
+				// move to next row
+				col = 0;
+				++row;
+			}
+		}
+		ui->priorityGridFrame->setLayout(grid);
+	}
 
 	/* plot */
 	/*
@@ -115,6 +146,29 @@ void ResourceMonitorWidget::refreshCPUdata() {
 	}
 }
 
+void ResourceMonitorWidget::refreshPriorityGridData() {
+	if (_pGrid->isEnabled()) {
+		QGridLayout *grid = static_cast<QGridLayout *>(ui->priorityGridFrame->layout());
+		Q_ASSERT(grid);
+
+		int row = 0;
+		int col = 0;
+		for (int i=0; i<grid->count(); i++) {
+
+			QLabel *l = static_cast<QLabel *>(grid->itemAtPosition(row, col)->widget());
+			Q_ASSERT(l);
+			l->setText( QString::number(_pGrid->getPriorityOffset(row, col)) );
+
+			++col;
+			if ( col == grid->columnCount() ) {
+				// move to next row
+				col = 0;
+				++row;
+			}
+		}
+	}
+}
+
 void ResourceMonitorWidget::refreshPerAppPriorityData() {
 
 	ui->perAppPriorityTable->clearContents();
@@ -138,7 +192,8 @@ void ResourceMonitorWidget::refreshPerAppPriorityData() {
 				item->setData(Qt::DisplayRole, rw->globalAppId());
 				break;
 			case 1:
-				item->setData(Qt::DisplayRole, (int)(100 * rw->priority(0)));
+//				item->setData(Qt::DisplayRole, (int)(100 * rw->priority(0)));
+				item->setData(Qt::DisplayRole, rw->priority(0));
 				break;
 			case 2:
 				item->setData(Qt::DisplayRole, rw->priorityData()->evrToWin());
@@ -239,15 +294,28 @@ void ResourceMonitorWidget::refresh() {
 		}
 	}
 
-	refreshCPUdata();
+	/***
+	  per CPU load
+	  */
+//	refreshCPUdata();
 
 	rMonitor->getWidgetListRWLock()->lockForRead();
 
+
+
+//	refreshPerAppPerfData();
+
 	refreshPerAppPriorityData();
 
-	refreshPerAppPerfData();
+	refreshPriorityGridData();
+
+
 
 	rMonitor->getWidgetListRWLock()->unlock();
+
+
+
+
 
 
 	// must be called only after perAppPerfTable has sorted

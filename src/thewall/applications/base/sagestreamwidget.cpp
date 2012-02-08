@@ -4,6 +4,7 @@
 #include "appinfo.h"
 #include "affinityinfo.h"
 #include "perfmonitor.h"
+#include "sn_priority.h"
 
 #include "../../sage/sagecommondefinitions.h"
 #include "../../common/commonitem.h"
@@ -76,6 +77,12 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
 	else {
 		_usePbo = false;
 	}
+
+	//
+	// Temporary
+	//
+	Q_ASSERT(infoTextItem);
+	infoTextItem->setFontPointSize(24);
 }
 
 
@@ -358,7 +365,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	Q_ASSERT(_pbobufferready);
 	Q_ASSERT(_appInfo);
 
-	_perfMon->getConvTimer().start();
+	_perfMon->getUpdtTimer().start();
 
 	//
 	// flip array index
@@ -372,10 +379,10 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	// unmap previous buffer
 	//
 	if (!__firstFrame) {
-//		qDebug() << "unmap" << nextbufidx;
+//		qDebug() << "unmap buffer" << nextbufidx;
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
 		if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
-			qDebug() << "schedulePboUpdate() : glUnmapBufferARB() failed";
+			qDebug() << "SN_SageStreamWidget::schedulePboUpdate() : glUnmapBufferARB() failed";
 		}
 	}
 	else {
@@ -407,12 +414,14 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 		__bufferMapped = true;
 		_receiverThread->flip(_pboBufIdx);
 
+//		qDebug() << "mapped buffer" << _pboBufIdx << ptr;
+
 		pthread_cond_signal(_pbobufferready);
 	//	qDebug() << QDateTime::currentMSecsSinceEpoch() << "signaled";
 		pthread_mutex_unlock(_pbomutex);
 	}
 	else {
-		qCritical() << "glMapBUffer failed()";
+		qCritical() << "SN_SageStreamWidget::schedulePboUpdate() : glMapBUffer failed()";
 	}
 
 	//
@@ -434,7 +443,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
-	_perfMon->updateConvDelay();
+	_perfMon->updateUpdateDelay();
 }
 
 
@@ -455,7 +464,7 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		return;
 	}
 
-	_perfMon->getConvTimer().start();
+	_perfMon->getUpdtTimer().start();
 
 	if (_useOpenGL) {
 		glDisable(GL_TEXTURE_2D);
@@ -467,7 +476,6 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
 		glEnable(GL_TEXTURE_2D);
-
 
 			// QGLContext::InvertedYBindOption Because In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
 			//
@@ -521,7 +529,7 @@ void SN_SageStreamWidget::scheduleUpdate() {
    //	}
 	}
 
-	_perfMon->updateConvDelay();
+	_perfMon->updateUpdateDelay();
 
 	setScheduled(false); // reset scheduling flag for SMART scheduler
 
@@ -555,16 +563,16 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	//|| painter->paintEngine()->type() == QPaintEngine::OpenGL
 	)
 	{
-		//
 		// 0 draw latency because it's drawn from the cache
 		// but higher latency in scheduleUpdate()
 		//
 		//	QGLWidget *viewportWidget = (QGLWidget *)w;
 		//	viewportWidget->drawTexture(QPointF(0,0), _textureid);
 
-		/*
-		  this takes lots of time when doing DMA write to GPU memory using QGLBuffer due to the context switching
-		  */
+		//
+		// This takes lots of time when doing DMA write to GPU memory using QGLBuffer due to the context switching.
+		// However, it's just fine with pure OpenGL calls.
+		//
 		painter->beginNativePainting();
 
 		if (_useShader) {
@@ -1188,6 +1196,24 @@ GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment)
 
 
 
+
+void SN_SageStreamWidget::updateInfoTextItem() {
+	if (!infoTextItem) return;
+
+	QByteArray priorityText(256, '\0');
+
+	if(_priorityData) {
+		sprintf(priorityText.data(), "%llu\n%.6f"
+		        , _globalAppId
+		        , _priorityData->priority(0)
+		        );
+	}
+
+	if (infoTextItem) {
+		infoTextItem->setText(QString(priorityText));
+		infoTextItem->update();
+	}
+}
 
 
 

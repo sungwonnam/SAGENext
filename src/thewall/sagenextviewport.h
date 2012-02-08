@@ -48,6 +48,13 @@ private:
 	  */
 	QAction *_closeAllAction;
 
+
+	/*!
+	  show info of all user widget
+	  */
+	QAction *_showInfoAction;
+
+
 	SN_Launcher *_launcher;
 
 	SN_TheScene *_sageNextScene;
@@ -57,6 +64,8 @@ public slots:
 	  This slot opens the file dialog
 	  */
 	void on_actionOpen_Media_triggered();
+
+	void showInfo();
 
 };
 

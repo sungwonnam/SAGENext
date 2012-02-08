@@ -23,8 +23,7 @@ class QSettings;
 
 
 /**
-  * receives pixel from sail
-  * its parent is SageWidget : QWidget
+  * This QThread class is used to receive pixel stream from SAGE application (sail)
   */
 class SN_SagePixelReceiver : public QThread
 {

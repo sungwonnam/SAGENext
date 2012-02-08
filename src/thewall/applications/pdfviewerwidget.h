@@ -7,6 +7,10 @@
 
 class SN_PixmapButton;
 
+/*!
+  This application uses poppler-qt4 library to render pdf document.
+  Rendered image is stored in QImage object and QPixmap is used to draw onto the screen.
+  */
 class SN_PDFViewerWidget : public SN_BaseWidget
 {
 	Q_OBJECT

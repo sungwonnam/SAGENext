@@ -21,7 +21,6 @@ SN_PixmapWidget::SN_PixmapWidget(QString filename, const quint64 id, const QSett
     , dataSrc(SN_PixmapWidget::FROM_DISK_FILE)
     , _imageTemp(new QImage()) /* Because it is unsafe to use pixmap outside of GUI thread */
     , _textureid(-1)
-//    , _pixmap(new QPixmap())
     , serverSock(0)
     , filename(QString(filename))
     , filesize(0)
@@ -46,7 +45,6 @@ SN_PixmapWidget::SN_PixmapWidget(qint64 filesize, const QString &senderIP, const
     , dataSrc(SN_PixmapWidget::FROM_SOCKET)
     , _imageTemp(new QImage()) /* receive into QImage, convert to QPixmap */
     , _textureid(-1)
-//    , _pixmap(new QPixmap())
     , serverSock(0)
     , filename(QString()) /* null string */
     , filesize(filesize)
@@ -62,11 +60,10 @@ SN_PixmapWidget::SN_PixmapWidget(qint64 filesize, const QString &senderIP, const
 
 SN_PixmapWidget::~SN_PixmapWidget() {
 	if (_imageTemp) delete _imageTemp;
-//	if (_pixmap) delete _pixmap;
 
-//	if (glIsTexture(_gltexture)) {
-//		glDeleteTextures(1, &_gltexture);
-//	}
+	if (glIsTexture(_textureid)) {
+		glDeleteTextures(1, &_textureid);
+	}
 	qDebug("%s::%s()",metaObject()->className(), __FUNCTION__);
 }
 
@@ -82,7 +79,6 @@ void SN_PixmapWidget::start() {
 	setCacheMode(QGraphicsItem::NoCache);
 
 	//setAttribute(Qt::WA_PaintOnScreen);
-
 
 	futureWatcher = new QFutureWatcher<bool>(this);
 	connect(futureWatcher, SIGNAL(finished()), this, SLOT(callUpdate()));

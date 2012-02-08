@@ -44,7 +44,6 @@ void setViewAttr(SN_Viewport *view, const QSettings &s);
 
 
 
-PriorityGrid SAGENextPriorityGrid;
 
 
 
@@ -356,14 +355,9 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	int rMonitorTimerId = 0;
 	ResourceMonitorWidget *rMonitorWidget = 0;
 	SN_SchedulerControl *schedcontrol = 0;
+
 	if ( s.value("system/resourcemonitor").toBool() ) {
 		qDebug() << "Creating ResourceMonitor";
-
-		//
-		// enable priorityGrid
-		//
-		SAGENextPriorityGrid.setScene(scene);
-		SAGENextPriorityGrid.setRectSize(480, 400);
 
 		resourceMonitor = new SN_ResourceMonitor(&s , scene);
 
@@ -371,6 +365,20 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		// resource monitor should be deleted when scene is closing
 		//
 		QObject::connect(scene, SIGNAL(destroyed()), resourceMonitor, SLOT(deleteLater()));
+
+
+
+		//
+		// enable priorityGrid
+		//
+		SN_PriorityGrid *pgrid = new SN_PriorityGrid(QSize(480, 400), scene);
+
+		//
+		// sets the priority grid
+		//
+		resourceMonitor->setPriorityGrid(pgrid);
+
+
 
 		if ( s.value("system/scheduler").toBool() ) {
 			qDebug() << "Creating" << s.value("system/scheduler_type").toString() << "Scheduler";
@@ -384,6 +392,9 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 			a.installEventFilter(schedcontrol); // scheduler will monitor(filter) qApp's event
 
+			//
+			// Assign a scheduler
+			//
 			resourceMonitor->setScheduler(schedcontrol);
 
 			schedcontrol->launchScheduler( s.value("system/scheduler_type").toString(), s.value("system/scheduler_freq").toInt() );
@@ -400,11 +411,13 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 			resourceMonitor->printPrelimDataHeader();
 		}
 
-
-
 		resourceMonitor->refresh();
 
-		rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, schedcontrol); // No parent widget
+		//
+		// resourceMonitor widget to display info
+		//
+		rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, schedcontrol, pgrid); // No parent widget
+		QObject::connect(resourceMonitor, SIGNAL(destroyed()), rMonitorWidget, SLOT(close()));
 		rMonitorWidget->show();
 
 		resourceMonitor->setRMonWidget(rMonitorWidget);

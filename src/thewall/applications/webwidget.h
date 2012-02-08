@@ -14,7 +14,7 @@ class QGraphicsProxyWidget;
 
 
 /**
-  * flash video (youtube for example) doesn't work with OpenGL viewport
+  Use the netscape plugin wrapper to convert libflashplugin.so to enable youtube video
   */
 class SN_WebWidget : public SN_BaseWidget
 {

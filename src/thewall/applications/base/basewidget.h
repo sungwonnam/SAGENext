@@ -277,6 +277,11 @@ protected:
         Widget_Type _widgetType; /**< widget type */
 		inline void setWidgetType(Widget_Type wt) {_widgetType = wt;}
 
+		/*!
+          To display information in appInfo, perfMonitor, and affInfo
+          */
+        SN_SimpleTextItem *infoTextItem;
+
 
         /*!
          * Used to display app info overlay
@@ -446,11 +451,6 @@ private:
 
 
 		bool _showInfo; /**< flag to toggle show/hide info item */
-
-		/*!
-          To display information in appInfo, perfMonitor, and affInfo
-          */
-        SN_SimpleTextItem *infoTextItem;
 
 
 		/*!

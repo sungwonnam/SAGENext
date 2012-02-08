@@ -24,15 +24,15 @@ PerfMonitor::PerfMonitor(QObject *parent)
 	avgDrawLatency(0.0),
 	aggrDrawLatency(0.0),
 
-	updateCount(0),
+	updateDispCount(0),
 	currDispFps(0.0),
 	aggrDispFps(0.0),
 	avgDispFps(0.0),
 
-	convCount(0),
-	currConvDelay(0.0),
-	aggrConvDelay(0.0),
-	avgConvDelay(0.0),
+	updateCount(0),
+	currUpdateDelay(0.0),
+	aggrUpdateDelay(0.0),
+	avgUpdateDelay(0.0),
 
 	eqCount(0),
 	currEqDelay(0.0),
@@ -71,10 +71,10 @@ PerfMonitor::PerfMonitor(QObject *parent)
 
 void PerfMonitor::printData() const {
 	// avgRecvLatency,  avgConvDelay,  avgDrawLatency,  avgRecvFps, avgDispFps, recvFpsVariance , avgAbsDeviation, recvFpsStdDeviation
-	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgConvDelay << avgDrawLatency << avgRecvFps << avgDispFps  << recvFpsVariance << avgAbsDeviation << recvFpsStdDeviation;
+	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << avgRecvFps << avgDispFps  << recvFpsVariance << avgAbsDeviation << recvFpsStdDeviation;
 }
 
-void PerfMonitor::updateObservedRecvLatency(ssize_t read, qreal netlatency, rusage rustart, rusage ruend) {
+void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, rusage rustart, rusage ruend) {
 
 	if ( recvTimer.isNull() ) {
 		qWarning("PerfMonitor::%s() : recvTimer is null", __FUNCTION__);
@@ -93,7 +93,7 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t read, qreal netlatency, rusa
 	  observed delay includes recv() latency plus any delay introduced until subsequent recv().
 	  Therefore, this is the FPS that user perceives.
 	  **/
-	qreal observed_delay = (qreal)elapsed * 0.001;
+	qreal observed_delay = (qreal)elapsed * 0.001; // to second
 
 
 
@@ -112,7 +112,7 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t read, qreal netlatency, rusa
 
 
 	// is calculated with network latency + delay enforced by scheduler
-	currBandwidth = (read * 8.0) / observed_delay; // bps
+	currBandwidth = (byteread * 8.0) / observed_delay; // bps
 	currBandwidth /= 1000000.0; // Mbps
 
 
@@ -213,12 +213,12 @@ void PerfMonitor::updateDispFps() {
 		dispTimer.start();
 	}
 	else {
-		++updateCount;
+		++updateDispCount;
 
 		qreal elap = (qreal)(dispTimer.restart()) * 0.001; // sec
 		currDispFps = 1.0 / elap;
 		aggrDispFps += currDispFps;
-		avgDispFps = aggrDispFps / (qreal)updateCount;
+		avgDispFps = aggrDispFps / (qreal)updateDispCount;
 	}
 }
 
@@ -248,21 +248,21 @@ qreal PerfMonitor::updateDrawLatency() {
 	return currDrawLatency;
 }
 
-qreal PerfMonitor::updateConvDelay() {
-	if (convTimer.isNull()) {
+qreal PerfMonitor::updateUpdateDelay() {
+	if (updateTimer.isNull()) {
 		return -1.0;
 	}
 
 	// convTimer.start() has called in SageStreamWidget::updateWidget()
-	 currConvDelay = (qreal)(convTimer.elapsed()) * 0.001; // to second
-	++convCount;
+	 currUpdateDelay = (qreal)(updateTimer.elapsed()) * 0.001; // to second
+	++updateCount;
 
-	if (convCount > 100) {
-		aggrConvDelay += currConvDelay;
-		avgConvDelay = aggrConvDelay / (qreal)(convCount - 100);
+	if (updateCount > 100) {
+		aggrUpdateDelay += currUpdateDelay;
+		avgUpdateDelay = aggrUpdateDelay / (qreal)(updateCount - 100);
 	}
 
-	return currConvDelay;
+	return currUpdateDelay;
 }
 
 qreal PerfMonitor::updateEQDelay() {
@@ -295,15 +295,15 @@ void PerfMonitor::reset() {
 	avgDrawLatency = 0.0;
 	aggrDrawLatency = 0.0;
 
-	updateCount = 0;
+	updateDispCount = 0;
 	currDispFps = 0.0;
 	aggrDispFps = 0.0;
 	avgDispFps = 0.0;
 
-	convCount = 0;
-	currConvDelay = 0.0;
-	aggrConvDelay = 0.0;
-	avgConvDelay = 0.0;
+	updateCount = 0;
+	currUpdateDelay = 0.0;
+	aggrUpdateDelay = 0.0;
+	avgUpdateDelay = 0.0;
 
 	eqCount = 0;
 	currEqDelay = 0.0;

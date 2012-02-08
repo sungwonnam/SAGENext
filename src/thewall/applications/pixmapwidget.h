@@ -14,6 +14,9 @@
 #include <OpenGL/gl.h>
 #endif
 
+/*!
+  This application read image files and display
+  */
 class SN_PixmapWidget : public SN_BaseWidget
 {
 	Q_OBJECT
@@ -51,13 +54,6 @@ private:
 	  Image is stored here from recv thread
 	  */
 	QImage *_imageTemp;
-
-//	QImage _myImage;
-
-	/*!
-	  image is converted to pixmap and drawn from pixmap to make paint() faster
-	  */
-//	QPixmap *_pixmap;
 
 	QPixmap _drawingPixmap;
 

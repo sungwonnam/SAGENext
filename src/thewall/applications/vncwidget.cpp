@@ -267,7 +267,7 @@ void SN_VNCClientWidget::scheduleUpdate() {
         qDebug("VNCClientWidget::%s() : pixmap->convertFromImage() error", __FUNCTION__);
 #endif
 */
-	_perfMon->getConvTimer().start();
+	_perfMon->getUpdtTimer().start();
 
 	if (_useOpenGL && !_usePbo) {
 		// QGLContext::InvertedYBindOption Because In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
@@ -369,7 +369,7 @@ void SN_VNCClientWidget::scheduleUpdate() {
 		_pixmapForDrawing.convertFromImage(*constImageRef, Qt::ColorOnly | Qt::ThresholdDither);
 	}
 
-	_perfMon->updateConvDelay();
+	_perfMon->updateUpdateDelay();
 
 	// Schedules a redraw. This is not an immediate paint. This actually is postEvent()
 	// QGraphicsView will process the event

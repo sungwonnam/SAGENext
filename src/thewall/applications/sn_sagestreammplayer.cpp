@@ -14,6 +14,7 @@ SN_SageStreamMplayer::SN_SageStreamMplayer(const quint64 globalappid, const QSet
 	_pauseButton->setPriorityOverride(-1);
 	_fforwardButton->setPriorityOverride(1);
 
+//	_rewindButton->setPos(0, boundingRect().bottom() - _rewindButton->size().height());
 	_pauseButton->setPos(_rewindButton->geometry().topRight());
 	_playButton->setPos(_rewindButton->geometry().topRight());
 	_fforwardButton->setPos(_playButton->geometry().topRight());

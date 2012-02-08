@@ -36,16 +36,19 @@ protected:
 
 
 
-class PriorityGrid : public QObject
+class SN_PriorityGrid : public QObject
 {
 	Q_OBJECT
 public:
-	explicit PriorityGrid(QObject *parent=0) : QObject(parent), _thescene(0), _isEnabled(false) {}
+//	explicit SN_PriorityGrid(QObject *parent=0) : QObject(parent), _thescene(0), _isEnabled(false) {}
 
 	/*!
 	  rectSize defines the size of each rectangle in the grid
 	  */
-	explicit PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject *parent = 0);
+	explicit SN_PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject *parent = 0);
+
+	inline int dimx() const {return _dimx;}
+	inline int dimy() const {return _dimy;}
 
 	inline void setScene(QGraphicsScene *s) {_thescene = s;}
 
@@ -54,17 +57,41 @@ public:
 
 	inline bool isEnabled() const {return _isEnabled;}
 
+
+
 	/*!
 	  An application adds its priority to the rects intersects with its window
 	  */
 //	int addPriority(const QRect &windowSceneRect, qreal priorityvalue);
+
+	/*!
+	  Returns the aggregated priority value covered by the scenerect
+	  */
+	qreal getPriorityOffset(const QRect &scenerect);
+
+	/*!
+	  returns the priority value of the grid item at row, col
+	  */
+	qreal getPriorityOffset(int row, int col);
 	
 private:
+	int _dimx;
+	int _dimy;
+
 	/*!
 	  The region covers the entire scene
 	  */
 	QRegion _theSceneRegion;
 
+	/*!
+	  This array will hold aggregated priority values.
+	  So the values in this vector will keep increasing!
+	  */
+	QVector<qreal> _priorityRawVec;
+
+	/*!
+	  This array holds normalized values.
+	  */
 	QVector<qreal> _priorityVec;
 
 	QGraphicsScene *_thescene;
@@ -76,7 +103,7 @@ private:
 	  */
 	bool _isEnabled;
 
-	int buildRectangles();
+	void buildRectangles();
 
 signals:
 	

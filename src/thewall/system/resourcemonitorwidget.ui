@@ -98,10 +98,20 @@
    <item>
     <layout class="QVBoxLayout" name="tablePlotVLayoutOnTheRight">
      <item>
+      <widget class="QTableWidget" name="perAppPerfTable"/>
+     </item>
+     <item>
       <widget class="QTableWidget" name="perAppPriorityTable"/>
      </item>
      <item>
-      <widget class="QTableWidget" name="perAppPerfTable"/>
+      <widget class="QFrame" name="priorityGridFrame">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>

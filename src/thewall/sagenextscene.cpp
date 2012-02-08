@@ -65,7 +65,8 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 //	opacity->setOpacity(0.2);
 //	closeButton->setGraphicsEffect(opacity);
 	_closeButton->setOpacity(0.2);
-	_closeButton->setPos(sceneRect.width() - _closeButton->boundingRect().width() - 5, 10);
+//	_closeButton->setPos(sceneRect.width() - _closeButton->boundingRect().width() - 5, 10); // top right corner
+	_closeButton->setPos(10, 10); // top left corner
 //	_closeButton->setScale(0.5);
 	addItem(_closeButton);
 
@@ -238,6 +239,68 @@ void SN_TheScene::closeAllUserApp() {
 		}
 	}
 }
+
+
+
+////////////////////////////////////////////////////////////////////////////
+
+
+int SN_TheScene::getNumUserWidget() const {
+	int count = 0;
+	foreach(QGraphicsItem *item, items()) {
+		if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
+			++count;
+		}
+	}
+	return count;
+}
+
+QSizeF SN_TheScene::getAvgWinSize() const {
+	int count = 0;
+	QSizeF size(0.0, 0.0);
+
+	foreach(QGraphicsItem *item, items()) {
+		if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
+
+			++count;
+
+			size += (item->scale() * item->boundingRect().size());
+		}
+	}
+
+	return size / (qreal)count;
+}
+
+qreal SN_TheScene::getRatioEmptySpace() const {
+	QRegion wallregion(0, 0, width(), height());
+
+	qreal wallsize = width() * height();
+
+	foreach(QGraphicsItem *item, items()) {
+		if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
+
+			wallregion -= QRegion(item->sceneBoundingRect().toRect());
+		}
+	}
+
+	qreal occupied = 0;
+	foreach(QRect rect, wallregion.rects()) {
+		occupied += (rect.width() * rect.height());
+	}
+
+	return (wallsize - occupied) / wallsize;
+}
+
+qreal SN_TheScene::getRatioOverlapped() const {
+	return 0.0;
+}
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////
+
 
 void SN_TheScene::saveSession() {
 	QString sessionFilename = QDir::homePath() + "/.sagenext/sessions/";

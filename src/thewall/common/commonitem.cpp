@@ -101,7 +101,9 @@ void SN_PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 
 
 
-
+/*!
+  TextItem
+  */
 SN_SimpleTextItem::SN_SimpleTextItem(int ps, const QColor &fontcolor, const QColor &bgcolor, QGraphicsItem *parent)
 	: QGraphicsSimpleTextItem(parent)
     , _fontcolor(fontcolor)
@@ -117,8 +119,13 @@ SN_SimpleTextItem::SN_SimpleTextItem(int ps, const QColor &fontcolor, const QCol
 //	setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
 }
 
-SN_SimpleTextItem::~SN_SimpleTextItem() {
+void SN_SimpleTextItem::setFontPointSize(int ps) {
+	QFont f;
+	f.setStyleStrategy(QFont::OpenGLCompatible);
+	f.setPointSize(ps);
+	setFont(f);
 }
+
 void SN_SimpleTextItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	int numDegrees = event->delta() / 8;
 	int numTicks = numDegrees / 15;
@@ -140,6 +147,7 @@ void SN_SimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem 
 	Q_UNUSED(widget);
 
 	painter->fillRect(boundingRect(), QBrush(_bgcolor));
+
 	QGraphicsSimpleTextItem::paint(painter, option, widget);
 }
 
@@ -149,6 +157,9 @@ void SN_SimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem 
 
 
 
+/*!
+  TextWidget
+  */
 SN_SimpleTextWidget::SN_SimpleTextWidget(int pointSize, const QColor &fontcolor, const QColor &bgcolor, QGraphicsItem *parent)
 	: QGraphicsWidget(parent, Qt::Widget)
 	, _textItem(0)

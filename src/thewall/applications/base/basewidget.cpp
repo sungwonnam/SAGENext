@@ -20,6 +20,8 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	, _settings(0)
 	, _windowState(SN_BaseWidget::W_NORMAL)
     , _widgetType(SN_BaseWidget::Widget_Misc)
+
+    , infoTextItem(0)
 	, _appInfo(new AppInfo())
     , _priorityData(new SN_Priority(this))
 	, _perfMon(new PerfMonitor(this))
@@ -45,7 +47,7 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	, _registerForMouseHover(false)
     , _bordersize(10)
     , _showInfo(false)
-    , infoTextItem(0)
+
 {
 	init();
 }
@@ -57,6 +59,8 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	, _settings(s)
 	, _windowState(SN_BaseWidget::W_NORMAL)
     , _widgetType(SN_BaseWidget::Widget_Misc)
+
+    , infoTextItem(0)
 	, _appInfo(new AppInfo())
     , _priorityData(new SN_Priority(this))
 	, _perfMon(new PerfMonitor(this))
@@ -82,7 +86,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	, _registerForMouseHover(false)
     , _bordersize(10)
     , _showInfo(false)
-    , infoTextItem(0)
+
 {
 
 	// This will affect boundingRect(), windowFrameRect() of the widget.
@@ -125,6 +129,8 @@ SN_BaseWidget::~SN_BaseWidget()
 		delete _perfMon;
 	}
     //	if ( infoTextItem ) delete infoTextItem;
+
+//	if (_priorityData) delete _priorityData;
 
 	qDebug("%s::%s() : widget id %llu has been deleted\n",metaObject()->className(), __FUNCTION__, _globalAppId);
 }
@@ -187,6 +193,11 @@ void SN_BaseWidget::init()
 	infoTextItem->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 	//infoTextItem = new SwSimpleTextItem(settings->value("general/fontpointsize").toInt(), this);
 	infoTextItem->hide();
+
+
+	// temporary
+	_showInfoAction->trigger();
+
 
 
 	/*!
@@ -281,6 +292,9 @@ void SN_BaseWidget::drawInfo()
 
 		/* starts timer */
 		_timerID = startTimer(1000); // timerEvent every 1000 msec
+	}
+	else {
+		hideInfo();
 	}
 }
 
@@ -643,7 +657,8 @@ void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QP
 				// For now, resizeHandleSceneRect is always bottom right corner of the widget
 
 				//
-				// keep updating resize rectangle
+				// keep updating resize rectangle (QGraphicsRectItem)
+				// this rectangle will become invisible once the pointer releaed
 				//
 			}
 //			_intMon->setLastInteraction(InteractionMonitor::RESIZE);
@@ -662,7 +677,6 @@ void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QP
 
 
 void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
-
 	/**
 	  changing painter state will hurt performance
 	  */
@@ -677,10 +691,8 @@ void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, Q
 //	painter->setPen(pen);
 //	painter->drawRect(windowFrameRect());
 	
-
-
 	if (! isWindow()) {
-
+/*
 		QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
 		if (isSelected()) {
 			lg.setColorAt(0, QColor(250, 250, 0, 164));
@@ -691,31 +703,24 @@ void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, Q
 			lg.setColorAt(1, QColor(20, 20, 20, 164));
 		}
 		QBrush brush(lg);
+*/
 
 
-
-		/**********
-		  Below draws rectangle around widget's content (using boundingRect)
-		  Because of this, it has to set Pen (which chagens painter state)
-		  ********/
-
+//		  Below draws rectangle around widget's content (using boundingRect)
+//		  Because of this, it has to set Pen (which chagens painter state)
+//		  And this can be called anytime because it's not filling the rectangle
+		/*
 		QPen pen;
 		pen.setWidth( _bordersize );
 		pen.setBrush(brush);
 
 		painter->setPen(pen);
-		painter->drawRect(boundingRect()/*.adjusted(1, 1, -2, -2)*/);
+		painter->drawRect(boundingRect());
+		*/
 
-
-		/***************
-		  Below fills rectangle (works as background) so it has to be called BEFORE any drawing code
-		  ***********/
+//		  Below fills rectangle (works as background) so it has to be called BEFORE any drawing code
 //		painter->fillRect(boundingRect(), brush);
 	}
-
-
-
-
 
 
 	/* info overlay */
@@ -724,8 +729,6 @@ void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, Q
 		_appInfo->setDrawingThreadCpu(sched_getcpu());
 #endif
 		Q_ASSERT(infoTextItem);
-		//painter->setBrush(Qt::black);
-		//painter->drawRect(infoTextItem->boundingRect());
 		infoTextItem->show();
 	}
 	else if (!_showInfo && infoTextItem->isVisible()){
@@ -774,7 +777,7 @@ void SN_BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 	//qDebug() << "doubleClickEvent" << event->lastPos() << event->pos() << ", " << event->lastScenePos() << event->scenePos() << ", " << event->lastScreenPos() << event->screenPos();
 	if ( mapRectToScene(boundingRect()).contains(event->scenePos()) ) {
 		maximize(); // window will be restored if it is in maximized state already
-		_priorityData->setLastInteraction(SN_Priority::RESIZE);
+//		_priorityData->setLastInteraction(SN_Priority::RESIZE);
 	}
 }
 
@@ -795,7 +798,7 @@ void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	}
 	else {
 		reScale(numTicks, 0.05);
-		_priorityData->setLastInteraction(SN_Priority::RESIZE);
+//		_priorityData->setLastInteraction(SN_Priority::RESIZE);
 	}
 
 	// reimplementation will accept the event
