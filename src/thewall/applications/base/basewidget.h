@@ -150,7 +150,8 @@ public:
 
 
         /*!
-          How much is actually visible to a user
+          How much of my window is actually visible to a user.
+		  This is a function of my Z value and colliding widgets.
           */
         QRegion effectiveVisibleRegion() const;
 
@@ -222,7 +223,7 @@ public:
 
 
 		/**
-		  If SN_BaseWidget is registered for hover listener widget, (by settings setRegisterForMouseHover()), the pointer will call this function whenever it moves.
+		  If SN_BaseWidget is registered for hover listener widget, (by settings setRegisterForMouseHover()), the SN_PolygonArrowPointer will call this function whenever it moves.
 
 		  'isHovering' is true only when the 'pointer' is hovering on this widget.
 		  'point' denotes the 'pointer's current xy coordinate in this item's local coordinate.
@@ -230,16 +231,22 @@ public:
 		virtual void handlePointerHover(SN_PolygonArrowPointer */*pointer*/, const QPointF & /*point*/, bool /* isHovering */) {}
 
 		/**
-		  SN_PolygonArrowPointer::pointerPress() calls this function upon receiving mousePressEvent from uiclient (sagenextPointer.app)
+		  SN_PolygonArrowPointer::pointerPress() calls this function upon receiving mousePressEvent from uiclient/sn_pointerui (sagenextPointer.app)
 		  Default implementation calls setTopmost() that sets this widget's z value the highest among all other application windows.
 
-		  Note that your widget doesn't have to reimplement this function to receive the system's mouse event.
-		  The system's mouse event (press immediately followed by release) will be generated and passed by SN_PolygonArrowPointer::pointerClick() upon receiving mouseClick event from the uiclient.
+		  Note that your widget shouldn't reimplement this function to receive the system's mouse event.
+		  The system's mouse event (pressEvent immediately followed by releaseEvent) will be generated (and passed to the viewport widget) by
+          SN_PolygonArrowPointer::pointerClick() upon receiving mouseClick event from the uiclient.
 
 		  @param pointer is the shared pointer who's pressing this widget
 		  @param point is the position of the point being pressed in this widget's local coordinate
 		  */
 		virtual void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn = Qt::LeftButton);
+
+		/*!
+		  Base implementation does nothing
+		  */
+		virtual void handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn = Qt::LeftButton);
 
 		/*!
           Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to unexpected behavior.
@@ -349,8 +356,9 @@ protected:
         QMenu *_contextMenu;
 
 
-		/**
-		  This is to know if any pointer is currently hovering on my boundingRect()
+		/*!
+		  This is to know if any SN_PolygonArrowPointer is currently hovering on my boundingRect()
+		  Refer MouseHoverExample plugin to see how to use this
 		  */
 		QMap<SN_PolygonArrowPointer *, QPair<QPointF, bool> > _pointerMap;
 

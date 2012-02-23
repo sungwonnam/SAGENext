@@ -127,6 +127,8 @@ void ResourceMonitorWidget::refreshCPUdata() {
 	  per CPU bandwidth and load
 	  ****/
 	Q_ASSERT(rMonitor);
+
+	/*
 	QVector<SN_ProcessorNode *> *pv = rMonitor->getProcVec();
 	foreach(SN_ProcessorNode *procnode , *pv) {
 		QLayoutItem *li = ui->vLayout_percpu->itemAt(1 + procnode->getID()); // offset with 1 to skip header (hboxlayout)
@@ -143,6 +145,29 @@ void ResourceMonitorWidget::refreshCPUdata() {
 
 		lb = qobject_cast<QLabel *>(l->itemAt(4)->widget());
 		lb->setNum(procnode->getCpuUsage());
+	}
+	*/
+
+	const QList<SN_SimpleProcNode *> &proclist = rMonitor->getSimpleProcList();
+	QList<SN_SimpleProcNode *>::const_iterator it;
+	for (it=proclist.constBegin(); it!=proclist.constEnd(); it++) {
+		SN_SimpleProcNode *spn = (*it);
+		Q_ASSERT(spn);
+
+		QLayoutItem *li = ui->vLayout_percpu->itemAt(1 + spn->procNum()); // offset with 1 to skip header (hboxlayout)
+		QLayout *l = li->layout(); // this is HBoxLayout for each row
+		QLabel *lb = 0;
+
+		// the first item (QLabel) is "CPU" label
+
+		lb = qobject_cast<QLabel *>(l->itemAt(2)->widget());
+		lb->setNum(spn->numWidgets());
+
+		lb = qobject_cast<QLabel *>(l->itemAt(3)->widget());
+		lb->setNum(spn->netBWUsage());
+
+		lb = qobject_cast<QLabel *>(l->itemAt(4)->widget());
+		lb->setNum(spn->cpuUsage());
 	}
 }
 
@@ -177,6 +202,8 @@ void ResourceMonitorWidget::refreshPerAppPriorityData() {
 
 	foreach(SN_RailawareWidget *rw, rMonitor->getWidgetList()) {
 		if (!rw) continue;
+
+		Q_ASSERT(rw->priorityData());
 
 		// fill data for each column on current row
 		for (int i=0; i<ui->perAppPerfTable->columnCount(); ++i) {
@@ -231,6 +258,8 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 	// An widget per row
 	foreach(SN_RailawareWidget *rw, rMonitor->getWidgetList()) {
 		if (!rw) continue;
+
+		Q_ASSERT(rw->perfMon());
 
 		// fill data for each column on current row
 		for (int i=0; i<ui->perAppPerfTable->columnCount(); ++i) {
@@ -297,7 +326,7 @@ void ResourceMonitorWidget::refresh() {
 	/***
 	  per CPU load
 	  */
-//	refreshCPUdata();
+	refreshCPUdata();
 
 	rMonitor->getWidgetListRWLock()->lockForRead();
 

@@ -23,7 +23,7 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 
     , infoTextItem(0)
 	, _appInfo(new AppInfo())
-    , _priorityData(new SN_Priority(this))
+    , _priorityData(0)
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, _rMonitor(0)
@@ -62,7 +62,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 
     , infoTextItem(0)
 	, _appInfo(new AppInfo())
-    , _priorityData(new SN_Priority(this))
+    , _priorityData(0)
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, _rMonitor(0)
@@ -101,6 +101,10 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	}
 
 	_useOpenGL = _settings->value("graphics/openglviewport").toBool();
+
+	if (_settings->value("system/resourcemonitor").toBool()) {
+		_priorityData = new SN_Priority(this);
+	}
 
 	init();
 }
@@ -195,8 +199,10 @@ void SN_BaseWidget::init()
 	infoTextItem->hide();
 
 
-	// temporary
-	_showInfoAction->trigger();
+	//
+	// temporary to display info overlay by default
+	//
+//	_showInfoAction->trigger();
 
 
 
@@ -247,19 +253,35 @@ QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 	QRegion effectiveRegion;
 	if (!scene()) return effectiveRegion; // return empty region
 
-	effectiveRegion = boundingRegion(sceneTransform()); // returns a region in scene coordinates
+	effectiveRegion = boundingRegion(sceneTransform()); // returns the region in the scene coordinate
 
-	QList<QGraphicsItem *> collidingItems = scene()->collidingItems(this);
-	foreach (QGraphicsItem *i, collidingItems) {
+	QList<QGraphicsItem *> cItems = collidingItems(Qt::IntersectsItemBoundingRect);
+	QList<QGraphicsItem *>::const_iterator it;
+	for (it=cItems.constBegin(); it!=cItems.constEnd(); it++) {
+		QGraphicsItem *i = (*it);
+		Q_ASSERT(i);
+
 		// consider only user application
 		if ( i->type() < QGraphicsItem::UserType + BASEWIDGET_USER ) continue;
 
-		// consider only those apps above this (thereby obstructing portion of this)
+		SN_BaseWidget *other = static_cast<SN_BaseWidget *>(i);
+		Q_ASSERT(other);
+
+		// consider only those apps above this (thereby obstructing a portion of this)
 		if ( i->zValue() < zValue() ) continue;
 
-		QRegion overlapped = i->boundingRegion(i->sceneTransform());
+		// items are stacked by insertion order
+		// if item B had added after A then B will be on top of A even though their z values are the same
+		if (i->zValue() == zValue() ) {
+			if (other->globalAppId() < _globalAppId) {
+				// then other item were added before this
+				// so I'm on top of other
+				continue;
+			}
+		}
 
-		effectiveRegion = effectiveRegion.subtracted( overlapped );
+		// region is in scene coordinate
+		effectiveRegion = effectiveRegion.subtracted( i->sceneBoundingRect().toRect() );
 	}
 
 	//	_effectiveVisibleRegion = effectiveRegion;
@@ -641,6 +663,14 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
 	Q_UNUSED(btn);
 
 	setTopmost();
+}
+
+void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
+	Q_UNUSED(pointer);
+	Q_UNUSED(point);
+	Q_UNUSED(btn);
+
+	// do nothing
 }
 
 void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {

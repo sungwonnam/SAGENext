@@ -121,7 +121,7 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 
     if (_rMonitor) {
         //_affInfo->disconnect();
-        _rMonitor->removeSchedulableWidget(this); // remove this from ResourceMonitor::widgetMultiMap
+        _rMonitor->removeSchedulableWidget(this); // remove this from ResourceMonitor::widgetListMap
 //        _rMonitor->removeApp(this); // will emit appRemoved(int) which is connected to Scheduler::loadBalance()
         //qDebug() << "affInfo removed from resourceMonitor";
     }

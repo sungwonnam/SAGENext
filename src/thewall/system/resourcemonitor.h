@@ -8,6 +8,7 @@
 
 class QSettings;
 class AffinityInfo;
+class SN_TheScene;
 class SN_SimpleTextItem;
 class SN_BaseWidget;
 class SN_RailawareWidget;
@@ -50,7 +51,7 @@ public:
 
 	inline int getNodeType() const {return nodeType;}
 	inline int getID() const {return id;}
-		inline int getSMTSiblingID() const {return smt_sibling_id;}
+	inline int getSMTSiblingID() const {return smt_sibling_id;}
 
 	inline void setCpuUsage(qreal r) {cpuUsage = r;}
 	inline qreal getCpuUsage() const {return cpuUsage;}
@@ -72,30 +73,30 @@ public:
 	  returns SUM(_priorityQuantized) of all apps on this processor.
 	  This function assumes BaseWidget::_priorityQuantized had been already set !
 	  */
-	int prioritySum() const;
+	int prioritySum();
 
 	/*!
 	  print every information on this processor
 	  */
-	void printOverhead() const;
+	void printOverhead();
 
 
 	enum PROC_NODE_TYPE { NULL_NODE, ROOT_NODE, NUMA_NODE, PHY_CORE, LOG_CORE, SMT_CORE, HPT_CORE };
 private:
 	int nodeType;
 
-		/*!
-	  * core id seen by OS
+	/*!
+	  core id seen by OS
 	  */
 	int id;
 
-		/*!
-		  If it's SMT core there must be sibling who shares L1 cache
-		  */
+	/*!
+	  If it's SMT core there must be sibling who shares L1 cache
+	  */
 	int smt_sibling_id;
 
-		/*!
-	  * list of apps running on this cpu
+	/*!
+	  list of apps running on this cpu
 	  */
 	QList<SN_RailawareWidget *> *_appList;
 
@@ -105,7 +106,74 @@ private:
 	qreal cpuUsage;
 
 	qreal bandwidth;
+
+	QReadWriteLock _rwlock;
 };
+
+
+
+
+
+
+
+
+
+class SN_SimpleProcNode : public QObject
+{
+	Q_OBJECT
+public:
+	SN_SimpleProcNode(int procnum, QObject *parent=0);
+
+	inline int procNum() const {return _procNum;}
+
+	inline qreal cpuUsage() const {return _cpuUsage;}
+	inline qreal netBWUsage() const {return _netBWusage;}
+	inline int numWidgets() const {return _numWidgets;}
+
+	inline void setCpuUsage(qreal v) {_cpuUsage = v;}
+	inline void setNetBWUsage(qreal v) {_netBWusage = v;}
+	inline void setNumWidgets(int v) {_numWidgets = v;}
+
+	qreal addCpuUsage(qreal v) {_cpuUsage += v; return _cpuUsage;}
+	qreal addNetBWUsage(qreal v) {_netBWusage += v; return _netBWusage;}
+	int addNumWidgets(int i) {_numWidgets += i; return _numWidgets;}
+
+private:
+	/*!
+	  physical processor id
+	  */
+	int _phyid;
+
+	/*!
+	  physical core id
+	  A quad core processor will have four cores
+	  And a core will have two processors if it's SMT
+	  */
+	int _coreid;
+
+	/*!
+	  The processor number seen by OS
+	  */
+	int _procNum;
+
+	int _numWidgets;
+
+	/*!
+	  aggregated % cpu usage of worker threads of applications on this node
+	  */
+	qreal _cpuUsage;
+
+	/*!
+	  aggregated network bandwidth usage of applications on this node
+	  */
+	qreal _netBWusage;
+};
+
+
+
+
+
+
 
 
 
@@ -120,10 +188,12 @@ class SN_ResourceMonitor : public QObject
 	Q_OBJECT
 public:
 //	explicit ResourceMonitor( const quint64 gaid,const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wf = 0);
-	explicit SN_ResourceMonitor(const QSettings *s, QGraphicsScene *scene, QObject *parent=0);
+	explicit SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, QObject *parent=0);
 	~SN_ResourceMonitor();
 
 	inline QVector<SN_ProcessorNode *> * getProcVec() const {return procVec;}
+	inline QList<SN_SimpleProcNode *> getSimpleProcList() const {return _simpleProcList;}
+
 	inline Numa_Info * getNumaInfo() const {return numaInfo;}
 
 
@@ -140,13 +210,6 @@ public:
 	inline QList<SN_RailawareWidget *> getWidgetList() {return widgetList;}
 
 	inline QReadWriteLock * getWidgetListRWLock() {return &_widgetListRWlock;}
-
-	/*!
-	  this was for prelim exam
-	  */
-	inline bool printDataFlag() const {return _printDataFlag;}
-	inline void setPrintDataFlag(bool b = true) {_printDataFlag = b;}
-
 
 
 
@@ -181,11 +244,6 @@ public:
 	  */
 	SN_RailawareWidget * getEarliestDeadlineWidget();
 
-	/*!
-	  Heat map of the wall
-	  */
-//	PriorityGrid *_priorityGrid;
-
 
 protected:
 	/*!
@@ -203,9 +261,11 @@ private:
 	  */
 	QVector<SN_ProcessorNode *> *procVec;
 
+	QList<SN_SimpleProcNode *> _simpleProcList;
+
 	const QSettings *settings;
 
-	QGraphicsScene *_theScene;
+	SN_TheScene *_theScene;
 
 	/*!
 	  A pointer to the scheduler control object
@@ -229,6 +289,8 @@ private:
 	  An array index represents cpu id seen by OS
 	  */
 	void buildProcVector();
+
+	void buildSimpleProcList();
 
 
 	/*!
@@ -345,6 +407,8 @@ public slots:
 
 
 	void printData();
+
+	void closeDataFile();
 };
 
 #endif // RESOURCEMONITOR_H

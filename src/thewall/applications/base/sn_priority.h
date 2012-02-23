@@ -22,6 +22,8 @@ public:
 	inline quint16 evrToWin() const {return _evr_to_win;}
 	inline quint16 evrToWall() const {return _evr_to_wall;}
 
+	inline quint64 evrSize() const {return _evrsize;}
+
 	/*!
 	  All the member variables will be filled in this function.
 	  */
@@ -82,6 +84,8 @@ private:
 	SN_BaseWidget const *_widget;
 
 	static SN_PriorityGrid _priorityGrid;
+
+	quint64 _evrsize;
 
 	/*!
 	  Ratio of effective visible region to the window size

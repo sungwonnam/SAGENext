@@ -106,7 +106,11 @@ signals:
 	void frameReceived();
 
 public slots:
+	/*!
+	  flip the pbo buffer
+	  */
 	void flip(int idx);
+
 };
 
 #endif // SAGEPIXELRECEIVER_H

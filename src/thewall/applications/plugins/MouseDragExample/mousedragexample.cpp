@@ -86,12 +86,30 @@ TrackerItem * MouseDragExample::getTrackerItemUnderPoint(const QPointF &point) {
 void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
 	SN_BaseWidget::handlePointerPress(pointer, point, btn);
 
+	qreal maxZ = 0.0;
 	TrackerItem *t = getTrackerItemUnderPoint(point);
-	if (t)
+	if (t) {
+
+		QMap<SN_PolygonArrowPointer *, TrackerItem *>::const_iterator it;
+		for (it=_dragTrackerMap.constBegin(); it!=_dragTrackerMap.constEnd(); it++) {
+			TrackerItem *ti = it.value();
+			Q_ASSERT(ti);
+			maxZ = qMax(maxZ, ti->zValue());
+		}
+		t->setZValue(maxZ + 0.1); // set top most child item
+
 		_dragTrackerMap.insert(pointer, t);
+	}
 	else {
 		_dragTrackerMap.erase(_dragTrackerMap.find(pointer));
 	}
+}
+
+void MouseDragExample::handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
+	Q_UNUSED(pointer);
+	Q_UNUSED(btn);
+
+	_dragTrackerMap.erase(_dragTrackerMap.find(pointer));
 }
 
 void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {

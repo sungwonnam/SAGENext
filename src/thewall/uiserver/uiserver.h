@@ -132,6 +132,8 @@ private:
 //        void fileReceivingFunction(int mtype, const QString &fname, qint64 fsize, int port);
 
 signals:
+	void ratkoDataFinished();
+
         /**
           * REG_FROM_UI handler.
           * will invoke GraphicsViewMain::startApp()

@@ -71,8 +71,9 @@ SN_SagePixelReceiver::~SN_SagePixelReceiver() {
 //	::shutdown(socket, SHUT_RDWR);
 	::close(_tcpsocket);
 
-	qDebug() << "return ~SagePixelReceiver" << QTime::currentTime().toString("hh:mm:ss.zzz");
+	qDebug() << "[" << QTime::currentTime().toString("hh:mm:ss.zzz") << "] ~SN_SagePixelReceiver";
 }
+
 
 void SN_SagePixelReceiver::receivePixel() {
 	QMutexLocker locker(&_mutex);
@@ -125,15 +126,12 @@ void SN_SagePixelReceiver::run() {
 	 */
 	if (affInfo) {
 		affInfo->figureOutCurrentAffinity();
-
-#if defined(Q_OS_LINUX)
-		affInfo->setCpuOfMine( sched_getcpu() ,s->value("system/sailaffinity", false).toBool()); // true will cause sail affinityinfo
-#endif
+		affInfo->setCpuOfMine( sched_getcpu() , s->value("system/sailaffinity", false).toBool());
 	}
+
 
 	// network recv latency
 	struct timeval lats, late;
-
 	struct rusage ru_start, ru_end;
 	if(perf) {
 		perf->getRecvTimer().start(); //QTime::start()
@@ -148,10 +146,7 @@ void SN_SagePixelReceiver::run() {
 	int byteCount = appInfo->frameSizeInByte();
 	unsigned char *bufptr = 0;
 
-	if (_usePbo) {
-
-	}
-	else {
+	if (!_usePbo) {
 		bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
 	}
 
@@ -171,6 +166,7 @@ void SN_SagePixelReceiver::run() {
 				/* this is called too many times */
 				// if cpu has changed, affinfo::cpuOfMineChanged() will be emitted
 				// which is connected to ResourceMonitor::updateAffInfo()
+
 				affInfo->setCpuOfMine( sched_getcpu() , s->value("system/sailaffinity", false).toBool());
 #endif
 			}
@@ -223,12 +219,12 @@ void SN_SagePixelReceiver::run() {
 				read = recv(_tcpsocket, bufptr, appInfo->networkUserBufferLength(), MSG_WAITALL);
 			}
 			if ( read == -1 ) {
-				qDebug("SagePixelReceiver::run() : error while reading.");
+//				qDebug("SagePixelReceiver::run() : error while reading.");
 				_end = true;
 				break;
 			}
 			else if ( read == 0 ) {
-				qDebug("SagePixelReceiver::run() : sender disconnected");
+//				qDebug("SagePixelReceiver::run() : sender disconnected");
 				_end = true;
 				break;
 			}
@@ -313,7 +309,7 @@ void SN_SagePixelReceiver::run() {
 	} /*** end of receiving loop ***/
 
 	/* pixel receiving thread exit */
-	qDebug("SagePixelReceiver : thread exit");
+//	qDebug("SagePixelReceiver : thread exit");
 }
 
 

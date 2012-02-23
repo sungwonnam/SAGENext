@@ -25,8 +25,6 @@ SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, 
     , _widgetClosed(false)
     , _scheduled(false)
 {
-//	setWidgetType(SN_BaseWidget::Widget_RealTime);
-
 	failToSchedule = 0;
 
 	/* railaware widget is streaming widget, so turn off cache */
@@ -46,9 +44,11 @@ SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, 
 		_rMonitor->addSchedulableWidget(this);
 
 		createAffInstances();
+		/*
 		if ( ! QObject::connect(_affInfo, SIGNAL(cpuOfMineChanged(SN_RailawareWidget *,int,int)), _rMonitor, SLOT(updateAffInfo(SN_RailawareWidget *,int,int))) ) {
 			qDebug() << "SN_RailawareWidget() : connection _affInfo::cpuOfMineChanged() -> _rMonitor::updateAffInfo() failed";
 		}
+		*/
 	}
 }
 

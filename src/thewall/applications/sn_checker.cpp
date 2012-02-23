@@ -750,7 +750,7 @@ SN_CheckerGL_Old::~SN_CheckerGL_Old() {
 
 	_rMonitor->removeSchedulableWidget(this);
 
-	if (_priorityData) delete _priorityData;
+//	if (_priorityData) delete _priorityData;
 
 	_end = true;
 

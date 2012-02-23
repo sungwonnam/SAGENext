@@ -51,7 +51,7 @@ fsManagerMsgThread::~fsManagerMsgThread() {
 
         // this is important, without this, program will finishes with an error
         wait();
-        qDebug("fsManagerMsgThread::%s() : returning",  __FUNCTION__);
+		qDebug() << "[" << QTime::currentTime().toString("hh:mm:ss.zzz") << "] ~fsManagerMsgThread";
 }
 
 void fsManagerMsgThread::breakWhileLoop() {
@@ -219,7 +219,7 @@ void fsManagerMsgThread::run() {
 		parseMessage(sageMsg);
 		sageMsg.destroy();
 	}
-	qDebug("fsManagerMsgThread::%s() : msgThread for sageAppId %llu exit the loop", __FUNCTION__, _sageAppId);
+//	qDebug("fsManagerMsgThread::%s() : msgThread for sageAppId %llu exit the loop", __FUNCTION__, _sageAppId);
 }
 
 void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {

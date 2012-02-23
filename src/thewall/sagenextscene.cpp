@@ -9,6 +9,7 @@
 
 #include "applications/base/basewidget.h"
 #include "applications/base/appinfo.h"
+#include "applications/base/sn_priority.h"
 
 #include "system/resourcemonitor.h"
 #include "uiserver/uiserver.h"
@@ -268,8 +269,50 @@ QSizeF SN_TheScene::getAvgWinSize() const {
 		}
 	}
 
-	return size / (qreal)count;
+	if (!count) {
+		return QSizeF();
+	}
+
+	QSizeF avgsize = size / (qreal)count;
+
+//	foreach(QGraphicsItem *item, items()) {
+//		if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
+
+//			QSizeF size = item->scale() * item->boundingRect().size();
+
+//			QSizeF temp = size - avgsize;
+//			temp = temp * temp;
+//		}
+//	}
+
+	return avgsize;
 }
+
+qreal SN_TheScene::getAvgEVRSize() const {
+	qreal result = 0.0;
+	int count = 0;
+
+	foreach(QGraphicsItem *item, items()) {
+		if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
+
+			++count;
+
+			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+			Q_ASSERT(bw);
+			Q_ASSERT(bw->priorityData());
+
+			result += bw->priorityData()->evrSize();
+		}
+	}
+
+	if (!count) {
+		return 0;
+	}
+	else {
+		return result / count;
+	}
+}
+
 
 qreal SN_TheScene::getRatioEmptySpace() const {
 	QRegion wallregion(0, 0, width(), height());
@@ -279,20 +322,38 @@ qreal SN_TheScene::getRatioEmptySpace() const {
 	foreach(QGraphicsItem *item, items()) {
 		if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
 
+			// subtract application's window rectangle from the wall rectangle
 			wallregion -= QRegion(item->sceneBoundingRect().toRect());
 		}
 	}
 
-	qreal occupied = 0;
+	// now wall region only contains empty rectangles
+
+	qreal emptysize = 0;
 	foreach(QRect rect, wallregion.rects()) {
-		occupied += (rect.width() * rect.height());
+		emptysize += (rect.width() * rect.height());
 	}
 
-	return (wallsize - occupied) / wallsize;
+	return emptysize / wallsize;
 }
 
 qreal SN_TheScene::getRatioOverlapped() const {
-	return 0.0;
+	qreal overlappedsize = 0.0;
+
+	foreach(QGraphicsItem *item, items()) {
+		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER)
+			continue;
+
+		foreach(QGraphicsItem *citem, item->collidingItems()) {
+
+			if (citem->type() < QGraphicsItem::UserType + BASEWIDGET_USER)
+				continue;
+
+			QRectF irectf = citem->sceneBoundingRect() & item->sceneBoundingRect();
+			overlappedsize += (irectf.width() * irectf.height());
+		}
+	}
+	return (overlappedsize / (width() * height()));
 }
 
 

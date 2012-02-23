@@ -45,6 +45,8 @@ public:
 
 	void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
 
+	void handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
+
 	/**
 	  Reimplementing SN_BaseWidget::handlePointerDrag()
 	  */

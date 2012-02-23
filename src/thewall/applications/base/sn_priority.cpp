@@ -100,10 +100,14 @@ void SN_Priority::computeEvrInfo(void) {
 
 	Q_ASSERT(_widget);
 
-	QRegion evr = _widget->effectiveVisibleRegion();
-	quint64 evrsize = 0;
-	foreach(QRect r, evr.rects()) {
-		evrsize += (r.width() * r.height()); // quint64 : unsigned long long int
+	QRegion evr = _widget->effectiveVisibleRegion(); // evr is in scene coordinate
+
+	_evrsize = 0;
+	QVector<QRect>::const_iterator it;
+	QVector<QRect> rectsInRegion = evr.rects();
+	for (it=rectsInRegion.constBegin(); it!=rectsInRegion.constEnd(); it++) {
+		const QRect &r = (*it);
+		_evrsize += (r.width() * r.height()); // quint64 : unsigned long long int
 	}
 
 	QSizeF effectiveSize = _widget->size() * _widget->scale();
@@ -114,10 +118,10 @@ void SN_Priority::computeEvrInfo(void) {
 	// ratio of EVR to window size (%)
 //	Q_ASSERT(winsize > 0);
 	if (winsize > 0) {
-		_evr_to_win = (100 * evrsize) / winsize; // quint16 : unsigned short
+		_evr_to_win = (100 * _evrsize) / winsize; // quint16 : unsigned short
 	}
 
 	if (_widget->scene()) {
-		_evr_to_wall = (100 * evrsize) / (_widget->scene()->width() * _widget->scene()->height()); // quint16 : unsigned short
+		_evr_to_wall = (100 * _evrsize) / (_widget->scene()->width() * _widget->scene()->height()); // quint16 : unsigned short
 	}
 }

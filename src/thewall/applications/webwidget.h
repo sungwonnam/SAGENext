@@ -18,15 +18,15 @@ class QGraphicsProxyWidget;
   */
 class SN_WebWidget : public SN_BaseWidget
 {
-        Q_OBJECT
+	Q_OBJECT
 
 public:
         /**
           * Qt::Window flag is very important in WebWidget
           * Because it enables resizing through widget frames. So there must be some windowFrameMargin
           */
-        SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = Qt::Window);
-        ~SN_WebWidget();
+	SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = Qt::Window);
+	~SN_WebWidget();
 
 
         /*!
@@ -38,7 +38,22 @@ public:
         /**
           sets new web URL and triggers webpage loading
           */
-        void setUrl(const QString &url);
+	void setUrl(const QString &url);
+
+
+		/*!
+		  generate system mouse press event so that
+		  gwebview can be the mouseGrabber
+		  */
+	void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
+
+		/*!
+		  pointer drag should generate real system mouse event so that users can interact with web contents (e.g. google map)
+		  */
+	void handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
+
+
+	void handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
 
 protected:
 //	void paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *) {/* do nothing */}
@@ -60,10 +75,9 @@ protected:
           * return false to skip filtering (just forward the event to child item)
           * return true to intercept the event
           */
-        bool sceneEventFilter(QGraphicsItem *watched, QEvent *event);
+	bool sceneEventFilter(QGraphicsItem *watched, QEvent *event);
 
-        void wheelEvent(QGraphicsSceneWheelEvent *event);
-
+//        void wheelEvent(QGraphicsSceneWheelEvent *event);
 
 		// use BaseWidget's implementation
 //        void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -77,22 +91,22 @@ protected:
 
 
 private:
-		QGraphicsLinearLayout *linearLayout;
-		QGraphicsWebView *gwebview;
-		QLineEdit *urlbox;
-		QGraphicsProxyWidget *urlboxproxy;
+	QGraphicsLinearLayout *linearLayout;
+	QGraphicsWebView *gwebview;
+	QLineEdit *urlbox;
+	QGraphicsProxyWidget *urlboxproxy;
 
 
-		QWebPage *webPage;
-		QWebFrame *webFrame;
-		//QFutureWatcher<void> futureWatcher;
+	QWebPage *webPage;
+	QWebFrame *webFrame;
+	//QFutureWatcher<void> futureWatcher;
 
 public slots:
 
-		void setUrlFromLineEdit();
-		void urlChanged(const QUrl &url);
+	void setUrlFromLineEdit();
+	void urlChanged(const QUrl &url);
 
-		void pageLoaded();
+	void pageLoaded();
 };
 
 

@@ -757,6 +757,7 @@ void SN_PointerUI::contextMenuEvent(QContextMenuEvent *e) {
 
 void SN_PointerUI::mouseDoubleClickEvent(QMouseEvent *e) {
 	if ( isMouseCapturing ) {
+		qDebug() << "mouseDoubleClickEvent()" << e->button() << "sending mouse DBLCLICK";
 		sendMouseDblClick(e->globalPos()); // Left double click
 		e->accept();
 	}

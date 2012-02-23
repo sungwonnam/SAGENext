@@ -99,6 +99,9 @@ private:
 
 
 public slots:
+
+	inline void resetGlobalAppId() {_globalAppId = 1;}
+
         /**
           This slot is invoked by the signal fsManager::incomingSail() in fsManager::incomingConnection
           */

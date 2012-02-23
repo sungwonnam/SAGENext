@@ -150,7 +150,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 			// below assumes single SN_LayoutWidget covering entire scene
 			//
 			if ( bw->pos() != QPointF(rx,ry) ) {
-				qDebug() << "\tMOVED to" << rx << ry;
+//				qDebug() << "\tMOVED to" << rx << ry;
 				bw->setPos(rx, ry);
 //			bw->setPos(  bw->parentItem()->mapFromScene(rx,ry)  );
 				bw->priorityData()->setLastInteraction(SN_Priority::MOVE);
@@ -158,7 +158,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 
 			qreal newscale = (qreal)rw / (qreal)sx;
 			if (bw->scale() != newscale) {
-				qDebug() << "\tRESCALED" << newscale;
+//				qDebug() << "\tRESCALED" << newscale;
 				bw->setScale(newscale);
 				bw->priorityData()->setLastInteraction(SN_Priority::RESIZE);
 			}
@@ -186,11 +186,11 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		quint64 gaid = 0;
 		qreal z = 0.0;
 		::sscanf(msg.constData(), "%d %llu %lf", &code, &gaid, &z);
-		qDebug() << "Z" << gaid << z;
+//		qDebug() << "Z" << gaid << z;
 		SN_BaseWidget *bw = _scene->getUserWidget(gaid);
 		if (bw) {
 			if (z > bw->zValue()) {
-				qDebug() << "\tZ UP" << z;
+//				qDebug() << "\tZ UP" << z;
 				bw->priorityData()->setLastInteraction(SN_Priority::CLICK);
 			}
 			bw->setZValue(z);
@@ -204,7 +204,11 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 	case WIDGET_CLOSEALL: {
 //		::sscanf(msg.constData(), "%d", &code);
 		qDebug() << "WIDGET_CLOSEALL";
+
 		_scene->closeAllUserApp();
+
+		emit ratkoDataFinished();
+
 		break;
 	}
 

@@ -401,26 +401,18 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		}
 
 
-		//
-		// write perf. data to a file
-		//
-		char *val = getenv("EXP_DATA_FILE");
-		if ( val ) {
-			qWarning("EXP_DATA_FILE is defined. Performance data will be written by the ResourceMonitor.");
-			resourceMonitor->setPrintDataFlag(true);
-			resourceMonitor->printPrelimDataHeader();
-		}
-
 		resourceMonitor->refresh();
 
 		//
 		// resourceMonitor widget to display info
 		//
+		/*
 		rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, schedcontrol, pgrid); // No parent widget
 		QObject::connect(resourceMonitor, SIGNAL(destroyed()), rMonitorWidget, SLOT(close()));
 		rMonitorWidget->show();
 
 		resourceMonitor->setRMonWidget(rMonitorWidget);
+		*/
 
 		// this will trigger resourceMonitor->refresh() every 1sec
 		rMonitorTimerId = resourceMonitor->startTimer(1000);
@@ -463,6 +455,10 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	 */
 	SN_UiServer *uiserver = new SN_UiServer(&s, launcher, scene);
 	scene->setUiServer(uiserver);
+
+	QObject::connect(uiserver, SIGNAL(ratkoDataFinished()), resourceMonitor, SLOT(deleteLater()));
+	QObject::connect(uiserver, SIGNAL(ratkoDataFinished()), launcher, SLOT(resetGlobalAppId()));
+
 
 
 	/**
@@ -566,8 +562,15 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		}
 	}
 
+	/* to test WebGL */
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://helloracer.com");
+
+	/* to test Java Applet */
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processing.org/learning/topics/flocking.html");
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "file:///home/evl/snam5/.sagenext/flocking.html");
+
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
+
 //	launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //	launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
 //	launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");

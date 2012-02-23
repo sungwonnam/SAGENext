@@ -22,7 +22,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, const QSetti
     , _textItem(0)
 	, _color(c)
     , _basewidget(0)
-    , _item(0)
+    , _specialItem(0)
 	, _selectionRect(0)
 	, _selectedApps(0)
 	, _scenarioFile(scenarioFile)
@@ -134,6 +134,12 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	//////////////////////////////
 
 
+
+	//////
+	///
+	// handle hovering
+	///
+	//////
 	if (btnFlags == 0 || btnFlags & Qt::NoButton) {
 		//
 		// iterate over items in the container maintained by the scene
@@ -170,6 +176,8 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		}
 	}
 
+
+
 	//
     // LEFT button mouse dragging
 	//
@@ -200,9 +208,9 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		// If the SN_PartitionBar item (== UserType + INTERACTIVE_ITEM) is under the pointer
 		// User is dragging a partitionBar
 		//
-		else if (_item) {
+		else if (_specialItem) {
 //			QGraphicsLineItem *l = qgraphicsitem_cast<QGraphicsLineItem *>(_item);
-			SN_WallPartitionBar *bar = dynamic_cast<SN_WallPartitionBar *>(_item);
+			SN_WallPartitionBar *bar = dynamic_cast<SN_WallPartitionBar *>(_specialItem);
 			if (bar) {
 //				qDebug() << "pointerMove bar" << deltax << deltay;
 				if ( bar->orientation() == Qt::Horizontal) {
@@ -242,6 +250,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 			}
 		}
 		else {
+			// then it's either BASEWIDGET_NONUSER or normal QGraphicsItem/Widget
 			// do nothing
 		}
 
@@ -272,9 +281,6 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	}
 }
 
-/**
-  Mouse right press won't be sent from uiclient
-  */
 void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
 	Q_UNUSED(modifier);
 
@@ -288,12 +294,12 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
 	}
 
 
-	// note that this doesn't consider window frame
+	// note that pressEvent doesn't consider window frame
     if (!setAppUnderPointer(scenePos)) {
-//        qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
+		//qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
     }
 	else {
-		Q_ASSERT(_basewidget || _item);
+		Q_ASSERT(_basewidget || _specialItem);
 
 		if (_basewidget) {
 //			_basewidget->setTopmost();
@@ -337,11 +343,8 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 	}
 
 
-	//
-	// left mouse draggin with the app (== UserType + BASEWIDGET_USER) has finished
-	//
-	if (button == Qt::LeftButton) {
-		if (_basewidget) {
+	if (_basewidget) {
+		if (button == Qt::LeftButton) {
 			//
 			// I can close this app if removeButton on the scene contains released scenePos
 			//
@@ -370,30 +373,38 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 			// _basewidget won't be a child of SN_LayoutWidget. It's a child of the scene
 			//
 
-
-
-			//
-			// define SN_BaseWidget::handlePointerRelease() to support resizing with mouse dragging
-			//
-			//_basewidget->handlePointerRelease();
-
-
-			//
-			// RESET
-			//
-			_basewidget = 0;
 		}
+
+		//
+		// invoke app specific release handler
+		//
+		_basewidget->handlePointerRelease(this, _basewidget->mapFromScene(scenePos), button);
+
+		//
+		// RESET
+		//
+		_basewidget = 0;
 	}
 
-	//
-	// right mouse dragging finished
-	//
-	else if (button == Qt::RightButton) {
+	else if (_specialItem) {
+		// do nothing for SN_PartitionBar
 
-		// If dragging(R) was started on empty space then
-		// selects all the basewidget intersect with selection rectangle
-		// hide selection rectangle
 
+		//
+		// RESET
+		//
+		_specialItem = 0;
+	}
+
+	else {
+		// An item under the pointer can be BASEWIDGET_NONUSER or general QGraphicsItem/Widget (this includes SN_LayoutWidget)
+
+		if ( button == Qt::RightButton) {
+			//
+			// mouse dragging with right button has finished.
+			// Finalize selection rectangle
+			//
+		}
 	}
 }
 
@@ -499,17 +510,18 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 
 		if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
 			// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
-			qDebug("PolygonArrow::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+//			qDebug("SN_PolygonArrowPointer::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+//			qDebug() << "\tcurrent mouse grabber:" << _scene->mouseGrabberItem();
 		}
 		else {
 			//qDebug() << "press delievered";
 			if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
-				qDebug("PolygonArrow::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+//				qDebug("SN_PolygonArrowPointer::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
 			}
 			else {
 				//qDebug() << "release delievered";
 				// who should ungrabmouse() ??
-				QGraphicsItem *mouseGrabberItem = view->scene()->mouseGrabberItem();
+				QGraphicsItem *mouseGrabberItem = _scene->mouseGrabberItem();
 				if (mouseGrabberItem) mouseGrabberItem->ungrabMouse();
 
 			}
@@ -621,7 +633,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
 			//
             _basewidget = static_cast<SN_BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
-			_item = 0;
+			_specialItem = 0;
             return true;
         }
 		else if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_NONUSER) {
@@ -629,7 +641,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
 			// custom item that inherits SN_BaseWidget.
 			// Such as mediabrowser
 			//
-			_item = 0;
+			_specialItem = 0;
 			_basewidget = 0;
 			return false;
 		}
@@ -638,22 +650,16 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
 			// A QGraphicsItem doesn't inherit SN_BaseWidget.
 			// But still can be interacted with user shared pointers
 			//
-			_item = item;
+			_specialItem = item;
 			_basewidget = 0;
 			return true;
 		}
 		else {
-			//
 			// regualar graphics items, All the SN_PixmapButton, SN_WallPartitionBar
-			//
-//			_item = item;
-////			qDebug() << _item;
-//			_basewidget = 0;
-//			return true;
 		}
     }
     _basewidget = 0; // reset
-	_item = 0;
+	_specialItem = 0;
 
     //qDebug("PolygonArrow::%s() : uiclientid %u, There's BaseGraphicsWidget type under pointer", __FUNCTION__, uiclientid);
     return false;

@@ -70,6 +70,12 @@ public:
 	  */
 	QSizeF getAvgWinSize() const;
 
+
+	/*!
+	  Average EVR size
+	  */
+	qreal getAvgEVRSize() const;
+
 	/*!
 	  returns the ratio of the empty space to the scene size
 	  */
