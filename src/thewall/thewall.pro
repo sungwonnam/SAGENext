@@ -102,7 +102,7 @@ PLUGIN_DIR = $$MEDIA_ROOT_DIR/plugins
 
 !exists($$MEDIA_ROOT_DIR) {
     message("Creating media directories")
-    system(mkdir $$MEDIA_ROOT_DIR)
+    system(mkdir -p $$MEDIA_ROOT_DIR)
     system(mkdir $$IMAGE_DIR)
     system(mkdir $$VIDEO_DIR)
     system(mkdir $$PLUGIN_DIR)
