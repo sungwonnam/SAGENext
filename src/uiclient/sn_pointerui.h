@@ -11,16 +11,7 @@
 #include "sn_pointerui_sendthread.h"
 
 
-#include "../thewall/uiserver/uiserver.h"
-
-/* types of messages between external UI and the wall */
-//enum EXTUI_MSG_TYPE { MSG_NULL, REG_FROM_UI, ACK_FROM_WALL, DISCONNECT_FROM_WALL, WALL_IS_CLOSING, TOGGLE_APP_LAYOUT, RESPOND_APP_LAYOUT, VNC_SHARING, POINTER_PRESS, POINTER_RIGHTPRESS, POINTER_RELEASE, POINTER_RIGHTRELEASE, POINTER_CLICK, POINTER_RIGHTCLICK, POINTER_DOUBLECLICK, POINTER_DRAGGING, POINTER_RIGHTDRAGGING, POINTER_MOVING, POINTER_SHARE, POINTER_WHEEL, POINTER_UNSHARE };
-
-/* transfer file / stream pixel / stream file */
-//enum EXTUI_TRANSFER_MODE { FILE_TRANSFER, FILE_STREAM, PIXEL_STREAM };
-
 #include "../thewall/common/commondefinitions.h"
-//enum MEDIA_TYPE {MEDIA_TYPE_UNKNOWN = 100, MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, MEDIA_TYPE_LOCAL_VIDEO, MEDIA_TYPE_AUDIO, MEDIA_TYPE_PLUGIN, MEDIA_TYPE_VNC, MEDIA_TYPE_WEBURL , MEDIA_TYPE_PDF, MEDIA_TYPE_SAGE_STREAM};
 
 namespace Ui {
 class SN_PointerUI;
@@ -237,35 +228,34 @@ private slots:
         /**
           * CMD + N triggers connection dialog
           */
-        void on_actionNew_Connection_triggered();
+	void on_actionNew_Connection_triggered();
 
 		/**
 		  Upon connection, receive wall size, uiclientid and sets scaleToWallX/Y
 		  */
-		void doHandshaking();
-
-        void on_vncButton_clicked();
+	void doHandshaking();
 
         /**
           * This is for Windows OS temporarily
           */
-		void on_hookMouseBtn_clicked();
+	void on_hookMouseBtn_clicked();
 
-		void hookMouse();
+	void hookMouse();
 
-        void unhookMouse();
+	void unhookMouse();
 
 
         /**
-          * CMD + O
+          shortcut : CTRL(CMD) + O
+		  The action (ui->actionOpen_Media) is defined in the sn_pointer.ui
           */
-        void on_actionOpen_Media_triggered();
+	void on_actionOpen_Media_triggered();
 
         /**
           * when fileDialog returns this function is invoked.
           * This functions will invoke MessageThread::registerApp() slot
           */
-        void readFiles(QStringList);
+	void readFiles(QStringList);
 		
 		//void sendFile(const QString &f, int mediatype);
 		
@@ -273,7 +263,7 @@ private slots:
 		  respond to macCapture (read from stdout, translate msg, send to the wall)
 		  This slot is connected to QProcess::readyReadStandardOutput() signal
 		  */
-		void sendMouseEventsToWall();
+	void sendMouseEventsToWall();
 		
 
         /**
@@ -291,6 +281,19 @@ private slots:
 //        QGraphicsRectItem * itemWithGlobalAppId(QGraphicsScene *scene, quint64 gaid);
 
 
+	/*!
+	  VNC sharing.
+	  The action (ui->actionShare_Desktop) is defined in the sn_pointerui.ui
+	  */
+	void on_actionShare_desktop_triggered();
+
+
+	/*!
+	  send text to the current application.
+	  It assumes that a user 'clicked' a GUI item ,to which the user wants to send text, of the application.
+	  The action (ui->actionSend_text is defined in the sn_pointerui.ui
+	  */
+	void on_actionSend_text_triggered();
 };
 
 
@@ -351,6 +354,41 @@ private slots:
         void on_buttonBox_rejected();
         void on_buttonBox_accepted();
 		void on_pointerColorButton_clicked();
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class SN_PointerUI_StrDialog : public QDialog
+{
+	Q_OBJECT
+public:
+	SN_PointerUI_StrDialog(QWidget *parent=0);
+
+	inline QString text() {return _text;}
+
+private:
+	QLineEdit *_lineedit;
+	QPushButton *_okbutton;
+	QPushButton *_cancelbutton;
+
+	QString _text;
+
+public slots:
+	void setText();
 };
 
 #endif // EXTERNALGUIMAIN_H

@@ -6,14 +6,13 @@
 //#include <arpa/inet.h>
 
 
-SN_PointerUI_MsgThread::SN_PointerUI_MsgThread(QObject *parent)
+SN_PointerUI_MsgThread::SN_PointerUI_MsgThread(SN_PointerUI *p, QObject *parent)
     : QThread(parent)
 //    , sockfd(0)
+    , _mainProgram(p)
 	, end(false)
     , uiclientid(0)
 {
-	connect(&_tcpMsgSock, SIGNAL(readyRead()), this, SLOT(recvMsg()));
-	connect(&_tcpMsgSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
 }
 
 SN_PointerUI_MsgThread::~SN_PointerUI_MsgThread() {
@@ -25,7 +24,19 @@ SN_PointerUI_MsgThread::~SN_PointerUI_MsgThread() {
 
 bool SN_PointerUI_MsgThread::setSocketFD(int s) {
 //	sockfd = s;
-	return _tcpMsgSock.setSocketDescriptor(s);
+
+	if (! QObject::connect(&_tcpMsgSock, SIGNAL(readyRead()), this, SLOT(recvMsg())) ) {
+		qDebug() << "failed to connect readRead() and recvMsg()";
+	}
+
+	if ( !QObject::connect(&_tcpMsgSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError))) ) {
+		qDebug() << "failed to connect socketError ";
+	}
+
+//	_tcpMsgSock.setReadBufferSize(EXTUI_MSG_SIZE);
+//	qDebug() << "TCP msg socket read buffer size" <<  _tcpMsgSock.readBufferSize() << "Bytes";
+
+	return _tcpMsgSock.setSocketDescriptor(s); // connected state and readwrite mode
 }
 
 void SN_PointerUI_MsgThread::handleSocketError(QAbstractSocket::SocketError error) {
@@ -59,13 +70,13 @@ void SN_PointerUI_MsgThread::endThread() {
 	//	_tcpMsgSock.disconnectFromHost();
 	_tcpMsgSock.abort();
 	_tcpMsgSock.close();
-	qDebug() << _tcpMsgSock.state();
+	qDebug() << "endThread() :" << _tcpMsgSock.state();
 	exit();
 
 	wait();
 	sockfd = 0;
 	uiclientid = -1;
-	qDebug() << "MessageThread finished";
+//	qDebug() << "MessageThread finished";
 }
 
 void SN_PointerUI_MsgThread::run() {
@@ -99,18 +110,23 @@ void SN_PointerUI_MsgThread::sendMsg(const QByteArray msg) {
 
 
 void SN_PointerUI_MsgThread::recvMsg() {
-	if (_tcpMsgSock.bytesAvailable() < EXTUI_MSG_SIZE)
+	if (_tcpMsgSock.bytesAvailable() < EXTUI_MSG_SIZE) {
+		qDebug() << _tcpMsgSock.bytesAvailable();
 		return;
+	}
 
-	QByteArray msg(EXTUI_MSG_SIZE, 0);
+	QByteArray msg(EXTUI_MSG_SIZE, '\0');
+
+	qint64 r = _tcpMsgSock.read(msg.data(), EXTUI_MSG_SIZE);
+
+	qDebug() << "msg received" << r << "bytes" << msg;
+
 	int msgType = 0;
-	_tcpMsgSock.read(msg.data(), EXTUI_MSG_SIZE);
-
 	sscanf(msg.constData(), "%d", &msgType);
 
 	switch( msgType ) {
-    case ACK_FROM_WALL : {
-        qDebug() << "MessageThread received ACK_FROM_WALL";
+    case SAGENext::ACK_FROM_WALL : {
+        qDebug() << "msg ACK_FROM_WALL";
 
         int recvPort; // unsigned short
         QByteArray recvIP(64, 0);
@@ -123,37 +139,8 @@ void SN_PointerUI_MsgThread::recvMsg() {
         //QHostAddress recvaddr(QString(recvIP));
 
 		break;
-
-		/*
-        // connect to data channel
-        int datasock = ::socket(AF_INET, SOCK_STREAM, 0);
-        sockaddr_in walladdr;
-        memset(&walladdr, 0, sizeof(walladdr));
-        walladdr.sin_family = AF_INET;
-        walladdr.sin_port = htons(recvPort);
-        //walladdr.sin_addr.s_addr = recvaddr.toIPv4Address();
-        inet_pton(AF_INET, recvIP.constData(), &walladdr.sin_addr.s_addr);
-        if ( ::connect(datasock, (const struct sockaddr *)&walladdr, sizeof(walladdr)) != 0 ) {
-            qCritical("%s::%s() : connect error", metaObject()->className(), __FUNCTION__);
-            perror("connect");
-            break;
-        }
-        qDebug() << "data channel connected to the wall";
-
-
-        // send file
-        QFile file(filen);
-        file.open(QIODevice::ReadOnly);
-        ::send(datasock, file.readAll().constData(), file.size(), 0);
-        file.close();
-
-
-        // close socket
-        ::shutdown(datasock, SHUT_RDWR);
-        if ( ::close(datasock) == 0 )
-            qDebug() << "The file sent. data channel closed";
-        */
     }
+
 	}
 }
 

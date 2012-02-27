@@ -42,6 +42,12 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	ui->hookMouseBtn->hide();
 #endif
 
+	ui->mainToolBar->addAction(ui->actionNew_Connection);
+	ui->mainToolBar->addAction(ui->actionOpen_Media);
+	ui->mainToolBar->addAction(ui->actionShare_desktop);
+	ui->mainToolBar->addAction(ui->actionSend_text);
+
+
 	_settings = new QSettings("sagenextpointer.ini", QSettings::IniFormat, this);
 
 	//
@@ -52,7 +58,8 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 
 	//
 	// create msg thread
-	msgThread = new SN_PointerUI_MsgThread();
+	//
+	msgThread = new SN_PointerUI_MsgThread(this);
 	connect(msgThread, SIGNAL(finished()), this, SLOT(unhookMouse()));
 
 
@@ -65,6 +72,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 
 	//
 	// mouse ungrab action
+	//
 	ungrabMouseAction = new QAction(this);
 	ungrabMouseAction->setShortcut( QKeySequence(Qt::SHIFT + Qt::CTRL + Qt::ALT + Qt::Key_M));
 	connect(ungrabMouseAction, SIGNAL(triggered()), this, SLOT(unhookMouse()));
@@ -118,6 +126,7 @@ SN_PointerUI::~SN_PointerUI()
 	}
 }
 
+
 // triggered by CMD (CTRL) + n
 void SN_PointerUI::on_actionNew_Connection_triggered()
 {
@@ -160,8 +169,6 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 
 	_tcpMsgSock.connectToHost(QHostAddress(cd.address()), cd.port());
 
-
-
 /**
 	msgsock = ::socket(AF_INET, SOCK_STREAM, 0);
 	if ( msgsock == -1 ) {
@@ -196,6 +203,35 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 	**/
 }
 
+// CTRL - O to open file dialog
+void SN_PointerUI::on_actionOpen_Media_triggered()
+{
+	if (fdialog) fdialog->show();
+	else {
+		qDebug() << "fdialog is null";
+	}
+}
+
+void SN_PointerUI::on_actionSend_text_triggered()
+{
+	SN_PointerUI_StrDialog strdialog;
+	strdialog.exec();
+
+	if (strdialog.result() == QDialog::Rejected) return;
+
+	QString text = strdialog.text();
+	if (text.isNull() || text.isEmpty()) {
+		qDebug() << "text is null or empty";
+		return;
+	}
+
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
+	qDebug() << "send_text_triggered()" << qPrintable(text);
+	sprintf(msg.data(), "%d %u %s", SAGENext::RESPOND_STRING, _uiclientid, qPrintable(text));
+	queueMsgToWall(msg);
+}
+
+
 /*
   connected to the wall
   */
@@ -219,7 +255,12 @@ void SN_PointerUI::doHandshaking() {
 	}*/
 //	_tcpMsgSock.read(EXTUI_MSG_SIZE);
 
-	_tcpMsgSock.waitForReadyRead(-1); // block permanently until data is available
+//	_tcpMsgSock.waitForReadyRead(-1); // block permanently until data is available
+	while (_tcpMsgSock.bytesAvailable() < EXTUI_MSG_SIZE) {
+
+		_tcpMsgSock.waitForReadyRead(10);
+
+	}
 	if (_tcpMsgSock.read(buf.data(), EXTUI_MSG_SIZE) == -1) {
 		// error
 		qDebug() << "read error while receving scene size";
@@ -290,6 +331,11 @@ void SN_PointerUI::doHandshaking() {
 	}
 	else {
 		msgThread->start();
+
+		//
+		// !!!!!!!!!
+		//
+		_tcpMsgSock.moveToThread(msgThread);
 	}
 
 
@@ -347,17 +393,6 @@ void SN_PointerUI::doHandshaking() {
 
 
 
-void SN_PointerUI::on_vncButton_clicked()
-{
-	// send msg to UiServer so that local sageapp (vncviewer) can be started
-	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
-
-	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %u %d %s %s %d", VNC_SHARING, _uiclientid, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
-
-	queueMsgToWall(msg);
-}
-
 //
 // for windows and Linux
 void SN_PointerUI::on_hookMouseBtn_clicked()
@@ -393,7 +428,7 @@ void SN_PointerUI::hookMouse() {
 #endif
 			QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 			// msgtype, uiclientid, pointer name, Red, Green, Blue
-			sprintf(msg.data(), "%d %u %s %s", POINTER_SHARE, _uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
+			sprintf(msg.data(), "%d %u %s %s", SAGENext::POINTER_SHARE, _uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
 			queueMsgToWall(msg);
 		}
 		else {
@@ -418,7 +453,7 @@ void SN_PointerUI::unhookMouse() {
 	// remove cursor on the wall
 	if (msgThread && msgThread->isRunning()) {
 		QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
-		sprintf(msg.data(), "%d %u", POINTER_UNSHARE, _uiclientid);
+		sprintf(msg.data(), "%d %u", SAGENext::POINTER_UNSHARE, _uiclientid);
 		queueMsgToWall(msg);
 	}
 }
@@ -585,16 +620,16 @@ void SN_PointerUI::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btns /
 
 	if ( btns & Qt::LeftButton) {
 //		qDebug() << "send left dargging";
-		sprintf(msg.data(), "%d %u %d %d", POINTER_DRAGGING, _uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_DRAGGING, _uiclientid, x, y);
 	}
 	else if (btns & Qt::RightButton) {
 //		qDebug() << "sendMouseMove() Rightbutton dragging";
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTDRAGGING, _uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTDRAGGING, _uiclientid, x, y);
 	}
 	else {
 		// just move pointer
 //		qDebug() << "sendMouseMove() Moving" << globalPos;
-		sprintf(msg.data(), "%d %u %d %d", POINTER_MOVING, _uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_MOVING, _uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -612,13 +647,13 @@ void SN_PointerUI::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns 
 		//
 		// this is needed to setPos of selection rectangle
 		//
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTPRESS, _uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTPRESS, _uiclientid, x, y);
 	}
 	else {
 		//
 		// will trigger setAppUnderPointer() which is needed for left mouse dragging
 		//
-		sprintf(msg.data(), "%d %u %d %d", POINTER_PRESS, _uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_PRESS, _uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -634,11 +669,11 @@ void SN_PointerUI::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btn
 
 	if (btns & Qt::RightButton) {
 		// will finish selection rectangle
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTRELEASE, _uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTRELEASE, _uiclientid, x, y);
 	}
 	else {
 		// will pretend droping operation
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RELEASE, _uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RELEASE, _uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -650,10 +685,10 @@ void SN_PointerUI::sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns 
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 	
 	if (btns & Qt::RightButton) {
-		sprintf(msg.data(), "%d %u %d %d", POINTER_RIGHTCLICK, _uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTCLICK, _uiclientid, x, y);
 	}
 	else {
-		sprintf(msg.data(), "%d %u %d %d", POINTER_CLICK, _uiclientid, x, y);
+		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_CLICK, _uiclientid, x, y);
 	}
 	queueMsgToWall(msg);
 }
@@ -666,7 +701,7 @@ void SN_PointerUI::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons /*
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
-	sprintf(msg.data(), "%d %u %d %d", POINTER_DOUBLECLICK, _uiclientid, x, y);
+	sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_DOUBLECLICK, _uiclientid, x, y);
 	queueMsgToWall(msg);
 }
 
@@ -676,7 +711,7 @@ void SN_PointerUI::sendMouseWheel(const QPoint globalPos, int delta) {
 	y = scaleToWallY * globalPos.y();
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 //	qDebug() << "sendMouseWheel" << delta;
-	sprintf(msg.data(), "%d %u %d %d %d", POINTER_WHEEL, _uiclientid, x, y, delta);
+	sprintf(msg.data(), "%d %u %d %d %d", SAGENext::POINTER_WHEEL, _uiclientid, x, y, delta);
 	queueMsgToWall(msg);
 }
 
@@ -790,14 +825,18 @@ void SN_PointerUI::queueMsgToWall(const QByteArray &msg) {
 
 
 
-// CTRL - O to open file dialog
-void SN_PointerUI::on_actionOpen_Media_triggered()
+void SN_PointerUI::on_actionShare_desktop_triggered()
 {
-	if (fdialog) fdialog->show();
-	else {
-		qDebug() << "fdialog is null";
-	}
+	// send msg to UiServer so that local sageapp (vncviewer) can be started
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
+
+	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
+	sprintf(msg.data(), "%d %u %d %s %s %d", SAGENext::VNC_SHARING, _uiclientid, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
+
+	queueMsgToWall(msg);
 }
+
+
 
 void SN_PointerUI::readFiles(QStringList filenames) {
     if ( filenames.empty() ) {
@@ -1104,6 +1143,49 @@ void SN_PointerUI_ConnDialog::on_pointerColorButton_clicked()
 	ui->pointerColorLabel->setPixmap(pixmap);
 
 	pColor = newColor.name();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+SN_PointerUI_StrDialog::SN_PointerUI_StrDialog(QWidget *parent)
+    : QDialog(parent)
+    , _lineedit(new QLineEdit(this))
+    , _okbutton(new QPushButton("Ok", this))
+    , _cancelbutton(new QPushButton("Cancel", this))
+{
+	_lineedit->setMaxLength(EXTUI_SMALL_MSG_SIZE - 1);
+
+	connect(_okbutton, SIGNAL(clicked()), this, SLOT(setText()));
+	connect(_cancelbutton, SIGNAL(clicked()), this, SLOT(reject()));
+
+
+
+	QHBoxLayout *layout = new QHBoxLayout;
+	layout->addWidget(_okbutton);
+	layout->addWidget(_cancelbutton);
+
+
+	QVBoxLayout *mainLayout = new QVBoxLayout;
+	mainLayout->addWidget(_lineedit);
+	mainLayout->addLayout(layout);
+
+	setLayout(mainLayout);
+
+	adjustSize();
+}
+
+void SN_PointerUI_StrDialog::setText() {
+	_text = _lineedit->text();
+	accept();
 }
 
 

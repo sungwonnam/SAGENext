@@ -59,6 +59,9 @@ FORMS    += \
 	sn_pointerui.ui \
 	sn_pointerui_conndialog.ui
 
+RESOURCES += \
+    resources.qrc
+
 
 
 

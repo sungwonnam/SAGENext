@@ -16,23 +16,10 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
-     <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
+     <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0">
       <property name="sizeConstraint">
        <enum>QLayout::SetDefaultConstraint</enum>
       </property>
-      <item>
-       <widget class="QPushButton" name="vncButton">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>share desktop</string>
-        </property>
-       </widget>
-      </item>
       <item>
        <widget class="QPushButton" name="hookMouseBtn">
         <property name="text">
@@ -63,7 +50,7 @@
      <x>0</x>
      <y>0</y>
      <width>242</width>
-     <height>20</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -85,6 +72,11 @@
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpen_Media">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/images/opendir_128.png</normaloff>
+     <normalon>:/images/opendir_128.png</normalon>:/images/opendir_128.png</iconset>
+   </property>
    <property name="text">
     <string>Open Media</string>
    </property>
@@ -93,6 +85,11 @@
    </property>
   </action>
   <action name="actionNew_Connection">
+   <property name="icon">
+    <iconset>
+     <normaloff>images/connect_128.png</normaloff>
+     <normalon>:/images/connect_128.png</normalon>images/connect_128.png</iconset>
+   </property>
    <property name="text">
     <string>New Connection</string>
    </property>
@@ -113,8 +110,36 @@
     <string>Ctrl+,</string>
    </property>
   </action>
+  <action name="actionShare_desktop">
+   <property name="icon">
+    <iconset>
+     <normalon>:/images/vnc_128.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>share desktop</string>
+   </property>
+   <property name="toolTip">
+    <string>VNC sharing</string>
+   </property>
+  </action>
+  <action name="actionSend_text">
+   <property name="icon">
+    <iconset>
+     <normalon>:/images/letter_T_48.png</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>send text</string>
+   </property>
+   <property name="toolTip">
+    <string>Send text to current application</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <resources/>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
  <connections/>
 </ui>
