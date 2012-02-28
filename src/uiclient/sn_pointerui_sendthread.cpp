@@ -10,8 +10,13 @@
 
 #include "sn_pointerui.h"
 
-SN_PointerUI_SendThread::SN_PointerUI_SendThread(QObject *parent)
+SN_PointerUI_DataThread::SN_PointerUI_DataThread(const QHostAddress &hostaddr, quint16 port, QObject *parent)
+
     : QThread(parent)
+
+    , _hostaddr(hostaddr)
+    , _port(port)
+
 {
 	_rxImage.setCaseSensitivity(Qt::CaseInsensitive);
 	_rxVideo.setCaseSensitivity(Qt::CaseInsensitive);
@@ -29,42 +34,45 @@ SN_PointerUI_SendThread::SN_PointerUI_SendThread(QObject *parent)
 	_rxPlugin.setPattern("(so|dll|dylib)$");
 
 
-	connect(&_dataSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
+	QObject::connect(&_dataSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
 }
 
-void SN_PointerUI_SendThread::handleSocketError(QAbstractSocket::SocketError error) {
+void SN_PointerUI_DataThread::handleSocketError(QAbstractSocket::SocketError error) {
 	qDebug() << "SendThread socket error" << error;
 	endThread();
 }
 
-SN_PointerUI_SendThread::~SN_PointerUI_SendThread() {
+SN_PointerUI_DataThread::~SN_PointerUI_DataThread() {
 	_dataSock.abort();
 	_dataSock.close();
 }
 
-void SN_PointerUI_SendThread::endThread() {
+void SN_PointerUI_DataThread::endThread() {
 	_dataSock.abort();
 	_dataSock.close();
-	exit();
+//	exit();
 }
 
-bool SN_PointerUI_SendThread::setSockFD(int sock) {
-	return _dataSock.setSocketDescriptor(sock);
-}
 
-void SN_PointerUI_SendThread::sendMediaList(const QList<QUrl> urls) {
+void SN_PointerUI_DataThread::prepareMediaList(const QList<QUrl> urls) {
+	_mutex.lock();
+
 	foreach(const QUrl url, urls) {
-		sendMedia(url);
+		enqueueMedia(url);
 	}
+
+	_mutex.unlock();
+
+	emit fileReadyToSend();
 }
 
-void SN_PointerUI_SendThread::sendMedia(const QUrl url) {
+void SN_PointerUI_DataThread::enqueueMedia(const QUrl url) {
 	if (_dataSock.state() != QAbstractSocket::ConnectedState) {
 		qDebug() << "SendThread::sendMedia(). socket is not connected to the file server";
 		return;
 	}
 
-	char header[EXTUI_MSG_SIZE];
+//	char header[EXTUI_MSG_SIZE];
 	int mediatype = 0;
 
 	QString urlStr = url.toString().trimmed();
@@ -72,9 +80,15 @@ void SN_PointerUI_SendThread::sendMedia(const QUrl url) {
 //	qDebug() << "encoded url" << url.toEncoded(); // ByteArray
 //	qDebug() << "sendMedia() : urlstr is" << urlStr;
 
+	MediaItemInfo item;
+
 	if (urlStr.contains(QRegExp("^http", Qt::CaseInsensitive)) ) {
-		::sprintf(header, "%d %s %lld", (int)SAGENext::MEDIA_TYPE_WEBURL, qPrintable(urlStr), (qint64)0);
-		_dataSock.write(header, sizeof(header));
+//		::sprintf(header, "%d %s %lld", (int)SAGENext::MEDIA_TYPE_WEBURL, qPrintable(urlStr), (qint64)0);
+//		_dataSock.write(header, sizeof(header));
+
+		item.mediatype = (int)SAGENext::MEDIA_TYPE_WEBURL;
+		::strcpy(item.filename, qPrintable(urlStr));
+
 	}
 	else if (urlStr.contains(QRegExp("^file://", Qt::CaseSensitive)) ) {
 		QFileInfo fi(url.toLocalFile());
@@ -98,6 +112,14 @@ void SN_PointerUI_SendThread::sendMedia(const QUrl url) {
 		}
 
 		QString noSpaceFilename = fi.fileName().replace(QChar(' '), QChar('_'), Qt::CaseInsensitive);
+
+		item.mediatype = mediatype;
+		::strcpy(item.filename, qPrintable(noSpaceFilename));
+		item.filesize = fi.size();
+		::strcpy(item.filepath, qPrintable(fi.absoluteFilePath()));
+
+		/*
+
 		::sprintf(header, "%d %s %lld", mediatype, qPrintable(noSpaceFilename), fi.size());
 
 		_dataSock.write(header, sizeof(header));
@@ -108,10 +130,61 @@ void SN_PointerUI_SendThread::sendMedia(const QUrl url) {
 			qDebug() << "SendThread::sendMedia() : error while sending the file";
 		}
 		file.close();
+		*/
 	}
+	_sendList.push_back(item);
 }
 
-void SN_PointerUI_SendThread::run() {
+void SN_PointerUI_DataThread::run() {
+
+	QTcpSocket socket;
+
+	socket.connectToHost(_hostaddr, _port); // read write mode
+
+	QObject::connect(&socket, SIGNAL(connected()), this, SIGNAL(connected()));
+	QObject::connect(&socket, SIGNAL(readyRead()), this, SLOT(recvData()));
+
 	exec();
-	qDebug() << "SentThread exit from event loop";
+}
+
+void SN_PointerUI_DataThread::sendData(QTcpSocket &sock) {
+	_mutex.lock();
+
+	// lock is acquired again at this point
+
+	char header[EXTUI_MSG_SIZE];
+
+	QList<MediaItemInfo>::const_iterator it;
+
+	for (it=_sendList.constBegin(); it!=_sendList.constEnd(); it++) {
+		MediaItemInfo item = (*it);
+
+		// send header
+		::sprintf(header, "%d %s %lld", item.mediatype, item.filename, item.filesize);
+		sock.write(header, sizeof(header));
+
+
+		// send data
+		QFile file(QString(item.filepath));
+		file.open(QIODevice::ReadOnly);
+		if ( sock.write(file.readAll().constData(), file.size()) < 0) {
+			qDebug() << "SendThread::sendData() : error while sending the file";
+		}
+		else {
+			qDebug() << QString(item.filepath) << "sent !!";
+		}
+		file.close();
+	}
+
+	_sendList.clear();
+
+	_mutex.unlock();
+}
+
+void SN_PointerUI_DataThread::recvData() {
+
+}
+
+void SN_PointerUI_DataThread::receiveMedia(const QString &medianame, int mediafilesize) {
+
 }

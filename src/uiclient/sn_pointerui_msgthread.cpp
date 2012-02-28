@@ -6,40 +6,59 @@
 //#include <arpa/inet.h>
 
 
-SN_PointerUI_MsgThread::SN_PointerUI_MsgThread(SN_PointerUI *p, QObject *parent)
-    : QThread(parent)
-//    , sockfd(0)
-    , _mainProgram(p)
-	, end(false)
-    , uiclientid(0)
+SN_MsgObject::SN_MsgObject(const QHostAddress &hostaddr, quint16 port, QObject *parent)
+    : QObject(parent)
+    , _hostaddr(hostaddr)
+    , _port(port)
+    , _uiclientid(0)
 {
-}
-
-SN_PointerUI_MsgThread::~SN_PointerUI_MsgThread() {
-//    ::close(sockfd);
-	_tcpMsgSock.abort();
-	_tcpMsgSock.close();
-    qDebug() << "~MessageThread()";
-}
-
-bool SN_PointerUI_MsgThread::setSocketFD(int s) {
-//	sockfd = s;
-
 	if (! QObject::connect(&_tcpMsgSock, SIGNAL(readyRead()), this, SLOT(recvMsg())) ) {
 		qDebug() << "failed to connect readRead() and recvMsg()";
 	}
 
-	if ( !QObject::connect(&_tcpMsgSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError))) ) {
-		qDebug() << "failed to connect socketError ";
-	}
-
-//	_tcpMsgSock.setReadBufferSize(EXTUI_MSG_SIZE);
-//	qDebug() << "TCP msg socket read buffer size" <<  _tcpMsgSock.readBufferSize() << "Bytes";
-
-	return _tcpMsgSock.setSocketDescriptor(s); // connected state and readwrite mode
+//	if ( !QObject::connect(&_tcpMsgSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError))) ) {
+//		qDebug() << "failed to connect socketError ";
+//	}
 }
 
-void SN_PointerUI_MsgThread::handleSocketError(QAbstractSocket::SocketError error) {
+SN_MsgObject::~SN_MsgObject() {
+	_tcpMsgSock.abort();
+	_tcpMsgSock.close();
+    qDebug() << "~~SN_PointerUI_MsgThread()";
+}
+
+void SN_MsgObject::connectToTheWall() {
+	_tcpMsgSock.connectToHost(_hostaddr, _port);
+	_tcpMsgSock.setSocketOption(QAbstractSocket::LowDelayOption, 1); // disable Nagle's algorithm
+
+
+	/*!
+	  receive the scene size and my uiclientid
+	  */
+	QByteArray buf(EXTUI_MSG_SIZE, '\0');
+
+//	_tcpMsgSock.waitForReadyRead(-1); // block permanently until data is available
+	while (_tcpMsgSock.bytesAvailable() < EXTUI_MSG_SIZE) {
+
+		_tcpMsgSock.waitForReadyRead(10);
+
+	}
+	if (_tcpMsgSock.read(buf.data(), EXTUI_MSG_SIZE) == -1) {
+		// error
+		qDebug() << "SN_PointerUI_MsgThread::run() : read error while receving scene size";
+		return;
+	}
+
+	quint32 uiclientid;
+	int x,y,ftpport;
+	sscanf(buf.constData(), "%u %d %d %d", &uiclientid, &x, &y, &ftpport);
+	_uiclientid = uiclientid;
+
+	emit connectedToTheWall(_uiclientid, x, y, ftpport);
+}
+
+
+void SN_MsgObject::handleSocketError(QAbstractSocket::SocketError error) {
 	/**
 	switch (error) {
 	case QAbstractSocket::RemoteHostClosedError : {
@@ -59,41 +78,12 @@ void SN_PointerUI_MsgThread::handleSocketError(QAbstractSocket::SocketError erro
 	}
 	}
 	**/
-	qDebug() << "MessageThread socket error" << error;
-	exit();
-}
-
-void SN_PointerUI_MsgThread::endThread() {
-//	::close(sockfd);
-    end = true;
-
-	//	_tcpMsgSock.disconnectFromHost();
-	_tcpMsgSock.abort();
-	_tcpMsgSock.close();
-	qDebug() << "endThread() :" << _tcpMsgSock.state();
-	exit();
-
-	wait();
-	sockfd = 0;
-	uiclientid = -1;
-//	qDebug() << "MessageThread finished";
-}
-
-void SN_PointerUI_MsgThread::run() {
-	qDebug() << "MessageThread starting event loop";
-
-	exec(); // will block until exit() is called
-
-	qDebug() << "MessageThread exit from event loop";
-
-	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
-		_tcpMsgSock.abort();
-		_tcpMsgSock.close();
-	}
+//	qDebug() << "MessageThread socket error" << error;
 }
 
 
-void SN_PointerUI_MsgThread::sendMsg(const QByteArray msg) {
+
+void SN_MsgObject::sendMsg(const QByteArray msg) {
 	/*
     if ( ::send(sockfd, msg.data(), msg.size(), 0) <= 0 ) {
         qDebug("MessageThread::%s() : send error", __FUNCTION__);
@@ -105,11 +95,11 @@ void SN_PointerUI_MsgThread::sendMsg(const QByteArray msg) {
 	else {
 		_tcpMsgSock.flush();
 	}
-//		qDebug("MessageThread::%s() : msg [%s] sent", __FUNCTION__, msg.constData());
+//	qDebug("SN_MsgObject::%s() : msg [%s] sent", __FUNCTION__, msg.constData());
 }
 
 
-void SN_PointerUI_MsgThread::recvMsg() {
+void SN_MsgObject::recvMsg() {
 	if (_tcpMsgSock.bytesAvailable() < EXTUI_MSG_SIZE) {
 		qDebug() << _tcpMsgSock.bytesAvailable();
 		return;

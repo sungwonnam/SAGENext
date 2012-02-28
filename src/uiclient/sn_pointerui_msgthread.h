@@ -5,10 +5,11 @@
 //#include <QHostAddress>
 //#include <QFileInfo>
 #include <QTcpSocket>
+#include <QHostAddress>
 
 class SN_PointerUI;
 
-class SN_PointerUI_MsgThread : public QThread
+class SN_MsgObject : public QObject
 {
 	Q_OBJECT
 public:
@@ -17,41 +18,24 @@ public:
 	  uiclientid is determined by the wall and sent to uiclient.
 	  To discriminate specific wall from multiple walls, sockfd must be used instead of uiclientid, because uiclientid is unique in the wall not in the ui client.
 	*/
-	explicit SN_PointerUI_MsgThread(SN_PointerUI *p, QObject *parent = 0);
-	~SN_PointerUI_MsgThread();
+	explicit SN_MsgObject(const QHostAddress &hostaddr, quint16 port, QObject *parent = 0);
+	~SN_MsgObject();
 	
-	bool setSocketFD(int s);
-	
-	inline void setUiClientId(quint64 i) {uiclientid = i;}
-	
-//	inline void setMyIpAddr(const QString ip) {myipaddr = ip;}
-
-protected:
-	void run();
 
 private:
-        /*!
-          This socket descriptor can be used to identify a wall since sockfd is unique in this process
-          */
-	int sockfd;
+	QHostAddress _hostaddr;
 
-	SN_PointerUI *_mainProgram;
+	quint16 _port;
 
 	QTcpSocket _tcpMsgSock;
 
-        /*!
-          externalguimain and messagethread both can alter this value so it's volatile
-          */
-	volatile bool end;
-
-	QString filen;
 
         /*!
           Unique identifier of this ui client.
           Note that uiclientid is unique ONLY within the wall represented by sockfd.
           It is absolutely valid and likely that multiple message threads have same uiclientid value
           */
-	quint64 uiclientid;
+	quint64 _uiclientid;
 
 //	QString myipaddr;
 
@@ -59,8 +43,10 @@ signals:
 	void ackReceived(const QString &ipaddr, int port);
 //	void newAppLayout(QByteArray msg);
 
+	void connectedToTheWall(quint32 uiclientid, int wallwidth, int wallheight, int ftpport);
+
 public slots:
-	void endThread();
+	void connectToTheWall();
 //	void requestAppLayout();
 //	void registerApp(int mediatype, const QString &filename);
 //	void sendFile(const QHostAddres &addr, int port);

@@ -25,14 +25,11 @@ class SN_PointerUI_ConnDialog;
 class SN_PointerUI_DropFrame : public QLabel {
 	Q_OBJECT
 public:
-	explicit SN_PointerUI_DropFrame(const SN_PointerUI_SendThread *st, QWidget *parent = 0);
-	
+	explicit SN_PointerUI_DropFrame(QWidget *parent = 0);
+
 protected:
 	void dragEnterEvent(QDragEnterEvent *);
 	void dropEvent(QDropEvent *);
-
-private:
-	const SN_PointerUI_SendThread *_sendThread;
 
 signals:
 	void mediaDropped(QList<QUrl> mediaurls);
@@ -114,7 +111,8 @@ private:
 
 
 	/**
-      The socket for message channel (messageThread)
+      The socket for the message channel.
+	  All the mouse events is sent throught this socket.
       */
 	QTcpSocket _tcpMsgSock;
 
@@ -148,15 +146,11 @@ private:
           */
 	QFileDialog *fdialog;
 
-        /**
-          * The message thread. _tcpMsgSock is used.
-          */
-	SN_PointerUI_MsgThread *msgThread;
 
         /**
           The file transfer thread. _tcpDataSock is used.
           */
-	SN_PointerUI_SendThread *sendThread;
+	SN_PointerUI_DataThread *sendThread;
 
 		/**
 		  to keep track mouse dragging start and end position
@@ -220,20 +214,38 @@ private:
 		/**
 		  Queue invoking MessageThread::sendMsg()
 		  */
-	void queueMsgToWall(const QByteArray &msg);
+//	void queueMsgToWall(const QByteArray &msg);
 		
 //	void connectToWall(const char * ipaddr, quint16 port);
 
+	void sendFiles(const QList<QUrl> &);
+
+	void sendFile(const QUrl &);
+
+
+public slots:
+	/*!
+	  Upon connection, receive wall size, uiclientid and sets scaleToWallX/Y
+	  */
+	void initialize(quint32 uiclientid, int wallwidth, int wallheight, int ftpPort);
+
+	void sendMessage(const QByteArray &msg);
+
+	void readMessage();
+
+	void runSendFileThread(const QList<QUrl> &);
+
+	void receiveData();
+
 private slots:
-        /**
-          * CMD + N triggers connection dialog
+        /*!
+          CMD + N triggers the connection dialog.
+		  Upon accepting the dialog, it attempts to connect to the wall with the _tcpMsgSock socket.
+
+		  If there already exist the message channel. The _tcpMsgSock will be closed.
           */
 	void on_actionNew_Connection_triggered();
 
-		/**
-		  Upon connection, receive wall size, uiclientid and sets scaleToWallX/Y
-		  */
-	void doHandshaking();
 
         /**
           * This is for Windows OS temporarily
@@ -266,21 +278,6 @@ private slots:
 	void sendMouseEventsToWall();
 		
 
-        /**
-          * RESPOND_APP_LAYOUT handler
-          */
-		//void updateScene(const QByteArray layout);
-
-
-        /*!
-          receive wall layout and update scene continusously
-          */
-		//void on_showLayoutButton_clicked();
-
-
-//        QGraphicsRectItem * itemWithGlobalAppId(QGraphicsScene *scene, quint64 gaid);
-
-
 	/*!
 	  VNC sharing.
 	  The action (ui->actionShare_Desktop) is defined in the sn_pointerui.ui
@@ -304,56 +301,51 @@ private slots:
 
 
 class SN_PointerUI_ConnDialog : public QDialog {
-        Q_OBJECT
+	Q_OBJECT
 public:
-        SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent=0);
-        ~SN_PointerUI_ConnDialog();
+	SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent=0);
+	~SN_PointerUI_ConnDialog();
 
-        inline QString address() const {return addr;}
-        inline int port() const {return portnum;}
-//        inline QString myAddress() const {return myaddr;}
-        inline QString pointerName() const {return pName;}
-		inline QString pointerColor() const {return pColor;}
-		inline QString vncUsername() const {return vncusername;}
-        inline QString vncPasswd() const {return vncpass;}
-		inline QString sharingEdge() const {return psharingEdge;}
+	inline QString address() const {return addr;}
+	inline int port() const {return portnum;}
+	//inline QString myAddress() const {return myaddr;}
+	inline QString pointerName() const {return pName;}
+	inline QString pointerColor() const {return pColor;}
+	inline QString vncUsername() const {return vncusername;}
+	inline QString vncPasswd() const {return vncpass;}
+	inline QString sharingEdge() const {return psharingEdge;}
 
 private:
-        Ui::SN_PointerUI_ConnDialog *ui;
-        QSettings *_settings;
+	Ui::SN_PointerUI_ConnDialog *ui;
+	QSettings *_settings;
 
         /**
           wall address
           */
-        QString addr;
+	QString addr;
 
         /**
           wall port
           */
-        quint16 portnum;
+	quint16 portnum;
 
-        /**
-          my ip address
-          */
-//        QString myaddr;
+	QString vncusername;
 
-		QString vncusername;
-
-        QString vncpass;
+	QString vncpass;
 
         /**
           pointer name
           */
-        QString pName;
+	QString pName;
 
-		QString pColor;
-		
-		QString psharingEdge;
+	QString pColor;
+
+	QString psharingEdge;
 
 private slots:
-        void on_buttonBox_rejected();
-        void on_buttonBox_accepted();
-		void on_pointerColorButton_clicked();
+	void on_buttonBox_rejected();
+	void on_buttonBox_accepted();
+	void on_pointerColorButton_clicked();
 };
 
 

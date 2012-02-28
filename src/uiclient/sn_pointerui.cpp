@@ -23,10 +23,8 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
     , _uiclientid(0)
     , fileTransferPort(0)
     , ungrabMouseAction(0)
-//    , msgsock(0)
     , scaleToWallX(0.0)
     , scaleToWallY(0.0)
-    , msgThread(0)
     , sendThread(0)
 	, isMouseCapturing(false)
     , mediaDropFrame(0)
@@ -50,32 +48,20 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 
 	_settings = new QSettings("sagenextpointer.ini", QSettings::IniFormat, this);
 
-	//
-	// Upon connection, execute handshaking (receiving my uiclientid and wall size)
-	//
-	connect(&_tcpMsgSock, SIGNAL(connected()), this, SLOT(doHandshaking()));
-
 
 	//
-	// create msg thread
+	// to receive a message from SAGENext
 	//
-	msgThread = new SN_PointerUI_MsgThread(this);
-	connect(msgThread, SIGNAL(finished()), this, SLOT(unhookMouse()));
-
-
-	//
-	// create send thread (file transfer)
-	sendThread = new SN_PointerUI_SendThread();
-
-	connect(msgThread, SIGNAL(finished()), sendThread, SLOT(endThread()));
-
+	QObject::connect(&_tcpMsgSock, SIGNAL(readyRead()), this, SLOT(readMessage()));
+//	QObject::connect(&_tcpMsgSock, SIGNAL(disconnected()), &
+	QObject::connect(&_tcpDataSock, SIGNAL(readyRead()), this, SLOT(receiveData()));
 
 	//
 	// mouse ungrab action
 	//
 	ungrabMouseAction = new QAction(this);
 	ungrabMouseAction->setShortcut( QKeySequence(Qt::SHIFT + Qt::CTRL + Qt::ALT + Qt::Key_M));
-	connect(ungrabMouseAction, SIGNAL(triggered()), this, SLOT(unhookMouse()));
+	QObject::connect(ungrabMouseAction, SIGNAL(triggered()), this, SLOT(unhookMouse()));
 	addAction(ungrabMouseAction);
 
 
@@ -88,11 +74,13 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	//
 	// Drag & Drop gui
 	//
-	mediaDropFrame = new SN_PointerUI_DropFrame(sendThread, this);
+	mediaDropFrame = new SN_PointerUI_DropFrame(this);
 	ui->verticalLayout->addWidget(mediaDropFrame);
 	int lastwidgetidx = ui->verticalLayout->count() - 1; // find the index of the last (bottom) widget which is dropFrame
 	ui->verticalLayout->setStretch(lastwidgetidx, 2);
-	connect(mediaDropFrame, SIGNAL(mediaDropped(QList<QUrl>)), sendThread, SLOT(sendMediaList(QList<QUrl>)));
+
+	QObject::connect(mediaDropFrame, SIGNAL(mediaDropped(QList<QUrl>)), this, SLOT(runSendFileThread(QList<QUrl>)));
+
 
 
 
@@ -103,7 +91,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	fdialog = new QFileDialog(this, "Open Media Files", QDir::homePath(), "*");
 	fdialog->setModal(false);
 	fdialog->setVisible(false);
-	connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readFiles(QStringList)));
+	QObject::connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readFiles(QStringList)));
 }
 
 SN_PointerUI::~SN_PointerUI()
@@ -113,11 +101,9 @@ SN_PointerUI::~SN_PointerUI()
 
 	if (hasMouseTracking()) releaseMouse();
 
-	if (msgThread && msgThread->isRunning()) {
-		msgThread->endThread();
-		msgThread->wait();
-		delete msgThread;
-	}
+	_tcpMsgSock.close();
+
+	_tcpDataSock.close();
 	
 	if (macCapture) {
 		macCapture->kill();
@@ -125,6 +111,7 @@ SN_PointerUI::~SN_PointerUI()
 		macCapture->waitForFinished(-1);
 	}
 }
+
 
 
 // triggered by CMD (CTRL) + n
@@ -143,77 +130,49 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 	_vncPasswd = cd.vncPasswd();
 	_sharingEdge = cd.sharingEdge();
 
-	// if there is existing connection, close it first
-//	if ( msgsock != 0 ) {
-//		::shutdown(msgsock, SHUT_RDWR);
-//		::close(msgsock);
-//		msgsock = 0;
-//	}
-	
-	Q_ASSERT(msgThread);
-	if (msgThread->isRunning()) msgThread->endThread();
-
-	Q_ASSERT(sendThread);
-	if (sendThread->isRunning()) sendThread->endThread();
-
-
-	if (_tcpMsgSock.state() == QAbstractSocket::ConnectingState || _tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
-		_tcpMsgSock.abort();
-		_tcpMsgSock.close();
+	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
+		_tcpMsgSock.disconnectFromHost();
 	}
 
-	if (_tcpDataSock.state() == QAbstractSocket::ConnectingState || _tcpDataSock.state() == QAbstractSocket::ConnectedState) {
-		_tcpDataSock.abort();
-		_tcpDataSock.close();
-	}
-
-	_tcpMsgSock.connectToHost(QHostAddress(cd.address()), cd.port());
-
-/**
-	msgsock = ::socket(AF_INET, SOCK_STREAM, 0);
-	if ( msgsock == -1 ) {
-		perror("socket");
-		return;
-	}
-
-	int optval = 1;
-	if ( setsockopt(msgsock, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
-		qWarning("%s() : setsockopt SO_REUSEADDR failed", __FUNCTION__);
-	}
-	if ( setsockopt(msgsock, SOL_SOCKET, SO_KEEPALIVE, &optval, (socklen_t)sizeof(optval)) != 0 ) {
-		qWarning("%s() : setsockopt SO_KEEPALIVE failed", __FUNCTION__);
-	}
-	if ( setsockopt(msgsock, IPPROTO_TCP, TCP_NODELAY, &optval, (socklen_t)sizeof(optval)) != 0 ) {
-		qWarning("%s() : setsockopt TCP_NODELAY failed", __FUNCTION__);
-	}
-
-	sockaddr_in walladdr;
-	memset(&walladdr, 0, sizeof(walladdr));
-	walladdr.sin_family = AF_INET;
-	walladdr.sin_port = htons( cd.port() );
-	inet_pton(AF_INET,  qPrintable(cd.address()),  &walladdr.sin_addr.s_addr);
-//	walladdr.sin_addr.s_addr = htonl(wallAddr.toIPv4Address());
-//	walladdr.sin_addr.s_addr = inet_addr(ipaddr);
-
-	if ( ::connect(msgsock, (const struct sockaddr *)&walladdr, sizeof(walladdr)) != 0 ) {
-		qCritical() << "sageNextPointer caouldn't connect to a wall. Maybe the wall is not running.";
-		return;
-	}
-	qDebug("ExternalGUIMain::%s() : connected to %s:%d", __FUNCTION__, qPrintable(cd.address()), cd.port());
-	**/
+	_tcpMsgSock.connectToHost(QHostAddress(_wallAddress), cd.port());
 }
 
-// CTRL - O to open file dialog
 void SN_PointerUI::on_actionOpen_Media_triggered()
 {
+	if (!_tcpMsgSock.isValid()) {
+		QMessageBox::warning(this, "No Connection", "Connect to SAGENext first");
+		return;
+	}
+
 	if (fdialog) fdialog->show();
 	else {
 		qDebug() << "fdialog is null";
 	}
 }
 
+void SN_PointerUI::on_actionShare_desktop_triggered()
+{
+	if (!_tcpMsgSock.isValid()) {
+		QMessageBox::warning(this, "No Connection", "Connect to SAGENext first");
+		return;
+	}
+
+	// send msg to UiServer so that local sageapp (vncviewer) can be started
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
+
+	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
+	sprintf(msg.data(), "%d %u %d %s %s %d", SAGENext::VNC_SHARING, _uiclientid, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
+
+	sendMessage(msg);
+}
+
 void SN_PointerUI::on_actionSend_text_triggered()
 {
+	if (!_tcpMsgSock.isValid()) {
+		QMessageBox::warning(this, "No Connection", "Connect to SAGENext first");
+		return;
+	}
+
 	SN_PointerUI_StrDialog strdialog;
 	strdialog.exec();
 
@@ -226,124 +185,52 @@ void SN_PointerUI::on_actionSend_text_triggered()
 	}
 
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
-	qDebug() << "send_text_triggered()" << qPrintable(text);
+
 	sprintf(msg.data(), "%d %u %s", SAGENext::RESPOND_STRING, _uiclientid, qPrintable(text));
-	queueMsgToWall(msg);
+//	QTextStream ts(&msg, QIODevice::WriteOnly);
+//	ts << (int)SAGENext::RESPOND_STRING << _uiclientid << text;
+
+	sendMessage(msg);
 }
 
 
-/*
-  connected to the wall
-  */
-void SN_PointerUI::doHandshaking() {
+
+
+
+
+
+
+void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight, int ftpPort) {
+
+	_uiclientid = uiclientid;
+	fileTransferPort = ftpPort;
+
 	ui->isConnectedLabel->setText("Connected to the wall");
 	ui->isConnectedLabel->show();
 
-	_tcpMsgSock.setSocketOption(QAbstractSocket::LowDelayOption, 1); // disable Nagle's algorithm
-
-	/*!
-	  receive scene size and my uiclientid
-	  */
-	QByteArray buf(EXTUI_MSG_SIZE, '\0');
-	/*
-	if ( ::recv(msgsock, buf.data(), buf.size(), MSG_WAITALL) <= 0 ) {
-		qDebug() << "recv error while receiving scene size";
-		perror("recv");
-		::shutdown(msgsock, SHUT_RDWR);
-		::close(msgsock);
-		return;
-	}*/
-//	_tcpMsgSock.read(EXTUI_MSG_SIZE);
-
-//	_tcpMsgSock.waitForReadyRead(-1); // block permanently until data is available
-	while (_tcpMsgSock.bytesAvailable() < EXTUI_MSG_SIZE) {
-
-		_tcpMsgSock.waitForReadyRead(10);
-
-	}
-	if (_tcpMsgSock.read(buf.data(), EXTUI_MSG_SIZE) == -1) {
-		// error
-		qDebug() << "read error while receving scene size";
-		return;
-	}
-
-
-	int x = 0;
-	int y = 0;
-	sscanf(buf.constData(), "%u %d %d %d", &_uiclientid, &x, &y, &fileTransferPort);
-	wallSize.rwidth() = x;
-	wallSize.rheight() = y;
-	//qDebug("ExternalGUIMain::%s() : my uiClientId is %llu, wall resolution is %d x %d", __FUNCTION__, uiclientid, x,y);
-
-	QDesktopWidget *d = QApplication::desktop();
-	qDebug("My uiclientid is %u, The wall size is %d x %d, my primary screen size %d x %d, fileServer port %d", _uiclientid, x, y, d->screenGeometry().width(), d->screenGeometry().height(), fileTransferPort);
+	wallSize.rwidth() = wallwidth;
+	wallSize.rheight() = wallheight;
 
 	/*!
       When I send my mouse movement to the wall, it's pos should be scaled with these values. ( == mapToWall)
-     */
+      */
+	QDesktopWidget *d = QApplication::desktop();
 	scaleToWallX = wallSize.width() / (qreal)(d->screenGeometry().width());
 	scaleToWallY = wallSize.height() / (qreal)(d->screenGeometry().height());
-	qDebug("\tThe scaleToWall %.2f x %.2f", scaleToWallX, scaleToWallY);
 
+	qDebug() << "================================================================================================";
+	qDebug("My uiclientid is %u, The wall size is %.1f x %.1f, my primary screen size %d x %d, fileServer port %d", _uiclientid, wallSize.width(), wallSize.height(), d->screenGeometry().width(), d->screenGeometry().height(), fileTransferPort);
+	qDebug("The scaleToWall %.2f x %.2f", scaleToWallX, scaleToWallY);
+	qDebug() << "================================================================================================";
 
-
-	/**
-	  *
-	  Now I know my id and file server port. So connect to FileServer
-	  *
-	  **/
-	_tcpDataSock.connectToHost(QHostAddress(_wallAddress), fileTransferPort);
-//	qDebug() << "Connecting to the File Server. It could wait for 10 sec";
-	if ( !_tcpDataSock.waitForConnected(10000) ) { // block for 10 sec
-		qDebug() << "Failed to connect to FileServer";
-	}
-	else {
-		if ( ! sendThread->setSockFD(_tcpDataSock.socketDescriptor()) ) {
-			_tcpDataSock.close();
-		}
-		else {
-			qDebug() << "Connected to the File Server. Staring sendThread";
-			// send my uiclientid
-			char msg[EXTUI_MSG_SIZE];
-			::sprintf(msg, "%u", _uiclientid);
-			_tcpDataSock.write(msg, sizeof(msg));
-			sendThread->start();
-		}
-	}
-
-
-
-
-	/*!
-      One msg thread per wall connection
-      */
-	Q_ASSERT(msgThread);
-	if (msgThread->isRunning()) {
-		msgThread->endThread(); // wait() is called in here
-	}
-
-	msgThread->setUiClientId(_uiclientid);
-//	msgThread->setMyIpAddr(_myIpAddress);
-
-	if ( ! msgThread->setSocketFD(_tcpMsgSock.socketDescriptor()) ) {
-		QMessageBox::critical(this, "socket error", "setting socket descriptor failed");
-		_tcpMsgSock.abort();
-	}
-	else {
-		msgThread->start();
-
-		//
-		// !!!!!!!!!
-		//
-		_tcpMsgSock.moveToThread(msgThread);
-	}
-
-
+	//
+	// maccapture
+	//
 #ifdef Q_OS_MAC
 	if (!macCapture) {
 		macCapture = new QProcess(this);
 		macCapture->setWorkingDirectory(QCoreApplication::applicationDirPath());
-		
+
 		if ( ! QObject::connect(macCapture, SIGNAL(readyReadStandardOutput()), this, SLOT(sendMouseEventsToWall())) ) {
 			qDebug() << "Can't connect macCapture signal to my slot. macCapture won't be started.";
 		}
@@ -372,38 +259,28 @@ void SN_PointerUI::doHandshaking() {
 	//
 //	setMouseTracking(true); // the widget receives mouse move events even if no buttons are pressed
 #endif
-
-
-	/*
- Below isn't needed. I will not receive app layout
- */
-	//	QGraphicsScene *scene = new QGraphicsScene(this);
-	//	scene->setBackgroundBrush(Qt::darkGray);
-	//	ui->graphicsView->setScene(scene);
-	//	ui->graphicsView->setSceneRect(0, 0, ui->graphicsView->size().width(), ui->graphicsView->size().height());
-
-	//	/*!
-	//	  When I received scene's item info from the wall, I should apply this scale to display items on my scene
-	//	  */
-	//	scaleFromWallX = ui->graphicsView->width() / wallSize.width();
-	//	scaleFromWallY = ui->graphicsView->height() / wallSize.height();
-	//	qDebug("The scaleFromWall %.6f x %.6f", scaleFromWallX, scaleFromWallY);
 }
 
 
 
 
-//
+
+
 // for windows and Linux
 void SN_PointerUI::on_hookMouseBtn_clicked()
 {
+	if (!_tcpMsgSock.isValid()) {
+		QMessageBox::warning(this, "No Connection", "Connect to SAGENext first");
+		return;
+	}
+
 	setMouseTracking(true);
 	hookMouse();
 }
 
 void SN_PointerUI::hookMouse() {
-	if (msgThread) {
-		if (msgThread->isRunning()) {
+	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState ) {
+//		if (_msgChannelThread->isRunning()) {
 			//
 			// set the flag
 			//
@@ -429,21 +306,21 @@ void SN_PointerUI::hookMouse() {
 			QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 			// msgtype, uiclientid, pointer name, Red, Green, Blue
 			sprintf(msg.data(), "%d %u %s %s", SAGENext::POINTER_SHARE, _uiclientid, qPrintable(_pointerName), qPrintable(_pointerColor));
-			queueMsgToWall(msg);
-		}
-		else {
-			qWarning() << "Please connect to a SAGENext first";
-		}
+			sendMessage(msg);
+//		}
+//		else {
+//			qWarning() << "Please connect to a SAGENext first";
+//		}
 	}
 	else {
-		qDebug() << "Sharing pointer: msgThread is null";
+		qDebug() << "Sharing pointer: not connected to the wall";
 	}
 }
 
 void SN_PointerUI::unhookMouse() {
 	isMouseCapturing = false;
 	unsetCursor();
-	ui->isConnectedLabel->setText("");
+
 #ifdef Q_OS_MAC
 		// do nothing
 #else
@@ -451,12 +328,194 @@ void SN_PointerUI::unhookMouse() {
 //	qDebug() << "mouse released";
 #endif
 	// remove cursor on the wall
-	if (msgThread && msgThread->isRunning()) {
+	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
 		QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 		sprintf(msg.data(), "%d %u", SAGENext::POINTER_UNSHARE, _uiclientid);
-		queueMsgToWall(msg);
+		sendMessage(msg);
 	}
 }
+
+
+void SN_PointerUI::sendMessage(const QByteArray &msg) {
+	if (_tcpMsgSock.isValid() && _tcpMsgSock.isWritable()) {
+		if ( _tcpMsgSock.write(msg.constData(), msg.size()) == -1 ) {
+			qDebug() << "QTcpSocket::write() error";
+		}
+		else {
+			_tcpMsgSock.flush();
+		}
+	}
+	else {
+		qDebug() << "The message channel isn't writable";
+	}
+}
+
+void SN_PointerUI::readMessage() {
+	if (_tcpMsgSock.bytesAvailable() < EXTUI_MSG_SIZE) {
+		qDebug() << "SN_PointerUI::readMessage()" << _tcpMsgSock.bytesAvailable() << "Bytes available to read";
+		return;
+	}
+
+	QByteArray msg(EXTUI_MSG_SIZE, '\0');
+
+	qint64 r = _tcpMsgSock.read(msg.data(), EXTUI_MSG_SIZE);
+	Q_UNUSED(r);
+
+	int msgType = 0;
+	int msgCode = 0;
+	sscanf(msg.constData(), "%d", &msgType);
+
+	switch(msgType) {
+	case SAGENext::ACK_FROM_WALL: {
+		quint32 uiclientid;
+		int wallwidth, wallheight, ftpport;
+		sscanf(msg.constData(), "%d %u %d %d %d", &msgCode, &uiclientid, &wallwidth, &wallheight, &ftpport);
+		_uiclientid = uiclientid;
+
+		initialize(uiclientid, wallwidth, wallheight, ftpport);
+
+		// Now I can connect to the file server
+		if (ftpport > 0) {
+			_tcpDataSock.connectToHost(QHostAddress(_wallAddress), ftpport);
+			if ( _tcpDataSock.waitForConnected() ) {
+				QByteArray msg(EXTUI_MSG_SIZE, 0);
+				::sprintf(msg.data(), "%u", _uiclientid);
+				_tcpDataSock.write(msg.constData(), msg.size());
+			}
+			else {
+				qDebug() << "Failed to connect to file server";
+			}
+		}
+
+		break;
+	}
+	}
+}
+
+
+void SN_PointerUI::receiveData() {
+
+}
+
+void SN_PointerUI::runSendFileThread(const QList<QUrl> &list) {
+	if (!_tcpDataSock.isValid()) {
+		QMessageBox::warning(this, "No Connection", "Connect to a SAGENext file server first");
+		return;
+	}
+
+	QtConcurrent::run(this, &SN_PointerUI::sendFiles, list);
+}
+
+void SN_PointerUI::sendFiles(const QList<QUrl> &list) {
+	foreach(QUrl url, list) {
+		sendFile(url);
+	}
+}
+
+void SN_PointerUI::sendFile(const QUrl &url) {
+	char header[EXTUI_MSG_SIZE];
+	int mediatype = 0;
+
+	QRegExp _rxImage; _rxImage.setCaseSensitivity(Qt::CaseInsensitive);
+	QRegExp _rxVideo; _rxVideo.setCaseSensitivity(Qt::CaseInsensitive);
+	QRegExp _rxPdf; _rxPdf.setCaseSensitivity(Qt::CaseInsensitive);
+	QRegExp _rxPlugin; _rxPlugin.setCaseSensitivity(Qt::CaseInsensitive);
+
+	_rxImage.setPatternSyntax(QRegExp::RegExp);
+	_rxVideo.setPatternSyntax(QRegExp::RegExp);
+	_rxPdf.setPatternSyntax(QRegExp::RegExp);
+	_rxPlugin.setPatternSyntax(QRegExp::RegExp);
+
+	_rxImage.setPattern("(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$");
+	_rxVideo.setPattern("(avi|mov|mpg|mpeg|mp4|mkv|flv|wmv)$");
+	_rxPdf.setPattern("(pdf)$");
+	_rxPlugin.setPattern("(so|dll|dylib)$");
+
+
+	QString urlStr = url.toString().trimmed();
+
+//	qDebug() << "encoded url" << url.toEncoded(); // ByteArray
+//	qDebug() << "sendMedia() : urlstr is" << urlStr;
+
+	if (urlStr.contains(QRegExp("^http", Qt::CaseInsensitive)) ) {
+		::sprintf(header, "%d %s %lld", (int)SAGENext::MEDIA_TYPE_WEBURL, qPrintable(urlStr), (qint64)0);
+		_tcpDataSock.write(header, sizeof(header));
+	}
+	else if (urlStr.contains(QRegExp("^file://", Qt::CaseSensitive)) ) {
+		QFileInfo fi(url.toLocalFile());
+		if (!fi.isFile() || fi.size() == 0) {
+			qDebug() << "SendThread::sendMedia : filesize 0 for" << fi.absoluteFilePath();
+			return;
+		}
+		qDebug() << "sendMedia() : filePath" << fi.filePath() << "fileName" << fi.fileName();
+
+		if (fi.suffix().contains(_rxImage)) {
+			mediatype = (int)SAGENext::MEDIA_TYPE_IMAGE;
+		}
+		else if (fi.suffix().contains(_rxVideo)) {
+			mediatype = (int)SAGENext::MEDIA_TYPE_LOCAL_VIDEO; // because the file is going to be copied at the wall
+		}
+		else if (fi.suffix().contains(_rxPdf)) {
+			mediatype = (int)SAGENext::MEDIA_TYPE_PDF;
+		}
+		else if (fi.suffix().contains(_rxPlugin)) {
+			mediatype = (int)SAGENext::MEDIA_TYPE_PLUGIN;
+		}
+
+		QString noSpaceFilename = fi.fileName().replace(QChar(' '), QChar('_'), Qt::CaseInsensitive);
+		::sprintf(header, "%d %s %lld", mediatype, qPrintable(noSpaceFilename), fi.size());
+
+		_tcpDataSock.write(header, sizeof(header));
+
+		QFile file(fi.absoluteFilePath());
+		file.open(QIODevice::ReadOnly);
+		if ( _tcpDataSock.write(file.readAll().constData(), file.size()) < 0) {
+			qDebug() << "SendThread::sendMedia() : error while sending the file";
+		}
+		file.close();
+	}
+}
+
+void SN_PointerUI::readFiles(QStringList filenames) {
+    if ( filenames.empty() ) {
+        return;
+    }
+    else {
+        //qDebug("MainWindow::%s() : %d", __FUNCTION__, filenames.size());
+    }
+
+	if (!_tcpMsgSock.isValid()) {
+		qWarning() << "Please connect to a SAGENext first";
+		return;
+	}
+
+	if (!_tcpDataSock.isValid()) {
+		qWarning() << "Not connected to the file server";
+		return;
+	}
+
+//    QRegExp rxVideo("\\.(avi|mov|mpg|mp4|mkv|mpg|flv|wmv|mpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
+//    QRegExp rxImage("\\.(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
+//	QRegExp rxPdf("\\.(pdf)$", Qt::CaseInsensitive, QRegExp::RegExp);
+
+
+    for ( int i=0; i<filenames.size(); i++ ) {
+
+        QString filename = filenames.at(i);
+//		qDebug() << "readFile" << QUrl::fromLocalFile(filename);
+        //qDebug("%s::%s() : %d, %s", metaObject()->className(), __FUNCTION__, i, qPrintable(filename));
+//		QMetaObject::invokeMethod(sendThread, "sendMedia", Qt::QueuedConnection, Q_ARG(QUrl, QUrl::fromLocalFile(filename)));
+
+		sendFile(QUrl::fromLocalFile(filename));
+
+    }
+}
+
+
+
+
+
+
 
 
 
@@ -631,7 +690,7 @@ void SN_PointerUI::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btns /
 //		qDebug() << "sendMouseMove() Moving" << globalPos;
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_MOVING, _uiclientid, x, y);
 	}
-	queueMsgToWall(msg);
+	sendMessage(msg);
 }
 
 /**
@@ -655,7 +714,7 @@ void SN_PointerUI::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns 
 		//
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_PRESS, _uiclientid, x, y);
 	}
-	queueMsgToWall(msg);
+	sendMessage(msg);
 }
 
 /**
@@ -675,7 +734,7 @@ void SN_PointerUI::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btn
 		// will pretend droping operation
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RELEASE, _uiclientid, x, y);
 	}
-	queueMsgToWall(msg);
+	sendMessage(msg);
 }
 
 void SN_PointerUI::sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns /* Qt::LeftButton | Qt::NoButton */) {
@@ -690,7 +749,7 @@ void SN_PointerUI::sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns 
 	else {
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_CLICK, _uiclientid, x, y);
 	}
-	queueMsgToWall(msg);
+	sendMessage(msg);
 }
 
 /**
@@ -702,7 +761,7 @@ void SN_PointerUI::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons /*
 	y = scaleToWallY * globalPos.y();
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 	sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_DOUBLECLICK, _uiclientid, x, y);
-	queueMsgToWall(msg);
+	sendMessage(msg);
 }
 
 void SN_PointerUI::sendMouseWheel(const QPoint globalPos, int delta) {
@@ -712,7 +771,7 @@ void SN_PointerUI::sendMouseWheel(const QPoint globalPos, int delta) {
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 //	qDebug() << "sendMouseWheel" << delta;
 	sprintf(msg.data(), "%d %u %d %d %d", SAGENext::POINTER_WHEEL, _uiclientid, x, y, delta);
-	queueMsgToWall(msg);
+	sendMessage(msg);
 }
 
 
@@ -816,190 +875,31 @@ void SN_PointerUI::wheelEvent(QWheelEvent *e) {
 }
 
 
-void SN_PointerUI::queueMsgToWall(const QByteArray &msg) {
-	if (msgThread && msgThread->isRunning())
-		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-	else
-		qWarning() << "Please connect to the wall first.";
-}
 
 
 
-void SN_PointerUI::on_actionShare_desktop_triggered()
-{
-	// send msg to UiServer so that local sageapp (vncviewer) can be started
-	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
-
-	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %u %d %s %s %d", SAGENext::VNC_SHARING, _uiclientid, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
-
-	queueMsgToWall(msg);
-}
 
 
 
-void SN_PointerUI::readFiles(QStringList filenames) {
-    if ( filenames.empty() ) {
-        return;
-    }
-    else {
-        //qDebug("MainWindow::%s() : %d", __FUNCTION__, filenames.size());
-    }
-
-	if (!msgThread || !msgThread->isRunning()) {
-		qWarning() << "Please connect to a SAGENext first";
-		return;
-	}
-
-	if (!sendThread || !sendThread->isRunning()) {
-		qWarning() << "Not connected to the file server";
-		return;
-	}
-
-//    QRegExp rxVideo("\\.(avi|mov|mpg|mp4|mkv|mpg|flv|wmv|mpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
-//    QRegExp rxImage("\\.(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
-//	QRegExp rxPdf("\\.(pdf)$", Qt::CaseInsensitive, QRegExp::RegExp);
 
 
-    for ( int i=0; i<filenames.size(); i++ ) {
-
-        QString filename = filenames.at(i);
-//		qDebug() << "readFile" << QUrl::fromLocalFile(filename);
-        //qDebug("%s::%s() : %d, %s", metaObject()->className(), __FUNCTION__, i, qPrintable(filename));
-		QMetaObject::invokeMethod(sendThread, "sendMedia", Qt::QueuedConnection, Q_ARG(QUrl, QUrl::fromLocalFile(filename)));
-
-		/*
-        //QFileInfo fi(filename);
-        if ( filename.contains(rxVideo) ) {
-            qDebug("ExternalGUIMain::%s() : Prepare sending the video file %s", __FUNCTION__, qPrintable(filename));
-//            QMetaObject::invokeMethod(msgThread, "registerApp", Qt::QueuedConnection, Q_ARG(int, MEDIA_TYPE_LOCAL_VIDEO), Q_ARG(QString, filename));
-			QMetaObject::invokeMethod(sendThread, "sendMedia", Qt::QueuedConnection, Q_ARG(QUrl, QUrl(filename.prepend("file://"))));
-        }
-        else if (filename.contains(rxImage)) {
-			qDebug("ExternalGUIMain::%s() : Prepare sending the image file %s", __FUNCTION__, qPrintable(filename.prepend("file://")));
-//            QMetaObject::invokeMethod(msgThread, "registerApp", Qt::QueuedConnection, Q_ARG(int, MEDIA_TYPE_IMAGE), Q_ARG(QString, filename));
-        }
-        else {
-            qCritical("ExternalGUIMain::%s() : Unrecognized file format", __FUNCTION__);
-        }
-		*/
-    }
-}
-
-//void ExternalGUIMain::updateScene(const QByteArray layout) {
-//	// for each message thread
-////	QMetaObject::invokeMethod(msgThread, "requestAppLayout", Qt::QueuedConnection);
-
-//	if ( QString::compare(ui->showLayoutButton->text(), "Show Layout", Qt::CaseInsensitive) == 0 ) {
-//		// User didn't trigger the button. I don't want to receive app layout info
-//		return;
-//	}
-
-//	int msgtype;
-//	unsigned int numapps = 0;
-//	sscanf(layout.constData(), "%d %u", &msgtype, &numapps);
-
-//	QGraphicsScene *scene = ui->graphicsView->scene();
-//	if (!scene) return;
-
-//	QList<QByteArray> data = layout.split(' ');
-
-//	unsigned int count = 0; int i=2;
-//	while ( count < numapps) {
-//		if ( i+5 >= data.size() ) {
-//			qDebug() << "updateScene : data received isn't large enough to hold " << numapps << " apps";
-//			break;
-//		}
-//		quint64 gaid = data[i].toULongLong();
-//		int x = data[i+1].toInt();
-//		int y = data[i+2].toInt();
-//		qreal z = data[i+3].toDouble();
-//		int width = data[i+4].toInt();
-//		int height = data[i+5].toInt();
-
-//		// add/modify rect item to/in the scene
-//		QGraphicsRectItem *item = 0;
-//		if ( (item = itemWithGlobalAppId(scene, gaid)) ) {
-//			// modify
-//			item->setRect(x*scaleFromWallX, y*scaleFromWallY, width*scaleFromWallX, height*scaleFromWallY);
-//			item->setZValue(z);
-//		}
-//		else {
-//			// add
-//			QGraphicsRectItem *addeditem = scene->addRect(x*scaleFromWallX, y*scaleFromWallY, width*scaleFromWallX, height*scaleFromWallY, QPen(), QBrush(Qt::lightGray));
-//			addeditem->setZValue(z);
-//			addeditem->setData(0, gaid);
-//			addeditem->setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemSendsGeometryChanges);
-//		}
-
-//		i += 6;
-//		++count;
-//	}
-
-//	/** how to remove closed app  ??? */
-//}
-
-//QGraphicsRectItem * ExternalGUIMain::itemWithGlobalAppId(QGraphicsScene *scene, quint64 gaid) {
-//	if (!scene) return 0;
-	
-//	bool ok = false;
-//	quint64 storedId = 0;
-	
-//	QList<QGraphicsItem *> i = scene->items();
-//	foreach( QGraphicsItem *item, i ) {
-//		storedId = item->data(0).toULongLong(&ok);
-//		if(ok && storedId == gaid) {
-//			return (static_cast<QGraphicsRectItem *>(item));
-//		}
-//	}
-//	return 0;
-//}
-
-//void ExternalGUIMain::resizeEvent(QResizeEvent *e) {
-//        Q_UNUSED(e);
-//	ui->graphicsView->setSceneRect( QRectF(QPointF(0,0), ui->graphicsView->size()) );
-//	qDebug() << "resizeEvent : scene rect is now " << ui->graphicsView->sceneRect();
-
-//	if (ui->graphicsView->scene() && !wallSize.isNull() && !wallSize.isEmpty() && wallSize.isValid()) {
-
-//		scaleFromWallX = ui->graphicsView->width() / wallSize.width();
-//		scaleFromWallY = ui->graphicsView->height() / wallSize.height();
-//		qDebug() << "scaleFromWall " << scaleFromWallX << "x" << scaleFromWallY;
-//	}
-//}
-
-//void ExternalGUIMain::on_showLayoutButton_clicked()
-//{
-//	// send message to the wall TOGGLE_APP_LAYOUT
-//	/* if I'm receiving layout info this will make it stop
-//	   */
-//	if (msgThread && msgThread->isRunning()) {
-//		QByteArray msg(EXTUI_MSG_SIZE, 0);
-//		sprintf(msg.data(), "%d %llu", TOGGLE_APP_LAYOUT, uiclientid);
-//		QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg));
-
-//		// change button label
-//		if ( QString::compare(ui->showLayoutButton->text(), "Show Layout", Qt::CaseInsensitive) == 0 ) {
-//			ui->showLayoutButton->setText("Hide Layout");
-//			/* now scene shows app layout */
-//		}
-//		else {
-//			ui->showLayoutButton->setText("Show Layout");
-//			/* scene no longer shows app layout. clear the current scene */
-//			if (ui->graphicsView->scene())
-//				ui->graphicsView->scene()->clear();
-//		}
-//	}
-//	else {
-//		qDebug("%s::%s() : no msgThread", metaObject()->className(), __FUNCTION__);
-//	}
-
-//}
 
 
-SN_PointerUI_DropFrame::SN_PointerUI_DropFrame(const SN_PointerUI_SendThread *st, QWidget *parent)
+
+
+
+
+
+
+
+
+
+
+
+
+
+SN_PointerUI_DropFrame::SN_PointerUI_DropFrame(QWidget *parent)
     : QLabel(parent)
-    , _sendThread(st)
 {
 	setAcceptDrops(true);
 	setFrameStyle(QFrame::Sunken);
@@ -1013,10 +913,10 @@ void SN_PointerUI_DropFrame::dragEnterEvent(QDragEnterEvent *e) {
 }
 
 void SN_PointerUI_DropFrame::dropEvent(QDropEvent *e) {
-	if (! _sendThread || !_sendThread->isRunning()) {
-		QMessageBox::warning(this, "No Connection", "Connect to file server first");
-		return;
-	}
+//	if (! _tcpDataS ) {
+//		QMessageBox::warning(this, "No Connection", "Connect to a SAGENext file server first");
+//		return;
+//	}
 
 //	if (e->mimeData()->hasHtml()) {
 ////		qDebug() << "Html"; // web address
@@ -1029,10 +929,9 @@ void SN_PointerUI_DropFrame::dropEvent(QDropEvent *e) {
 //		qDebug() << files;
 //	}
 
-
-
 	if ( e->mimeData()->hasHtml() || e->mimeData()->hasUrls()) {
 		emit mediaDropped(e->mimeData()->urls());
+
 		e->acceptProposedAction();
 	}
 }
@@ -1040,24 +939,43 @@ void SN_PointerUI_DropFrame::dropEvent(QDropEvent *e) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
-        : QDialog(parent)
-        , ui(new Ui::SN_PointerUI_ConnDialog)
-        , _settings(s)
-        , portnum(0)
+    : QDialog(parent)
+    , ui(new Ui::SN_PointerUI_ConnDialog)
+    , _settings(s)
+    , portnum(0)
 {
-        ui->setupUi(this);
+	ui->setupUi(this);
 
-        addr.clear();
+	addr.clear();
 
-        ui->ipaddr->setInputMask("000.000.000.000;_");
-//        ui->myaddrLineEdit->setInputMask("000.000.000.000;_");
-        ui->port->setInputMask("00000;_");
+	ui->ipaddr->setInputMask("000.000.000.000;_");
+	//        ui->myaddrLineEdit->setInputMask("000.000.000.000;_");
+	ui->port->setInputMask("00000;_");
 
-        ui->ipaddr->setText( _settings->value("walladdr", "127.0.0.1").toString() );
+	ui->ipaddr->setText( _settings->value("walladdr", "127.0.0.1").toString() );
 
 
-		/**
+	/**
 		QList<QHostAddress> myiplist = QNetworkInterface::allAddresses();
 		for (int i=0; i<myiplist.size(); ++i) {
 			if (myiplist.at(i).toIPv4Address()) {
@@ -1070,26 +988,26 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
 
 
 
-        ui->port->setText( _settings->value("wallport", 30003).toString() );
-		ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
-		ui->vncpasswd->setEchoMode(QLineEdit::Password);
-        ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
-        ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
+	ui->port->setText( _settings->value("wallport", 30003).toString() );
+	ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
+	ui->vncpasswd->setEchoMode(QLineEdit::Password);
+	ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
+	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
 
-//		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
-		QColor pc(_settings->value("pointercolor", "#ff0000").toString());
-		pColor = pc.name();
-		QPixmap pixmap(ui->pointerColorLabel->size());
-		pixmap.fill(pc);
-		ui->pointerColorLabel->setPixmap(pixmap);
-		
-		int idx = ui->sharingEdgeCB->findText(_settings->value("sharingedge", "top").toString());
-		if (idx != -1) 
-			ui->sharingEdgeCB->setCurrentIndex(idx);
-		else
-			ui->sharingEdgeCB->setCurrentIndex(0);
+	//		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
+	QColor pc(_settings->value("pointercolor", "#ff0000").toString());
+	pColor = pc.name();
+	QPixmap pixmap(ui->pointerColorLabel->size());
+	pixmap.fill(pc);
+	ui->pointerColorLabel->setPixmap(pixmap);
 
-		adjustSize();
+	int idx = ui->sharingEdgeCB->findText(_settings->value("sharingedge", "top").toString());
+	if (idx != -1)
+		ui->sharingEdgeCB->setCurrentIndex(idx);
+	else
+		ui->sharingEdgeCB->setCurrentIndex(0);
+
+	adjustSize();
 
 //	ui->ipaddr->setText("127.0.0.1");
 //	ui->port->setText("30003");
