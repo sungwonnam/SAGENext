@@ -101,4 +101,45 @@ private:
 };
 
 
+
+
+
+
+
+class SN_PolygonArrowPointer;
+
+/*!
+  This is used to allow users to feed string data to a LineEdit item
+  */
+class SN_LineEdit : public QGraphicsWidget
+{
+	Q_OBJECT
+public:
+	SN_LineEdit(QGraphicsItem *parent=0);
+	SN_LineEdit(const SN_LineEdit &);
+	~SN_LineEdit() {}
+
+	QLineEdit *_lineedit;
+	QGraphicsProxyWidget *_proxywidget;
+
+	SN_PolygonArrowPointer *_pointer;
+
+	void setText(const QString &text);
+
+protected:
+	void mousePressEvent(QGraphicsSceneMouseEvent *event);
+
+
+signals:
+	void pressed();
+
+	void textChanged(QString);
+
+public slots:
+	void setThePointer(SN_PolygonArrowPointer *p);
+};
+
+//Q_DECLARE_METATYPE(SN_LineEdit)
+
+
 #endif // COMMONITEM_H

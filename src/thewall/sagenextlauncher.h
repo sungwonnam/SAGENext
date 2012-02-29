@@ -8,6 +8,7 @@
 
 class QSettings;
 class SN_TheScene;
+class UiMsgThread;
 
 class QGraphicsItem;
 class SN_BaseWidget;
@@ -135,7 +136,7 @@ public slots:
 	SN_BaseWidget * launch(const QStringList &fileList);
 
 
-	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
+	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
 
 		/**
 		  Load a saved session

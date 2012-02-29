@@ -4,12 +4,14 @@
 #include <QtGui>
 #include <QtWebKit>
 //#include <QWebPage>
+#include "../common/commonitem.h"
 
 SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent /*0*/, Qt::WindowFlags wFlags/* Qt::Window */)
     : SN_BaseWidget(gaid, setting, parent, wFlags)
     , linearLayout(0)
     , gwebview(0)
-    , urlbox(0)
+//    , urlbox(0)
+    , _customurlbox(0)
     , urlboxproxy(0)
 {
 
@@ -47,25 +49,40 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	// use this instead
 //	setContentsMargins(0, 0, 0, 0);
 
-
 //	connect(&futureWatcher, SIGNAL(finished()), this, SLOT(pageLoaded()));
 
 
-	/* URL box with QLineEdit widget */
-	urlbox = new QLineEdit("http://");
 	QFont f;
-	f.setPointSize(18);
+	f.setPointSize( setting->value("gui/fontpointsize", 18).toInt() );
+
+
+	/********
+	// URL box with QLineEdit widget
+	urlbox = new QLineEdit("http://");
 	urlbox->setFont(f);
-	connect(urlbox, SIGNAL(returnPressed()), this, SLOT(setUrlFromLineEdit()));
+	QObject::connect(urlbox, SIGNAL(returnPressed()), this, SLOT(setUrlFromLineEdit()));
 
-
-	/* Corresponding proxy widget for the URL box */
-	urlboxproxy = new QGraphicsProxyWidget(); // this is bad for graphics perfomance. But it's the only way
+	// Corresponding proxy widget for the URL box
+	urlboxproxy = new QGraphicsProxyWidget; // this is bad for graphics perfomance. But it's the only way
 	//proxyWidget->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 
 	// urlboxproxy takes ownership of urlbox
 	urlboxproxy->setWidget(urlbox); // widget(urlbox) must be top-level widget whose parent is 0
 	urlboxproxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
+	**********/
+
+
+
+
+	/* URL box with custom lineeidt widget to be able to receive text string from uiclient */
+	_customurlbox = new SN_LineEdit(this);
+	_customurlbox->_lineedit->setText("http://");
+	_customurlbox->_lineedit->setFont(f);
+	_customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
+	QObject::connect(_customurlbox, SIGNAL(textChanged(QString)), this, SLOT(setUrl(QString)));
+
+
+
 
 
 
@@ -115,15 +132,18 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
 
 	gwebview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Frame);
-	connect(gwebview, SIGNAL(urlChanged(QUrl)), this, SLOT(urlChanged(QUrl)));
+	QObject::connect(gwebview, SIGNAL(urlChanged(QUrl)), this, SLOT(urlChanged(QUrl)));
 
 
 	linearLayout = new QGraphicsLinearLayout(Qt::Vertical, this);
 	linearLayout->setSpacing(4);
 	linearLayout->setContentsMargins(20,20,20,40);
 
+
 	// The layout takes ownership of these items.
-	linearLayout->addItem(urlboxproxy);
+//	linearLayout->addItem(urlboxproxy);
+	linearLayout->addItem(_customurlbox);
+
 	linearLayout->addItem(gwebview);
 
 	// Any existing layout is deleted before the new layuout is assigned, and this widget will take ownership of the layout
@@ -222,12 +242,23 @@ bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 	     */
 	}
 
-	if (watched == urlboxproxy) {
-		if (event->type() == QEvent::GraphicsSceneMousePress)
+//	else if (watched == urlboxproxy) {
+//		if (event->type() == QEvent::GraphicsSceneMousePress || event->type() == QEvent::GraphicsSceneMouseRelease) {
+//			SN_BaseWidget::setTopmost();
+
+//			urlbox->selectAll();
+//		}
+//	}
+
+	else if (watched == _customurlbox->_proxywidget) {
+		if (event->type() == QEvent::GraphicsSceneMousePress || event->type() == QEvent::GraphicsSceneMouseRelease) {
 			SN_BaseWidget::setTopmost();
+
+			_customurlbox->_lineedit->selectAll();
+		}
 	}
 
-	return false; // All other events won't be filtered by WebWidget
+	return false; // All other events won't be filtered by SN_WebWidget
 }
 
 void SN_WebWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
@@ -280,6 +311,10 @@ void SN_WebWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
 		  So the workaround is either simply not reimplementing SN_BaseWidget::handlePointerPress() or not generating system mouse press in the function.
 		  This is why mousePressEvent has to be placed in here.
 
+
+		  ALSO, this won't work when more than two users are draggin on webwidget at the same time.
+		  This is because OS doesn't allow multiple mouse pointers (even though OS supports multiple mouse devices connected to the system, there is only one mouse pointer)
+
 		  ************/
 		if (scene()->mouseGrabberItem() != gwebview) {
 			QMouseEvent press(QEvent::MouseButtonPress, view->mapFromScene(scenePos), button, button | Qt::NoButton, Qt::NoModifier);
@@ -288,7 +323,7 @@ void SN_WebWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
 			}
 			else {
 				// Now I'm mouse grabber
-				qDebug() << "Pressed, mouse grabber is" << scene()->mouseGrabberItem();
+				qDebug() << "SN_WebWidget::handlePointerDrag() : Pressed, mouse grabber is" << scene()->mouseGrabberItem();
 			}
 		}
 
@@ -374,6 +409,7 @@ void SN_WebWidget::pageLoaded() {
 
 void SN_WebWidget::setUrl(const QString &u) {
 	QUrl url;
+
 	if ( u.startsWith("http://", Qt::CaseInsensitive)
 	     || u.startsWith("https://", Qt::CaseInsensitive)
 	     || u.startsWith("file://", Qt::CaseInsensitive))
@@ -406,11 +442,12 @@ void SN_WebWidget::setUrl(const QString &u) {
 }
 
 void SN_WebWidget::setUrlFromLineEdit() {
-	setUrl(urlbox->text());
+//	setUrl(urlbox->text());
 }
 
 void SN_WebWidget::urlChanged(const QUrl &url) {
-	urlbox->setText( url.toString());
+//	urlbox->setText( url.toString());
+	_customurlbox->_lineedit->setText(url.toString());
 }
 
 

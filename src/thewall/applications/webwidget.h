@@ -6,7 +6,8 @@
 //#include <QWebPage>
 
 class QGraphicsWebView;
-class QLineEdit;
+//class QLineEdit;
+class SN_LineEdit;
 class QGraphicsLinearLayout;
 class QWebPage;
 class QWebFrame;
@@ -34,11 +35,6 @@ public:
           This function generates mousePressEvent followed by mouseReleaseEvent, post them to the view
           */
 //        void mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn= Qt::LeftButton);
-
-        /**
-          sets new web URL and triggers webpage loading
-          */
-	void setUrl(const QString &url);
 
 
 		/*!
@@ -93,7 +89,8 @@ protected:
 private:
 	QGraphicsLinearLayout *linearLayout;
 	QGraphicsWebView *gwebview;
-	QLineEdit *urlbox;
+//	QLineEdit *urlbox;
+	SN_LineEdit *_customurlbox;
 	QGraphicsProxyWidget *urlboxproxy;
 
 
@@ -102,8 +99,13 @@ private:
 	//QFutureWatcher<void> futureWatcher;
 
 public slots:
+	/**
+      sets new web URL and triggers webpage loading
+      */
+	void setUrl(const QString &url);
 
 	void setUrlFromLineEdit();
+
 	void urlChanged(const QUrl &url);
 
 	void pageLoaded();

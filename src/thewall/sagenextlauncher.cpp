@@ -567,7 +567,7 @@ SN_BaseWidget * SN_Launcher::launch(const QStringList &fileList) {
 	return 0;
 }
 
-SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, const QString &name, const QColor &color, const QPointF &scenepos /*= QPointF()*/) {
+SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos /*= QPointF()*/) {
 
 	SN_PolygonArrowPointer *pointer = 0;
 
@@ -581,7 +581,7 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, const QS
 			sprintf(record, "%lld %d %u %s %s\n",QDateTime::currentMSecsSinceEpoch(), 1, uiclientid, qPrintable(name), qPrintable(color.name()));
 			_scenarioFile->write(record);
 
-			pointer = new SN_PolygonArrowPointer(uiclientid, _settings, _scene, name, color, _scenarioFile);
+			pointer = new SN_PolygonArrowPointer(uiclientid, msgthread, _settings, _scene, name, color, _scenarioFile);
 		}
 		else {
 			qDebug() << "Launcher::launchPointer() : Can't write";
@@ -591,7 +591,7 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, const QS
 	///////////////////////////////////////
 
 	else {
-		pointer = new SN_PolygonArrowPointer(uiclientid, _settings, _scene, name, color);
+		pointer = new SN_PolygonArrowPointer(uiclientid,msgthread, _settings, _scene, name, color);
 	}
 
 	//
@@ -1111,7 +1111,7 @@ void ScenarioThread::run() {
 			char color[16];
 			sscanf(line, "%lld %d %u %s %s", &when, &type, &uiclientid, pname, color);
 			qDebug() << "NEW_POINTER" << uiclientid << pname << color;
-			SN_PolygonArrowPointer *pointer = _launcher->launchPointer(uiclientid, QString(pname), QColor(QString(color)));
+			SN_PolygonArrowPointer *pointer = _launcher->launchPointer(uiclientid, 0 ,QString(pname), QColor(QString(color)));
 			_launcher->_pointerMap.insert(uiclientid, pointer);
 //			QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection, Q_ARG(quint64, uiclientid), Q_ARG(QString, QString(pname)), Q_ARG(QColor, QColor(QString(color))));
 			break;

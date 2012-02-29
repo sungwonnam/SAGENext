@@ -289,13 +289,24 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		//
 //		msgThread->getID();
 
-//		QByteArray text(EXTUI_SMALL_MSG_SIZE, 0);
-		QTextStream ts(msg);
-//		sscanf(msg.constData(), "%d %u %s", &code, &uiclientid, text.data());
+//		QString str;
 
-		QString str;
-		ts >> code;
-		str = ts.readLine();
+//		QByteArray text(EXTUI_SMALL_MSG_SIZE, 0);
+//		sscanf(msg.constData(), "%d %s", &code, text.data()); // no white space support
+//		str = QString(text);
+
+
+//		QTextStream ts(msg);
+//		ts >> code;
+//		str = ts.readAll();
+//		str = str.trimmed();
+
+//		qDebug() << str;
+
+		QString str(msg);
+
+		int firstspace = str.indexOf(QChar(' '));
+		str.remove(0, firstspace + 1); // remove messageCode followed by a space
 
 		Q_ASSERT(msgThread);
 		// find the PolygonArrow associated with this uiClientId

@@ -1,2 +1,2 @@
 TEMPLATE = subdirs
-SUBDIRS += thewall uiclient thewall/applications/plugins
+SUBDIRS += thewall thewall/applications/plugins

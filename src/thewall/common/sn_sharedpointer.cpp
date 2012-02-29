@@ -1,9 +1,10 @@
 #include "sn_sharedpointer.h"
-
+#include "commonitem.h"
 #include "sn_layoutwidget.h"
 #include "../applications/base/basewidget.h"
 #include "../applications/base/sn_priority.h"
 #include "../sagenextscene.h"
+#include "../uiserver/uimsgthread.h"
 
 //#include "sn_drawingwidget.h"
 
@@ -14,9 +15,10 @@ SelectionRectangle::SelectionRectangle(QGraphicsItem *parent)
 }
 
 
-SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, const QSettings *s, SN_TheScene *scene, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
+SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *s, SN_TheScene *scene, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
     , _scene(scene)
+    , _uimsgthread(msgthread)
     , _uiclientid(uicid)
     , _settings(s)
     , _textItem(0)
@@ -104,6 +106,7 @@ void SN_PolygonArrowPointer::setPointerName(const QString &text) {
 
 	_textItem->setPen(QColor(Qt::black));
 }
+
 
 void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButtons btnFlags, Qt::KeyboardModifier modifier) {
 	const QPointF &oldp = scenePos();
@@ -616,16 +619,23 @@ void SN_PolygonArrowPointer::pointerWheel(const QPointF &scenePos, int delta, Qt
     }
 }
 
-bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
+bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
     Q_ASSERT(scene());
+
     QList<QGraphicsItem *> list = scene()->items(scenePos, Qt::ContainsItemBoundingRect, Qt::DescendingOrder);
     //app = static_cast<BaseGraphicsWidget *>(scene()->itemAt(scenePosOfPointer, QTransform()));
+
+	_basewidget = 0; // reset
+	_specialItem = 0;
+	_guiItem = 0;
 
     //qDebug() << "\nPolygonArrow::setAppUnderPointer() :" << list.size() << " items";
     foreach (QGraphicsItem *item, list) {
         if ( item == this ) continue;
 
 		if ( item->acceptedMouseButtons() == 0 ) continue;
+
+		QGraphicsObject *object = item->toGraphicsObject();
 
         if ( item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
 			//
@@ -648,21 +658,41 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF scenePos) {
 		else if (item->type() >= QGraphicsItem::UserType + INTERACTIVE_ITEM) {
 			//
 			// A QGraphicsItem doesn't inherit SN_BaseWidget.
-			// But still can be interacted with user shared pointers
+			// But still can be interacted with user shared pointers (SN_PartitionBar)
 			//
 			_specialItem = item;
 			_basewidget = 0;
 			return true;
 		}
 		else {
-			// regualar graphics items, All the SN_PixmapButton, SN_WallPartitionBar
+			// regualar graphics items or items that inherit QGraphicsItem/Widget
+
+
+			if(object) {
+				if ( ::strcmp(object->metaObject()->className(), "SN_LineEdit") == 0 ) {
+					SN_LineEdit *sle = static_cast<SN_LineEdit *>(object);
+					sle->setThePointer(this);
+					_guiItem = sle;
+				}
+			}
 		}
     }
-    _basewidget = 0; // reset
-	_specialItem = 0;
+
 
     //qDebug("PolygonArrow::%s() : uiclientid %u, There's BaseGraphicsWidget type under pointer", __FUNCTION__, uiclientid);
     return false;
+}
+
+void SN_PolygonArrowPointer::injectStringToItem(const QString &str) {
+	if (_guiItem) {
+		qDebug() << "SN_PolygonArrowPointer::injectStringToItem()" << str;
+
+		qDebug() << "current gui item is a type of" << _guiItem->metaObject()->className();
+
+		SN_LineEdit *sle = static_cast<SN_LineEdit *>(_guiItem);
+		Q_ASSERT(sle);
+		sle->setText(str);
+	}
 }
 
 QGraphicsView * SN_PolygonArrowPointer::eventReceivingViewport(const QPointF scenePos) {

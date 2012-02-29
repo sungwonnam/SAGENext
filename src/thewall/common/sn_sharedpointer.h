@@ -4,8 +4,11 @@
 #include <QGraphicsPolygonItem>
 #include <QGraphicsWidget>
 
+#include "commondefinitions.h"
+
 class SN_BaseWidget;
 class SN_TheScene;
+class UiMsgThread;
 
 class QSettings;
 class QGraphicsView;
@@ -32,7 +35,7 @@ public:
 class SN_PolygonArrowPointer : public QGraphicsPolygonItem
 {
 public:
-	SN_PolygonArrowPointer(const quint32 uicid, const QSettings *, SN_TheScene *scene, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
+	SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *, SN_TheScene *scene, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
 	~SN_PolygonArrowPointer();
 
 	void setPointerName(const QString &text);
@@ -47,11 +50,17 @@ public:
 
 	void pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags);
 
+
+	/*!
+	  Upon receiving RESPOND_STRING from a user, the pointer will set text to _guiItem
+	  */
+	void injectStringToItem(const QString &str);
+
         /**
           This is called by pointerPress()
           It sets a user widget (type() >= QGraphicsItem::UserType + 12) under the pointer.
           */
-	bool setAppUnderPointer(const QPointF scenePosOfPointer);
+	bool setAppUnderPointer(const QPointF &scenePosOfPointer);
 
 	inline SN_BaseWidget * appUnderPointer() {return _basewidget;}
 
@@ -108,6 +117,11 @@ public:
 private:
 	SN_TheScene *_scene;
 
+	/*!
+	  Pointer to my UiMsgThread
+	  */
+	UiMsgThread *_uimsgthread;
+
         /**
           * The unique ID of UI client to which this pointer belongs
           */
@@ -139,6 +153,9 @@ private:
 	  Such as SN_PartitonBar
       */
 	QGraphicsItem *_specialItem;
+
+
+	QGraphicsWidget *_guiItem;
 
 		
 		/**

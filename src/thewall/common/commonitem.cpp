@@ -186,6 +186,51 @@ void SN_SimpleTextWidget::setText(const QString &text) {
 
 
 
+#include "sn_sharedpointer.h"
+
+
+SN_LineEdit::SN_LineEdit(QGraphicsItem *parent)
+    : QGraphicsWidget(parent)
+    , _lineedit(new QLineEdit)
+    , _proxywidget(new QGraphicsProxyWidget(this))
+    , _pointer(0)
+{
+	_lineedit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+	_proxywidget->setWidget(_lineedit);
+	_proxywidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
+
+	QGraphicsLinearLayout *ll = new QGraphicsLinearLayout;
+	ll->addItem(_proxywidget);
+	setLayout(ll);
+}
+
+SN_LineEdit::SN_LineEdit(const SN_LineEdit &)
+    : QGraphicsWidget()
+    , _lineedit(new QLineEdit)
+    , _proxywidget(new QGraphicsProxyWidget(this))
+{
+	_proxywidget->setWidget(_lineedit);
+}
+
+
+void SN_LineEdit::setText(const QString &text) {
+	Q_ASSERT(_lineedit);
+	qDebug() << "SN_LineEdit::setText() : " << text;
+	_lineedit->setText(text);
+	emit textChanged(text);
+}
+
+void SN_LineEdit::mousePressEvent(QGraphicsSceneMouseEvent *) {
+	_lineedit->selectAll();
+	emit pressed();
+}
+
+void SN_LineEdit::setThePointer(SN_PolygonArrowPointer *p) {
+	_pointer = p;
+
+	Q_ASSERT(_pointer);
+}
+
 
 
 
