@@ -57,7 +57,10 @@ enum EXTUI_MSG_TYPE { MSG_NULL
 	                  , POINTER_DRAGGING, POINTER_RIGHTDRAGGING, POINTER_MOVING
 	                  , POINTER_SHARE, POINTER_WHEEL, POINTER_UNSHARE
 
-	                  , RESPOND_STRING
+	                  , RESPOND_STRING /* to send text string from uiclient to wall */
+
+	                  , REQUEST_FILEINFO /* upon receiving, wall sends file info to uiclient. uiclient must send _globalAppId of the application */
+	                  , RESPOND_FILEINFO /* uiserver responds with the fileinfo of the selected application on the wall */
 
 	                  /*
 	                  Below is to interact with widget directly from a uiclient

@@ -218,10 +218,17 @@ private:
 		
 //	void connectToWall(const char * ipaddr, quint16 port);
 
-	void sendFiles(const QList<QUrl> &);
+	void sendFilesToWall(const QList<QUrl> &);
 
-	void sendFile(const QUrl &);
+	/*!
+	  send a file to wall. Sending consists of two operations. Sending a header followed by the actual file.
+	  */
+	void sendFileToWall(const QUrl &);
 
+	/*!
+	  The filepath is the absoulte path name of the file reside at the wall.
+	  */
+	void recvFileFromWall(const QString &filepath, qint64 filesize);
 
 public slots:
 	/*!
@@ -229,13 +236,25 @@ public slots:
 	  */
 	void initialize(quint32 uiclientid, int wallwidth, int wallheight, int ftpPort);
 
+	/*!
+	  send message to the wall. messages are usually pointer operations.
+	  The size of the message from uiclient to wall is EXTUI_SMALL_MSG_SIZE = 128 Byte. This is defined in src/thewall/common/commondefinitions.h
+	  */
 	void sendMessage(const QByteArray &msg);
 
+	/*!
+	  read message sent from the wall.
+	  The size of the message from wall to uiclient is EXTUI_MSG_SIZE = 1280 Byte. This is defined in src/thewall/common/commondefinitions.h
+	  */
 	void readMessage();
 
+	/*!
+	  This function runs SN_PointerUI::sendFiles() in a separate thread using QtConcurrent::run()
+	  */
 	void runSendFileThread(const QList<QUrl> &);
 
-	void receiveData();
+	void runRecvFileThread(const QString &filepath, qint64 filesize);
+
 
 private slots:
         /*!
@@ -267,7 +286,7 @@ private slots:
           * when fileDialog returns this function is invoked.
           * This functions will invoke MessageThread::registerApp() slot
           */
-	void readFiles(QStringList);
+	void readLocalFiles(QStringList);
 		
 		//void sendFile(const QString &f, int mediatype);
 		

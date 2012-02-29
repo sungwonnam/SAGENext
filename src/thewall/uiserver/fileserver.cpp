@@ -30,6 +30,89 @@ void FileServerThread::endThread() {
 	::close(_dataSock);
 }
 
+int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &filename, qint64 filesize) {
+	//
+	// if it's just web url
+	//
+	if (mediatype == SAGENext::MEDIA_TYPE_WEBURL) {
+		emit fileReceived(mediatype, filename);
+		return 0;
+	}
+
+	//
+	// if it's a real file
+	//
+	if (filesize <= 0) return -1;
+
+	QString destdir = QDir::homePath().append("/.sagenext/");
+
+	switch(mediatype) {
+	case SAGENext::MEDIA_TYPE_IMAGE : {
+		destdir.append("media/image/");
+		break;
+	}
+	case SAGENext::MEDIA_TYPE_LOCAL_VIDEO : {
+		destdir.append("media/video/");
+		break;
+	}
+	case SAGENext::MEDIA_TYPE_PDF : {
+		destdir.append("media/pdf/");
+		break;
+	}
+	case SAGENext::MEDIA_TYPE_PLUGIN : {
+		destdir.append("media/plugins/");
+		break;
+	}
+	default: {
+		break;
+	}
+	} // end switch
+
+	QFile file( destdir.append(filename) );
+	if ( ! file.open(QIODevice::WriteOnly) ) {
+		qDebug() << "FileServerThread::_recvFile() : file can't be opened for writing";
+		return -1;
+	}
+	qDebug() << "FileServerThread::_recvFile() :  will receive" << file.fileName() << filesize << "Byte";
+
+	QByteArray buffer(filesize, 0);
+    if ( ::recv(_dataSock, buffer.data(), filesize, MSG_WAITALL) <= 0 ) {
+        qCritical("%s::%s() : error while receiving the file.", metaObject()->className(), __FUNCTION__);
+        return -1;
+    }
+
+	file.write(buffer);
+	if (!file.exists() || file.size() <= 0) {
+		qDebug("%s::%s() : %s is not a valid file", metaObject()->className(), __FUNCTION__, qPrintable(file.fileName()));
+		return -1;
+	}
+
+	emit fileReceived(mediatype, file.fileName());
+
+	file.close();
+
+	return 0;
+}
+
+int FileServerThread::_sendFile(const QString &filepath) {
+	QFile f(filepath);
+	if (! f.open(QIODevice::ReadOnly)) {
+		qDebug() << "FileServerThread::_sendFile() : couldn't open the file" << filepath;
+		return -1;
+	}
+
+	//
+	// very inefficient way to send file !!
+	//
+	if ( ::send(_dataSock, f.readAll().constData(), f.size(), 0) <= 0 ) {
+		qDebug() << "FileServerThread::_sendFile() : ::send error";
+		return -1;
+	}
+
+	f.close();
+	return 0;
+}
+
 
 void FileServerThread::run() {
 //	qDebug() << "FileServerThread is running for uiclient" << _uiclientid;
@@ -50,59 +133,31 @@ void FileServerThread::run() {
 			break;
 		}
 
-		int mediatype;
+		int mode; // up or down
+//		int mediatype;
+		SAGENext::MEDIA_TYPE mediatype;
 		char filename[256];
 		qint64 filesize;
-		::sscanf(header, "%d %s %lld", &mediatype, filename, &filesize);
-		qDebug() << "FileServerThread received header" << mediatype << filename << filesize << "Byte";
+		::sscanf(header, "%d %d %s %lld", &mode, &mediatype, filename, &filesize);
 
-		if (mediatype == SAGENext::MEDIA_TYPE_WEBURL) {
-			emit fileReceived(mediatype, QString(filename));
-			continue;
-		}
 
-		if (filesize <= 0) break;
 
-		QString destdir = QDir::homePath().append("/.sagenext/");
+		if (mode == 0) {
+			// download from uiclient
+			qDebug() << "FileServerThread received the header for downloading" << mediatype << filename << filesize << "Byte";
+			if ( _recvFile(mediatype, QString(filename), filesize) != 0) {
+				qDebug() << "FileServerThread failed to receive a file" << filename;
+			}
+		}
+		else if (mode == 1) {
+			// upload to uiclient
+			qDebug() << "FileServerThread received the header for uploading" << filename << filesize << "Byte";
 
-		switch(mediatype) {
-		case SAGENext::MEDIA_TYPE_IMAGE : {
-			destdir.append("media/image/");
-			break;
+			 // filename must be full absolute path name
+			if ( _sendFile(QString(filename)) != 0 ) {
+				qDebug() << "FileServerThread failed to send a file" << filename;
+			}
 		}
-		case SAGENext::MEDIA_TYPE_LOCAL_VIDEO : {
-			destdir.append("media/video/");
-			break;
-		}
-		case SAGENext::MEDIA_TYPE_PDF : {
-			destdir.append("media/pdf/");
-			break;
-		}
-		case SAGENext::MEDIA_TYPE_PLUGIN : {
-			destdir.append("media/plugins/");
-			break;
-		}
-		} // end switch
-
-		QFile file( destdir.append(QString(filename)) );
-		if ( ! file.open(QIODevice::WriteOnly) ) {
-			qDebug() << "FileServerThread. file can't be opened for writing";
-		}
-		qDebug() << "FileServerThread will receive" << file.fileName() << filesize << "Byte";
-
-		QByteArray buffer(filesize, 0);
-	    if ( ::recv(_dataSock, buffer.data(), filesize, MSG_WAITALL) <= 0 ) {
-	        qCritical("%s::%s() : error while receiving the file.", metaObject()->className(), __FUNCTION__);
-	        break;
-	    }
-		else {
-			file.write(buffer);
-			if (file.exists() && file.size() > 0)
-				emit fileReceived(mediatype, file.fileName());
-			else
-				qDebug("%s::%s() : %s is not a valid file", metaObject()->className(), __FUNCTION__, qPrintable(file.fileName()));
-		}
-		file.close();
 	}
 }
 

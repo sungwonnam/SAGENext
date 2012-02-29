@@ -54,7 +54,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	//
 	QObject::connect(&_tcpMsgSock, SIGNAL(readyRead()), this, SLOT(readMessage()));
 //	QObject::connect(&_tcpMsgSock, SIGNAL(disconnected()), &
-	QObject::connect(&_tcpDataSock, SIGNAL(readyRead()), this, SLOT(receiveData()));
+//	QObject::connect(&_tcpDataSock, SIGNAL(readyRead()), this, SLOT(recvFileFromWall()));
 
 	//
 	// mouse ungrab action
@@ -91,7 +91,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	fdialog = new QFileDialog(this, "Open Media Files", QDir::homePath(), "*");
 	fdialog->setModal(false);
 	fdialog->setVisible(false);
-	QObject::connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readFiles(QStringList)));
+	QObject::connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readLocalFiles(QStringList)));
 }
 
 SN_PointerUI::~SN_PointerUI()
@@ -161,7 +161,7 @@ void SN_PointerUI::on_actionShare_desktop_triggered()
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %u %d %s %s %d", SAGENext::VNC_SHARING, _uiclientid, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
+	sprintf(msg.data(), "%d %d %s %s %d", SAGENext::VNC_SHARING, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
 
 	sendMessage(msg);
 }
@@ -186,7 +186,7 @@ void SN_PointerUI::on_actionSend_text_triggered()
 
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
-	sprintf(msg.data(), "%d %u %s", SAGENext::RESPOND_STRING, _uiclientid, qPrintable(text));
+	sprintf(msg.data(), "%d %s", SAGENext::RESPOND_STRING, qPrintable(text));
 //	QTextStream ts(&msg, QIODevice::WriteOnly);
 //	ts << (int)SAGENext::RESPOND_STRING << _uiclientid << text;
 
@@ -389,30 +389,66 @@ void SN_PointerUI::readMessage() {
 
 		break;
 	}
+	case SAGENext::RESPOND_FILEINFO: {
+//		sprintf(msg.data(), "%d %d %s %lld", SAGENext::RESPOND_FILEINFO, mtype, qPrintable(bw->appInfo()->fileInfo().fileName()), filesize);
+
+		SAGENext::MEDIA_TYPE mtype;
+		char filepath[512];
+		qint64 filesize;
+		sscanf(msg.constData(), "%d %d %s %lld", &msgCode, &mtype, filepath, &filesize);
+
+		qDebug() << "RESPOND_FILEINFO" << filepath << filesize;
+
+		runRecvFileThread(QString(filepath), filesize);
+
+		break;
+	}
 	}
 }
 
 
-void SN_PointerUI::receiveData() {
 
-}
 
 void SN_PointerUI::runSendFileThread(const QList<QUrl> &list) {
 	if (!_tcpDataSock.isValid()) {
-		QMessageBox::warning(this, "No Connection", "Connect to a SAGENext file server first");
+		QMessageBox::warning(this, "Socket invalid", "Connect to a SAGENext file server first");
 		return;
 	}
 
-	QtConcurrent::run(this, &SN_PointerUI::sendFiles, list);
+	if (!_tcpDataSock.isWritable()) {
+		QMessageBox::warning(this, "Can't write to the socket", "The channel isn't writable");
+		return;
+	}
+
+	//
+	// run the sendFilesToWall() in a separate thread
+	//
+	QtConcurrent::run(this, &SN_PointerUI::sendFilesToWall, list);
 }
 
-void SN_PointerUI::sendFiles(const QList<QUrl> &list) {
+void SN_PointerUI::runRecvFileThread(const QString &filepath, qint64 filesize) {
+	if (!_tcpDataSock.isValid()) {
+		QMessageBox::warning(this, "Socket invalid", "Connect to a SAGENext file server first");
+		return;
+	}
+	if (!_tcpDataSock.isReadable()) {
+		QMessageBox::warning(this, "Can't read from the socket", "The channel isn't readable");
+		return;
+	}
+
+	//
+	// run the recvFileFromWall() in a separate thread
+	//
+	QtConcurrent::run(this, &SN_PointerUI::recvFileFromWall, filepath, filesize);
+}
+
+void SN_PointerUI::sendFilesToWall(const QList<QUrl> &list) {
 	foreach(QUrl url, list) {
-		sendFile(url);
+		sendFileToWall(url);
 	}
 }
 
-void SN_PointerUI::sendFile(const QUrl &url) {
+void SN_PointerUI::sendFileToWall(const QUrl &url) {
 	char header[EXTUI_MSG_SIZE];
 	int mediatype = 0;
 
@@ -463,10 +499,21 @@ void SN_PointerUI::sendFile(const QUrl &url) {
 		}
 
 		QString noSpaceFilename = fi.fileName().replace(QChar(' '), QChar('_'), Qt::CaseInsensitive);
-		::sprintf(header, "%d %s %lld", mediatype, qPrintable(noSpaceFilename), fi.size());
 
+		//
+		// 0 for uploading to wall
+		//
+		::sprintf(header, "%d %d %s %lld", 0, mediatype, qPrintable(noSpaceFilename), fi.size());
+
+		//
+		// send the header first
+		//
 		_tcpDataSock.write(header, sizeof(header));
 
+
+		//
+		// followed by the file
+		//
 		QFile file(fi.absoluteFilePath());
 		file.open(QIODevice::ReadOnly);
 		if ( _tcpDataSock.write(file.readAll().constData(), file.size()) < 0) {
@@ -476,7 +523,62 @@ void SN_PointerUI::sendFile(const QUrl &url) {
 	}
 }
 
-void SN_PointerUI::readFiles(QStringList filenames) {
+void SN_PointerUI::recvFileFromWall(const QString &filepath, qint64 filesize) {
+	//
+	// REQUEST_FILEINFO to UiServer
+	//
+//	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
+//	::sprintf(msg.data(), "%d %llu", SAGENext::REQUEST_FILEINFO, 0); // 0 to request fileinfo of selected (what I recently clicked) application
+
+	//
+	// send header to the fileServer
+	// 1 for downloading from wall
+	//
+	char header[EXTUI_MSG_SIZE];
+	memset(header, 0, EXTUI_MSG_SIZE);
+	::sprintf(header, "%d %d %s %lld", 1, -1, qPrintable(filepath), filesize); // mediatype is dummy here
+
+	//
+	// send the header first
+	//
+	_tcpDataSock.write(header, sizeof(header));
+
+	//
+	// extract filename only
+	// because the file path is of the wall
+	//
+	QFileInfo fi(filepath);
+	QString filename = fi.fileName();
+
+	qDebug() << "recvFileFromWall" << filepath << filename;
+
+	//
+	// now receive a file
+	//
+	QFile file(filename);
+
+	if ( ! file.open(QIODevice::WriteOnly) ) {
+		qDebug("%s::%s() : failed to open the file", metaObject()->className(), __FUNCTION__);
+		return;
+	}
+	qDebug() << "I will receive" << file.fileName() << filesize << "Byte";
+
+	QByteArray buffer(filesize, 0);
+	if ( _tcpDataSock.read(buffer.data(), filesize) < 0 ) {
+        qCritical("%s::%s() : error while receiving the file.", metaObject()->className(), __FUNCTION__);
+        return;
+    }
+	file.write(buffer);
+
+	if (!file.exists() || file.size() <= 0) {
+		qDebug("%s::%s() : %s is not a valid file", metaObject()->className(), __FUNCTION__, qPrintable(file.fileName()));
+		return;
+	}
+
+	file.close();
+}
+
+void SN_PointerUI::readLocalFiles(QStringList filenames) {
     if ( filenames.empty() ) {
         return;
     }
@@ -506,7 +608,7 @@ void SN_PointerUI::readFiles(QStringList filenames) {
         //qDebug("%s::%s() : %d, %s", metaObject()->className(), __FUNCTION__, i, qPrintable(filename));
 //		QMetaObject::invokeMethod(sendThread, "sendMedia", Qt::QueuedConnection, Q_ARG(QUrl, QUrl::fromLocalFile(filename)));
 
-		sendFile(QUrl::fromLocalFile(filename));
+		sendFileToWall(QUrl::fromLocalFile(filename));
 
     }
 }
@@ -762,6 +864,15 @@ void SN_PointerUI::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons /*
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 	sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_DOUBLECLICK, _uiclientid, x, y);
 	sendMessage(msg);
+
+
+/*
+	sendMouseClick(globalPos);
+
+	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
+	sprintf(msg.data(), "%d %llu", SAGENext::REQUEST_FILEINFO, (quint64)0);
+	sendMessage(msg);
+	*/
 }
 
 void SN_PointerUI::sendMouseWheel(const QPoint globalPos, int delta) {

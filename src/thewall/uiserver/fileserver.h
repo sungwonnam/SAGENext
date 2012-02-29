@@ -35,6 +35,10 @@ private:
 
 	bool _end;
 
+	int _recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &filename, qint64 filesize);
+
+	int _sendFile(const QString &filepath);
+
 signals:
 	void fileReceived(int mediatype, QString filename);
 

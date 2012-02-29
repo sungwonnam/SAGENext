@@ -52,7 +52,7 @@ UiMsgThread::~UiMsgThread() {
 	emit clientDisconnected(_uiClientId);
 
 	QByteArray msg(EXTUI_MSG_SIZE, 0);
-	sprintf(msg.data(), "%d %u goodbye", WALL_IS_CLOSING, _uiClientId);
+	sprintf(msg.data(), "%d %u goodbye",SAGENext::WALL_IS_CLOSING, _uiClientId);
 
 	if (  ::shutdown(_sockfd, SHUT_RDWR) != 0 ) {
 		qDebug("UiMsgThread::%s() : shutdown error", __FUNCTION__);
@@ -70,10 +70,14 @@ void UiMsgThread::sendMsg(const QByteArray &msgstr) {
 		qWarning("%s::%s() : You're about to send a message with its size %d", metaObject()->className(), __FUNCTION__, msgstr.size());
 	}
 
-	if ( ::send(_sockfd, msgstr.data(), msgstr.size(), 0) <= 0 ) {
+	ssize_t sent = ::send(_sockfd, msgstr.data(), msgstr.size(), 0);
+	if ( sent <= 0 ) {
 		qCritical("UiMsgThread::%s() : send error", __FUNCTION__);
 	}
-//	qDebug("UiMsgThread::%s() : msg [%s] sent", __FUNCTION__, msgstr.constData());
+	else {
+		//	qDebug("UiMsgThread::%s() : msg [%s] sent", __FUNCTION__, msgstr.constData());
+	}
+
 }
 
 void UiMsgThread::run() {

@@ -5,6 +5,7 @@
 #include "../common/sn_sharedpointer.h"
 
 #include "../applications/base/sn_priority.h"
+#include "../applications/base/appinfo.h"
 
 #include <QGraphicsScene>
 #include <QGraphicsItem>
@@ -90,8 +91,17 @@ void SN_UiServer::incomingConnection(int sockfd) {
 
 	QByteArray initMsg(EXTUI_MSG_SIZE, 0);
 	int filetransferport = _settings->value("general/fileserverport", 46000).toInt();
-    sprintf(initMsg.data(), "%u %d %d %d", _uiClientId, (int)_scene->width(), (int)_scene->height(), filetransferport);
+    sprintf(initMsg.data(), "%d %u %d %d %d", SAGENext::ACK_FROM_WALL, _uiClientId, (int)_scene->width(), (int)_scene->height(), filetransferport);
+
+	//
+	// Note that the UiMsgThread::sendMsg() will run in this thread (which is main GUI thread)
+	//
 	thread->sendMsg(initMsg);
+
+	//
+	// This will run the function in a separate thread. I didn't test this !
+	//
+//	QtConcurrent::run(thread, &UiMsgThread::sendMsg, initMsg);
 
 
 	connect(this, SIGNAL(destroyed()), thread, SLOT(endThread()));
@@ -127,11 +137,11 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
     sscanf(msg.constData(), "%d", &code);
 
     switch(code) {
-    case MSG_NULL: {
+    case SAGENext::MSG_NULL: {
         break;
     }
 
-	case WIDGET_CHANGE: {
+	case SAGENext::WIDGET_CHANGE: {
 		quint64 gaid = 0;
 
 		int sx, sy;
@@ -169,7 +179,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 
 		break;
 	}
-	case WIDGET_REMOVE: {
+	case SAGENext::WIDGET_REMOVE: {
 		quint64 gaid = 0;
 		::sscanf(msg.constData(), "%d %llu", &code, &gaid);
 		qDebug() << "REMOVE" << gaid;
@@ -182,7 +192,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		}
 		break;
 	}
-	case WIDGET_Z: {
+	case SAGENext::WIDGET_Z: {
 		quint64 gaid = 0;
 		qreal z = 0.0;
 		::sscanf(msg.constData(), "%d %llu %lf", &code, &gaid, &z);
@@ -201,7 +211,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		}
 		break;
 	}
-	case WIDGET_CLOSEALL: {
+	case SAGENext::WIDGET_CLOSEALL: {
 //		::sscanf(msg.constData(), "%d", &code);
 		qDebug() << "WIDGET_CLOSEALL";
 
@@ -273,14 +283,98 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
     }
 	***************/
 
-    case VNC_SHARING: {
-        quint32 uiclientid;
+	case SAGENext::RESPOND_STRING: {
+		//
+		// uiclientid can be found using this. So uiclient doesn't have to send its id
+		//
+//		msgThread->getID();
+
+//		QByteArray text(EXTUI_SMALL_MSG_SIZE, 0);
+		QTextStream ts(msg);
+//		sscanf(msg.constData(), "%d %u %s", &code, &uiclientid, text.data());
+
+		QString str;
+		ts >> code;
+		str = ts.readLine();
+
+		Q_ASSERT(msgThread);
+		// find the PolygonArrow associated with this uiClientId
+        SN_PolygonArrowPointer *pa = getSharedPointer(msgThread->getID());
+
+		if (pa) {
+//			qDebug() << "RESPOND_STRING" << str;
+			pa->injectStringToItem(str.trimmed());
+		}
+
+		break;
+	}
+
+	case SAGENext::REQUEST_FILEINFO: {
+		quint64 gaid = 0; // globalAppId of the application that uiclient wants to know
+
+		// the message must be cleared with 0s in uiclient before sending
+		sscanf(msg.constData(), "%d %llu", &code, &gaid);
+
+		QString filepath;
+		qint64 filesize = 0;
+		SAGENext::MEDIA_TYPE mtype;
+
+		SN_BaseWidget *bw =  0;
+		if (gaid > 0) {
+			bw = _scene->getUserWidget(gaid);
+		}
+		else {
+			Q_ASSERT(msgThread);
+			SN_PolygonArrowPointer *pa = getSharedPointer(msgThread->getID());
+			Q_ASSERT(pa);
+
+			//
+			// a user must click the app before requesting this !!
+			//
+			bw = pa->appUnderPointer();
+		}
+
+
+		if(bw) {
+			Q_ASSERT(bw->appInfo());
+			mtype = bw->appInfo()->mediaType();
+
+			QByteArray msg(EXTUI_MSG_SIZE, '\0');
+
+
+			if (bw->appInfo()->fileInfo().isFile()) {
+				filesize = bw->appInfo()->fileInfo().size();
+				filepath = bw->appInfo()->mediaFilename(); // absolute filepath
+
+				//
+				// send only filename to the client
+				//
+				sprintf(msg.data(), "%d %d %s %lld", SAGENext::RESPOND_FILEINFO, mtype, qPrintable(filepath), filesize);
+
+//				msgThread->sendMsg();
+				if ( ! QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg)) ) {
+					qDebug() << "UiServer: REQUEST_FILEINFO: failed to invoke UiMsgThread::sendMsg()";
+				}
+			}
+			else {
+				qDebug() << "UiServer: REQUEST_FILEINFO: media isn't a file";
+			}
+		}
+		else {
+			if (gaid > 0) qDebug() << "UiServer: REQUEST_FILEINFO: There's no such app with id" << gaid;
+			else qDebug() << "UiServer: REQUEST_FILEINFO: User didn't set an application under his pointer";
+		}
+
+		break;
+	}
+
+    case SAGENext::VNC_SHARING: {
 //        char senderIP[128];
         int display = 0;
         int framerate = 24;
         char vncpass[64];
 		char username[64];
-        sscanf(msg.constData(), "%d %u %d %s %s %d", &code, &uiclientid, &display, username, vncpass, &framerate);
+        sscanf(msg.constData(), "%d %d %s %s %d", &code, &display, username, vncpass, &framerate);
 
 //		qDebug() << "uiserver" << QString(username) << QString(vncpass);
 
@@ -297,7 +391,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 
 
         /** shared pointer **/
-    case POINTER_SHARE: {
+    case SAGENext::POINTER_SHARE: {
 		char colorname[16];
         quint32 uiclientid;
         QByteArray pname(64, '\0');
@@ -305,29 +399,33 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 
 //        qDebug("UiServer::%s() : POINTER_SHARE from uiclient %u, (%s, %s)",__FUNCTION__, uiclientid, pname.constData(), colorname);
 
-        SN_PolygonArrowPointer *pointerItem = 0;
-//		pointerItem = new SAGENextPolygonArrow(uiclientid, settings, QString(pname), QColor(QString(colorname)));
-//        Q_ASSERT(pointerItem);
-//        Q_ASSERT(scene);
-//		pointerItem->setScale(1.3);
-//        scene->addItem(pointerItem);
-		pointerItem = _launcher->launchPointer(uiclientid, QString(pname), QColor(QString(colorname)));
-
-        _pointers.insert(uiclientid, pointerItem);
-
+        SN_PolygonArrowPointer *pointerItem = getSharedPointer(uiclientid);
+		if (pointerItem) {
+			pointerItem->setEnabled(true);
+			pointerItem->show();
+		}
+		else {
+			pointerItem = _launcher->launchPointer(uiclientid, msgThread, QString(pname), QColor(QString(colorname)));
+			Q_ASSERT(pointerItem);
+			_pointers.insert(uiclientid, pointerItem);
+		}
         break;
     }
-    case POINTER_UNSHARE: {
+    case SAGENext::POINTER_UNSHARE: {
         quint32 uiclientid;
         sscanf(msg.constData(), "%d %u", &code, &uiclientid);
         // find the PixmapArrow associated with this uiClientId
         QGraphicsItem *pa = getSharedPointer(uiclientid);
         if (pa) {
+			/**
             delete pa;
             _pointers.remove(uiclientid);
+			**/
+			pa->hide();
+			pa->setEnabled(false);
         }
         else {
-            qDebug("UiServer::%s() : POINTER_UNSHARE can't find pointer object", __FUNCTION__);
+            qDebug("UiServer::%s() : POINTER_UNSHARE can't find pointer object for the uiclient %u", __FUNCTION__, uiclientid);
         }
         break;
     }
@@ -335,7 +433,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
     /*
       Nothing special happens. just the Pointer item is going to move on the scene
      */
-    case POINTER_MOVING: {
+    case SAGENext::POINTER_MOVING: {
         quint32 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
@@ -357,7 +455,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
       This is always followed by POINTER_PRESS (left button)
     */
 //	case POINTER_RIGHTDRAGGING:
-    case POINTER_DRAGGING:
+    case SAGENext::POINTER_DRAGGING:
 	{
         quint32 uiclientid;
         int x,y;
@@ -374,7 +472,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 
         break;
 	}
-	case POINTER_RIGHTDRAGGING: {
+	case SAGENext::POINTER_RIGHTDRAGGING: {
 		quint32 uiclientid;
 		int x,y;
 		sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
@@ -395,7 +493,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
    /*
     Pointer will set the widget if there is one (QGraphicsItem::UserType + 2) under it
     */
-    case POINTER_PRESS:
+    case SAGENext::POINTER_PRESS:
 	{
         quint32 uiclientid;
         int x,y;
@@ -418,7 +516,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		/*
 	     Pointer will set the widget if there is one (QGraphicsItem::UserType + 2) under it
 	     */
-	case POINTER_RIGHTPRESS:
+	case SAGENext::POINTER_RIGHTPRESS:
 	{
 		quint32 uiclientid;
         int x,y;
@@ -437,7 +535,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		  This doesn't trigger pointer click. Don't use this to fire pointerClick()
 		  This event is sent from uiclient when mouse left draggin has finished.
 		  */
-	case POINTER_RELEASE:
+	case SAGENext::POINTER_RELEASE:
 	{
 		quint32 uiclientid;
         int x,y;
@@ -453,7 +551,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		  This doesn't trigger pointer click. Don't use this to fire pointerClick()
 		  This event is sent from uiclient when mouse right draggin has finished.
 		  */
-	case POINTER_RIGHTRELEASE:
+	case SAGENext::POINTER_RIGHTRELEASE:
 	{
 		quint32 uiclientid;
         int x,y;
@@ -468,7 +566,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 	/**
 	  mouseReleaseEvent from external GUI sends POINTER_CLICK message
 	*/
-    case POINTER_CLICK:
+    case SAGENext::POINTER_CLICK:
 	{
         quint32 uiclientid;
         int x,y; // x,y from ui clients is the scene position of the wall
@@ -491,7 +589,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		/**
 		  contextMenuEvent -> POINTER_RIGHTCLICK
 		  */
-	case POINTER_RIGHTCLICK:
+	case SAGENext::POINTER_RIGHTCLICK:
 	{
         quint32 uiclientid;
         int x, y;
@@ -510,7 +608,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
     /**
 	  Always left button
 	  */
-    case POINTER_DOUBLECLICK: {
+    case SAGENext::POINTER_DOUBLECLICK: {
         quint32 uiclientid;
         int x,y;
         sscanf(msg.constData(), "%d %u %d %d", &code, &uiclientid, &x, &y);
@@ -525,7 +623,7 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
     }
 
 
-    case POINTER_WHEEL: {
+    case SAGENext::POINTER_WHEEL: {
         quint32 uiclientid;
         int x,y,tick;
         sscanf(msg.constData(), "%d %u %d %d %d", &code, &uiclientid, &x, &y, &tick);
