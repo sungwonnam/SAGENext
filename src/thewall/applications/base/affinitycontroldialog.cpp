@@ -4,10 +4,11 @@
 
 #include <QSettings>
 
-AffinityControlDialog::AffinityControlDialog(const quint64 gid, AffinityInfo *ai, const QSettings *s, QWidget *parent) :
-	QDialog(parent), ui(new Ui::AffinityControlDialog),
-	settings(s), globalAppId(gid)
-
+AffinityControlDialog::AffinityControlDialog(const quint64 gid, AffinityInfo *ai, const QSettings *s, QWidget *parent)
+    : QDialog(parent)
+    , ui(new Ui::AffinityControlDialog)
+    , settings(s)
+    , globalAppId(gid)
 {
 	ui->setupUi(this);
 	affInfo = ai;

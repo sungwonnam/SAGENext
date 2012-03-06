@@ -4,6 +4,11 @@
 #include <QGraphicsWidget>
 #include "../../common/commondefinitions.h"
 
+/*
+  If you don't make a choice,
+  time will make one instead of you.
+  */
+
 
 class QSettings;
 class QPropertyAnimation;
@@ -452,7 +457,7 @@ private:
 		bool _registerForMouseHover;
 
 
-		/**
+		/*!
 		  The size (in pixel) of window frame
 		  */
 		int _bordersize;

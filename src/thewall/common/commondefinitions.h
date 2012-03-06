@@ -27,18 +27,34 @@
 //
 #define INTERACTIVE_ITEM 10
 
-
+/*!
+  From wall to uiclient
+  */
 #define EXTUI_MSG_SIZE 1280
+
+/*!
+  From uiclient to wall
+  */
 #define EXTUI_SMALL_MSG_SIZE 128
 
 
 namespace SAGENext {
 
-enum MEDIA_TYPE { MEDIA_TYPE_UNKNOWN = 100, MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, MEDIA_TYPE_LOCAL_VIDEO, MEDIA_TYPE_AUDIO, MEDIA_TYPE_PLUGIN , MEDIA_TYPE_VNC, MEDIA_TYPE_WEBURL, MEDIA_TYPE_PDF , MEDIA_TYPE_SAGE_STREAM};
+enum MEDIA_TYPE { MEDIA_TYPE_UNKNOWN = 100
+	              , MEDIA_TYPE_IMAGE
+	              , MEDIA_TYPE_VIDEO
+	              , MEDIA_TYPE_LOCAL_VIDEO /* mplayer (using SAIL) plays video file located in local disk */
+	              , MEDIA_TYPE_AUDIO
+	              , MEDIA_TYPE_PLUGIN
+	              , MEDIA_TYPE_VNC
+	              , MEDIA_TYPE_WEBURL
+	              , MEDIA_TYPE_PDF
+	              , MEDIA_TYPE_SAGE_STREAM
+                };
 
 
 /* transfer file / stream pixel / stream file */
-enum EXTUI_TRANSFER_MODE { FILE_TRANSFER, FILE_STREAM, PIXEL_STREAM };
+//enum EXTUI_TRANSFER_MODE { FILE_TRANSFER, FILE_STREAM, PIXEL_STREAM };
 
 
 /* types of messages between external UI and the wall */
@@ -71,6 +87,7 @@ enum EXTUI_MSG_TYPE { MSG_NULL
 	                  , WIDGET_CLOSEALL
                     };
 }
+
 
 //}
 

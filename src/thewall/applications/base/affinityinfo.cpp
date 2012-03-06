@@ -20,8 +20,9 @@ int AffinityInfo::SwThread_Per_Cpu = 0;
 int AffinityInfo::Num_Cpus = 0;
 
 
-AffinityInfo::AffinityInfo(SN_RailawareWidget *p) :
-		_widgetPtr(p)
+AffinityInfo::AffinityInfo(SN_RailawareWidget *p, QObject *parent)
+    : QObject(parent)
+    , _widgetPtr(p)
 {
 	flag = false;
 	useBits = false; // by default, QString is used to store affinity info
@@ -426,7 +427,7 @@ void AffinityInfo::setAllReadyBit() {
 	lock.unlock();
 }
 
-void AffinityInfo::setReadyString(QString &node, QString &mem, QString &cpu) {
+void AffinityInfo::setReadyString(const QString &node, const QString &mem, const QString &cpu) {
 	lock.lock();
 	while(flag == true) {
 		waitCond.wait(&lock);
@@ -459,6 +460,7 @@ void AffinityInfo::setSageStreamerAffinity(const char *str) {
 	emit streamerAffInfoChanged(this, _widgetID);
 }
 
+/*
 void AffinityInfo::clearBit(int type) {
 	char *mask = 0;
 	int size = 0;
@@ -482,7 +484,10 @@ void AffinityInfo::clearBit(int type) {
 
 	memset(mask, '0', size);
 }
+*/
 
+
+/*
 void AffinityInfo::clearReadyBit(int type) {
 	char *mask = 0;
 	int size = 0;
@@ -500,7 +505,7 @@ void AffinityInfo::clearReadyBit(int type) {
 		size = AffinityInfo::Num_Numa_Nodes;
 		break;
 	}
-	/* WAIT ON CONDITION (wait until flag == false) */
+	// WAIT ON CONDITION (wait until flag == false)
 	lock.lock();
 	while(flag == true) {
 		waitCond.wait(&lock);
@@ -508,6 +513,7 @@ void AffinityInfo::clearReadyBit(int type) {
 	memset(mask, '0', size);
 	lock.unlock();
 }
+*/
 
 //void AffinityInfo::setBits(int type, const char *array, int size) {
 //	char *mask = 0;

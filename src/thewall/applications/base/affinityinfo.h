@@ -13,14 +13,14 @@ class SN_RailawareWidget;
 /*!
   * There is only one object of this class per widget.
   * However, multiple threads can access this object simultaneously.
-  * For instance, AffinityControlDialog reside in MainWindow thread and
-  * SagePixelReceiver (reside in a different thread)
+  * For instance, AffinityControlDialog reside in the main GUI thread and
+  * SagePixelReceiver::run() operates in a separate thread.
   *
-  * The following member functions MUST be called in the actual thread that needs affinity info applied.
+  * The following member functions MUST be called in the actual thread that will apply affinity settings using
   * figureOutCurrentAffinity(), applyNewParameters()
   *
   * Any modification on readyXXXMask MUST wait on condition (wait until flag == false)
-  * Because flag = true means the thread is applying new settings in readyXXXMask.
+  * Because flag = true means the thread is currently applying new settings in readyXXXMask.
   */
 class AffinityInfo : public QObject
 {
@@ -28,7 +28,7 @@ class AffinityInfo : public QObject
         Q_PROPERTY(int cpuOfMine READ cpuOfMine WRITE setCpuOfMine)
         Q_ENUMS(MASK_TYPE)
 public:
-        AffinityInfo(SN_RailawareWidget *widget);
+        AffinityInfo(SN_RailawareWidget *widget, QObject *parent=0);
         ~AffinityInfo();
 
         /*!
@@ -39,7 +39,6 @@ public:
         static int HwThread_Per_Cpu;
         static int SwThread_Per_Cpu;
         static int Num_Cpus;
-
 
         enum MASK_TYPE { NODE_MASK, CPU_MASK, MEM_MASK };
 
@@ -59,27 +58,26 @@ public:
         inline int cpuOfMine() const {return _cpuOfMine;}
 
         /*!
-          This function is called by SagePixelReceiver thread. The thread uses sched_getcpu() system call to find out
-          current cpu id to which the thread is attached.
+          This function is called by SagePixelReceiver::run() thread. The thread uses sched_getcpu() system call to find out
+          the current cpu id on which the thread is running.
 
-          If applyToSender is true, fsmMsgThread will send railinfo to sail so that sail thread can execute cpu affinity.
+
+		  !! EXPERIMENTAL !!
+          If applyToSender is true, fsmMsgThread will send the affinity setting to sail so that sail thread (mplayer's sending thread) can set its cpu affinity.
           */
         void setCpuOfMine(int c, bool applyToSender = false);
 
-//	void setBit(int type, int which);
 
-        /**
-          * This function is used to set single bit in the bitmask
-          * type determines if it's for node or cpu
-          * which determines node or cpu number in the mask
+        /*!
+          This function is used to set a single bit (@arg which) in the bitmask.
+          @arg type tells if the bitmask is for a numa node or a cpu.
           */
         void setReadyBit(int type, int which);
 
         /*!
-          This function is used to pass entire bitmask string
+          This function is used to pass a complete bitmask string.
           */
         void setReadyBit(int type, const char * const str, int length);
-//	void setBits(int type, const char *array, int size);
 
         /*!
           sets FFFFFFFFFFF
@@ -87,11 +85,15 @@ public:
         void setAllReadyBit();
 
         /*!
-          NUMA api provides numa_parse_nodestring() and numa_parse_cpustring() functions
+          NUMA api provides numa_parse_nodestring() and numa_parse_cpustring() functions.
           This takes human readable bitmask string
           */
-        void setReadyString(QString &node, QString &mem, QString &cpu);
+        void setReadyString(const QString &node, const QString &mem, const QString &cpu);
 
+		/*!
+		  True if readybit has changed.
+		  So, a thread will call applyNewParameter()
+		  */
         inline bool isChanged() const { return flag;}
 
         /*!
@@ -99,13 +101,13 @@ public:
           */
 //	void setFlag();
 
-        void clearBit(int type);
+//        void clearBit(int type);
 
         /*!
           * This is called from AffinityControlDialog, and is read from the thread.
-          * When a flag is set, this function should wait until flag resets, because flag means the thread hasn't applied new settings yet!
+          * When a flag is set, this function should wait until flag resets, because flag (==true) means the thread hasn't applied new settings yet!
           */
-        void clearReadyBit(int type);
+//        void clearReadyBit(int type);
 
         /*!
          * NUMA API <numa.h> is used in this funciton to set affinity of the CALLING thread.
