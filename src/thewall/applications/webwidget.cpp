@@ -157,7 +157,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
     decZoom = new QAction(QIcon(":/resources/sq_minus_48x48"), tr("&Decrease Zoom"), this);
     connect(decZoom, SIGNAL(triggered()), this, SLOT(handledecZoom()));
 
-    zoomDisplay = new SN_SimpleTextWidget(0, QColor(Qt::black), QColor(Qt::transparent));
+    zoomDisplay = new SN_SimpleTextWidget(20, QColor(Qt::white), QColor(Qt::black));
     zoomDisplay->setText(QString::number(gwebview->zoomFactor() * 100));
 
     mainBrowserToolbar->addAction(backPage);
@@ -178,6 +178,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
     //horizLayout->setSpacing(4);
     //horizLayout->setContentsMargins(20,20,20,20);
+    horizLayout->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Maximum);
 
     linearLayout = new QGraphicsLinearLayout;
     linearLayout->setOrientation(Qt::Vertical);
