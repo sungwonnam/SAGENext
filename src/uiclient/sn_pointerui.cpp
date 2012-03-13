@@ -474,7 +474,7 @@ void SN_PointerUI::sendFileToWall(const QUrl &url) {
 //	qDebug() << "sendMedia() : urlstr is" << urlStr;
 
 	if (urlStr.contains(QRegExp("^http", Qt::CaseInsensitive)) ) {
-		::sprintf(header, "%d %s %lld", (int)SAGENext::MEDIA_TYPE_WEBURL, qPrintable(urlStr), (qint64)0);
+		::sprintf(header, "%d %d %s %lld", 0, (int)SAGENext::MEDIA_TYPE_WEBURL, qPrintable(urlStr), (qint64)0);
 		_tcpDataSock.write(header, sizeof(header));
 	}
 	else if (urlStr.contains(QRegExp("^file://", Qt::CaseSensitive)) ) {
