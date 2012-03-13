@@ -8,8 +8,11 @@
 //#include <QGraphicsLinearLayout>
 
 #include <QSettings>
+#include "common/commonitem.h"
 
 class SN_PixmapButton;
+class SN_SimpleTextWidget;
+
 //class SN_DrawingWidget;
 class SN_WallPartitionBar;
 //class PartitionTreeNode;
@@ -114,6 +117,10 @@ private:
 	  */
 	SN_PixmapButton *_appRemoveButton;
 
+    /**
+      SAGENext Clock
+      */
+    SN_SimpleTextWidget *_snClockDisplay;
 
 	/**
 	  Free drawing using shared pointer will draw onto this widget
@@ -134,6 +141,11 @@ public slots:
 	void saveSession();
 
 	void loadSession(QDataStream &in, SN_Launcher *launcher);
+
+    /**
+        Updates Clock
+    */
+    void updateClock();
 };
 
 

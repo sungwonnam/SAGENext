@@ -78,7 +78,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	_customurlbox = new SN_LineEdit(this);
 	_customurlbox->_lineedit->setText("http://");
 	_customurlbox->_lineedit->setFont(f);
-	_customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
+    _customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
 	QObject::connect(_customurlbox, SIGNAL(textChanged(QString)), this, SLOT(setUrl(QString)));
 
 
@@ -134,17 +134,69 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	gwebview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Frame);
 	QObject::connect(gwebview, SIGNAL(urlChanged(QUrl)), this, SLOT(urlChanged(QUrl)));
 
+    // main toolbar containing the basic web browser actions
+    mainBrowserToolbar = new QToolBar;
 
-	linearLayout = new QGraphicsLinearLayout(Qt::Vertical, this);
-	linearLayout->setSpacing(4);
-	linearLayout->setContentsMargins(20,20,20,40);
+    // Commom web browser actions
+    QAction* forwardPage = gwebview->pageAction(QWebPage::Forward);
+    forwardPage->setIcon(QIcon(":/resources/black_arrow_right_48x48"));
+
+    QAction* backPage = gwebview->pageAction(QWebPage::Back);
+    backPage->setIcon(QIcon(":/resources/black_arrow_left_48x48"));
+
+    QAction* reload = gwebview->pageAction(QWebPage::Reload);
+    reload->setIcon(QIcon(":/resources/black_reload_48x48"));
+
+    QAction* stop = gwebview->pageAction(QWebPage::Stop);
+    stop->setIcon(QIcon(":/resources/black_stop_48x48"));
+
+    // Zoom functionality
+    incZoom = new QAction(QIcon(":/resources/sq_plus_48x48"), tr("&Increase Zoom"), this);
+    connect(incZoom, SIGNAL(triggered()), this, SLOT(handleincZoom()));
+
+    decZoom = new QAction(QIcon(":/resources/sq_minus_48x48"), tr("&Decrease Zoom"), this);
+    connect(decZoom, SIGNAL(triggered()), this, SLOT(handledecZoom()));
+
+    zoomDisplay = new SN_SimpleTextWidget(0, QColor(Qt::black), QColor(Qt::transparent));
+    zoomDisplay->setText(QString::number(gwebview->zoomFactor() * 100));
+
+    mainBrowserToolbar->addAction(backPage);
+    mainBrowserToolbar->addAction(forwardPage);
+    mainBrowserToolbar->addAction(reload);
+    mainBrowserToolbar->addAction(stop);
+    mainBrowserToolbar->setIconSize(QSize(64,64));
+
+    mainBrowserToolbar->addAction(decZoom);
+    mainBrowserToolbar->addAction(incZoom);
+    //mainBrowserToolbar->addWidget(zoomDisplay);
+
+    toolbarProxy = new QGraphicsProxyWidget;
+    toolbarProxy->setWidget(mainBrowserToolbar);
+
+    horizLayout = new QGraphicsLinearLayout;
+    horizLayout->setOrientation(Qt::Horizontal);
+
+    //horizLayout->setSpacing(4);
+    //horizLayout->setContentsMargins(20,20,20,20);
+
+    linearLayout = new QGraphicsLinearLayout;
+    linearLayout->setOrientation(Qt::Vertical);
+    linearLayout->setSpacing(4);
+    linearLayout->setContentsMargins(20,20,20,40);
 
 
 	// The layout takes ownership of these items.
 //	linearLayout->addItem(urlboxproxy);
-	linearLayout->addItem(_customurlbox);
-
-	linearLayout->addItem(gwebview);
+    //linearLayout->addItem(_customurlbox);
+    horizLayout->addItem(toolbarProxy);
+    horizLayout->addItem(zoomDisplay);
+    horizLayout->addItem(_customurlbox);
+   //linearLayout->addItem(toolbarProxy);
+    //linearLayout->addItem(zoomDisplay);
+    //linearLayout->addItem(horizLayout);
+    //horizLayout->setParentLayoutItem(linearLayout);
+    linearLayout->addItem(horizLayout);
+    linearLayout->addItem(gwebview);
 
 	// Any existing layout is deleted before the new layuout is assigned, and this widget will take ownership of the layout
 	setLayout(linearLayout);
@@ -450,5 +502,20 @@ void SN_WebWidget::urlChanged(const QUrl &url) {
 	_customurlbox->_lineedit->setText(url.toString());
 }
 
+void SN_WebWidget::handledecZoom() {
+    qreal zoom = gwebview->zoomFactor();
+    zoom = zoom - 0.1;
+    if( (0.5 < zoom) && (zoom < 3.0)) {
+        gwebview->setZoomFactor(zoom);
+        zoomDisplay->setText(QString::number(zoom * 100));
+    }
+}
 
-
+void SN_WebWidget::handleincZoom() {
+    qreal zoom = gwebview->zoomFactor();
+    zoom = zoom + 0.1;
+    if( (0.5 < zoom) && (zoom < 3.0)) {
+        gwebview->setZoomFactor(zoom);
+        zoomDisplay->setText(QString::number(zoom * 100));
+    }
+}

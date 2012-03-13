@@ -2,6 +2,7 @@ TEMPLATE = subdirs
 SUBDIRS += \
 SimpleGUIExample \
 MouseHoverExample \
-    MouseDragExample
+MouseDragExample \
+snClock
 
 

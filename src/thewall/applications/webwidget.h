@@ -2,12 +2,17 @@
 #define WEBWIDGET_H
 
 #include "base/basewidget.h"
+#include "common/commonitem.h"
+
 #include <QFutureWatcher>
 //#include <QWebPage>
 
 class QGraphicsWebView;
 //class QLineEdit;
 class SN_LineEdit;
+class SN_PixmapButton;
+class SN_SimpleTextWidget;
+
 class QGraphicsLinearLayout;
 class QWebPage;
 class QWebFrame;
@@ -88,11 +93,28 @@ protected:
 
 private:
 	QGraphicsLinearLayout *linearLayout;
+    QGraphicsLinearLayout *horizLayout;
+
 	QGraphicsWebView *gwebview;
 //	QLineEdit *urlbox;
 	SN_LineEdit *_customurlbox;
 	QGraphicsProxyWidget *urlboxproxy;
 
+    QToolBar* mainBrowserToolbar;
+    QGraphicsProxyWidget *toolbarProxy;
+
+    /*
+    SN_PixmapButton* backHistoryButton;
+    SN_PixmapButton* forwardHistoryButton;
+    SN_PixmapButton* reloadPageButton;
+    SN_PixmapButton* stoploadPageButton;
+    SN_PixmapButton* increaseZoomButton;
+    SN_PixmapButton* decreaseZoomButton;
+    */
+    QAction* incZoom;
+    QAction* decZoom;
+
+    SN_SimpleTextWidget* zoomDisplay;
 
 	QWebPage *webPage;
 	QWebFrame *webFrame;
@@ -109,6 +131,10 @@ public slots:
 	void urlChanged(const QUrl &url);
 
 	void pageLoaded();
+
+    void handleincZoom();
+    void handledecZoom();
+
 };
 
 

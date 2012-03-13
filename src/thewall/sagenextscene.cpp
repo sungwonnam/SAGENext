@@ -84,10 +84,25 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	_appRemoveButton->setZValue(999999998); // 1 less than polygon arrow but always higher than apps
 	addItem(_appRemoveButton);
 
+    /*
+        Put clock in the upper left corner
+     */
+    QTimer *timer = new QTimer();
+    connect(timer, SIGNAL(timeout()), this, SLOT(updateClock()));
+    timer->start(100);
 
+    _snClockDisplay = new SN_SimpleTextWidget(0, QColor(Qt::white), QColor(Qt::transparent));
+    _snClockDisplay->setFlag(QGraphicsItem::ItemIsMovable, false);
+    _snClockDisplay->setFlag(QGraphicsItem::ItemIsSelectable, false);
+    _snClockDisplay->setFlag(QGraphicsItem::ItemIsFocusable, false);
 
+    // the next line isn't working...is it not getting resized in the implementation?
+    //_snClockDisplay->setPos(sceneRect.width() - _sn_clockDisplay->size().width(), 10)
+    _snClockDisplay->setPos(sceneRect.width() - 140, 10); // position to the top right
+    _snClockDisplay->setZValue(0); // Set it lowest, apps should be higher than the clock
+    addItem(_snClockDisplay);
 
-	/**
+    /**
 	  Create base widget for wall partitioning.
 	  */
 	_rootLayoutWidget = new SN_LayoutWidget("ROOT", 0, _settings);
@@ -482,6 +497,13 @@ void SN_TheScene::loadSession(QDataStream &in, SN_Launcher *launcher) {
 			bw->setScale(scale);
 		}
 	}
+}
+
+void SN_TheScene::updateClock() {
+    // grab current time and set the label to that
+    QTime currTime = QTime::currentTime();
+    _snClockDisplay->setText(currTime.toString("h:mm ap"));
+    _snClockDisplay->update();
 }
 
 /*

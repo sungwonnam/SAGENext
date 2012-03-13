@@ -569,7 +569,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processing.org/learning/topics/flocking.html");
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "file:///home/evl/snam5/.sagenext/flocking.html");
 
-//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
+//launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
+launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu");
 
 //	launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //	launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
