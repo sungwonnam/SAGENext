@@ -17,7 +17,7 @@
 #include "applications/mediabrowser.h"
 #include "applications/sn_checker.h"
 //#include "applications/sn_pboexample.h"
-#include "applications/vncwidget.h"
+//#include "applications/vncwidget.h"
 
 #include "system/sagenextscheduler.h"
 #include "system/resourcemonitor.h"
@@ -368,15 +368,18 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 
 
-		//
-		// enable priorityGrid
-		//
-		SN_PriorityGrid *pgrid = new SN_PriorityGrid(QSize(480, 400), scene);
+		SN_PriorityGrid *pgrid = 0;
+		if (s.value("system/prioritygrid").toBool()) {
+			//
+			// enable priorityGrid
+			//
+			pgrid = new SN_PriorityGrid(QSize(480, 400), scene);
 
-		//
-		// sets the priority grid
-		//
-		resourceMonitor->setPriorityGrid(pgrid);
+			//
+			// sets the priority grid
+			//
+			resourceMonitor->setPriorityGrid(pgrid);
+		}
 
 
 
@@ -390,7 +393,10 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 			//
 //			QObject::connect(resourceMonitor, SIGNAL(destroyed()), schedcontrol, SLOT(deleteLater()));
 
-			a.installEventFilter(schedcontrol); // scheduler will monitor(filter) qApp's event
+			//
+			// The scheduler will monitor(filter) qApp's event
+			//
+//			a.installEventFilter(schedcontrol);
 
 			//
 			// Assign a scheduler
@@ -406,13 +412,13 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		//
 		// resourceMonitor widget to display info
 		//
-		/*
-		rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, schedcontrol, pgrid); // No parent widget
-		QObject::connect(resourceMonitor, SIGNAL(destroyed()), rMonitorWidget, SLOT(close()));
-		rMonitorWidget->show();
+		if (s.value("system/resourcemonitorwidget").toBool()) {
+			rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, schedcontrol, pgrid); // No parent widget
+			QObject::connect(resourceMonitor, SIGNAL(destroyed()), rMonitorWidget, SLOT(close()));
+			rMonitorWidget->show();
 
-		resourceMonitor->setRMonWidget(rMonitorWidget);
-		*/
+			resourceMonitor->setRMonWidget(rMonitorWidget);
+		}
 
 		// this will trigger resourceMonitor->refresh() every 1sec
 		rMonitorTimerId = resourceMonitor->startTimer(1000);
@@ -456,7 +462,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	SN_UiServer *uiserver = new SN_UiServer(&s, launcher, scene);
 	scene->setUiServer(uiserver);
 
-	QObject::connect(uiserver, SIGNAL(ratkoDataFinished()), resourceMonitor, SLOT(deleteLater()));
+	if (resourceMonitor)
+		QObject::connect(uiserver, SIGNAL(ratkoDataFinished()), resourceMonitor, SLOT(deleteLater()));
 	QObject::connect(uiserver, SIGNAL(ratkoDataFinished()), launcher, SLOT(resetGlobalAppId()));
 
 
@@ -568,7 +575,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	/* to test Java Applet */
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processing.org/learning/topics/flocking.html");
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "file:///home/evl/snam5/.sagenext/flocking.html");
-
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://youtube.com");
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
 
 //	launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");

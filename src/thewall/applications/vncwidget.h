@@ -4,8 +4,7 @@
 #include "base/railawarewidget.h"
 #include "base/basewidget.h"
 
-#include <rfb/rfbproto.h>
-#include <rfb/rfbclient.h>
+
 
 #include <QHostAddress>
 #include <QtCore>
@@ -21,6 +20,10 @@
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
 #endif
+
+#include <rfb/rfbproto.h>
+#include <rfb/rfbclient.h>
+
 
 /*!
   This class uses LibVNCServer library to receive

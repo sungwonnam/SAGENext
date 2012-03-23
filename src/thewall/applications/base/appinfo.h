@@ -38,8 +38,11 @@ public:
 	/**
 	  useful for SageStreamWidget
 	  */
-	inline void setCmdArgs(const QStringList &strlist) {_cmdArgs = strlist;}
-	inline QStringList cmdArgs() const {return _cmdArgs;}
+	inline void setCmdArgs(const QStringList &strlist) {_cmdArgsList = strlist;}
+	inline void setCmdArgs(const QString &str) {_cmdArgsString = str;}
+	inline QStringList cmdArgsList() const {return _cmdArgsList;}
+	inline QString cmdArgsString() const {return _cmdArgsString;}
+
 
 	/**
 	  WebWidget
@@ -109,7 +112,12 @@ private:
 	/*!
 	  cmd line arguments for SAIL app
 	  */
-	QStringList _cmdArgs;
+	QStringList _cmdArgsList;
+
+	/*!
+	  cmd line arguments in a single string
+	  */
+	QString _cmdArgsString;
 
 	/**
 	  web URL for WebWidget

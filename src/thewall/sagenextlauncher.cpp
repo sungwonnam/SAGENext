@@ -115,6 +115,7 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 
 		// create new sageWidget
 		sw = new SN_SageStreamWidget(gaid, _settings, _rMonitor); // 127.0.0.1 ??????????
+		sw->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_SAGE_STREAM);
 
 		fsmThread->setGlobalAppId(gaid);
 
@@ -255,7 +256,7 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 	}
 	}
 
-	qDebug() << cmd;
+	qDebug() << "SN_Launcher::launchSageApp() : The command for QProcess is" << cmd;
 
 	/**
       add the widget to the queue
@@ -270,8 +271,10 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 	//proc->setWorkingDirectory("$SAGE_DIRECTORY");
 	//proc->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
 
+	sws->appInfo()->setExecutableName(sageappname);
 	sws->appInfo()->setSrcAddr(senderIP);
-	sws->appInfo()->setCmdArgs(args.split(QRegExp("\\s+"), QString::SkipEmptyParts));
+//	sws->appInfo()->setCmdArgs(args.split(QRegExp("\\s+"), QString::SkipEmptyParts));
+	sws->appInfo()->setCmdArgs(args);
 
 	//
 	// this will invoke sail (outside of SAGENext) which will trigger fsManager::incomingSail(fsmThread *) signal which is connected to launch(fsmThread *)
@@ -281,10 +284,10 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 	//proc->setWorkingDirectory(qApp->applicationDirPath());
 	//qDebug() << qApp->applicationDirPath();
 
+	sws->setSailAppProc(proc);
+
 	proc->start(cmd);
 
-	sws->appInfo()->setExecutableName(sageappname);
-	sws->setSailAppProc(proc);
 
 	if (!proc->waitForStarted(-1)) {
 		qCritical() << "SN_Launcher::launch() : Failed to start remote process !!" << proc->workingDirectory();

@@ -15,7 +15,10 @@
 #include "../applications/base/perfmonitor.h"
 #include "../applications/base/sn_priority.h"
 
-#include <sys/time.h>
+
+#include <qwt_text.h>
+#include <qwt_series_data.h>
+#include <qwt_symbol.h>
 
 ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, SN_PriorityGrid *pg, QWidget *parent)
     : QWidget(parent)
@@ -43,6 +46,9 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 //		}
 //	}
 
+    /*
+      On the left
+      */
 	buildPerCpuHLayouts();
 
 //	layoutButtons();
@@ -53,16 +59,16 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 	/**
 	  per widget perf data sorted by priority rank table on the bottom left
 	  */
-	ui->perfPerPriorityRankTable->setColumnCount(5); // rank, recvfps, observed quality, cpu usage, count
-	ui->perfPerPriorityRankTable->setRowCount(0);
-	QStringList headers2;
-	headers2 << "Rank" << "Avg FPS" << "Avg Quality" << "Avg CPU" << "count";
-	ui->perfPerPriorityRankTable->setHorizontalHeaderLabels(headers2);
+//	ui->perfPerPriorityRankTable->setColumnCount(5); // rank, recvfps, observed quality, cpu usage, count
+//	ui->perfPerPriorityRankTable->setRowCount(0);
+//	QStringList headers2;
+//	headers2 << "Rank" << "Avg FPS" << "Avg Quality" << "Avg CPU" << "count";
+//	ui->perfPerPriorityRankTable->setHorizontalHeaderLabels(headers2);
 
 
 	/****
 	  per widget perf data table
-	 *****/
+	 **/
 	ui->perAppPerfTable->setColumnCount(6); // app id,  priority, cpu usage, curr recv FPS, curr quality, desired quality
 	ui->perAppPerfTable->setRowCount(0);
 	QStringList headers;
@@ -78,6 +84,30 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 	headers_p << "Id" << "Priority" << "evr/win" << "evr/wall" << "IPM";
 	ui->perAppPriorityTable->setHorizontalHeaderLabels(headers_p);
 
+
+#ifdef USE_QWT
+    /**
+      priority histogram & quality curve
+      */
+    _priorityHistogramPlot = new QwtPlot(QwtText("Priority Histogram"));
+//    _priorityHistogramPlot->setAxisTitle(QwtPlot::yLeft, "# apps");
+//    _priorityHistogramPlot->setAxisTitle(QwtPlot::xBottom, "priority");
+
+    _qualityCurvePlot = new QwtPlot(QwtText("Quality Curve"));
+    _qualityCurvePlot->setAxisScale(QwtPlot::yLeft, 0, 1);
+
+    _priorityHistogram.setStyle(QwtPlotCurve::Sticks);
+    _priorityHistogram.setSymbol(new QwtSymbol(QwtSymbol::HLine));
+    _priorityHistogram.attach(_priorityHistogramPlot);
+
+    _qualityCurve.setSymbol(new QwtSymbol(QwtSymbol::Cross));
+    _qualityCurve.attach(_qualityCurvePlot);
+
+    QHBoxLayout *hlayout = new QHBoxLayout;
+    hlayout->addWidget(_priorityHistogramPlot);
+    hlayout->addWidget(_qualityCurvePlot);
+    ui->tablePlotVLayoutOnTheRight->addLayout(hlayout);
+#endif
 
 	/**
 	  priority grid (QFrame)
@@ -172,7 +202,7 @@ void ResourceMonitorWidget::refreshCPUdata() {
 }
 
 void ResourceMonitorWidget::refreshPriorityGridData() {
-	if (_pGrid->isEnabled()) {
+	if (_pGrid && _pGrid->isEnabled()) {
 		QGridLayout *grid = static_cast<QGridLayout *>(ui->priorityGridFrame->layout());
 		Q_ASSERT(grid);
 
@@ -275,7 +305,7 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 				item->setData(Qt::DisplayRole, rw->globalAppId());
 				break;
 			case 1:
-				item->setData(Qt::DisplayRole, (int)(100 * rw->priority(ctse)));
+				item->setData(Qt::DisplayRole, rw->priority());
 				break;
 			case 2:
 				item->setData(Qt::DisplayRole, rw->perfMon()->getCurrRecvFps());
@@ -332,12 +362,16 @@ void ResourceMonitorWidget::refresh() {
 
 
 
-//	refreshPerAppPerfData();
+	refreshPerAppPerfData();
 
 	refreshPerAppPriorityData();
 
 	refreshPriorityGridData();
 
+#ifdef USE_QWT
+    updatePriorityHistogram();
+    updateQualityCurve();
+#endif
 
 
 	rMonitor->getWidgetListRWLock()->unlock();
@@ -421,7 +455,8 @@ void ResourceMonitorWidget::populatePerfDataPerPriorityRank() {
 }
 
 void ResourceMonitorWidget::buildPerCpuHLayouts() {
-	QVector<SN_ProcessorNode *> *pv = rMonitor->getProcVec();
+//	QVector<SN_ProcessorNode *> *pv = rMonitor->getProcVec();
+	QList<SN_SimpleProcNode *> plist = rMonitor->getSimpleProcList();
 //	int numproc = pv->size();
 
 	/* populate the first row with header label */
@@ -435,11 +470,12 @@ void ResourceMonitorWidget::buildPerCpuHLayouts() {
 	ui->vLayout_percpu->addLayout(hl);
 
 	/* populate the rest rows with labels which will be filled with data */
-	foreach(SN_ProcessorNode *pn , *pv) {
+//	foreach(SN_ProcessorNode *pn , *pv) {
+	foreach(SN_SimpleProcNode *pn, plist) {
 		QHBoxLayout *hl = new QHBoxLayout();
 
 		hl->addSpacerItem(new QSpacerItem(20, 20, QSizePolicy::Minimum, QSizePolicy::Minimum));
-		hl->addWidget(new QLabel( QString::number(pn->getID()).prepend("CPU") ) ); // id
+		hl->addWidget(new QLabel( QString::number(pn->procNum()).prepend("CPU") ) ); // id
 		hl->addWidget(new QLabel(), 0, Qt::AlignRight); // thread per cpu
 		hl->addWidget(new QLabel(), 0, Qt::AlignRight); // bandwidth
 		hl->addWidget(new QLabel(), 0, Qt::AlignRight); // cpu usage
@@ -448,6 +484,78 @@ void ResourceMonitorWidget::buildPerCpuHLayouts() {
 	}
 }
 
+#ifdef USE_QWT
+void ResourceMonitorWidget::updatePriorityHistogram() {
+
+    QList<SN_RailawareWidget *>::iterator it;
+    QList<SN_RailawareWidget *> applist = rMonitor->getWidgetList();
+
+
+    QMap<int, int> rawdata; // priority, # app
+
+    for (it=applist.begin(); it!=applist.end(); it++) {
+        SN_RailawareWidget *rw = (*it);
+        Q_ASSERT(rw);
+        int priority = rw->priority();
+
+        QMap<int,int>::iterator mapit;
+        mapit = rawdata.find(priority);
+        if (mapit == rawdata.end()) {
+            rawdata.insert(priority, 1);
+        }
+        else {
+            int prevValue = mapit.value();
+            rawdata.insert(priority, prevValue + 1);
+        }
+    }
+
+
+
+    QVector<double> x, y;
+
+    QMap<int,int>::const_iterator cit;
+    for (cit=rawdata.constBegin(); cit!=rawdata.constEnd(); cit++) {
+        x.push_back( cit.key() );
+        y.push_back( cit.value() );
+    }
+
+
+    QwtPointArrayData *finalData = new QwtPointArrayData(x, y);
+    _priorityHistogram.setData(finalData);
+
+    _priorityHistogramPlot->replot();
+}
+
+void ResourceMonitorWidget::updateQualityCurve() {
+    QList<SN_RailawareWidget *>::iterator it;
+    QList<SN_RailawareWidget *> applist = rMonitor->getWidgetList();
+
+    QMultiMap<int, double> rawdata; // priority, quality
+
+    for (it=applist.begin(); it!=applist.end(); it++) {
+        SN_RailawareWidget *rw = (*it);
+        Q_ASSERT(rw);
+        int priority = rw->priority();
+
+        rawdata.insert(priority, rw->observedQuality());
+    }
+
+    QVector<double> x,y;
+
+    QMultiMap<int, double>::const_iterator cit;
+    int step = 1;
+    for (cit=rawdata.constBegin(); cit!=rawdata.constEnd(); cit++) {
+        x.push_back( step );
+        y.push_back( cit.value() );
+
+        step++;
+    }
+
+    QwtPointArrayData *finalData = new QwtPointArrayData(x, y);
+    _qualityCurve.setData(finalData);
+    _qualityCurvePlot->replot();
+}
+#endif
 
 //void ResourceMonitorWidget::layoutButtons() {
 //	QPushButton *b1 = new QPushButton("Layout 1");

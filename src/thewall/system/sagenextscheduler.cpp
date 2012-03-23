@@ -13,10 +13,10 @@
 SN_SchedulerControl::SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent) :
 	QObject(parent),
 	gview(0),
-	resourceMonitor(rm),
-	_scheduleEnd(false),
+	_rMonitor(rm),
+//	_scheduleEnd(false),
 	schedType(SN_SchedulerControl::SelfAdjusting),
-	granularity(1000),
+	_granularity(1000),
 	_scheduler(0),
 	_isRunning(false),
 	controlPanel(0)
@@ -53,9 +53,9 @@ void SN_SchedulerControl::killScheduler() {
 }
 
 int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec) {
-	Q_ASSERT(resourceMonitor);
+	Q_ASSERT(_rMonitor);
 
-	granularity = msec;
+	_granularity = msec;
 	schedType = st;
 
 	if (_scheduler && _scheduler->isRunning()) {
@@ -65,12 +65,12 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 
 	switch(st) {
 	case SN_SchedulerControl::SMART : {
-		_scheduler = new SMART_EventScheduler(resourceMonitor, msec);
+		_scheduler = new SMART_EventScheduler(_rMonitor, msec);
 		break;
 	}
 	case SN_SchedulerControl::SelfAdjusting : {
 
-		SN_SelfAdjustingScheduler *sas  = new SN_SelfAdjustingScheduler(resourceMonitor, msec);
+		SN_SelfAdjustingScheduler *sas  = new SN_SelfAdjustingScheduler(_rMonitor, msec);
 		_scheduler = sas;
 
 		QLabel *interval = new QLabel("Frequency");
@@ -132,17 +132,18 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 		if (!controlPanel) controlPanel = new QFrame;
 		controlPanel->setLayout(hl);
 		controlPanel->adjustSize();
-//		controlPanel->show();
+		controlPanel->setWindowTitle("Scheduling Parameters");
+		controlPanel->show();
 
 		break;
 	}
 
 	case SN_SchedulerControl::DividerWidget : {
-		_scheduler = new DividerWidgetScheduler(resourceMonitor, msec);
+		_scheduler = new DividerWidgetScheduler(_rMonitor, msec);
 		break;
 	}
 	case SN_SchedulerControl::DelayDistribution : {
-		_scheduler = new DelayDistributionScheduler(resourceMonitor, msec);
+		_scheduler = new DelayDistributionScheduler(_rMonitor, msec);
 		break;
 	}
 	default :
@@ -174,12 +175,12 @@ int SN_SchedulerControl::launchScheduler(const QString &str, int msec) {
 }
 
 int SN_SchedulerControl::launchScheduler() {
-	return launchScheduler(schedType, granularity);
+	return launchScheduler(schedType, _granularity);
 }
 
 SN_SchedulerControl::~SN_SchedulerControl() {
 
-	setScheduleEnd(true);
+//	setScheduleEnd(true);
 //	if ( futureWatcher.isRunning() ) {
 //		futureWatcher.waitForFinished();
 //	}
@@ -642,7 +643,7 @@ void SN_SelfAdjustingScheduler::applyNewThreshold(int i) {
 		qualityThreshold = 0.001;
 	}
 	else {
-				qualityThreshold = (qreal)i / 100.0; // note that slider range 0 - 100
+		qualityThreshold = (qreal)i / 100.0; // note that slider range 0 - 100
 	}
 	rwlock.unlock();
 }
@@ -680,19 +681,28 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 	QList<SN_RailawareWidget *> wlist = rMonitor->getWidgetList();
 
 
-	// items are always sorted by key when iterating over QMap
+	//
+	// Copy the list of schedulable widgets to local QMap container
+	//
+	// In QMap, items are always sorted by a key when iterating over QMap
+	//
 	QMap<qreal, SN_RailawareWidget *> wmap;
 	foreach (SN_RailawareWidget *rw, wlist) {
 		if (!rw || !rw->perfMon()) continue;
+
+		//
+		// The key is widget's priority, the value is the widget itself
+		//
 		wmap.insertMulti(rw->priority(currMsecSinceEpoch), rw);
 	}
 	QMapIterator<qreal, SN_RailawareWidget *> it_secondary(wmap);
 	QMapIterator<qreal, SN_RailawareWidget *> it_primary(wmap); // iterate high priority first
-        it_primary.toBack();
+	it_primary.toBack();
 
 
 	int priorityBias = 100; // to quantize
 	qreal priorityRank = 1.0; // greediness and aggression will bigger for higher priority widgets
+
 
 	rwlock.lockForRead();
 
@@ -706,7 +716,12 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 		// sorted by priority descendant (high priority first)
 		if (!rw || !rw->perfMon()) continue;
 
-		int rwPriority = rw->priorityQuantized(currMsecSinceEpoch, priorityBias);
+//		int rwPriority = rw->priorityQuantized(currMsecSinceEpoch, priorityBias);
+
+		//
+		// priority() returns qreal type
+		//
+		int rwPriority = rw->priority();
 
 		//
 		  //priority offset based on ROI can be applied here
@@ -732,9 +747,13 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 
 //		qDebug() << rw->globalAppId() << rwPriority << rwQuality << rwQualityAdjusted;
 
-		// Compare with other widget in the list
-		// sorted by priority ascendant
+		//
+		//
+		// Begin comparing with other widgets in the list
+		// it_secondary is sorted by priority ascendant. (low priority first)
+		//
 		it_secondary.toFront(); // Always rewind for each rw
+
 		while ( it_secondary.hasNext() ) {
 			it_secondary.next();
 			SN_RailawareWidget *other = it_secondary.value();
@@ -742,13 +761,15 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 			if (!other || !other->perfMon()) continue;
 			if (rw == other) continue;
 
-			int otherPriority = priorityBias * other->priority(currMsecSinceEpoch);
+			int otherPriority = other->priority();
 			qreal otherQuality = other->observedQuality();
 //			qreal otherQualityAdjusted = other->observedQualityAdjusted();
 
 //			qDebug() << "\t" << other->globalAppId() << otherPriority << otherQuality << otherQualityAdjusted;
 
+			//
 			// I'm doing OK as expected
+			//
 			if ( rwQualityAdjusted >= qualityThreshold ) {
 
 				if (rwPriority > otherPriority) {
@@ -792,7 +813,9 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 			}
 
 
-			// I'm not acheiving adjusted quality
+			//
+			// I'm not acheiving demanded quality
+			//
 			else {
 				if (rwPriority > otherPriority) {
 					// Attack lower priority widget

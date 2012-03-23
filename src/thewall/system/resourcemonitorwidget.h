@@ -3,6 +3,11 @@
 
 #include <QtGui>
 
+#ifdef USE_QWT
+#include <qwt_plot.h>
+#include <qwt_plot_curve.h>
+#endif
+
 /*
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>
@@ -129,6 +134,16 @@ private:
 	void refreshPerAppPriorityData();
 
 	void refreshPriorityGridData();
+
+#ifdef USE_QWT
+    QwtPlot *_priorityHistogramPlot;
+    QwtPlotCurve _priorityHistogram;
+    void updatePriorityHistogram();
+
+    QwtPlot *_qualityCurvePlot;
+    QwtPlotCurve _qualityCurve;
+    void updateQualityCurve();
+#endif
 
 //	void layoutButtons();
 

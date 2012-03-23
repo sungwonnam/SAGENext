@@ -66,6 +66,11 @@ void GeneralSettingDialog::accept() {
 
 GeneralSettingDialog::~GeneralSettingDialog() { delete ui;}
 
+
+
+
+
+
 /* System */
 SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 	: QDialog(parent)
@@ -86,6 +91,22 @@ SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 
 	if (_settings->value("system/resourcemonitor", false).toBool()) {
 		ui->rmonitorCheckBox->setCheckState(Qt::Checked);
+
+		if (_settings->value("system/resourcemonitorwidget", false).toBool()) {
+			ui->rmonitorWidgetCheckBox->setCheckState(Qt::Checked);
+		}
+		else {
+			ui->rmonitorWidgetCheckBox->setCheckState(Qt::Unchecked);
+		}
+
+		if (_settings->value("system/prioritygrid", false).toBool()) {
+			ui->pGridCheckBox->setCheckState(Qt::Checked);
+		}
+		else {
+			ui->pGridCheckBox->setCheckState(Qt::Unchecked);
+		}
+
+
 		if (_settings->value("system/scheduler", false).toBool()) {
 			ui->schedulerCheckBox->setCheckState(Qt::Checked);
 			ui->schedFreqLineEdit->setEnabled(true);
@@ -97,6 +118,7 @@ SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 	}
 	else {
 		ui->rmonitorCheckBox->setCheckState(Qt::Unchecked);
+		ui->pGridCheckBox->setCheckState(Qt::Unchecked);
 		ui->schedulerCheckBox->setCheckState(Qt::Unchecked);
 	}
 
@@ -115,7 +137,9 @@ void SystemSettingDialog::on_schedulerCheckBox_stateChanged(int state) {
 
 void SystemSettingDialog::on_rmonitorCheckBox_stateChanged(int state) {
 	if (state == Qt::Unchecked) {
+		ui->pGridCheckBox->setCheckState(Qt::Unchecked);
 		ui->schedulerCheckBox->setCheckState(Qt::Unchecked);
+		ui->rmonitorWidgetCheckBox->setCheckState(Qt::Unchecked);
 	}
 }
 
@@ -136,6 +160,8 @@ void SystemSettingDialog::accept() {
 
 
 	_settings->setValue("system/resourcemonitor", false);
+	_settings->setValue("system/resourcemonitorwidget", ui->rmonitorWidgetCheckBox->isChecked());
+	_settings->setValue("system/prioritygrid", ui->pGridCheckBox->isChecked());
 	_settings->setValue("system/scheduler", false);
 
 	// this is used in sagePixelReceiver
@@ -152,8 +178,12 @@ void SystemSettingDialog::accept() {
 		_settings->setValue("system/scheduler", false);
 		_settings->setValue("system/resourcemonitor", true);
 	}
+
+
 	if ( ! _settings->value("system/resourcemonitor").toBool() ) {
 		_settings->setValue("system/scheduler", false);
+		_settings->setValue("system/prioritygrid", false);
+		_settings->setValue("system/resourcemonitorwidget", false);
 	}
 }
 

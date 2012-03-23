@@ -716,7 +716,7 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 			// only consider user application
 			if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER ) continue;
 
-			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+			const SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 			if (!bw) continue;
 
 			AppInfo *ai = bw->appInfo();
@@ -726,6 +726,7 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 			//
 			out << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
 
+			/***
 			// video, image, pdf, plugin, web have filename
 			if (ai->fileInfo().exists()) {
 				out << ai->mediaFilename();
@@ -739,6 +740,43 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 			else {
 				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
 				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+			}
+			**/
+
+			switch (ai->mediaType()) {
+			case SAGENext::MEDIA_TYPE_IMAGE :
+			case SAGENext::MEDIA_TYPE_LOCAL_VIDEO :
+			case SAGENext::MEDIA_TYPE_PDF :
+			case SAGENext::MEDIA_TYPE_PLUGIN : {
+
+				Q_ASSERT(ai->fileInfo().exists());
+				out << ai->mediaFilename();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->mediaFilename();
+
+				break;
+			}
+			case SAGENext::MEDIA_TYPE_WEBURL : {
+
+				Q_ASSERT(!ai->webUrl().isEmpty());
+				out << ai->webUrl().toString();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->webUrl().toString();
+
+				break;
+			}
+			case SAGENext::MEDIA_TYPE_VNC : {
+
+				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+
+				break;
+			}
+			case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
+
+				out << ai->srcAddr() << ai->executableName() << ai->cmdArgsString();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->executableName() << ai->cmdArgsString();
+
+				break;
+			}
 			}
 		}
 		out << QString("RETURN");
@@ -779,6 +817,8 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 		QString user;
 		QString pass;
 		QString srcaddr;
+		QString sageappname;
+		QString cmdargs;
 
 		SN_BaseWidget *bw = 0;
 
@@ -790,6 +830,10 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 			in >> file;
 			bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, file, scenepos);
 		}
+		else if (mtype == SAGENext::MEDIA_TYPE_SAGE_STREAM) {
+			in >> srcaddr >> sageappname >> cmdargs;
+			bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_SAGE_STREAM, file, scenepos, srcaddr, cmdargs, sageappname);
+		}
 		else {
 			in >> file;
 			bw = launcher->launch(mtype, file, scenepos);
@@ -797,9 +841,12 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 
 
 		if (!bw) {
-			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
+			qDebug() << "SN_LayoutWidget::loadSession() : Can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
 		}
 		else {
+			QApplication::sendPostedEvents();
+			QCoreApplication::processEvents();
+
 			//
 			// at this point, the bw has added to the _rootLayoutWidget already
 			//

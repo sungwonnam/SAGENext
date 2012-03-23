@@ -6,6 +6,7 @@ TARGET = sagenext
 TEMPLATE = app
 
 
+
 #CONFIG += thread
 #CONFIG += copy_dir_files
 
@@ -27,15 +28,19 @@ unix {
 
 #
 # LibVNCServer
-#
-# Add LIBVNCSERVER_INSTALL_PATH/lib/pkgconfig in PKG_CONFIG_PATH environment variable
+# install the package in trusted library directory such as /usr/local
+# or
+# Add LIBVNCSERVER_INSTALL_PATH/lib/pkgconfig in your PKG_CONFIG_PATH environment variable
 #
 unix {
-# unix includes linux-g++  linux-g++-64  macx   macx-g++   symbian ...
-    message("Linking LibVNCServer lib")
-    PKGCONFIG += libvncclient
-
-
+# unix includes linux-g++  linux-g++-64    macx   macx-g++   symbian ...
+    packagesExist(libvncclient) {
+        message("Linking LibVNCServer lib")
+    	PKGCONFIG += libvncclient
+    }
+    else {
+        error("Package LibVNCServer doesn't exist !")
+    }
 }
 #macx {
 #    LIBVNCSERVER = ${HOME}/Downloads/LibVNCServer
@@ -53,16 +58,28 @@ unix {
 # Add POPPLER_INSTALL_PATH/lib/pkgconfig in PKG_CONFIG_PATH
 #
 unix {
-    message("Linking Poppler-qt4")
-    PKGCONFIG += poppler-qt4
+    packagesExist(poppler-qt4) {
+        message("Linking poppler-qt4 lib")
+    	PKGCONFIG += poppler-qt4
+    }
+    else {
+        error("Package poppler-qt4 doesn't exist !")
+    }
 }
 
 #
 # Qwt
 #
-#QWT_HOME = /home/evl/snam5/Downloads/qwt-5.2
-#INCLUDEPATH += $${QWT_HOME}/src
-#LIBS += -L$${QWT_HOME}/lib -lqwt
+QWT_HOME = $$(HOME)/qwt-6.0.1
+exists( $$QWT_HOME/lib/libqwt.so ) {
+    message("Package Qwt is available")
+    INCLUDEPATH += $${QWT_HOME}/include
+	LIBS += -L$${QWT_HOME}/lib -lqwt
+    DEFINES += USE_QWT
+}
+else {
+    warning("Package Qwt is not available")
+}
 
 
 #
@@ -124,6 +141,9 @@ SESSIONS_DIR = $$(HOME)/.sagenext/sessions
 !exists($$SESSIONS_DIR) {
     system(mkdir $$SESSIONS_DIR)
 }
+
+
+
 
 
 # where to put TARGET file
@@ -231,11 +251,7 @@ applications/base/sn_priority.h \
     applications/sn_sagestreammplayer.h
 
 
-#    common/sn_drawingwidget.h \
-#    applications/sn_pboexample.h
 
-
-#    common/filereceivingrunnable.h
 
 
 

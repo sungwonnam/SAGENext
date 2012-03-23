@@ -298,6 +298,14 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 			qDebug() << "SN_ResourceMonitor() : wrong file name" << val;
 		}
 	}
+
+
+	//
+	// temporarily attach writeData button
+	//
+//	SN_PixmapButton *databutton = new SN_PixmapButton(QPixmap(":/resources/group_data_128.png"), settings->value("gui/iconwidth").toDouble());
+//	databutton->setPos(150, 10);
+//	_theScene->addItem(databutton);
 }
 
 SN_ResourceMonitor::~SN_ResourceMonitor() {

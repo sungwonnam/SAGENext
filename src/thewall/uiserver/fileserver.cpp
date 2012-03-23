@@ -64,6 +64,7 @@ int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &f
 		break;
 	}
 	default: {
+		qDebug() << "FileServerThread::_recvFile() : unknown media type";
 		break;
 	}
 	} // end switch

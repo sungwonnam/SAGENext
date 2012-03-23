@@ -5,12 +5,14 @@
 #include "../common/commonitem.h"
 
 #include <QtGui>
+#include <QGLPixelBuffer>
 
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include <QGLPixelBuffer>
+
+
 
 
 rfbBool SN_VNCClientWidget::got_data = FALSE;

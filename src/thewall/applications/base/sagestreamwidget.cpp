@@ -28,6 +28,7 @@
 */
 
 #include <QGLPixelBuffer>
+#include <QHostAddress>
 
 
 SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
@@ -317,10 +318,10 @@ void SN_SageStreamWidget::startReceivingThread() {
 	}
 
 	qDebug() << "SN_SageStreamWidget (" << _globalAppId << _sageAppId << ") now starts its receiving thread.";
-	qDebug() << "\t" << _appInfo->executableName() << _appInfo->fileInfo().fileName() << "from" << _appInfo->srcAddr();
+	qDebug() << "\t" << "app name" << _appInfo->executableName() << ",media file" << _appInfo->fileInfo().fileName() << "from" << _appInfo->srcAddr();
 	qDebug() << "\t" << _appInfo->nativeSize().width() <<"x" << _appInfo->nativeSize().height() << _appInfo->bitPerPixel() << "bpp" << _appInfo->frameSizeInByte() << "Byte/frame at" << _perfMon->getExpetctedFps() << "fps";
 	qDebug() << "\t" << "network user buffer length (groupsize)" << _appInfo->networkUserBufferLength() << "Byte";
-	qDebug() << "\t" << "GL pixel format" << _pixelFormat << ",use SHADER" << _useShader << ",use PBO" << _usePbo;
+	qDebug() << "\t" << "GL pixel format" << _pixelFormat << ",use SHADER (for YUV format)" << _useShader << ",use OpenGL PBO" << _usePbo;
 
 
 	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, doubleBuffer, _usePbo, _pbobufarray, _pbomutex, _pbobufferready, _appInfo, _perfMon, _affInfo, _settings);
@@ -718,6 +719,9 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
                                [103 60 1 131072 12416 1 5 64 64 400 400]
               */
 
+	QHostAddress srcaddr((struct sockaddr *)&clientAddr);
+	_appInfo->setSrcAddr(srcaddr.toString());
+
 
     QByteArray regMsg(OldSage::REG_MSG_SIZE, '\0');
     int read = recv(streamsocket, (void *)regMsg.data(), regMsg.size(), MSG_WAITALL);
@@ -776,6 +780,19 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 //		qDebug("SageStreamWidget::%s() : sageappid %llu, groupsize %d, frameSize(SAIL) %d, frameSize(QImage) %d, expectedFps %.2f", __FUNCTION__, sageAppId, _appInfo->getNetworkUserBufferLength(), imageSize, _appInfo->getFrameBytecount(), _perfMon->getExpetctedFps());
 
     _appInfo->setExecutableName( appname );
+
+	if ( appname == "checker" ) {
+		QString arg = "";
+		arg.append(QString::number(0)); arg.append(" ");
+		arg.append(QString::number(resX)); arg.append(" ");
+		arg.append(QString::number(resY)); arg.append(" ");
+		arg.append(QString::number(framerate));
+		_appInfo->setCmdArgs(arg);
+
+//		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : srcAddr :" << _appInfo->srcAddr();
+//		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : Execname(sageappname) :" << _appInfo->executableName();
+//		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : CmdArgs :" << _appInfo->cmdArgsString();
+	}
 
 
 //	qDebug() << "waitForStreamerConnection returning";

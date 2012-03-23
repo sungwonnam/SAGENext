@@ -120,6 +120,9 @@ qreal SN_RailawareWidget::observedQuality() {
 }
 
 qreal SN_RailawareWidget::observedQualityAdjusted() {
+	//
+	// ratio of the current framerate to the ADJUSTED(demanded) framerate
+	//
 	return _perfMon->getCurrRecvFps() / _perfMon->getAdjustedFps();
 }
 

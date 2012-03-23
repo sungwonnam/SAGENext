@@ -34,33 +34,28 @@ class SN_AbstractScheduler;
 class SN_SchedulerControl : public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(bool scheduleEnd READ scheduleEnd WRITE setScheduleEnd)
 	Q_ENUMS(Scheduler_Type)
 
 public:
 	explicit SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent = 0);
 	~SN_SchedulerControl();
 
+    enum Scheduler_Type {DividerWidget, SelfAdjusting, DelayDistribution, SMART};
+
 	/*!
-	  qApp installs this eventFilter  using qApp->installEventFileter(SagenextScheduler *)
+	  qApp installs this eventFilter using qApp->installEventFileter(SagenextScheduler *) in main.cpp.
 	  This function is used to filter all the events of qApp
 	  */
 	bool eventFilter(QObject *, QEvent *);
 
 	inline void setGView(QGraphicsView *gv) {gview = gv;}
 
-	inline void setScheduleEnd(bool v) {_scheduleEnd = v;}
-	inline bool scheduleEnd() const {return _scheduleEnd;}
-
-	enum Scheduler_Type {DividerWidget, SelfAdjusting, DelayDistribution, SMART};
-
 	inline void setSchedulerType(SN_SchedulerControl::Scheduler_Type st) {schedType = st;}
+    inline SN_SchedulerControl::Scheduler_Type schedulerType() const {return schedType;}
 
 	int launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec=1000);
 	int launchScheduler(const QString &str, int msec=1000);
 	int launchScheduler();
-
-
 
 	inline bool isRunning() const {return _isRunning;}
 
@@ -68,21 +63,18 @@ public:
 
 private:
 	QGraphicsView *gview;
-	SN_ResourceMonitor *resourceMonitor;
-
-	bool _scheduleEnd;
+	SN_ResourceMonitor *_rMonitor;
 
 	Scheduler_Type schedType;
 
 	/*!
-	  in msec
+	  Scheduling frequency in msec
 	  */
-	int granularity;
+	int _granularity;
 
-//	QList<AbstractScheduler *> schedList;
 
 	/*!
-	  scheduler
+	  scheduler instance
 	  */
 	SN_AbstractScheduler *_scheduler;
 
@@ -90,7 +82,7 @@ private:
 
 
 	/*!
-	  control panel GUI
+	  control panel GUI for SelfAdjusting
 	  */
 	QFrame *controlPanel;
 
