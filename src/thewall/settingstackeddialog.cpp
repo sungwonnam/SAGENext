@@ -437,7 +437,7 @@ SettingStackedDialog::SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int
 {
     ui->setupUi(this);
     
-    setWindowTitle(tr("Config Dialog"));
+    setWindowTitle(tr("SAGENext Configuration [ ~/.sagenext/sagenext.ini ]"));
 	
 	connect(ui->listWidget, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(changeStackedWidget(QListWidgetItem*,QListWidgetItem*)));
 	
