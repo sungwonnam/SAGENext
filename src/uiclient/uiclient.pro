@@ -46,12 +46,12 @@ macx {
 
 SOURCES += \
 	main.cpp\
-    sn_pointerui.cpp \
-	sn_pointerui_sendthread.cpp
+    sn_pointerui.cpp
+#	sn_pointerui_sendthread.cpp
 
 HEADERS  += \
-    sn_pointerui.h \
-	sn_pointerui_sendthread.h
+    sn_pointerui.h
+#	sn_pointerui_sendthread.h
 
 FORMS    += \
 	sn_pointerui.ui \

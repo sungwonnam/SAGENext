@@ -150,7 +150,7 @@ private:
         /**
           The file transfer thread. _tcpDataSock is used.
           */
-	SN_PointerUI_DataThread *sendThread;
+//	SN_PointerUI_DataThread *sendThread;
 
 		/**
 		  to keep track mouse dragging start and end position
