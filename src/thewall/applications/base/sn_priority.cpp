@@ -15,7 +15,7 @@ SN_Priority::SN_Priority(SN_BaseWidget *w, QObject *parent)
 {
 }
 
-qreal SN_Priority::priority(qint64 currTimeEpoch) {
+qreal SN_Priority::computePriority(qint64 currTimeEpoch) {
 	//	/*******************
 	//	 size of Effective Visible Region
 	//	 *****************/
@@ -54,6 +54,8 @@ qreal SN_Priority::priority(qint64 currTimeEpoch) {
 	//	}
 
 	//	//qDebug() << "[[ Widget" << _globalAppId << "priority" << _priority << "]]";
+
+    Q_UNUSED(currTimeEpoch);
 
 	computeEvrInfo();
 

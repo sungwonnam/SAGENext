@@ -24,6 +24,8 @@ public:
 
 	inline quint64 evrSize() const {return _evrsize;}
 
+    inline qreal priority() const {return _priority;}
+
 	/*!
 	  All the member variables will be filled in this function.
 	  */
@@ -36,7 +38,8 @@ public:
 	  */
 	qreal ipm() const;
 
-	qreal priority(qint64 currTimeEpoch = 0);
+	qreal computePriority(qint64 currTimeEpoch = 0);
+
 
 	inline int priorityQuantized() const;
 
