@@ -112,13 +112,13 @@ private:
 
 	/**
       The socket for the message channel.
-	  All the mouse events is sent throught this socket.
+	  Handshaking messgaes, all the mouse events is sent throught this socket.
       */
 	QTcpSocket _tcpMsgSock;
 
 
 	/**
-	  The socket for file transferring (sendThread)
+	  The socket for file transferring.
 	  */
 	QTcpSocket _tcpDataSock;
 
@@ -169,6 +169,8 @@ private:
 
 	QString _wallAddress;
 
+    quint16 _wallPort;
+
 	QString _pointerName;
 
 	QString _pointerColor;
@@ -218,10 +220,14 @@ private:
 		
 //	void connectToWall(const char * ipaddr, quint16 port);
 
+    /*!
+      This function calls sendFileToWall() for each item in the QList.
+      The runSendFileThread() runs this function in a separate thread.
+      */
 	void sendFilesToWall(const QList<QUrl> &);
 
 	/*!
-	  send a file to wall. Sending consists of two operations. Sending a header followed by the actual file.
+	  This function sends a file to the wall. Sending consists of two operations: Sending a header (through data socket) followed by the actual file.
 	  */
 	void sendFileToWall(const QUrl &);
 
@@ -257,6 +263,8 @@ public slots:
 
 
 private slots:
+    void handleSocketError(QAbstractSocket::SocketError error);
+
         /*!
           CMD + N triggers the connection dialog.
 		  Upon accepting the dialog, it attempts to connect to the wall with the _tcpMsgSock socket.
@@ -264,6 +272,12 @@ private slots:
 		  If there already exist the message channel. The _tcpMsgSock will be closed.
           */
 	void on_actionNew_Connection_triggered();
+
+
+    /*!
+      This function keeps trying to connect to a TCP server in a forever loop.
+      */
+//    void connectToTheWall();
 
 
         /**
