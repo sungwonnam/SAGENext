@@ -77,13 +77,13 @@ public:
 	qreal getAvgEVRSize() const;
 
 	/*!
-	  returns the ratio of the empty space to the scene size
+	  returns the ratio of the empty space to the scene size.
 	  */
 	qreal getRatioEmptySpace() const;
 
 	/*!
-	  returns the ratio of the overlapped window size to the scene size
-	  how to calculate this ?
+	  returns the ratio of the size of the overlapped window regions to the scene size.
+	  how to properly calculate this ?
 	  */
 	qreal getRatioOverlapped() const;
 
