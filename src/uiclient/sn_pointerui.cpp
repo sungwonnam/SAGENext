@@ -27,6 +27,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
     , scaleToWallY(0.0)
 //    , sendThread(0)
 	, isMouseCapturing(false)
+    , _wallPort(0)
     , mediaDropFrame(0)
     , _sharingEdge(QString("top"))
 	, macCapture(0)
@@ -47,6 +48,11 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 
 
 	_settings = new QSettings("sagenextpointer.ini", QSettings::IniFormat, this);
+
+    //
+    // handle msg socket error
+    //
+    QObject::connect(&_tcpMsgSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
 
 
 	//
@@ -112,15 +118,20 @@ SN_PointerUI::~SN_PointerUI()
 	}
 }
 
-
+void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
+    qDebug() << "SN_PointerUI::handleSocketError() :" << error;
+}
 
 // triggered by CMD (CTRL) + n
 void SN_PointerUI::on_actionNew_Connection_triggered()
 {
-	// open modal dialog to enter IP address and port
+    //
+	// open modal dialog for a user to enter the IP address and port
+    //
 	SN_PointerUI_ConnDialog cd(_settings);
 	cd.exec();
 	if ( cd.result() == QDialog::Rejected) return;
+
 
 	_wallAddress = cd.address();
 	_pointerName = cd.pointerName();
@@ -129,13 +140,16 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 	_vncUsername = cd.vncUsername();
 	_vncPasswd = cd.vncPasswd();
 	_sharingEdge = cd.sharingEdge();
+    _wallPort = cd.port();
 
 	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
-		_tcpMsgSock.disconnectFromHost();
+		_tcpMsgSock.disconnectFromHost(); // will enter UnconnectedState after waiting all data has been written.
 	}
 
-	_tcpMsgSock.connectToHost(QHostAddress(_wallAddress), cd.port());
+	_tcpMsgSock.connectToHost(QHostAddress(_wallAddress), _wallPort);
 }
+
+
 
 void SN_PointerUI::on_actionOpen_Media_triggered()
 {

@@ -175,8 +175,6 @@ private:
 
 	QString _pointerColor;
 
-//	QString _myIpAddress;
-
 	QString _vncUsername;
 
 	QString _vncPasswd;
