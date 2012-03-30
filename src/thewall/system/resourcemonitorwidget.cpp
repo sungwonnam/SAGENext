@@ -15,10 +15,11 @@
 #include "../applications/base/perfmonitor.h"
 #include "../applications/base/sn_priority.h"
 
-
+#ifdef USE_QWT
 #include <qwt_text.h>
 #include <qwt_series_data.h>
 #include <qwt_symbol.h>
+#endif
 
 ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, SN_PriorityGrid *pg, QWidget *parent)
     : QWidget(parent)
