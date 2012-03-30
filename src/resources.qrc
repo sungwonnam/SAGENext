@@ -30,5 +30,6 @@
         <file>resources/plus_64x64.png</file>
         <file>resources/media-pause-128x128.png</file>
         <file>resources/group_data_128.png</file>
+        <file>resources/tile_btn_cyan.jpg</file>
     </qresource>
 </RCC>

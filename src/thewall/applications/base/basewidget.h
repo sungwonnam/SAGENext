@@ -178,21 +178,27 @@ public:
 
         /*!
           This is a placeholder.
-          A schedulable widget must reimplement this function !
+          A schedulable widget must reimplement this function to make the application thread do necessary operations that can reflect the quality set by this function.
           */
         virtual int setQuality(qreal newQuality) {_quality = newQuality; return 0;}
 
 		/*!
-		  This function is called by a scheduler to adjust resource consumption of the widget
+		  This function is called by a scheduler to adjust resource consumption of the widget.
+          Note that @param adjust is the amount of adjustment, not the absolute quality value.
 		  */
 		int adjustQuality(qreal adjust) {return setQuality(_quality + adjust);}
 
         inline qreal desiredQuality() const {return _quality;}
 
         /*!
-          This is dummy function. A schedulable widget should reimplement this
+          This is dummy function. A schedulable widget should reimplement this properly.
           */
         virtual qreal observedQuality() {return _quality;}
+
+        /*!
+          This is dummy function.
+          */
+        virtual qreal observedQualityAdjusted() {return _quality;}
 
 
 

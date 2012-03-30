@@ -293,9 +293,10 @@ QRegion SN_BaseWidget::effectiveVisibleRegion() const {
   ctepoch : current time since epoch
   */
 qreal SN_BaseWidget::priority(qint64 ctepoch /* 0 */) {
+    Q_UNUSED(ctepoch);
 //	Q_ASSERT(_priorityData);
 	if (!_priorityData) return 0.0;
-	return _priorityData->priority(ctepoch);
+	return _priorityData->priority();
 }
 
 int SN_BaseWidget::priorityQuantized(qint64 currTimeEpoch, int bias /* 1 */) {
@@ -812,7 +813,8 @@ void SN_BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 }
 
 void SN_BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
-	_contextMenu->exec(event->screenPos());
+//	_contextMenu->exec(event->screenPos());
+    _contextMenu->popup(event->screenPos());
 }
 
 void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {

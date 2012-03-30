@@ -82,6 +82,23 @@ public:
 		_fsmMsgThread->start();
 	}
 
+
+    /*!
+      This will determine the delay in the pixel receiving thread
+      */
+    int setQuality(qreal newQuality);
+
+    /*!
+      Returns *absolute* observed quality which is based on expected quality set by a user
+      */
+	qreal observedQuality();
+
+    /*!
+      Returns *relative* observed quality which is based on adjusted quality
+      */
+	qreal observedQualityAdjusted();
+
+
 protected:
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
@@ -227,6 +244,13 @@ protected:
 	  The shader program is located at $SAGE_DIRECTORY/bin/yuv.vert/frag
 	  */
 	GLhandleARB _shaderProgHandle;
+
+signals:
+    /*!
+      This singal is emiited after the sage streamer (SAGE application) connected to this widget.
+      Thus, the streaming channel is established and the frame size, rate, appname, etc are known.
+      */
+    void streamerInitialized();
 
 public slots:
 	/**

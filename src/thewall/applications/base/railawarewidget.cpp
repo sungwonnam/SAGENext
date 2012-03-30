@@ -90,41 +90,37 @@ void SN_RailawareWidget::createAffInstances()
 	//	}
 }
 
-int SN_RailawareWidget::setQuality(qreal newQuality) {
+//int SN_RailawareWidget::setQuality(qreal newQuality) {
 
-	//qDebug() << _globalAppId << "railwarewidget::setQuality" << newQuality;
+//	//qDebug() << _globalAppId << "railwarewidget::setQuality" << newQuality;
 
-	if ( newQuality > 1.0 ) {
-		_quality = 1.0;
-	}
-	else if ( newQuality <= 0.0 ) {
-		_quality = 0.1;
-	}
-	else {
-		_quality = newQuality;
-	}
+//	if ( newQuality > 1.0 ) {
+//		_quality = 1.0;
+//	}
+//	else if ( newQuality <= 0.0 ) {
+//		_quality = 0.1;
+//	}
+//	else {
+//		_quality = newQuality;
+//	}
 
-	if (_perfMon) {
-		// for now frame rate is the quality metric
-		return _perfMon->setAdjustedFps(_perfMon->getExpetctedFps() * _quality);
-	}
-	return -1;
-}
+//	return -1;
+//}
 
-qreal SN_RailawareWidget::observedQuality() {
-	if (_perfMon) {
-		//qDebug() << _perfMon->getCurrRecvFps() << _perfMon->getExpetctedFps() << _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps();
-		return _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps(); // frame rate for now
-	}
-	else return -1;
-}
+//qreal SN_RailawareWidget::observedQuality() {
+//	if (_perfMon) {
+//		//qDebug() << _perfMon->getCurrRecvFps() << _perfMon->getExpetctedFps() << _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps();
+//		return _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps(); // frame rate for now
+//	}
+//	else return -1;
+//}
 
-qreal SN_RailawareWidget::observedQualityAdjusted() {
-	//
-	// ratio of the current framerate to the ADJUSTED(demanded) framerate
-	//
-	return _perfMon->getCurrRecvFps() / _perfMon->getAdjustedFps();
-}
+//qreal SN_RailawareWidget::observedQualityAdjusted() {
+//	//
+//	// ratio of the current framerate to the ADJUSTED(demanded) framerate
+//	//
+//	return _perfMon->getCurrRecvFps() / _perfMon->getAdjustedFps();
+//}
 
 
 

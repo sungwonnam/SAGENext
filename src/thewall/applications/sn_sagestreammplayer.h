@@ -20,6 +20,8 @@ private:
 	SN_PixmapButton *_rewindButton;
 
 public slots:
+    void setButtonPosition();
+
 	void pauseMplayer(int priotiry);
 	void playMplayer(int priotiry);
 	void fforwardMplayer(int priotiry);

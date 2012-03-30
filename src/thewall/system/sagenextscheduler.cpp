@@ -5,24 +5,48 @@
 #include "../applications/base/appinfo.h"
 #include "../applications/base/perfmonitor.h"
 #include "../applications/base/affinityinfo.h"
+#include "../applications/base/sn_priority.h"
 
 #include <sys/time.h>
 #include <sched.h>
 #include <pthread.h>
 
-SN_SchedulerControl::SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent) :
-	QObject(parent),
-	gview(0),
-	_rMonitor(rm),
-//	_scheduleEnd(false),
-	schedType(SN_SchedulerControl::SelfAdjusting),
-	_granularity(1000),
-	_scheduler(0),
-	_isRunning(false),
-	controlPanel(0)
+SN_SchedulerControl::SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent)
+    : QObject(parent)
+    , gview(0)
+    , _rMonitor(rm)
+//	_scheduleEnd(false)
+    , schedType(SN_SchedulerControl::SelfAdjusting)
+    , _granularity(1000)
+    , _scheduler(0)
+//    , _isRunning(false)
+    , controlPanel(0)
 {
 //	qDebug("%s::%s() : %d scheduler have started", metaObject()->className(), __FUNCTION__, schedList.size());
 //	connect(resourceMonitor, SIGNAL(appRemoved(int)), this, SLOT(loadBalance()));
+}
+
+bool SN_SchedulerControl::isRunning() {
+    if (_scheduler) {
+        return _scheduler->isRunning();
+    }
+    return false;
+}
+
+void SN_SchedulerControl::startScheduler() {
+    if (!_scheduler) {
+        qDebug("%s::%s() : No scheduler instance. Create the scheduler first", metaObject()->className(), __FUNCTION__);
+        return;
+    }
+    _scheduler->start();
+}
+
+void SN_SchedulerControl::stopScheduler() {
+    if (_scheduler) {
+        _scheduler->timer.stop();
+        _scheduler->reset();
+        _scheduler->quit();
+    }
 }
 
 void SN_SchedulerControl::killScheduler() {
@@ -37,29 +61,34 @@ void SN_SchedulerControl::killScheduler() {
 //		controlPanel->deleteLater();
 		delete controlPanel;
 	}
-//	_scheduler->setEnd(true);
 
-
-	_scheduler->quit(); // equivalent to calling QThread::exit(0), does nothing if there's no event loop for the thread
-
-
+    stopScheduler();
 
 	if (_scheduler->isRunning())
 		_scheduler->wait();
 	delete _scheduler;
 	_scheduler = 0;
-
-	_isRunning = false;
 }
 
-int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec) {
+void SN_SchedulerControl::toggleSchedulerStatus() {
+    if (!_scheduler) return;
+
+    if (isRunning()) {
+        stopScheduler();
+    }
+    else {
+        startScheduler();
+    }
+}
+
+int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec, bool start) {
 	Q_ASSERT(_rMonitor);
 
 	_granularity = msec;
 	schedType = st;
 
 	if (_scheduler && _scheduler->isRunning()) {
-		qCritical() << "launchScheduler() : Scheduler is already running";
+		qCritical() << "SN_SchedulerControl::launchScheduler() : Scheduler is already running";
 		return -1;
 	}
 
@@ -122,15 +151,24 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 		vli->addWidget(slider_inc);
 
 
-		// root layout of controlPanel
+		// horizontal layout for sliders
 		QHBoxLayout *hl = new QHBoxLayout;
 		hl->addLayout(vlf);
 		hl->addLayout(vlq);
 		hl->addLayout(vld);
 		hl->addLayout(vli);
 
+
+        QPushButton *button  = new QPushButton("Toggle Scheduler");
+        QObject::connect(button, SIGNAL(clicked()), this, SLOT(toggleSchedulerStatus()));
+
+        QVBoxLayout *vlayout = new QVBoxLayout;
+        vlayout->addLayout(hl);
+        vlayout->addWidget(button);
+
+
 		if (!controlPanel) controlPanel = new QFrame;
-		controlPanel->setLayout(hl);
+		controlPanel->setLayout(vlayout);
 		controlPanel->adjustSize();
 		controlPanel->setWindowTitle("Scheduling Parameters");
 		controlPanel->show();
@@ -150,13 +188,14 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 		break;
 	}
 
-	_scheduler->start();
-	_isRunning = true;
+    if (start) {
+        _scheduler->start();
+    }
 
 	return 0;
 }
 
-int SN_SchedulerControl::launchScheduler(const QString &str, int msec) {
+int SN_SchedulerControl::launchScheduler(const QString &str, int msec, bool start) {
 	Scheduler_Type st = SN_SchedulerControl::SelfAdjusting;
 	if ( QString::compare(str, "SMART", Qt::CaseInsensitive) == 0 ) {
 		st = SN_SchedulerControl::SMART;
@@ -171,11 +210,11 @@ int SN_SchedulerControl::launchScheduler(const QString &str, int msec) {
 		st = SN_SchedulerControl::DelayDistribution;
 	}
 
-	return launchScheduler(st, msec);
+	return launchScheduler(st, msec, start);
 }
 
-int SN_SchedulerControl::launchScheduler() {
-	return launchScheduler(schedType, _granularity);
+int SN_SchedulerControl::launchScheduler(bool start) {
+	return launchScheduler(schedType, _granularity, start);
 }
 
 SN_SchedulerControl::~SN_SchedulerControl() {
@@ -247,7 +286,7 @@ bool SN_SchedulerControl::eventFilter(QObject *, QEvent *) {
   Abstract
   *************/
 SN_AbstractScheduler::~SN_AbstractScheduler() {
-	qDebug() << "Scheduler has been deleted";
+	qDebug() << "The scheduler deleted";
 }
 
 void SN_AbstractScheduler::applyNewInterval(int i) {
@@ -263,13 +302,21 @@ void SN_AbstractScheduler::run() {
 	connect(&timer, SIGNAL(timeout()), this, SLOT(doSchedule()));
 
 	timer.start();
-	qDebug("%s::%s() : Staring scheduler (QEventLoop) !", metaObject()->className(), __FUNCTION__);
+	qDebug("%s::%s() : Staring the scheduling thread ! (%d msec)", metaObject()->className(), __FUNCTION__, _granularity);
 
 
 	// Starts independent event loop of this thread. Enter eventloop and waits until exit() is called.
 	// any function in the scheduler must be called by signal-slot queued connection
 	// scheduler calls any function live in GUI eventloop (qApp::exec()) by slots
 	exec();
+
+
+    qDebug() << "[[ The Scheduling thread has finished ]]";
+}
+
+
+void SN_AbstractScheduler::reset() {
+
 }
 
 int SN_AbstractScheduler::configureRail(SN_RailawareWidget *rw, SN_ProcessorNode *pn) {
@@ -331,6 +378,562 @@ int SN_AbstractScheduler::configureRail() {
 
 	return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SN_SelfAdjustingScheduler::SN_SelfAdjustingScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent)
+
+    : SN_AbstractScheduler(r, granularity, parent)
+
+    , qualityThreshold(0.96)
+    , decreasingFactor(-0.1)
+    , increasingFactor(0.2)
+
+    , phaseToken(-1)
+{
+//	qDebug() << "Self Adjusting Scheduler ";
+}
+
+void SN_SelfAdjustingScheduler::applyNewThreshold(int i) {
+	rwlock.lockForWrite();
+	if ( i <= 0 ) {
+		qualityThreshold = 0.001;
+	}
+	else {
+		qualityThreshold = (qreal)i / 100.0; // note that slider range 0 - 100
+	}
+	rwlock.unlock();
+}
+
+void SN_SelfAdjustingScheduler::applyNewDecF(int i) {
+	rwlock.lockForWrite();
+	if ( i <= 0 ) {
+		decreasingFactor = -0.001;
+	}
+	else {
+		decreasingFactor = -1 * (qreal)i / 100.0;
+	}
+	rwlock.unlock();
+}
+
+void SN_SelfAdjustingScheduler::applyNewIncF(int i) {
+	rwlock.lockForWrite();
+	if ( i <= 0 ) {
+		increasingFactor = 0.001;
+	}
+	else {
+		increasingFactor = (qreal)i / 100.0;
+	}
+	rwlock.unlock();
+}
+
+void SN_SelfAdjustingScheduler::reset() {
+//    qDebug() << "SN_SelfAdjustingScheduler::reset()";
+
+    QList<SN_RailawareWidget *> wlist = rMonitor->getWidgetList();
+    QList<SN_RailawareWidget *>::iterator it;
+
+    rwlock.lockForRead();
+
+    for (it = wlist.begin(); it != wlist.end(); it++ ) {
+        SN_RailawareWidget *rw = (*it);
+        if (rw) {
+            rw->setQuality(1.0);
+        }
+    }
+
+    rwlock.unlock();
+}
+
+void SN_SelfAdjustingScheduler::doSchedule() {
+#if QT_VERSION >= 0x040700
+	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
+#else
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
+#endif
+	QList<SN_RailawareWidget *> wlist = rMonitor->getWidgetList();
+    QList<SN_RailawareWidget *>::iterator iter0;
+
+
+	//
+	// Copy the list of schedulable widgets to local QMap container
+	//
+	// In QMap, items are always sorted by a key when iterating over QMap
+	//
+	QMap<qreal, SN_RailawareWidget *> wmap;
+    for (iter0 = wlist.begin(); iter0 != wlist.end(); iter0++ ) {
+        SN_RailawareWidget *rw = (*iter0);
+		if (!rw || !rw->priorityData()) continue;
+
+        /****
+          ***
+          ***
+          compute priority
+          **
+          **
+          **/
+        rw->priorityData()->computePriority(0);
+
+
+        //
+		  //priority offset based on ROI can be applied here
+		  //
+
+
+		//
+		// The key is widget's priority, the value is the widget itself
+		//
+		wmap.insertMulti(rw->priority(), rw);
+
+
+	}
+	QMapIterator<qreal, SN_RailawareWidget *> it_secondary(wmap);
+	QMapIterator<qreal, SN_RailawareWidget *> it_primary(wmap); // iterattion starts from the highest priority
+	it_primary.toBack();
+
+
+//	int priorityBias = 100; // to quantize
+	qreal priorityRank = 1.0; // greediness and aggression will bigger for higher priority widgets
+
+
+	rwlock.lockForRead();
+
+
+	while ( it_primary.hasPrevious() ) {
+		it_primary.previous();
+		SN_RailawareWidget *rw = it_primary.value();
+
+
+		// sorted by priority descendant (high priority first)
+		if (!rw || !rw->perfMon()) continue;
+
+
+		//
+		// priority() returns qreal type
+		//
+		int rwPriority = rw->priority();
+
+
+
+		qreal rwQuality = rw->observedQuality(); // current observed quality based on EXPECTED quality.
+//		PerfMonitor *rwPm = rw->perfMon();
+//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
+
+		qreal rwQualityAdjusted = rw->observedQualityAdjusted(); // current observed quality based on ADJUSTED quality
+
+		if (priorityRank == 1.0) {
+			// the highest priority widget
+			rw->setQuality(1.0);
+		}
+
+//		bool problem = false;
+
+//		if ( rwPriority <= 0 ) {
+//			rw->setQuality(0.01);
+//			continue;
+//		}
+
+//		qDebug() << rw->globalAppId() << rwPriority << rwQuality << rwQualityAdjusted;
+
+		//
+		//
+		// Begin comparing with other widgets in the list
+		// it_secondary is sorted by priority ascendant. (low priority first)
+		//
+		it_secondary.toFront(); // Always rewind for each rw
+
+		while ( it_secondary.hasNext() ) {
+			it_secondary.next();
+			SN_RailawareWidget *other = it_secondary.value();
+
+			if (!other || !other->perfMon()) continue;
+			if (rw == other) continue;
+
+			int otherPriority = other->priority();
+			qreal otherQuality = other->observedQuality();
+//			qreal otherQualityAdjusted = other->observedQualityAdjusted();
+
+//			qDebug() << "\t" << other->globalAppId() << otherPriority << otherQuality << otherQualityAdjusted;
+
+			//
+			// I'm doing OK as expected
+			//
+			if ( rwQualityAdjusted >= qualityThreshold ) {
+
+				if (rwPriority > otherPriority) {
+					// my quality is higher
+					if (rwQuality >= otherQuality) {
+						// everything's ok
+					}
+					else {
+						// I'm doing as OK when compared to lower widget
+						// But my quality is lower than lower priority apps
+						// So my adjusted quality should be higher than lower priority apps
+//						qDebug() << "\t\t" << rw->globalAppId() << rwPriority << rwQuality << " and " << other->globalAppId() << otherPriority << otherQuality;
+
+						// RailawareWidget::adjustQuality() will return
+						// 1, if adjustedFps > expectedFps
+						// -1, if adjustedFps < 1
+						// 0, otherwise
+						int ret = rw->adjustQuality( increasingFactor / priorityRank ); // Greedy for correctness
+						if (ret == 1) {
+							// rw can't increase more
+							other->adjustQuality( decreasingFactor );
+						}
+					}
+				}
+				else if (rwPriority == otherPriority) {
+					if (otherQuality > rwQuality) {
+						// Has to achieve proportional sharing among equal priority apps
+						rw->adjustQuality( increasingFactor ); // Greedy for Fairness
+					}
+				}
+				else {
+					// I'm doing ok but my quality is higher than higher priority widget
+					if (rwQuality >= otherQuality) {
+//						other->adjustQuality( increasingFactor );
+						rw->adjustQuality( decreasingFactor ); // Yielding for correctness. I should slow down for higher priority widget
+					}
+					else {
+						// Everything is ok between rw and other
+					}
+				}
+			}
+
+
+			//
+			// I'm not acheiving demanded quality
+			//
+			else {
+				if (rwPriority > otherPriority) {
+					// Attack lower priority widget
+					other->adjustQuality( decreasingFactor ); // Aggression for higher priority app's QoS
+				}
+
+				// Fairness among same priority apps
+				else if (rwPriority == otherPriority) {
+					if (rwQuality >= otherQuality) {
+						// I'm not doing ok but my quality is higher than other apps that has the same priority, so my adjusted quality should be lower.
+						rw->adjustQuality(decreasingFactor);
+					}
+					else {
+						// I'm not doing ok and other same priority app is showing better quality, so they should lower the quality for fairness
+						other->adjustQuality(decreasingFactor);
+					}
+				}
+				else {
+					// can't do much in this situation
+				}
+			}
+		}
+
+//		if (!problem) {
+//			rw->adjustQuality(0.1);
+//		}
+		priorityRank += 0.2; // 1.0 for the highest priority ( higher the priority lower the rank) => slow increase for lower priority apps
+	}
+	rwlock.unlock();
+
+
+
+
+
+	phaseToken = 0; // Below section is not used  !!!
+
+//	QList<RailawareWidget *> wlist = rMonitor->getWidgetList();
+
+	if ( phaseToken < 0 ) {
+		foreach (SN_RailawareWidget *rw, wlist) {
+			if (!rw || !rw->perfMon()) continue;
+
+			qreal rwPriority = rw->priority(currMsecSinceEpoch);
+			qreal rwQuality = rw->observedQuality();
+	//		PerfMonitor *rwPm = rw->perfMon();
+	//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
+
+			qreal temp = 1000;
+
+			// compare with other widget in the list
+			foreach (SN_RailawareWidget *higher, wlist) {
+				if (!higher || !higher->perfMon()) continue;
+				if (rw == higher) continue;
+
+				qreal otherPriority = higher->priority(currMsecSinceEpoch);
+				qreal otherQuality = higher->observedQuality();
+
+				if ( rwPriority < otherPriority  &&  rwQuality > otherQuality) {
+					if (otherQuality < temp) temp = otherQuality;
+				}
+			}
+
+			if (temp < 1000) {
+				// there's higher priority widget that shows lower quality than me
+
+				if ( rw->adjustQuality(-0.1) == -1 ) {
+					// I can't lower more
+					--phaseToken;
+				}
+			}
+			else {
+				// everything's ok
+				++phaseToken; // greedy
+				rw->adjustQuality(0.05);
+			}
+		}
+	}
+
+	else if (phaseToken > 0) {
+		foreach (SN_RailawareWidget *rw, wlist) {
+			if (!rw || !rw->perfMon()) continue;
+
+			qreal rwPriority = rw->priority(currMsecSinceEpoch);
+			qreal rwQuality = rw->observedQuality();
+	//		PerfMonitor *rwPm = rw->perfMon();
+	//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
+
+
+			qreal temp = -1;
+
+			// compare with other widget in the list
+			foreach (SN_RailawareWidget *lower, wlist) {
+				if (!lower || !lower->perfMon()) continue;
+				if (rw == lower) continue;
+
+				qreal otherPriority = lower->priority(currMsecSinceEpoch);
+				qreal otherQuality = lower->observedQuality();
+
+				if ( rwPriority > otherPriority ) {
+					if (rwQuality < otherQuality) {
+						if (otherQuality > temp) temp = otherQuality;
+					}
+				}
+			}
+
+			if (temp>0) {
+				// there's a lower priority widget that show higher quality than rw
+				if ( rw->setQuality( temp + 0.05 ) == 1 ) {
+					// I can't increase more !
+					--phaseToken;
+				}
+			}
+			else {
+				// everything's ok
+				++phaseToken;
+				rw->adjustQuality(0.05);
+			}
+		}
+	}
+
+	else {
+//		++phaseToken; // greedy
+	}
+}
+/*!
+
+  execute second loop differently
+  */
+/****
+void SelfAdjustingScheduler::doSchedule() {
+	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
+	QList<RailawareWidget *> wlist = rMonitor->getWidgetList();
+
+
+	// items are always sorted by key when iterating over QMap
+	QMap<qreal, RailawareWidget *> wmap;
+	foreach (RailawareWidget *rw, wlist) {
+		if (!rw || !rw->perfMon()) continue;
+		wmap.insertMulti(rw->priority(currMsecSinceEpoch), rw);
+	}
+	QMapIterator<qreal, RailawareWidget *> it_secondary(wmap);
+	QMapIterator<qreal, RailawareWidget *> it_primary(wmap);
+	it_primary.toBack();// iterate high priority first
+
+
+	int priorityBias = 100; // to quantize
+	int priorityRank = 0; // greediness and aggression will bigger for higher priority widgets
+
+	rwlock.lockForRead();
+
+
+	while ( it_primary.hasPrevious() ) {
+		it_primary.previous();
+		RailawareWidget *rw = it_primary.value();
+		priorityRank++; // 1 for the highest priority
+
+//		qDebug() << rw->priority(currMsecSinceEpoch);
+
+		// sorted by priority descendant (high priority first)
+		if (!rw || !rw->perfMon()) continue;
+
+		int rwPriority = priorityBias * rw->priority(currMsecSinceEpoch);
+		rw->setPriorityQuantized(rwPriority);
+
+
+		qreal rwQuality = rw->observedQuality(); // current observed quality based on EXPECTED quality.
+//		PerfMonitor *rwPm = rw->perfMon();
+//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
+
+		qreal rwQualityAdjusted = rw->observedQualityAdjusted(); // current observed quality based on ADJUSTED quality
+
+
+		// I'm doing OK as expected.
+		// Let's look higher doing ok as well
+		if ( rwQualityAdjusted >= qualityThreshold ) {
+			it_secondary.toBack(); // Always rewind for each rw. And look for higher priority widgets
+			while ( it_secondary.hasPrevious() ) {
+				it_secondary.previous();
+				RailawareWidget *other = it_secondary.value();
+				if (rw == other) continue;
+				if (!other || !other->perfMon()) continue;
+
+				int otherPriority = priorityBias * other->priority(currMsecSinceEpoch);
+				qreal otherQuality = other->observedQuality();
+
+				if (rwPriority > otherPriority) {
+					break; // I don't need to look lower priority widgets
+				}
+			}
+		}
+
+		// I'm not doing OK
+		// Let's kill some lower widgets
+		else {
+			it_secondary.toFront(); // Always rewind for each rw. And look for lower priority widgets
+			while ( it_secondary.hasNext() ) {
+				it_secondary.next();
+				RailawareWidget *other = it_secondary.value();
+				if (rw == other) continue;
+				if (!other || !other->perfMon()) continue;
+
+				int otherPriority = priorityBias * other->priority(currMsecSinceEpoch);
+				qreal otherQuality = other->observedQuality();
+
+				if (rwPriority < otherPriority) {
+					break; // I shouldn't look higher priority widgets
+				}
+			}
+		}
+
+
+//		qDebug() << rw->globalAppId() << rwPriority << rwQuality << rwQualityAdjusted;
+
+		// Compare with other widget in the list
+		// sorted by priority ascendant
+		it_secondary.toFront(); // Always rewind for each rw
+		while ( it_secondary.hasNext() ) {
+			it_secondary.next();
+			RailawareWidget *other = it_secondary.value();
+
+			if (!other || !other->perfMon()) continue;
+			if (rw == other) continue;
+
+			int otherPriority = priorityBias * other->priority(currMsecSinceEpoch);
+			qreal otherQuality = other->observedQuality();
+			qreal otherQualityAdjusted = other->observedQualityAdjusted();
+
+//			qDebug() << "\t" << other->globalAppId() << otherPriority << otherQuality << otherQualityAdjusted;
+
+			// I'm doing OK as expected
+			if ( rwQualityAdjusted >= qualityThreshold ) {
+
+				if (rwPriority > otherPriority) {
+					// my quality is higher
+					if (rwQuality >= otherQuality) {
+						// everything's ok
+					}
+					else {
+						// I'm doing as OK based on adjusted quality
+						// But my quality is lower than lower priority apps
+						// So my adjusted quality should be higher than lower priority apps
+//						qDebug() << "\t\t" << rw->globalAppId() << rwPriority << rwQuality << " and " << other->globalAppId() << otherPriority << otherQuality;
+						rw->adjustQuality( increasingFactor ); // Greedy for correctness
+					}
+				}
+				else if (rwPriority == otherPriority) {
+					if (otherQuality > rwQuality) {
+						// Has to achieve proportional sharing among equal priority apps
+						rw->adjustQuality(increasingFactor); // Greedy for Fairness
+					}
+				}
+				else {
+					// I'm doing ok but my quality is higher than higher priority widget
+					if (rwQuality >= otherQuality) {
+//						other->adjustQuality( increasingFactor );
+						rw->adjustQuality(decreasingFactor); // Yielding for correctness. I should slow down for higher priority widget
+					}
+					else {
+						// Everything is ok between rw and other
+					}
+				}
+			}
+
+
+			// I'm not acheiving adjusted quality
+			else {
+				if (rwPriority > otherPriority) {
+					// Attack lower priority widget
+					other->adjustQuality( decreasingFactor ); // Aggression for higher priority app's QoS
+				}
+
+				// Fairness among same priority apps
+				else if (rwPriority == otherPriority) {
+					if (rwQuality >= otherQuality) {
+						// I'm not doing ok but my quality is higher than other apps that has the same priority, so my adjusted quality should be lower.
+						rw->adjustQuality(decreasingFactor);
+					}
+					else {
+						// I'm not doing ok and other same priority app is showing better quality, so they should lower the quality for fairness
+						other->adjustQuality(decreasingFactor);
+					}
+				}
+				else {
+					// can't do much in this situation
+				}
+
+			}
+
+
+		}
+
+//		if (!problem) {
+//			rw->adjustQuality(0.1);
+//		}
+	}
+
+	rwlock.unlock();
+}
+
+***/
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -619,503 +1222,6 @@ void DelayDistributionScheduler::doSchedule() {
 	*/
 }
 
-
-
-
-
-
-
-SN_SelfAdjustingScheduler::SN_SelfAdjustingScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent) :
-	SN_AbstractScheduler(r, granularity, parent),
-
-	qualityThreshold(0.96),
-	decreasingFactor(-0.1),
-	increasingFactor(0.2),
-
-	phaseToken(-1)
-{
-//	qDebug() << "Self Adjusting Scheduler ";
-}
-
-void SN_SelfAdjustingScheduler::applyNewThreshold(int i) {
-	rwlock.lockForWrite();
-	if ( i <= 0 ) {
-		qualityThreshold = 0.001;
-	}
-	else {
-		qualityThreshold = (qreal)i / 100.0; // note that slider range 0 - 100
-	}
-	rwlock.unlock();
-}
-
-void SN_SelfAdjustingScheduler::applyNewDecF(int i) {
-	rwlock.lockForWrite();
-	if ( i <= 0 ) {
-		decreasingFactor = -0.001;
-	}
-	else {
-		decreasingFactor = -1 * (qreal)i / 100.0;
-	}
-	rwlock.unlock();
-}
-
-void SN_SelfAdjustingScheduler::applyNewIncF(int i) {
-	rwlock.lockForWrite();
-	if ( i <= 0 ) {
-		increasingFactor = 0.001;
-	}
-	else {
-		increasingFactor = (qreal)i / 100.0;
-	}
-	rwlock.unlock();
-}
-
-void SN_SelfAdjustingScheduler::doSchedule() {
-#if QT_VERSION >= 0x040700
-	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
-#else
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
-#endif
-	QList<SN_RailawareWidget *> wlist = rMonitor->getWidgetList();
-
-
-	//
-	// Copy the list of schedulable widgets to local QMap container
-	//
-	// In QMap, items are always sorted by a key when iterating over QMap
-	//
-	QMap<qreal, SN_RailawareWidget *> wmap;
-	foreach (SN_RailawareWidget *rw, wlist) {
-		if (!rw || !rw->perfMon()) continue;
-
-		//
-		// The key is widget's priority, the value is the widget itself
-		//
-		wmap.insertMulti(rw->priority(currMsecSinceEpoch), rw);
-	}
-	QMapIterator<qreal, SN_RailawareWidget *> it_secondary(wmap);
-	QMapIterator<qreal, SN_RailawareWidget *> it_primary(wmap); // iterate high priority first
-	it_primary.toBack();
-
-
-	int priorityBias = 100; // to quantize
-	qreal priorityRank = 1.0; // greediness and aggression will bigger for higher priority widgets
-
-
-	rwlock.lockForRead();
-
-
-	while ( it_primary.hasPrevious() ) {
-		it_primary.previous();
-		SN_RailawareWidget *rw = it_primary.value();
-
-//		qDebug() << rw->priority(currMsecSinceEpoch);
-
-		// sorted by priority descendant (high priority first)
-		if (!rw || !rw->perfMon()) continue;
-
-//		int rwPriority = rw->priorityQuantized(currMsecSinceEpoch, priorityBias);
-
-		//
-		// priority() returns qreal type
-		//
-		int rwPriority = rw->priority();
-
-		//
-		  //priority offset based on ROI can be applied here
-		  //
-
-		qreal rwQuality = rw->observedQuality(); // current observed quality based on EXPECTED quality.
-//		PerfMonitor *rwPm = rw->perfMon();
-//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
-
-		qreal rwQualityAdjusted = rw->observedQualityAdjusted(); // current observed quality based on ADJUSTED quality
-
-		if (priorityRank == 1.0) {
-			// the highest priority widget
-			rw->setQuality(1.0);
-		}
-
-//		bool problem = false;
-
-//		if ( rwPriority <= 0 ) {
-//			rw->setQuality(0.01);
-//			continue;
-//		}
-
-//		qDebug() << rw->globalAppId() << rwPriority << rwQuality << rwQualityAdjusted;
-
-		//
-		//
-		// Begin comparing with other widgets in the list
-		// it_secondary is sorted by priority ascendant. (low priority first)
-		//
-		it_secondary.toFront(); // Always rewind for each rw
-
-		while ( it_secondary.hasNext() ) {
-			it_secondary.next();
-			SN_RailawareWidget *other = it_secondary.value();
-
-			if (!other || !other->perfMon()) continue;
-			if (rw == other) continue;
-
-			int otherPriority = other->priority();
-			qreal otherQuality = other->observedQuality();
-//			qreal otherQualityAdjusted = other->observedQualityAdjusted();
-
-//			qDebug() << "\t" << other->globalAppId() << otherPriority << otherQuality << otherQualityAdjusted;
-
-			//
-			// I'm doing OK as expected
-			//
-			if ( rwQualityAdjusted >= qualityThreshold ) {
-
-				if (rwPriority > otherPriority) {
-					// my quality is higher
-					if (rwQuality >= otherQuality) {
-						// everything's ok
-					}
-					else {
-						// I'm doing as OK when compared to lower widget
-						// But my quality is lower than lower priority apps
-						// So my adjusted quality should be higher than lower priority apps
-//						qDebug() << "\t\t" << rw->globalAppId() << rwPriority << rwQuality << " and " << other->globalAppId() << otherPriority << otherQuality;
-
-						// RailawareWidget::adjustQuality() will return
-						// 1, if adjustedFps > expectedFps
-						// -1, if adjustedFps < 1
-						// 0, otherwise
-						int ret = rw->adjustQuality( increasingFactor / priorityRank ); // Greedy for correctness
-						if (ret == 1) {
-							// rw can't increase more
-							other->adjustQuality( decreasingFactor );
-						}
-					}
-				}
-				else if (rwPriority == otherPriority) {
-					if (otherQuality > rwQuality) {
-						// Has to achieve proportional sharing among equal priority apps
-						rw->adjustQuality( increasingFactor ); // Greedy for Fairness
-					}
-				}
-				else {
-					// I'm doing ok but my quality is higher than higher priority widget
-					if (rwQuality >= otherQuality) {
-//						other->adjustQuality( increasingFactor );
-						rw->adjustQuality( decreasingFactor ); // Yielding for correctness. I should slow down for higher priority widget
-					}
-					else {
-						// Everything is ok between rw and other
-					}
-				}
-			}
-
-
-			//
-			// I'm not acheiving demanded quality
-			//
-			else {
-				if (rwPriority > otherPriority) {
-					// Attack lower priority widget
-					other->adjustQuality( decreasingFactor ); // Aggression for higher priority app's QoS
-				}
-
-				// Fairness among same priority apps
-				else if (rwPriority == otherPriority) {
-					if (rwQuality >= otherQuality) {
-						// I'm not doing ok but my quality is higher than other apps that has the same priority, so my adjusted quality should be lower.
-						rw->adjustQuality(decreasingFactor);
-					}
-					else {
-						// I'm not doing ok and other same priority app is showing better quality, so they should lower the quality for fairness
-						other->adjustQuality(decreasingFactor);
-					}
-				}
-				else {
-					// can't do much in this situation
-				}
-			}
-		}
-
-//		if (!problem) {
-//			rw->adjustQuality(0.1);
-//		}
-		priorityRank += 0.2; // 1.0 for the highest priority ( higher the priority lower the rank)
-	}
-	rwlock.unlock();
-
-
-
-
-
-	phaseToken = 0; // Below section is not used  !!!
-
-//	QList<RailawareWidget *> wlist = rMonitor->getWidgetList();
-
-	if ( phaseToken < 0 ) {
-		foreach (SN_RailawareWidget *rw, wlist) {
-			if (!rw || !rw->perfMon()) continue;
-
-			qreal rwPriority = rw->priority(currMsecSinceEpoch);
-			qreal rwQuality = rw->observedQuality();
-	//		PerfMonitor *rwPm = rw->perfMon();
-	//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
-
-			qreal temp = 1000;
-
-			// compare with other widget in the list
-			foreach (SN_RailawareWidget *higher, wlist) {
-				if (!higher || !higher->perfMon()) continue;
-				if (rw == higher) continue;
-
-				qreal otherPriority = higher->priority(currMsecSinceEpoch);
-				qreal otherQuality = higher->observedQuality();
-
-				if ( rwPriority < otherPriority  &&  rwQuality > otherQuality) {
-					if (otherQuality < temp) temp = otherQuality;
-				}
-			}
-
-			if (temp < 1000) {
-				// there's higher priority widget that shows lower quality than me
-
-				if ( rw->adjustQuality(-0.1) == -1 ) {
-					// I can't lower more
-					--phaseToken;
-				}
-			}
-			else {
-				// everything's ok
-				++phaseToken; // greedy
-				rw->adjustQuality(0.05);
-			}
-		}
-	}
-
-	else if (phaseToken > 0) {
-		foreach (SN_RailawareWidget *rw, wlist) {
-			if (!rw || !rw->perfMon()) continue;
-
-			qreal rwPriority = rw->priority(currMsecSinceEpoch);
-			qreal rwQuality = rw->observedQuality();
-	//		PerfMonitor *rwPm = rw->perfMon();
-	//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
-
-
-			qreal temp = -1;
-
-			// compare with other widget in the list
-			foreach (SN_RailawareWidget *lower, wlist) {
-				if (!lower || !lower->perfMon()) continue;
-				if (rw == lower) continue;
-
-				qreal otherPriority = lower->priority(currMsecSinceEpoch);
-				qreal otherQuality = lower->observedQuality();
-
-				if ( rwPriority > otherPriority ) {
-					if (rwQuality < otherQuality) {
-						if (otherQuality > temp) temp = otherQuality;
-					}
-				}
-			}
-
-			if (temp>0) {
-				// there's a lower priority widget that show higher quality than rw
-				if ( rw->setQuality( temp + 0.05 ) == 1 ) {
-					// I can't increase more !
-					--phaseToken;
-				}
-			}
-			else {
-				// everything's ok
-				++phaseToken;
-				rw->adjustQuality(0.05);
-			}
-		}
-	}
-
-	else {
-//		++phaseToken; // greedy
-	}
-}
-/*!
-
-  execute second loop differently
-  */
-/****
-void SelfAdjustingScheduler::doSchedule() {
-	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
-	QList<RailawareWidget *> wlist = rMonitor->getWidgetList();
-
-
-	// items are always sorted by key when iterating over QMap
-	QMap<qreal, RailawareWidget *> wmap;
-	foreach (RailawareWidget *rw, wlist) {
-		if (!rw || !rw->perfMon()) continue;
-		wmap.insertMulti(rw->priority(currMsecSinceEpoch), rw);
-	}
-	QMapIterator<qreal, RailawareWidget *> it_secondary(wmap);
-	QMapIterator<qreal, RailawareWidget *> it_primary(wmap);
-	it_primary.toBack();// iterate high priority first
-
-
-	int priorityBias = 100; // to quantize
-	int priorityRank = 0; // greediness and aggression will bigger for higher priority widgets
-
-	rwlock.lockForRead();
-
-
-	while ( it_primary.hasPrevious() ) {
-		it_primary.previous();
-		RailawareWidget *rw = it_primary.value();
-		priorityRank++; // 1 for the highest priority
-
-//		qDebug() << rw->priority(currMsecSinceEpoch);
-
-		// sorted by priority descendant (high priority first)
-		if (!rw || !rw->perfMon()) continue;
-
-		int rwPriority = priorityBias * rw->priority(currMsecSinceEpoch);
-		rw->setPriorityQuantized(rwPriority);
-
-
-		qreal rwQuality = rw->observedQuality(); // current observed quality based on EXPECTED quality.
-//		PerfMonitor *rwPm = rw->perfMon();
-//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
-
-		qreal rwQualityAdjusted = rw->observedQualityAdjusted(); // current observed quality based on ADJUSTED quality
-
-
-		// I'm doing OK as expected.
-		// Let's look higher doing ok as well
-		if ( rwQualityAdjusted >= qualityThreshold ) {
-			it_secondary.toBack(); // Always rewind for each rw. And look for higher priority widgets
-			while ( it_secondary.hasPrevious() ) {
-				it_secondary.previous();
-				RailawareWidget *other = it_secondary.value();
-				if (rw == other) continue;
-				if (!other || !other->perfMon()) continue;
-
-				int otherPriority = priorityBias * other->priority(currMsecSinceEpoch);
-				qreal otherQuality = other->observedQuality();
-
-				if (rwPriority > otherPriority) {
-					break; // I don't need to look lower priority widgets
-				}
-			}
-		}
-
-		// I'm not doing OK
-		// Let's kill some lower widgets
-		else {
-			it_secondary.toFront(); // Always rewind for each rw. And look for lower priority widgets
-			while ( it_secondary.hasNext() ) {
-				it_secondary.next();
-				RailawareWidget *other = it_secondary.value();
-				if (rw == other) continue;
-				if (!other || !other->perfMon()) continue;
-
-				int otherPriority = priorityBias * other->priority(currMsecSinceEpoch);
-				qreal otherQuality = other->observedQuality();
-
-				if (rwPriority < otherPriority) {
-					break; // I shouldn't look higher priority widgets
-				}
-			}
-		}
-
-
-//		qDebug() << rw->globalAppId() << rwPriority << rwQuality << rwQualityAdjusted;
-
-		// Compare with other widget in the list
-		// sorted by priority ascendant
-		it_secondary.toFront(); // Always rewind for each rw
-		while ( it_secondary.hasNext() ) {
-			it_secondary.next();
-			RailawareWidget *other = it_secondary.value();
-
-			if (!other || !other->perfMon()) continue;
-			if (rw == other) continue;
-
-			int otherPriority = priorityBias * other->priority(currMsecSinceEpoch);
-			qreal otherQuality = other->observedQuality();
-			qreal otherQualityAdjusted = other->observedQualityAdjusted();
-
-//			qDebug() << "\t" << other->globalAppId() << otherPriority << otherQuality << otherQualityAdjusted;
-
-			// I'm doing OK as expected
-			if ( rwQualityAdjusted >= qualityThreshold ) {
-
-				if (rwPriority > otherPriority) {
-					// my quality is higher
-					if (rwQuality >= otherQuality) {
-						// everything's ok
-					}
-					else {
-						// I'm doing as OK based on adjusted quality
-						// But my quality is lower than lower priority apps
-						// So my adjusted quality should be higher than lower priority apps
-//						qDebug() << "\t\t" << rw->globalAppId() << rwPriority << rwQuality << " and " << other->globalAppId() << otherPriority << otherQuality;
-						rw->adjustQuality( increasingFactor ); // Greedy for correctness
-					}
-				}
-				else if (rwPriority == otherPriority) {
-					if (otherQuality > rwQuality) {
-						// Has to achieve proportional sharing among equal priority apps
-						rw->adjustQuality(increasingFactor); // Greedy for Fairness
-					}
-				}
-				else {
-					// I'm doing ok but my quality is higher than higher priority widget
-					if (rwQuality >= otherQuality) {
-//						other->adjustQuality( increasingFactor );
-						rw->adjustQuality(decreasingFactor); // Yielding for correctness. I should slow down for higher priority widget
-					}
-					else {
-						// Everything is ok between rw and other
-					}
-				}
-			}
-
-
-			// I'm not acheiving adjusted quality
-			else {
-				if (rwPriority > otherPriority) {
-					// Attack lower priority widget
-					other->adjustQuality( decreasingFactor ); // Aggression for higher priority app's QoS
-				}
-
-				// Fairness among same priority apps
-				else if (rwPriority == otherPriority) {
-					if (rwQuality >= otherQuality) {
-						// I'm not doing ok but my quality is higher than other apps that has the same priority, so my adjusted quality should be lower.
-						rw->adjustQuality(decreasingFactor);
-					}
-					else {
-						// I'm not doing ok and other same priority app is showing better quality, so they should lower the quality for fairness
-						other->adjustQuality(decreasingFactor);
-					}
-				}
-				else {
-					// can't do much in this situation
-				}
-
-			}
-
-
-		}
-
-//		if (!problem) {
-//			rw->adjustQuality(0.1);
-//		}
-	}
-
-	rwlock.unlock();
-}
-
-***/
 
 
 

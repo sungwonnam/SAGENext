@@ -84,6 +84,11 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 	headers_p << "Id" << "Priority" << "evr/win" << "evr/wall" << "IPM";
 	ui->perAppPriorityTable->setHorizontalHeaderLabels(headers_p);
 
+    // hide it
+    ui->perAppPriorityTable->setEnabled(false);
+    ui->perAppPriorityTable->setVisible(false);
+
+
 
 #ifdef USE_QWT
     /**
@@ -132,6 +137,8 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 		}
 		ui->priorityGridFrame->setLayout(grid);
 	}
+
+
 
 	/* plot */
 	/*
@@ -250,7 +257,7 @@ void ResourceMonitorWidget::refreshPerAppPriorityData() {
 				break;
 			case 1:
 //				item->setData(Qt::DisplayRole, (int)(100 * rw->priority(0)));
-				item->setData(Qt::DisplayRole, rw->priority(0));
+				item->setData(Qt::DisplayRole, rw->priority());
 				break;
 			case 2:
 				item->setData(Qt::DisplayRole, rw->priorityData()->evrToWin());
@@ -360,11 +367,11 @@ void ResourceMonitorWidget::refresh() {
 
 	rMonitor->getWidgetListRWLock()->lockForRead();
 
+    if (ui->perAppPerfTable->isEnabled())
+        refreshPerAppPerfData();
 
-
-	refreshPerAppPerfData();
-
-	refreshPerAppPriorityData();
+    if (ui->perAppPriorityTable->isEnabled())
+        refreshPerAppPriorityData();
 
 	refreshPriorityGridData();
 
@@ -537,6 +544,7 @@ void ResourceMonitorWidget::updateQualityCurve() {
         Q_ASSERT(rw);
         int priority = rw->priority();
 
+        // sorted by the priority
         rawdata.insert(priority, rw->observedQuality());
     }
 

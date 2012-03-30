@@ -37,6 +37,9 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 
 	// these png files are 499x499
 	_tileButton = new SN_PixmapButton(":/resources/tile_btn_over.jpg", _settings->value("gui/iconwidth").toDouble(), "", this);
+    _tileButton->setSecondaryPixmap(":/resources/tile_btn_cyan.jpg");
+
+
 	_hButton = new SN_PixmapButton(":/resources/horizontal_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 	_vButton = new SN_PixmapButton( ":/resources/vertical_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 
@@ -672,6 +675,9 @@ void SN_LayoutWidget::doTile() {
 }
 
 void SN_LayoutWidget::toggleTile() {
+    Q_ASSERT(_tileButton);
+    _tileButton->togglePixmap();
+
 	if (_isTileOn) {
 		_isTileOn = false;
 		// do nothing

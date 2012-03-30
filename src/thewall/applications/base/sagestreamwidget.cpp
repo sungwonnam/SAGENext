@@ -83,7 +83,8 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
 	// Temporary
 	//
 	Q_ASSERT(infoTextItem);
-	infoTextItem->setFontPointSize(24);
+	infoTextItem->setFontPointSize(26);
+    drawInfo();
 }
 
 
@@ -227,6 +228,40 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 }
 
 
+int SN_SageStreamWidget::setQuality(qreal newQuality) {
+    if ( newQuality > 1.0 ) {
+		_quality = 1.0;
+	}
+	else if ( newQuality <= 0.0 ) {
+		_quality = 0.1;
+	}
+	else {
+		_quality = newQuality;
+	}
+
+	if (_perfMon) {
+		// for now frame rate is the quality metric
+		return _perfMon->setAdjustedFps(_perfMon->getExpetctedFps() * _quality);
+	}
+    qDebug() << "SN_SageStreamWidget::setQuality()";
+
+    return -1;
+}
+
+qreal SN_SageStreamWidget::observedQuality() {
+	if (_perfMon) {
+		//qDebug() << _perfMon->getCurrRecvFps() << _perfMon->getExpetctedFps() << _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps();
+		return _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps(); // frame rate for now
+	}
+	else return -1;
+}
+
+qreal SN_SageStreamWidget::observedQualityAdjusted() {
+	//
+	// ratio of the current framerate to the ADJUSTED(demanded) framerate
+	//
+	return _perfMon->getCurrRecvFps() / _perfMon->getAdjustedFps();
+}
 
 
 /**
@@ -794,6 +829,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 //		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : CmdArgs :" << _appInfo->cmdArgsString();
 	}
 
+    emit streamerInitialized();
 
 //	qDebug() << "waitForStreamerConnection returning";
 	return streamsocket;
@@ -1217,17 +1253,40 @@ GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment)
 void SN_SageStreamWidget::updateInfoTextItem() {
 	if (!infoTextItem) return;
 
-	QByteArray priorityText(256, '\0');
+    QString text = "";
 
+	QByteArray priorityText(256, '\0');
 	if(_priorityData) {
-		sprintf(priorityText.data(), "%llu\n%.6f"
+		sprintf(priorityText.data(), "%llu\n%.2f (%hu, %hu, %.3f)"
 		        , _globalAppId
-		        , _priorityData->priority(0)
+                , _priorityData->priority() /* qreal */
+                , _priorityData->evrToWin() /* unsigned short - quint16 */
+                , _priorityData->evrToWall()  /* unsigned short - quint16 */
+                , _priorityData->ipm() /* qreal */
 		        );
 	}
 
+    QByteArray qualityText(256, 0);
+    sprintf(qualityText.data(), "\nReal [%.2f / 1.00]\nAdju [%.2f / %.2f]\n"
+            , observedQuality()
+            , observedQualityAdjusted()
+            , desiredQuality()
+            );
+
+    QByteArray perfText(256, 0);
+    sprintf(perfText.data(), "%u Byte/frame\n%.2f / %.2f (%.2f)\n"
+            , _appInfo->frameSizeInByte()
+            , _perfMon->getCurrRecvFps()
+            , _perfMon->getAdjustedFps()
+            , _perfMon->getExpetctedFps()
+            );
+
 	if (infoTextItem) {
-		infoTextItem->setText(QString(priorityText));
+        text.append(priorityText);
+        text.append(qualityText);
+        text.append(perfText);
+
+		infoTextItem->setText(text);
 		infoTextItem->update();
 	}
 }

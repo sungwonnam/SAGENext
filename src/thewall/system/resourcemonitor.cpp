@@ -12,6 +12,7 @@
 #include "../applications/base/affinityinfo.h"
 #include "../applications/base/perfmonitor.h"
 #include "../applications/base/railawarewidget.h"
+#include "../applications/base/sn_priority.h"
 
 #include <QSettings>
 
@@ -346,6 +347,10 @@ SN_ResourceMonitor::~SN_ResourceMonitor() {
 
 void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 	//	qDebug() << "timerEvent at resourceMonitor";
+
+    //
+    // The priority is computed in here
+    //
 	refresh(); // update all data
 
 	//
