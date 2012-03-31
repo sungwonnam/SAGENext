@@ -12,7 +12,6 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
     , gwebview(0)
 //    , urlbox(0)
     , _customurlbox(0)
-    , urlboxproxy(0)
 {
 
 	qDebug() << "SN_WebWidget() : QtWebKit version" << QTWEBKIT_VERSION_STR;
@@ -71,9 +70,6 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	urlboxproxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
 	**********/
 
-
-
-
 	/* URL box with custom lineeidt widget to be able to receive text string from uiclient */
 	_customurlbox = new SN_LineEdit(this);
 	_customurlbox->_lineedit->setText("http://");
@@ -82,38 +78,6 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	QObject::connect(_customurlbox, SIGNAL(textChanged(QString)), this, SLOT(setUrl(QString)));
 
 
-
-
-
-
-	/* webkit related */
-	QWebSettings *ws = QWebSettings::globalSettings();
-
-	/*
-	  **
-	  I recommend using Java plugin from the Java SE @ oracle
-	  instead of IcedTea plugin from OpenJDK that comes with your OS.
-
-	  Use $JAVAHOME/jre/lib/amd64/libnpjp2.so
-	  and make symbolic link in plugin directory or a directory pointed by $QTWEBKIT_PLUGIN_PATH env variable.
-	  e.g.
-	  cd /usr/lib64/browser-plugins
-	  ln -s $JAVAHOME/jre/lib/amd64/lipnpjp2.so javaplugin.so
-	  ****
-	  **/
-	ws->setAttribute(QWebSettings::JavaEnabled, true);
-	ws->setAttribute(QWebSettings::JavascriptEnabled, true);
-	ws->setAttribute(QWebSettings::PluginsEnabled, true);
-	ws->setAttribute(QWebSettings::JavascriptCanOpenWindows, true);
-
-	ws->setAttribute(QWebSettings::LocalContentCanAccessFileUrls, true);
-	ws->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
-
-	ws->setAttribute(QWebSettings::AcceleratedCompositingEnabled, true);
-#if QT_VERSION >= 0x040800
-	qDebug() << "SN_WebWidget() : Using Qt 4.8.0.. Enabling WebGL";
-	ws->setAttribute(QWebSettings::WebGLEnabled, true);
-#endif
 
 //	setCacheMode(QGraphicsItem::ItemCoordinateCache);
 //	QPixmapCache::setCacheLimit(1024000);
@@ -124,75 +88,105 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
       gwebview needs to be able to receive mouse events because users want to click links on web pages
       That's why webwidget filter childs' event instead of stacking children behind the parent
      */
-	gwebview = new QGraphicsWebView; // it is now the top most item unless ItemStacksBehindParent is true
-//	gwebview->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+    gwebview = new QGraphicsWebView; // it is now the top most item unless ItemStacksBehindParent is true
+
+    /* webkit related */
+    QWebSettings *ws = QWebSettings::globalSettings();
+
+    /*
+      **
+      I recommend using Java plugin from the Java SE @ oracle
+      instead of IcedTea plugin from OpenJDK that comes with your OS.
+
+      Use $JAVAHOME/jre/lib/amd64/libnpjp2.so
+      and make symbolic link in plugin directory or a directory pointed by $QTWEBKIT_PLUGIN_PATH env variable.
+      e.g.
+      cd /usr/lib64/browser-plugins
+      ln -s $JAVAHOME/jre/lib/amd64/lipnpjp2.so javaplugin.so
+      ****
+      **/
+    ws->setAttribute(QWebSettings::JavaEnabled, true);
+    ws->setAttribute(QWebSettings::JavascriptEnabled, true);
+    ws->setAttribute(QWebSettings::PluginsEnabled, true);
+    //ws->setAttribute(QWebSettings::JavascriptCanOpenWindows, true);
+
+    ws->setAttribute(QWebSettings::LocalContentCanAccessFileUrls, true);
+    ws->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
+
+    ws->setAttribute(QWebSettings::AcceleratedCompositingEnabled, true);
+#if QT_VERSION >= 0x040800
+    qDebug() << "SN_WebWidget() : Using Qt 4.8.0.. Enabling WebGL";
+    ws->setAttribute(QWebSettings::WebGLEnabled, true);
+#endif
+
+    //	gwebview->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 //	gwebview->installSceneEventFilter(this);
 //	webPage = gwebview->page();
 //	gwebview->setCacheMode(QGraphicsItem::ItemCoordinateCache);
 
-
-	gwebview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Frame);
+    gwebview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Frame);
 	QObject::connect(gwebview, SIGNAL(urlChanged(QUrl)), this, SLOT(urlChanged(QUrl)));
 
     // main toolbar containing the basic web browser actions
-    mainBrowserToolbar = new QToolBar;
+    // mainBrowserToolbar = new QToolBar;
+    forwardHistoryButton = new SN_PixmapButton(":/resources/black_arrow_right_48x48", 0, "", this);
+    forwardHistoryButton->addAction(gwebview->pageAction(QWebPage::Forward));
+    connect(forwardHistoryButton, SIGNAL(clicked(int)), gwebview->pageAction(QWebPage::Forward), SLOT(trigger()));
 
-    // Commom web browser actions
-    QAction* forwardPage = gwebview->pageAction(QWebPage::Forward);
-    forwardPage->setIcon(QIcon(":/resources/black_arrow_right_48x48"));
+    backHistoryButton = new SN_PixmapButton(":/resources/black_arrow_left_48x48", 0, "", this);
+    backHistoryButton->addAction(gwebview->pageAction(QWebPage::Back));
+    connect(backHistoryButton, SIGNAL(clicked(int)), gwebview->pageAction(QWebPage::Back), SLOT(trigger()));
 
-    QAction* backPage = gwebview->pageAction(QWebPage::Back);
-    backPage->setIcon(QIcon(":/resources/black_arrow_left_48x48"));
-
-    QAction* reload = gwebview->pageAction(QWebPage::Reload);
-    reload->setIcon(QIcon(":/resources/black_reload_48x48"));
-
-    QAction* stop = gwebview->pageAction(QWebPage::Stop);
-    stop->setIcon(QIcon(":/resources/black_stop_48x48"));
+    // initialize this with the reload icon to start off with
+    reloadPageButton = new SN_PixmapButton(":/resources/black_reload_48x48", 0, "", this);
+    reloadPageButton->addAction(gwebview->pageAction(QWebPage::Reload));
+    connect(reloadPageButton, SIGNAL(clicked(int)), gwebview->pageAction(QWebPage::Reload), SLOT(trigger()));
 
     // Zoom functionality
-    incZoom = new QAction(QIcon(":/resources/sq_plus_48x48"), tr("&Increase Zoom"), this);
+    incZoom = new QAction(tr("&Increase Zoom"), this);
     connect(incZoom, SIGNAL(triggered()), this, SLOT(handleincZoom()));
 
-    decZoom = new QAction(QIcon(":/resources/sq_minus_48x48"), tr("&Decrease Zoom"), this);
+    decZoom = new QAction(tr("&Decrease Zoom"), this);
     connect(decZoom, SIGNAL(triggered()), this, SLOT(handledecZoom()));
 
     zoomDisplay = new SN_SimpleTextWidget(20, QColor(Qt::white), QColor(Qt::black));
     zoomDisplay->setText(QString::number(gwebview->zoomFactor() * 100));
 
-    mainBrowserToolbar->addAction(backPage);
-    mainBrowserToolbar->addAction(forwardPage);
-    mainBrowserToolbar->addAction(reload);
-    mainBrowserToolbar->addAction(stop);
-    mainBrowserToolbar->setIconSize(QSize(64,64));
+    increaseZoomButton = new SN_PixmapButton(":/resources/sq_plus_48x48", 0, "", this);
+    increaseZoomButton->addAction(incZoom);
+    connect(increaseZoomButton, SIGNAL(clicked(int)), incZoom, SLOT(trigger()));
 
-    mainBrowserToolbar->addAction(decZoom);
-    mainBrowserToolbar->addAction(incZoom);
-    //mainBrowserToolbar->addWidget(zoomDisplay);
-
-    toolbarProxy = new QGraphicsProxyWidget;
-    toolbarProxy->setWidget(mainBrowserToolbar);
+    decreaseZoomButton = new SN_PixmapButton(":/resources/sq_minus_48x48", 0, "", this);
+    decreaseZoomButton->addAction(decZoom);
+    connect(decreaseZoomButton, SIGNAL(clicked(int)), decZoom, SLOT(trigger()));
 
     horizLayout = new QGraphicsLinearLayout;
     horizLayout->setOrientation(Qt::Horizontal);
 
-    //horizLayout->setSpacing(4);
-    //horizLayout->setContentsMargins(20,20,20,20);
+    horizLayout->setSpacing(4);
+    horizLayout->setContentsMargins(5,5,5,5);
     horizLayout->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Maximum);
 
     linearLayout = new QGraphicsLinearLayout;
     linearLayout->setOrientation(Qt::Vertical);
     linearLayout->setSpacing(4);
-    linearLayout->setContentsMargins(20,20,20,40);
+    linearLayout->setContentsMargins(5,5,5,10);
 
 
 	// The layout takes ownership of these items.
 //	linearLayout->addItem(urlboxproxy);
     //linearLayout->addItem(_customurlbox);
-    horizLayout->addItem(toolbarProxy);
-    horizLayout->addItem(zoomDisplay);
+    //horizLayout->addItem(toolbarProxy);
+
+    horizLayout->addItem(backHistoryButton);
+    horizLayout->addItem(forwardHistoryButton);
+    horizLayout->addItem(reloadPageButton);
     horizLayout->addItem(_customurlbox);
-   //linearLayout->addItem(toolbarProxy);
+    horizLayout->addItem(decreaseZoomButton);
+    horizLayout->addItem(zoomDisplay);
+    horizLayout->addItem(increaseZoomButton);
+
+    //linearLayout->addItem(toolbarProxy);
     //linearLayout->addItem(zoomDisplay);
     //linearLayout->addItem(horizLayout);
     //horizLayout->setParentLayoutItem(linearLayout);
@@ -414,7 +408,7 @@ void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *, const QPointF 
 			// internal geometry of widget
 			//        v->rect();
 
-			if ( v->rect().contains( v->mapFromScene(scenePos) ) ) {
+            if ( v->rect().contains( v->mapFromScene(scenePos) ) ) {
 				// mouse click position is within this view's bounding rectangle
 				view = v;
 				break;
@@ -455,9 +449,9 @@ void SN_WebWidget::pageLoaded() {
 	//	gwebview->setContent( gwebview->page()->mainFrame()->toHtml().toAscii() );
 
 	gwebview->setPage( webPage );
-	qDebug() << gwebview->page()->mainFrame()->toHtml().toAscii();
+    // qDebug() << gwebview->page()->mainFrame()->toHtml().toAscii();
 
-	update(); // schedule paint()
+    //update(); // schedule paint()
 }
 
 void SN_WebWidget::setUrl(const QString &u) {
