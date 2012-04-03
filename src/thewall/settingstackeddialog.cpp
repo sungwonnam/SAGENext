@@ -164,8 +164,15 @@ void SystemSettingDialog::accept() {
 	_settings->setValue("system/prioritygrid", ui->pGridCheckBox->isChecked());
 	_settings->setValue("system/scheduler", false);
 
-	// this is used in sagePixelReceiver
-	_settings->setValue("system/scheduler_type", "SelfAdjusting");
+
+
+
+//	_settings->setValue("system/scheduler_type", "SelfAdjusting");
+    _settings->setValue("system/scheduler_type", "ProportionalShare");
+
+
+
+
 
 
 	if ( ui->schedulerCheckBox->isChecked() ) {

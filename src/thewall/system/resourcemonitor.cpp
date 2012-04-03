@@ -472,6 +472,8 @@ void SN_ResourceMonitor::refresh() {
 
 	_widgetListRWlock.lockForRead();
 
+    qreal currentTotalBandwidth = 0.0;
+
 	QMap<quint64, SN_RailawareWidget *>::const_iterator it;
 	for (it=_widgetMap.constBegin(); it!=_widgetMap.constEnd(); it++) {
 		SN_RailawareWidget *rw = it.value();
@@ -479,6 +481,8 @@ void SN_ResourceMonitor::refresh() {
 
 		PerfMonitor *pm = rw->perfMon();
 		Q_ASSERT(pm);
+
+        currentTotalBandwidth += pm->getCurrBandwidthMbps();
 
 		//
 		// Assumes the _cpuOfMine is continusouly updated by worker thread (affInfo->setCpuOfMine())
@@ -495,6 +499,8 @@ void SN_ResourceMonitor::refresh() {
 		spn->addNetBWUsage(pm->getCurrBandwidthMbps()); // Mbps
 		spn->addNumWidgets(1);
 	}
+
+    _totalBandwidthMbps = qMax(_totalBandwidthMbps, currentTotalBandwidth);
 
 	_widgetListRWlock.unlock();
 }

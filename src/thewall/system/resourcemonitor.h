@@ -212,6 +212,9 @@ public:
 	inline QReadWriteLock * getWidgetListRWLock() {return &_widgetListRWlock;}
 
 
+    inline qreal totalBandwidthMbps() const {return _totalBandwidthMbps;}
+
+
 
 	/*!
 	  Calls ProcessorNode::refresh() for each processorNode object. This function is called periodically in GraphicsViewMain::TimerEvent()
@@ -284,6 +287,14 @@ private:
 //	QGraphicsSimpleTextItem *numaInfoTextItem;
 
 //	void buildProcTree();
+
+
+    /*!
+      Max of total bandwidth used at time t.
+      This is Max of the sum of rw->_perfMon->getCurrBandwidthMbps()
+      */
+    qreal _totalBandwidthMbps;
+
 
 	/*!
 	  An array index represents cpu id seen by OS

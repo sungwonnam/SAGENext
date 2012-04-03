@@ -798,6 +798,12 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     _perfMon->setAdjustedFps( (qreal)framerate );
 
 
+    /*!
+      A priori (in Mbps)
+      */
+    _perfMon->setRequiredBandwidthMbps( (_appInfo->frameSizeInByte() * 8 * (qreal)framerate) / 1000000.0 );
+
+
     /* create double buffer if PBO is disabled */
 	if (!_usePbo) {
 		if ( createImageBuffer(resX, resY, (sagePixFmt)pixfmt) != 0 ) {
@@ -1274,11 +1280,12 @@ void SN_SageStreamWidget::updateInfoTextItem() {
             );
 
     QByteArray perfText(256, 0);
-    sprintf(perfText.data(), "%u Byte/frame\n%.2f / %.2f (%.2f)\n"
+    sprintf(perfText.data(), "%u Byte/frame\n%.2f / %.2f (%.2f)\nA priori %.3f Mbps"
             , _appInfo->frameSizeInByte()
             , _perfMon->getCurrRecvFps()
             , _perfMon->getAdjustedFps()
             , _perfMon->getExpetctedFps()
+            , _perfMon->getReqBandwidthMbps()
             );
 
 	if (infoTextItem) {

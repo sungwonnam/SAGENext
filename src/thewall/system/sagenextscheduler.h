@@ -40,7 +40,7 @@ public:
 	explicit SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent = 0);
 	~SN_SchedulerControl();
 
-    enum Scheduler_Type {DividerWidget, SelfAdjusting, DelayDistribution, SMART};
+    enum Scheduler_Type {ProportionalShare, DividerWidget, SelfAdjusting, DelayDistribution, SMART};
 
 	/*!
 	  qApp installs this eventFilter using qApp->installEventFileter(SagenextScheduler *) in main.cpp.
@@ -177,6 +177,42 @@ private slots:
 	virtual void doSchedule() = 0;
 	void applyNewInterval(int);
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class SN_ProportionalShareScheduler : public SN_AbstractScheduler
+{
+    Q_OBJECT
+
+public:
+    explicit SN_ProportionalShareScheduler(SN_ResourceMonitor *r, int granularity = 100, QObject *parent=0);
+    ~SN_ProportionalShareScheduler() {}
+
+    void reset();
+
+private:
+
+private slots:
+    void doSchedule();
+};
+
+
+
+
+
 
 
 

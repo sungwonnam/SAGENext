@@ -56,7 +56,6 @@ public:
 
 
 
-
 	/*!
 	  return -1 if requested fps is too low
 	  return 1 if requested fps is too high (higher than expected fps)
@@ -119,6 +118,12 @@ public:
 	inline qreal getAvgDispFps() const {return avgDispFps;}
 
 	inline qreal getCurrBandwidthMbps() const {return currBandwidth;}
+    inline qreal getReqBandwidthMbps() const {return _requiredBandwidth;}
+
+    /*!
+      image width * height * bpp * framerate
+      */
+    inline void setRequiredBandwidthMbps(qreal b) {_requiredBandwidth = b;}
 
 	inline qreal getCurrDrawLatency() const { return currDrawLatency; }
 	inline qreal getAvgDrawLatency() const { return avgDrawLatency; }
@@ -191,6 +196,13 @@ private:
 
 
 
+    /*!
+      A required bandwidth to run the application in full quality.
+      A image streaming application (such as SAGE app) that has desired fps can have this. This is called a priori.
+
+      This can't be known for a best-effort application.
+      */
+    qreal _requiredBandwidth;
 
 
 

@@ -17,9 +17,10 @@ PerfMonitor::PerfMonitor(QObject *parent)
     , currRecvFps(0.0)
     , aggrRecvFps(0.0)
     , avgRecvFps(0.0)
-    , currBandwidth(0.0),
+    , currBandwidth(0.0)
+    , _requiredBandwidth(0.0)
 
-	drawCount(0),
+	, drawCount(0),
 	currDrawLatency(0.0),
 	avgDrawLatency(0.0),
 	aggrDrawLatency(0.0),
