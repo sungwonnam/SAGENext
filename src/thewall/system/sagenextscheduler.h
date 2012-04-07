@@ -126,26 +126,27 @@ class SN_AbstractScheduler : public QThread {
 //	Q_PROPERTY(bool end READ isEnd WRITE setEnd)
 
 public:
-	explicit SN_AbstractScheduler(SN_ResourceMonitor *rmon, int granularity=2, QObject *parent=0) : QThread(parent), proc(0), rMonitor(rmon), _granularity(granularity) {  }
+	explicit SN_AbstractScheduler(SN_ResourceMonitor *rmon, int granularity=2, QObject *parent=0) : QThread(parent), _end(false), proc(0), rMonitor(rmon), _granularity(granularity) {  }
 	virtual ~SN_AbstractScheduler();
 
-//	inline bool isEnd() const {return _end;}
-//	void setEnd(bool b = true);
-
-	QTimer timer;
+	inline bool isEnd() const {return _end;}
+    inline void setEnd(bool b = true) {_end = b;}
 
 	inline int frequency() const {return _granularity;}
 
     /*!
       This function can be called, for example, to set the adjusted quality of all application to 1.
       */
-    virtual void reset();
+    virtual void reset() {}
+
 
 protected:
+    bool _end;
+
 	/*!
 	  calls doSchedule every x msec. x is defined by granularity
 	  */
-	virtual void run();
+    virtual void run() {}
 
 	/*!
 	  rail configuration
@@ -175,7 +176,6 @@ protected:
 
 private slots:
 	virtual void doSchedule() = 0;
-	void applyNewInterval(int);
 };
 
 
@@ -203,7 +203,9 @@ public:
 
     void reset();
 
-private:
+protected:
+    void run();
+
 
 private slots:
     void doSchedule();

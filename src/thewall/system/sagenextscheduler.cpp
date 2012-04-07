@@ -38,14 +38,16 @@ void SN_SchedulerControl::startScheduler() {
         qDebug("%s::%s() : No scheduler instance. Create the scheduler first", metaObject()->className(), __FUNCTION__);
         return;
     }
+
+    _scheduler->setEnd(false);
     _scheduler->start();
 }
 
 void SN_SchedulerControl::stopScheduler() {
     if (_scheduler) {
-        _scheduler->timer.stop();
+        _scheduler->setEnd();
         _scheduler->reset();
-        _scheduler->quit();
+//        _scheduler->wait();
     }
 }
 
@@ -311,11 +313,8 @@ SN_AbstractScheduler::~SN_AbstractScheduler() {
 	qDebug() << "The scheduler deleted";
 }
 
-void SN_AbstractScheduler::applyNewInterval(int i) {
 
-	timer.setInterval(i);
-}
-
+/*
 void SN_AbstractScheduler::run() {
 
 //	QTimer timer;
@@ -332,14 +331,10 @@ void SN_AbstractScheduler::run() {
 	// scheduler calls any function live in GUI eventloop (qApp::exec()) by slots
 	exec();
 
-
     qDebug() << "[[ The Scheduling thread has finished ]]";
 }
+*/
 
-
-void SN_AbstractScheduler::reset() {
-
-}
 
 int SN_AbstractScheduler::configureRail(SN_RailawareWidget *rw, SN_ProcessorNode *pn) {
 	if (!rw || !rw->affInfo()) return -1;
@@ -427,14 +422,32 @@ void SN_ProportionalShareScheduler::reset() {
     }
 }
 
+void SN_ProportionalShareScheduler::run() {
+
+    qDebug() << "[[ Starting scheduling thread ]]";
+
+    while(!_end) {
+        QThread::msleep(_granularity);
+
+        doSchedule();
+    }
+
+    qDebug() << "[[ Scheduling thread finished ]]";
+}
+
 void SN_ProportionalShareScheduler::doSchedule() {
     Q_ASSERT(rMonitor);
 
     qreal SumPriority = 0.0;
+
     qreal TotalResource = rMonitor->totalBandwidthMbps(); // aggregate of rw->perfMon()->getCurrBandwidthMbps()
+
+    if (TotalResource <= 0) return;
 
     QList<SN_RailawareWidget *> wlist = rMonitor->getWidgetList();
     QList<SN_RailawareWidget *>::iterator iter0;
+
+    if (wlist.size() == 0) return;
 
 	//
 	// Copy the list of schedulable widgets to local QMap container
@@ -465,6 +478,166 @@ void SN_ProportionalShareScheduler::doSchedule() {
 		wmap.insertMulti(rw->priority(), rw);
 	}
 
+
+//    qDebug() << "\n=============================================================================================================";
+//    qDebug() << "Total resource" << TotalResource << "Mbps, SumPriority" << SumPriority << "Num apps" << wmap.size();
+
+
+    QMap<qreal, SN_RailawareWidget *>::const_iterator wmap_it;
+
+    //
+    // will allocate this much
+    //
+    qreal resources[wmap.size()];
+    for (int i=0; i<wmap.size(); i++) {
+        resources[i] = 0;
+    }
+
+    // resources array index
+    int index = 0;
+
+    // loop's terminate condition
+    QBitArray bitarray(wmap.size());
+
+
+    //
+    // start iteration
+    // to calculate the amount resource for each application will receive
+    //
+    while(TotalResource > 0    &&    bitarray.count(true) < wmap.size()) {
+
+        index = 0; // reset the index
+
+        for (wmap_it = wmap.constBegin(); wmap_it != wmap.constEnd(); wmap_it++) {
+            SN_RailawareWidget *rw = wmap_it.value();
+
+            if (!rw || !rw->priorityData()) continue;
+
+/*
+            rmap_it = _resourceMap.find(rw);
+            if (rmap_it == _resourceMap.end()) {
+                rmap_it = _resourceMap.insert(rw, 0);
+            }
+
+            qreal rwDesired = rw->perfMon()->getReqBandwidthMbps();
+            if (rmap_it.value() > rwDesired) {
+                //
+                // over allocated
+                //
+                TotalResource += (rmap_it.value() - rwDesired);
+
+                continue;
+            }
+            else if (rmap_it.value() == rwDesired) {
+                continue;
+            }
+
+            qreal pp = rw->priority() / SumPriority; // priority proportion
+
+            qreal glass = rw->perfMon()->getGlassSize(0.1); // glass size that gives 10% of required resource
+
+            qreal allowedResourcePerIteration = pp * glass;
+
+
+            qreal room = rw->perfMon()->getReqBandwidthMbps() - rmap_it.value();
+
+            if ( allowedResourcePerIteration > room ) {
+                rmap_it.value() += room;
+                TotalResource -= room;
+            }
+            else {
+                rmap_it.value() += allowedResourcePerIteration;
+                TotalResource -= allowedResourcePerIteration;
+            }
+            */
+
+            //
+            // This is the amount I need to show 100% quality
+            //
+            qreal rwDesired = rw->perfMon()->getReqBandwidthMbps();
+
+            if ( resources[index] > rwDesired ) {
+                // I'm over allocated
+                resources[index] = rwDesired;
+                TotalResource += (resources[index] - rwDesired); // return the extra
+                bitarray.setBit(index, true); // I don't need further actions
+            }
+            else if (resources[index] == rwDesired) {
+                // everything's ok. do nothing
+                bitarray.setBit(index, true); // I don't need further actions
+            }
+            else {
+                //
+                // This tells how much this app is important compared to others.
+                //
+                qreal priorityProportion = rw->priority() / SumPriority; // priority proportion
+
+                //
+                // The amount of resource for each app to show X % of quality is different.
+                //
+                qreal amount_needed_for_quality_X = rw->perfMon()->getReqBandwidthMbps(0.1);
+
+                //
+                // During a single iteration, this app should receive this amount.
+                // This is to ensure fairness based on priority and visual quality
+                //
+                qreal size_of_single_scoop = priorityProportion * amount_needed_for_quality_X;
+
+                qreal remainingroom = rwDesired - resources[index];
+
+                if (size_of_single_scoop == 0) {
+                    TotalResource += resources[index]; // return resources
+                    resources[index] = 0; // cause I don't need it
+
+                    bitarray.setBit(index, true); // I don't need further actions. Ensure the terminate condition
+                }
+
+                //
+                // I just need a little bit more
+                // I will be running at 100%
+                //
+                else if ( size_of_single_scoop > remainingroom ) {
+
+                    TotalResource -= remainingroom; // take resources
+                    resources[index] += remainingroom;
+
+                    bitarray.setBit(index, true); // I don't need further actions
+                }
+
+                //
+                // I might not be able to run at 100%
+                //
+                else {
+                    TotalResource -= size_of_single_scoop; // take resources
+                    resources[index] += size_of_single_scoop;
+
+                    bitarray.setBit(index, false); // There might be resources that I can get more. So, I'm not done yet.
+                }
+            }
+            index++;
+        }
+    }
+
+
+    //
+    // Now the calculation is done
+    // Let's allocate
+    //
+    index = 0;
+    for (wmap_it = wmap.constBegin(); wmap_it != wmap.constEnd(); wmap_it++) {
+        SN_RailawareWidget *rw = wmap_it.value();
+
+        if (!rw || !rw->priorityData()) continue;
+
+//        qDebug() << "\t" << rw->globalAppId() << ":" << rw->priority() << ":" << 100 * (resources[index]/rw->perfMon()->getReqBandwidthMbps()) << "%";
+
+        rw->setQuality( resources[index] / rw->perfMon()->getReqBandwidthMbps() );
+
+        index++;
+    }
+
+
+    /*
     qDebug() << "\n=============================================================================================================";
 
 
@@ -530,6 +703,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
             ++itcopy;
         }
     }
+    */
 }
 
 

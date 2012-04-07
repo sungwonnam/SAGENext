@@ -117,13 +117,37 @@ public:
 	inline qreal getCurrDispFps() const { return currDispFps;}
 	inline qreal getAvgDispFps() const {return avgDispFps;}
 
+
+
+
+    ///
+    /// Bandwidth
+    ///
+
 	inline qreal getCurrBandwidthMbps() const {return currBandwidth;}
-    inline qreal getReqBandwidthMbps() const {return _requiredBandwidth;}
 
     /*!
-      image width * height * bpp * framerate
+      Returns the required bandwidth to ensure the percentage of expected quality of the application.
+      If percentage == 1.0 then the return value indicates the bandwidth required to make the application runs at full quality(speed)
+
+      @param percentage must be between 0.0 <= percentage <= 1.0
+      */
+    qreal getReqBandwidthMbps(qreal percentage = 1.0) const;
+
+    /*!
+      image streaming (SAGE) app : The image width * height * bpp * framerate (in Mbps)
+
+      An interactive app (best-effort type) will set this to 0 when there's no interaction thereby the app is sitting idle
       */
     inline void setRequiredBandwidthMbps(qreal b) {_requiredBandwidth = b;}
+
+
+
+
+
+
+
+
 
 	inline qreal getCurrDrawLatency() const { return currDrawLatency; }
 	inline qreal getAvgDrawLatency() const { return avgDrawLatency; }
@@ -203,6 +227,7 @@ private:
       This can't be known for a best-effort application.
       */
     qreal _requiredBandwidth;
+
 
 
 

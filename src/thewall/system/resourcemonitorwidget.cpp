@@ -157,6 +157,10 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 ResourceMonitorWidget::~ResourceMonitorWidget() {
 	if (ui) delete ui;
 //	if (plot) delete plot;
+
+    QObject::disconnect(rMonitor, SIGNAL(dataRefreshed()), this, SLOT(refresh()));
+    rMonitor->setRMonWidget(0);
+
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
 

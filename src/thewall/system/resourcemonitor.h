@@ -201,7 +201,7 @@ public:
 
 	inline void setPriorityGrid(SN_PriorityGrid *p) {_pGrid = p;}
 
-	inline void setRMonWidget(ResourceMonitorWidget *rmw) {_rMonWidget = rmw;}
+	void setRMonWidget(ResourceMonitorWidget *rmw);
 	inline ResourceMonitorWidget * rMonWidget() {return _rMonWidget;}
 
 	/*!
@@ -212,7 +212,7 @@ public:
 	inline QReadWriteLock * getWidgetListRWLock() {return &_widgetListRWlock;}
 
 
-    inline qreal totalBandwidthMbps() const {return _totalBandwidthMbps;}
+    inline qreal totalBandwidthMbps() const {return _totalBWAchieved_Mbps;}
 
 
 
@@ -290,10 +290,10 @@ private:
 
 
     /*!
-      Max of total bandwidth used at time t.
-      This is Max of the sum of rw->_perfMon->getCurrBandwidthMbps()
+      The sum of the bandwidth achieved by all the schedulable applications at given time.
+      So, this is Max of the sum of the rw->_perfMon->getCurrBandwidthMbps()
       */
-    qreal _totalBandwidthMbps;
+    qreal _totalBWAchieved_Mbps;
 
 
 	/*!
@@ -345,6 +345,8 @@ signals:
 	  And is connected to the slot SagenextScheduler::loadBalance()
 	  */
 	void appRemoved(int procid);
+
+    void dataRefreshed();
 
 public slots:
 	/*!

@@ -272,9 +272,10 @@ void SN_SagePixelReceiver::run() {
 			}
 			else {
 				qreal adjustment = (1.0 / perf->getAdjustedFps()) - (1.0 / perf->getExpetctedFps()); // second
-				adjustment *= 1000.0; // millisecond
-				if ( adjustment >= 1 ) {
-					// adding delay
+				adjustment *= 1000.0; // milli-second
+
+				if ( adjustment > 0 ) {
+					// adding delay to respect the adjusted quality
 					QThread::msleep( (unsigned long)adjustment );
 				}
 			}

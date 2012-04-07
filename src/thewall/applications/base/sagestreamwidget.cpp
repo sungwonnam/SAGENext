@@ -243,7 +243,6 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
 		// for now frame rate is the quality metric
 		return _perfMon->setAdjustedFps(_perfMon->getExpetctedFps() * _quality);
 	}
-    qDebug() << "SN_SageStreamWidget::setQuality()";
 
     return -1;
 }
@@ -1295,6 +1294,7 @@ void SN_SageStreamWidget::updateInfoTextItem() {
 
 		infoTextItem->setText(text);
 		infoTextItem->update();
+        infoTextItem->setScale(1.6);
 	}
 }
 

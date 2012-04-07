@@ -246,6 +246,7 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
     , schedcontrol(0)
     , _pGrid(0)
     , numaInfo(0)
+    , _totalBWAchieved_Mbps(0.0)
     , _rMonWidget(0)
     , _printDataFlag(false)
 {
@@ -310,11 +311,12 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 }
 
 SN_ResourceMonitor::~SN_ResourceMonitor() {
+
+    QObject::disconnect(this, 0, 0, 0); // disconnect everything connected to this
+
 	//	if (procTree) delete procTree;
 	if (_rMonWidget) {
 		_rMonWidget->close();
-//		_rMonWidget->deleteLater();
-//		delete _rMonWidget;
 	}
 
 	if (schedcontrol) {
@@ -345,6 +347,13 @@ SN_ResourceMonitor::~SN_ResourceMonitor() {
 	qDebug("ResourceMonitor::%s()", __FUNCTION__);
 }
 
+void SN_ResourceMonitor::setRMonWidget(ResourceMonitorWidget *rmw) {
+    _rMonWidget = rmw;
+    if (_rMonWidget ) {
+        QObject::connect(this, SIGNAL(dataRefreshed()), _rMonWidget, SLOT(refresh()));
+    }
+}
+
 void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 	//	qDebug() << "timerEvent at resourceMonitor";
 
@@ -363,9 +372,9 @@ void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 	//
 	// update widget
 	//
-	if (_rMonWidget && _rMonWidget->isVisible()) {
-		_rMonWidget->refresh();
-	}
+//	if (_rMonWidget && _rMonWidget->isVisible()) {
+//		_rMonWidget->refresh();
+//	}
 
 	//
 	// save data to a file
@@ -482,6 +491,9 @@ void SN_ResourceMonitor::refresh() {
 		PerfMonitor *pm = rw->perfMon();
 		Q_ASSERT(pm);
 
+        //
+        // Aggregate the bandwidth the application is actually achieving at this moment.
+        //
         currentTotalBandwidth += pm->getCurrBandwidthMbps();
 
 		//
@@ -500,9 +512,11 @@ void SN_ResourceMonitor::refresh() {
 		spn->addNumWidgets(1);
 	}
 
-    _totalBandwidthMbps = qMax(_totalBandwidthMbps, currentTotalBandwidth);
+    _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
 
 	_widgetListRWlock.unlock();
+
+    emit dataRefreshed();
 }
 
 

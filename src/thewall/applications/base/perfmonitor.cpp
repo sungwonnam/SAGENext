@@ -113,10 +113,19 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 
 
 	// is calculated with network latency + delay enforced by scheduler
-	currBandwidth = (byteread * 8.0) / observed_delay; // bps
-	currBandwidth /= 1000000.0; // Mbps
+    qreal bwtemp = (byteread * 8.0) / observed_delay; // bps
+    bwtemp /= 1000000.0; // Mbps
+    if ( bwtemp <= _requiredBandwidth)
+        currBandwidth = bwtemp;
+    else {
+        // perhaps measurement error so discard the data measured
+        currBandwidth = _requiredBandwidth;
+    }
 
 
+    //
+    // fps that user perceives
+    //
 	currRecvFps = 1.0 / observed_delay; // frame per second
 //	if ( currRecvFps > peakRecvFps )
 //		peakRecvFps = currRecvFps;
@@ -129,6 +138,7 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 	currAdjDeviation = (temp > 0) ? temp : 0;
 
 
+    /****
 	struct timeval tv;
 	gettimeofday(&tv, 0);
 	qreal now = (qreal)(tv.tv_sec) + 0.000001 * (qreal)(tv.tv_usec); // seconds
@@ -144,6 +154,7 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 //		_ts_nextframe = _ts_currframe + 1.0 / expectedFps;
 		_ts_nextframe = _ts_currframe + 1.0 / adjustedFps;
 	}
+    ***/
 
 
 	unsigned int skip = 200;
@@ -331,6 +342,19 @@ void PerfMonitor::reset() {
 	ruend_nivcsw = 0;
 	ruend_maxrss = 0;
 	ruend_minflt = 0;
+}
+
+
+qreal PerfMonitor::getReqBandwidthMbps(qreal percentage /* = 1.0 */) const {
+    if (_requiredBandwidth <= 0) {
+        return 0.0;
+    }
+
+    if (percentage > 1) {
+        return _requiredBandwidth;
+    }
+
+    return _requiredBandwidth * percentage;
 }
 
 
