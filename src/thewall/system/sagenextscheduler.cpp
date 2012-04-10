@@ -1,5 +1,6 @@
 #include "sagenextscheduler.h"
 #include "resourcemonitor.h"
+#include "resourcemonitorwidget.h"
 
 #include "../applications/base/railawarewidget.h"
 #include "../applications/base/appinfo.h"
@@ -46,6 +47,7 @@ void SN_SchedulerControl::startScheduler() {
 void SN_SchedulerControl::stopScheduler() {
     if (_scheduler) {
         _scheduler->setEnd();
+        _scheduler->wait();
         _scheduler->reset();
 //        _scheduler->wait();
     }
@@ -207,9 +209,21 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
     if (start) {
         _scheduler->start();
         if (controlPanel) {
-            controlPanel->setWindowTitle("Scheduler Control");
-            controlPanel->adjustSize();
-            controlPanel->show();
+
+            if (_rMonitor->rMonWidget()) {
+                // show inside rmonitor widget
+                _rMonitor->rMonWidget()->setSchedCtrlFrame(controlPanel);
+
+                // rMonWidget will take ownership of the controlPanel
+                // so make sure sched control will not touch anymore
+                controlPanel = 0;
+            }
+            else {
+                // show top-level widget
+                controlPanel->setWindowTitle("Scheduler Control");
+                controlPanel->adjustSize();
+                controlPanel->show();
+            }
         }
     }
 
@@ -853,7 +867,7 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 //		PerfMonitor *rwPm = rw->perfMon();
 //		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
 
-		qreal rwQualityAdjusted = rw->observedQualityAdjusted(); // current observed quality based on ADJUSTED quality
+		qreal rwQualityAdjusted = rw->observedQualityDemanded(); // current observed quality based on ADJUSTED quality
 
 		if (priorityRank == 1.0) {
 			// the highest priority widget

@@ -382,6 +382,19 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		}
 
 
+        //
+		// resourceMonitor widget to display info
+		//
+		if (s.value("system/resourcemonitorwidget").toBool()) {
+			rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, pgrid); // No parent widget
+			QObject::connect(resourceMonitor, SIGNAL(destroyed()), rMonitorWidget, SLOT(close()));
+			rMonitorWidget->show();
+
+			resourceMonitor->setRMonWidget(rMonitorWidget);
+		}
+
+
+
 
 		if ( s.value("system/scheduler").toBool() ) {
 			qDebug() << "Creating" << s.value("system/scheduler_type").toString() << "Scheduler";
@@ -409,16 +422,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 		resourceMonitor->refresh();
 
-		//
-		// resourceMonitor widget to display info
-		//
-		if (s.value("system/resourcemonitorwidget").toBool()) {
-			rMonitorWidget = new ResourceMonitorWidget(resourceMonitor, schedcontrol, pgrid); // No parent widget
-			QObject::connect(resourceMonitor, SIGNAL(destroyed()), rMonitorWidget, SLOT(close()));
-			rMonitorWidget->show();
 
-			resourceMonitor->setRMonWidget(rMonitorWidget);
-		}
 
 		// this will trigger resourceMonitor->refresh() every 1sec
 		rMonitorTimerId = resourceMonitor->startTimer(1000);

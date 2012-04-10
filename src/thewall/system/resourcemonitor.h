@@ -412,6 +412,15 @@ public slots:
 	  */
 	void printPrelimDataHeader();
 
+
+    /*!
+      Create a file
+      and set the _printDataFlag so that data can be written to the file
+      */
+    bool setPrintFile(const QString &filepath);
+
+    void stopPrintData();
+
 	/*!
 	  print perf data for SAGENext paper.
 	  This slot should be called periodically
@@ -419,7 +428,12 @@ public slots:
 	void printPrelimData();
 
 
-	void printData();
+    /*!
+      It prints data (priority|winsize) for each app separated by ','
+      Note that each column X in a line represents priority and window size of the application with global app id X
+      */
+	void printData_AppPerColumn();
+
 
 	void closeDataFile();
 };

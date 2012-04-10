@@ -188,7 +188,7 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 	// Time spent executing user instructions.
 	double usrtime = ((double)ruend.ru_utime.tv_sec + 0.000001*(double)ruend.ru_utime.tv_usec) - ((double)rustart.ru_utime.tv_sec + 0.000001 * (double)rustart.ru_utime.tv_usec);
 
-	// ratio to recvLatency
+	// ratio of time spent actually doing something to the total time spent
 	double cutemp = (systime + usrtime) / observed_delay;
 	if(cutemp > 0) cpuUsage = cutemp;
 //	fprintf(stderr, "system %.4f, usrtime %.4f, currLatency %.4f\n", systime*1000.0, usrtime*1000.0, currRecvLatency*1000.0);

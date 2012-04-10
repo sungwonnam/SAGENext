@@ -96,7 +96,7 @@ public:
     /*!
       Returns *relative* observed quality which is based on adjusted quality
       */
-	qreal observedQualityAdjusted();
+	qreal observedQualityDemanded();
 
 
 protected:

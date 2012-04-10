@@ -179,6 +179,7 @@ public:
         /*!
           This is a placeholder.
           A schedulable widget must reimplement this function to make the application thread do necessary operations that can reflect the quality set by this function.
+          @param newQuality is an absolute value.
           */
         virtual int setQuality(qreal newQuality) {_quality = newQuality; return 0;}
 
@@ -188,17 +189,23 @@ public:
 		  */
 		int adjustQuality(qreal adjust) {return setQuality(_quality + adjust);}
 
-        inline qreal desiredQuality() const {return _quality;}
+        /*!
+          Returns the quality enforeced by the scheduler
+          */
+        inline qreal demandedQuality() const {return _quality;}
 
         /*!
           This is dummy function. A schedulable widget should reimplement this properly.
+          The function should return the ratio of the current performance to the performance the application is expecting.
           */
         virtual qreal observedQuality() {return _quality;}
 
         /*!
-          This is dummy function.
+          This is dummy function. A schedulable widget should reimplement this properly.
+          The function should return the ratio of the current performance to the performance the scheduler sets for this application.
+          So, The return value indicates how much this application is obeying the scheduler's demand.
           */
-        virtual qreal observedQualityAdjusted() {return _quality;}
+        virtual qreal observedQualityDemanded() {return _quality;}
 
 
 

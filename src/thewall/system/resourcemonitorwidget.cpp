@@ -21,19 +21,16 @@
 #include <qwt_symbol.h>
 #endif
 
-ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, SN_PriorityGrid *pg, QWidget *parent)
+ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_PriorityGrid *pg, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::ResourceMonitorWidget)
-    , rMonitor(rm)
-    , schedcontrol(sc)
+    , _isRefreshEnabled(true)
+    , _rMonitor(rm)
     , _pGrid(pg)
-    , _numWidgets(0)
-    , isAllocationEnabled(false)
-    , isScheduleEnabled(false)
-    , refreshCount(0)
+    , _refreshCount(0)
 {
 	ui->setupUi(this);
-	setAttribute(Qt::WA_DeleteOnClose);
+//	setAttribute(Qt::WA_DeleteOnClose);
 //	pidList.clear();
 
 //	if (schedcontrol) {
@@ -48,11 +45,12 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 //	}
 
     /*
-      On the left
+      On the bottom left
       */
 	buildPerCpuHLayouts();
+    ui->hlayout_CPU_appPerf->setStretch(0, 0); // per CPU b/w on the left
+    ui->hlayout_CPU_appPerf->setStretch(1, 2); // per app perf data
 
-//	layoutButtons();
 
 //	ui->vLayoutOnTheLeft->addStretch();
 
@@ -67,8 +65,8 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Schedule
 //	ui->perfPerPriorityRankTable->setHorizontalHeaderLabels(headers2);
 
 
-	/****
-	  per widget perf data table
+	/**
+	  per widget perf data table on the bottom right
 	 **/
 	ui->perAppPerfTable->setColumnCount(6); // app id,  priority, cpu usage, curr recv FPS, curr quality, desired quality
 	ui->perAppPerfTable->setRowCount(0);
@@ -158,17 +156,78 @@ ResourceMonitorWidget::~ResourceMonitorWidget() {
 	if (ui) delete ui;
 //	if (plot) delete plot;
 
-    QObject::disconnect(rMonitor, SIGNAL(dataRefreshed()), this, SLOT(refresh()));
-    rMonitor->setRMonWidget(0);
+//    if (_rMonitor) {
+//        QObject::disconnect(_rMonitor, SIGNAL(dataRefreshed()), this, SLOT(refresh()));
+//        _rMonitor->setRMonWidget(0);
+//    }
 
 	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
+
+
+void ResourceMonitorWidget::on_printDataBtn_clicked()
+{
+    Q_ASSERT(_rMonitor);
+    static bool isPrinting = false;
+
+    if (isPrinting) {
+        bool ret = QMetaObject::invokeMethod(_rMonitor, "stopPrintData", Qt::DirectConnection);
+        if (!ret) {
+            qDebug() << "Failed to invoke SN_ResourceMonitor::stopPrintData()";
+        }
+        else {
+            ui->printDataBtn->setText("Start Printing to a file");
+            isPrinting = false;
+        }
+    }
+    else {
+        if (ui->dataFileName_lineedit->text().isEmpty()) {
+            QMessageBox::critical(this, "Error", "Invalid filename");
+        }
+        else {
+            bool retfromslot = false;
+            bool ret = QMetaObject::invokeMethod(_rMonitor, "setPrintFile", Qt::DirectConnection
+                                                 , Q_RETURN_ARG(bool, retfromslot)
+                                                 , Q_ARG(QString, ui->dataFileName_lineedit->text())
+                                                 );
+            if (!ret) {
+                qDebug() << "Failed to invoke SN_ResourceMonitor::setPrintFile()";
+            }
+            else {
+                if (retfromslot) {
+                    ui->printDataBtn->setText("Stop Printing to a file");
+                    isPrinting = true;
+                }
+            }
+        }
+    }
+}
+
+void ResourceMonitorWidget::setSchedCtrlFrame(QFrame *frame) {
+    Q_ASSERT(frame);
+    ui->hlayout_Sched_Rmon_Ctrl->addWidget(frame);
+}
+
+void ResourceMonitorWidget::on_toggleRefreshDataBtn_clicked()
+{
+    qDebug() << "FUCK";
+
+    if (_isRefreshEnabled) {
+        _isRefreshEnabled = false;
+        ui->toggleRefreshDataBtn->setText("Resume refreshing data");
+    }
+    else {
+        _isRefreshEnabled = true;
+        ui->toggleRefreshDataBtn->setText("Stop refreshing data");
+    }
+}
+
 
 void ResourceMonitorWidget::refreshCPUdata() {
 	/*****
 	  per CPU bandwidth and load
 	  ****/
-	Q_ASSERT(rMonitor);
+	Q_ASSERT(_rMonitor);
 
 	/*
 	QVector<SN_ProcessorNode *> *pv = rMonitor->getProcVec();
@@ -190,13 +249,13 @@ void ResourceMonitorWidget::refreshCPUdata() {
 	}
 	*/
 
-	const QList<SN_SimpleProcNode *> &proclist = rMonitor->getSimpleProcList();
+	const QList<SN_SimpleProcNode *> &proclist = _rMonitor->getSimpleProcList();
 	QList<SN_SimpleProcNode *>::const_iterator it;
 	for (it=proclist.constBegin(); it!=proclist.constEnd(); it++) {
 		SN_SimpleProcNode *spn = (*it);
 		Q_ASSERT(spn);
 
-		QLayoutItem *li = ui->vLayout_percpu->itemAt(1 + spn->procNum()); // offset with 1 to skip header (hboxlayout)
+		QLayoutItem *li = ui->vLayoutOnTheLeft->itemAt(1 + spn->procNum()); // offset with 1 to skip header (hboxlayout)
 		QLayout *l = li->layout(); // this is HBoxLayout for each row
 		QLabel *lb = 0;
 
@@ -239,10 +298,10 @@ void ResourceMonitorWidget::refreshPriorityGridData() {
 void ResourceMonitorWidget::refreshPerAppPriorityData() {
 
 	ui->perAppPriorityTable->clearContents();
-	ui->perAppPriorityTable->setRowCount(rMonitor->getWidgetList().size());
+	ui->perAppPriorityTable->setRowCount(_rMonitor->getWidgetList().size());
 	int currentRow = 0;
 
-	foreach(SN_RailawareWidget *rw, rMonitor->getWidgetList()) {
+	foreach(SN_RailawareWidget *rw, _rMonitor->getWidgetList()) {
 		if (!rw) continue;
 
 		Q_ASSERT(rw->priorityData());
@@ -294,11 +353,11 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
     ctse = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
 #endif
 	ui->perAppPerfTable->clearContents(); // because I want to see real time perf info. Data for removed app will be gone.
-	ui->perAppPerfTable->setRowCount(rMonitor->getWidgetList().size());
+	ui->perAppPerfTable->setRowCount(_rMonitor->getWidgetList().size());
 	int currentRow = 0;
 
 	// An widget per row
-	foreach(SN_RailawareWidget *rw, rMonitor->getWidgetList()) {
+	foreach(SN_RailawareWidget *rw, _rMonitor->getWidgetList()) {
 		if (!rw) continue;
 
 		Q_ASSERT(rw->perfMon());
@@ -329,7 +388,7 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 				item->setData(Qt::DisplayRole, rw->observedQuality());
 				break;
 			case 5:
-				item->setData(Qt::DisplayRole, rw->desiredQuality());
+				item->setData(Qt::DisplayRole, rw->demandedQuality());
 				break;
 //			case 6:
 //				//item->setData(Qt::DisplayRole, rw->perfMon()->getRecvFpsStdDeviation());
@@ -350,27 +409,18 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 
 void ResourceMonitorWidget::refresh() {
 
-	++refreshCount;
+    if (!_isRefreshEnabled) return;
 
-	/***
-   Scheduler Parameter
-   ***/
-	if (schedcontrol && schedcontrol->scheduler()) {
-		ui->label_schedparam_freq->setNum(schedcontrol->scheduler()->frequency());
-		SN_SelfAdjustingScheduler *sas = qobject_cast<SN_SelfAdjustingScheduler *>(schedcontrol->scheduler());
-		if (sas) {
-			ui->label_schedparam_sens->setNum( sas->getQTH() );
-			ui->label_schedparam_greed->setNum( sas->getIncF() );
-			ui->label_schedparam_aggr->setNum( sas->getDecF() );
-		}
-	}
+	++_refreshCount;
+
+
 
 	/***
 	  per CPU load
 	  */
 	refreshCPUdata();
 
-	rMonitor->getWidgetListRWLock()->lockForRead();
+	_rMonitor->getWidgetListRWLock()->lockForRead();
 
     if (ui->perAppPerfTable->isEnabled())
         refreshPerAppPerfData();
@@ -386,7 +436,7 @@ void ResourceMonitorWidget::refresh() {
 #endif
 
 
-	rMonitor->getWidgetListRWLock()->unlock();
+	_rMonitor->getWidgetListRWLock()->unlock();
 
 
 
@@ -468,7 +518,7 @@ void ResourceMonitorWidget::populatePerfDataPerPriorityRank() {
 
 void ResourceMonitorWidget::buildPerCpuHLayouts() {
 //	QVector<SN_ProcessorNode *> *pv = rMonitor->getProcVec();
-	QList<SN_SimpleProcNode *> plist = rMonitor->getSimpleProcList();
+	QList<SN_SimpleProcNode *> plist = _rMonitor->getSimpleProcList();
 //	int numproc = pv->size();
 
 	/* populate the first row with header label */
@@ -479,7 +529,7 @@ void ResourceMonitorWidget::buildPerCpuHLayouts() {
 	hl->addWidget(new QLabel("BW(Mbps)"), 0, Qt::AlignRight); // bandwidth
 	hl->addWidget(new QLabel("CPU Usage"), 0, Qt::AlignRight); // cpu usage
 
-	ui->vLayout_percpu->addLayout(hl);
+	ui->vLayoutOnTheLeft->addLayout(hl);
 
 	/* populate the rest rows with labels which will be filled with data */
 //	foreach(SN_ProcessorNode *pn , *pv) {
@@ -492,7 +542,7 @@ void ResourceMonitorWidget::buildPerCpuHLayouts() {
 		hl->addWidget(new QLabel(), 0, Qt::AlignRight); // bandwidth
 		hl->addWidget(new QLabel(), 0, Qt::AlignRight); // cpu usage
 
-		ui->vLayout_percpu->addLayout(hl);
+		ui->vLayoutOnTheLeft->addLayout(hl);
 	}
 }
 
@@ -500,7 +550,7 @@ void ResourceMonitorWidget::buildPerCpuHLayouts() {
 void ResourceMonitorWidget::updatePriorityHistogram() {
 
     QList<SN_RailawareWidget *>::iterator it;
-    QList<SN_RailawareWidget *> applist = rMonitor->getWidgetList();
+    QList<SN_RailawareWidget *> applist = _rMonitor->getWidgetList();
 
 
     QMap<int, int> rawdata; // priority, # app
@@ -540,7 +590,7 @@ void ResourceMonitorWidget::updatePriorityHistogram() {
 
 void ResourceMonitorWidget::updateQualityCurve() {
     QList<SN_RailawareWidget *>::iterator it;
-    QList<SN_RailawareWidget *> applist = rMonitor->getWidgetList();
+    QList<SN_RailawareWidget *> applist = _rMonitor->getWidgetList();
 
     QMultiMap<int, double> rawdata; // priority, quality
 
@@ -800,3 +850,4 @@ void SchedulingPlot::updateData(qint64 ctse) {
 //	free(y);
 }
 **/
+

@@ -255,7 +255,7 @@ qreal SN_SageStreamWidget::observedQuality() {
 	else return -1;
 }
 
-qreal SN_SageStreamWidget::observedQualityAdjusted() {
+qreal SN_SageStreamWidget::observedQualityDemanded() {
 	//
 	// ratio of the current framerate to the ADJUSTED(demanded) framerate
 	//
@@ -1274,13 +1274,18 @@ void SN_SageStreamWidget::updateInfoTextItem() {
     QByteArray qualityText(256, 0);
     sprintf(qualityText.data(), "\nReal [%.2f / 1.00]\nAdju [%.2f / %.2f]\n"
             , observedQuality()
-            , observedQualityAdjusted()
-            , desiredQuality()
+            , observedQualityDemanded()
+            , demandedQuality()
             );
 
     QByteArray perfText(256, 0);
-    sprintf(perfText.data(), "%u Byte/frame\n%.2f / %.2f (%.2f)\nA priori %.3f Mbps"
+    qreal totaldelay = 1.0 / _perfMon->getCurrRecvFps(); // in second
+    qreal cputime = _perfMon->getCpuUsage() * totaldelay; // in second
+    cputime *= 1000; // millisecond
+
+    sprintf(perfText.data(), "%u Byte/frame\n%.6f msec CPU currently\n%.2f / %.2f (%.2f)\nA priori %.3f Mbps"
             , _appInfo->frameSizeInByte()
+            , cputime
             , _perfMon->getCurrRecvFps()
             , _perfMon->getAdjustedFps()
             , _perfMon->getExpetctedFps()

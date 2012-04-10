@@ -277,6 +277,7 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 	//
 	// write some data to a file
 	//
+    /*
 	char *val = getenv("EXP_DATA_FILE");
 	if ( val ) {
 		QString filename(val);
@@ -300,6 +301,7 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 			qDebug() << "SN_ResourceMonitor() : wrong file name" << val;
 		}
 	}
+    */
 
 
 	//
@@ -310,6 +312,34 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 //	_theScene->addItem(databutton);
 }
 
+bool SN_ResourceMonitor::setPrintFile(const QString &filepath) {
+    if (!filepath.isNull() && !filepath.isEmpty()) {
+
+//        QString now = QDateTime::currentDateTime().toString("_MM.dd_hh.mm.ss.zzz.CSV");
+//        filename = filename.append(now);
+
+        qWarning() << "\n=====================================================================================================";
+        qWarning() << "SN_ResourceMonitor::setPrintFile() :" << filepath;
+        qWarning() << "=====================================================================================================\n";
+
+
+        _dataFile.setFileName(filepath);
+
+        if (!_dataFile.open(QIODevice::WriteOnly)) {
+            qDebug() << "SN_ResourceMonitor::setPrintFile() : failed to open a file" << _dataFile.fileName();
+            _printDataFlag = false;
+        }
+        else {
+            _printDataFlag = true;
+            return true;
+        }
+    }
+    else {
+        qDebug() << "SN_ResourceMonitor::setPrintFile() : wrong file name" << filepath;
+    }
+    return false;
+}
+
 SN_ResourceMonitor::~SN_ResourceMonitor() {
 
     QObject::disconnect(this, 0, 0, 0); // disconnect everything connected to this
@@ -317,6 +347,7 @@ SN_ResourceMonitor::~SN_ResourceMonitor() {
 	//	if (procTree) delete procTree;
 	if (_rMonWidget) {
 		_rMonWidget->close();
+        delete _rMonWidget;
 	}
 
 	if (schedcontrol) {
@@ -381,7 +412,7 @@ void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 	//
 	if (_printDataFlag) {
 //		printPrelimData();
-		printData();
+		printData_AppPerColumn();
 	}
 }
 
@@ -852,7 +883,10 @@ void SN_ResourceMonitor::loadBalance() {
 
 
 
-
+void SN_ResourceMonitor::stopPrintData() {
+    _printDataFlag = false;
+    closeDataFile();
+}
 
 void SN_ResourceMonitor::closeDataFile() {
 	if (_dataFile.isOpen()) {
@@ -861,7 +895,7 @@ void SN_ResourceMonitor::closeDataFile() {
 }
 
 
-void SN_ResourceMonitor::printData() {
+void SN_ResourceMonitor::printData_AppPerColumn() {
 	if (!_dataFile.exists()) {
 		qDebug() << "printData() : _dataFile doesn't exist" << _dataFile.fileName();
 		return;
@@ -924,9 +958,23 @@ void SN_ResourceMonitor::printData() {
 		QSize qwinsize = (rw->scale() * rw->boundingRect().size().toSize());
 		int winsize = qwinsize.width() * qwinsize.height();
 
+        //
+        // data item is going to be
+        // priority|windowsize
+        //
+        /*
 		textout << rw->priority();
 		textout << "|";
 		textout << winsize;
+        */
+
+
+        textout << rw->priority();
+        textout << "|";
+        textout << rw->observedQuality();
+        textout << "|";
+        textout << rw->demandedQuality();
+
 
 		if (it + 1 == _widgetMap.constEnd()) {
 			textout << "\n"; // this the last app of the line
