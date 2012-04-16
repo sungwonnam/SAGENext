@@ -47,7 +47,7 @@ SN_Viewport::SN_Viewport(SN_TheScene *s, int viewportId, SN_Launcher *l, QWidget
 		addAction(_showInfoAction);
 	}
 
-//	_swapBufferTimerId = startTimer(30); // every 30 msec
+//	_swapBufferTimerId = startTimer(16); // every 16 msec
 }
 
 SN_Viewport::~SN_Viewport() {

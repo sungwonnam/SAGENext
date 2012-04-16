@@ -207,7 +207,12 @@ public:
 	/*!
 	  returns a copy of the widget list.
 	  */
-	inline QList<SN_RailawareWidget *> getWidgetList() {return widgetList;}
+	inline QList<SN_RailawareWidget *> getWidgetList() const {return widgetList;}
+
+    /*!
+      returns a reference of the list
+      */
+    inline QList<SN_RailawareWidget *> * getWidgetListRef() {return &widgetList;}
 
 	inline QReadWriteLock * getWidgetListRWLock() {return &_widgetListRWlock;}
 
@@ -311,7 +316,9 @@ private:
 	QList<SN_RailawareWidget *> widgetList;
 
 	/*!
-	  items in a QMap is sorted by key (Ascendant order)
+	  The items in a QMap is sorted by a key (Ascendant order)
+
+      Key is globalAppId
 	  */
 	QMap<quint64, SN_RailawareWidget *> _widgetMap;
 

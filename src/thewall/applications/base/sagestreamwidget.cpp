@@ -239,10 +239,29 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
 		_quality = newQuality;
 	}
 
-	if (_perfMon) {
-		// for now frame rate is the quality metric
-		return _perfMon->setAdjustedFps(_perfMon->getExpetctedFps() * _quality);
-	}
+    // there's change
+    if ( _perfMon->getAdjustedFps()  !=  (_perfMon->getExpetctedFps() * _quality)) {
+
+        _perfMon->setAdjustedFps(_perfMon->getExpetctedFps() * _quality);
+
+         int adjustedfps = _perfMon->getExpetctedFps() * _quality;
+
+        //
+        // How about send a message (SAIL_FRAME_RATE) to SAIL using _fsmMsgThread ??
+        //
+    //    _fsmMsgThread->sendSailMsg(OldSage::SAIL_FRAME_RATE, QString::number((int)adjustedFps));
+
+//        QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::SAIL_FRAME_RATE), Q_ARG(QString, QString::number(adjustedfps)));
+
+    //    QtConcurrent::run(_fsmMsgThread, &fsManagerMsgThread::sendSailMsg, OldSage::SAIL_FRAME_RATE, QString::number((int)adjustedFps));
+
+        return adjustedfps;
+    }
+
+    // no change
+    else {
+        return 0;
+    }
 
     return -1;
 }
@@ -400,7 +419,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	Q_ASSERT(_pbobufferready);
 	Q_ASSERT(_appInfo);
 
-	_perfMon->getUpdtTimer().start();
+//	_perfMon->getUpdtTimer().start();
 
 	//
 	// flip array index
@@ -478,7 +497,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
-	_perfMon->updateUpdateDelay();
+//	_perfMon->updateUpdateDelay();
 }
 
 
@@ -589,9 +608,9 @@ void SN_SageStreamWidget::scheduleUpdate() {
 
 
 void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
-	if (_perfMon) {
-		_perfMon->getDrawTimer().start();
-	}
+//	if (_perfMon) {
+//		_perfMon->getDrawTimer().start();
+//	}
 //	painter->setCompositionMode(QPainter::CompositionMode_Source);
 
 	if (_useOpenGL && painter->paintEngine()->type() == QPaintEngine::OpenGL2
@@ -671,8 +690,8 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 
 	SN_BaseWidget::paint(painter,o,w);
 
-	if (_perfMon)
-		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
+//	if (_perfMon)
+//		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
 
@@ -1283,13 +1302,13 @@ void SN_SageStreamWidget::updateInfoTextItem() {
     qreal cputime = _perfMon->getCpuUsage() * totaldelay; // in second
     cputime *= 1000; // millisecond
 
-    sprintf(perfText.data(), "%u Byte/frame\n%.6f msec CPU currently\n%.2f / %.2f (%.2f)\nA priori %.3f Mbps"
-            , _appInfo->frameSizeInByte()
-            , cputime
+    sprintf(perfText.data(), "%.2f / %.2f (%.2f)"
+//            , _appInfo->frameSizeInByte()
+//            , cputime
             , _perfMon->getCurrRecvFps()
             , _perfMon->getAdjustedFps()
             , _perfMon->getExpetctedFps()
-            , _perfMon->getReqBandwidthMbps()
+//            , _perfMon->getReqBandwidthMbps()
             );
 
 	if (infoTextItem) {

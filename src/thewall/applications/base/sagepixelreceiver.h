@@ -75,6 +75,9 @@ private:
 	  */
 //	QGLWidget *_shareWidget;
 
+    /*!
+      If OpenGL PBO isn't used, traditional double buffering with app buffer
+      */
 	DoubleBuffer *doubleBuffer;
 
 	enum sageNwProtocol {SAGE_TCP, SAGE_UDP};
@@ -86,11 +89,34 @@ private:
 	AffinityInfo *affInfo;
 
 	bool _usePbo;
+
+    /*!
+      This flag is set in SageStreamWidget after the buffer point is successfuly mapped to GPU memory
+      */
 	bool __bufferMapped;
+
+    /*!
+      Front or Back of _pbobufarray
+      */
 	int _pboBufIdx;
+
+    /*!
+      This pointer array contains pointers to the buffer (in GPU memory)
+      */
 	void **_pbobufarray;
+
+    /*!
+      Mutex for _pboCond
+      */
 	pthread_mutex_t * _pboMutex;
+
+    /*!
+      Condition variable to wait on __bufferMapped
+      */
 	pthread_cond_t * _pboCond;
+
+
+
 
 	QMutex _mutex;
 	QWaitCondition _waitCond;
@@ -107,7 +133,7 @@ signals:
 
 public slots:
 	/*!
-	  flip the pbo buffer
+	  This slot is invoked in SageStreamWidget to flip the pbo buffer index
 	  */
 	void flip(int idx);
 

@@ -59,9 +59,14 @@ qreal SN_Priority::computePriority(qint64 currTimeEpoch) {
 
 	computeEvrInfo();
 
-	qreal visualfactor = 0.3 * (qreal)_evr_to_win +  0.7 * (qreal)_evr_to_wall;
+    qreal weight_evrwin = 1.0;
+    if (_evr_to_win < 40) {
+        weight_evrwin = (qreal)_evr_to_win / 100;
+    }
 
-	_priority = visualfactor + ipm();
+	qreal visualfactor =  (qreal)_evr_to_win  +  (qreal)_evr_to_wall;
+
+	_priority = weight_evrwin * visualfactor + ipm();
 
 	return _priority;
 }

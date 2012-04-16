@@ -81,6 +81,10 @@ public:
 	explicit ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_PriorityGrid *pg, QWidget *parent = 0);
 	~ResourceMonitorWidget();
 
+    /*!
+      SchedulerControl has its GUI.
+      When the resourcemonitorwidget is available, the sched control will add its GUI to the rmonwidget using this function
+      */
     void setSchedCtrlFrame(QFrame *frame);
 
 private:
@@ -133,12 +137,12 @@ private:
 
 
 public slots:
+    /*!
+      This is connected to the resource monitor's dataRefreshed signal
+      */
 	void refresh();
 
 private slots:
-//	void on_loadTestSetButton_clicked();
-//	void on_allocationButton_clicked();
-//	void on_scheduleButton_clicked();
 
     /*!
       Invoke SN_ResourceMonitor::setPrintData() slot and pass the filename

@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <time.h>
 //#include <sched.h>
 
 
@@ -131,7 +132,7 @@ void SN_SagePixelReceiver::run() {
 
 
 	// network recv latency
-	struct timeval lats, late;
+//	struct timeval lats, late;
 	struct rusage ru_start, ru_end;
 	if(perf) {
 		perf->getRecvTimer().start(); //QTime::start()
@@ -172,7 +173,32 @@ void SN_SagePixelReceiver::run() {
 			}
 		}
 
-		// recv header
+		ssize_t totalread = 0;
+		ssize_t read = 0;
+
+
+		if (_usePbo) {
+			// wait for glMapBufferARB
+			pthread_mutex_lock(_pboMutex);
+			while(!__bufferMapped) {
+//				qDebug() << "thread waiting ..";
+				pthread_cond_wait(_pboCond, _pboMutex);
+
+                qreal adjustment = 1000 * ((1.0 / perf->getAdjustedFps()) - (1.0 / perf->getExpetctedFps())); // millisecond
+
+				if ( adjustment > 0 ) {
+					// adding delay to respect the adjusted quality
+					QThread::msleep( (unsigned long)adjustment );
+                }
+			}
+			bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
+//			qDebug() << "thread writing to" << _pboBufIdx << bufptr;
+		}
+
+
+//		gettimeofday(&lats, 0);
+
+        // recv header
 		/*
 		read = recv(socket, (void *)header.data(), header.size(), MSG_WAITALL);
 		if ( read == -1 ) {
@@ -188,25 +214,6 @@ void SN_SagePixelReceiver::run() {
 		sscanf(header.constData(), "%d %d %d %d", &fnum, &pixelSize, &memWidth, &bufSize);
 		qDebug("PixelReceiver::%s() : received block header [%s]", __FUNCTION__, header.constData());
 		*/
-
-
-		ssize_t totalread = 0;
-		ssize_t read = 0;
-
-
-		if (_usePbo) {
-			// wait for glMapBufferARB
-			pthread_mutex_lock(_pboMutex);
-			while(!__bufferMapped) {
-//				qDebug() << "thread waiting ..";
-				pthread_cond_wait(_pboCond, _pboMutex);
-			}
-			bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
-//			qDebug() << "thread writing to" << _pboBufIdx << bufptr;
-		}
-
-
-		gettimeofday(&lats, 0);
 
 		// PIXEL RECEIVING
 		while (totalread < byteCount ) {
@@ -260,10 +267,11 @@ void SN_SagePixelReceiver::run() {
 			/***************************************/
 		}
 
-		gettimeofday(&late, 0);
+//		gettimeofday(&late, 0);
 
 
 		/**********************************************/ // scheduling with wait condition
+        /*
 		if (s->value("system/scheduler").toBool()) {
 			if ( QString::compare(s->value("system/scheduler_type").toString(), "SMART", Qt::CaseInsensitive) == 0) {
 				_mutex.lock();
@@ -277,21 +285,16 @@ void SN_SagePixelReceiver::run() {
 				if ( adjustment > 0 ) {
 					// adding delay to respect the adjusted quality
 					QThread::msleep( (unsigned long)adjustment );
+
+//                    struct timespec delay;
+//                    delay.tv_sec = 0;
+//                    delay.tv_nsec = adjustment * 1000000; // nano sec
+//                    nanosleep(&delay, 0);
 				}
 			}
 		}
+        */
 		/********************************************/
-
-		/*********************************/
-//		qreal adjustment = (1.0 / perf->getAdjustedFps()) - (1.0 / perf->getExpetctedFps()); // second
-//		adjustment *= 1000.0; // millisecond
-//		if ( adjustment >= 1 ) {
-//			// adding delay
-//			QThread::msleep( (unsigned long)adjustment );
-//		}
-		/*************************************/
-
-
 
 
 		if (perf) {
@@ -301,10 +304,14 @@ void SN_SagePixelReceiver::run() {
 			getrusage(RUSAGE_SELF, &ru_end);
 #endif
 
-			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001);
+//			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001);
 
+            //
 			// calculate
-			perf->updateObservedRecvLatency(read, networkrecvdelay, ru_start, ru_end);
+            // perfMon->recvTimer will be restarted in this function
+            //
+			perf->updateObservedRecvLatency(read, 0, ru_start, ru_end);
+
 			ru_start = ru_end;
 		}
 	} /*** end of receiving loop ***/

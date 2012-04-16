@@ -117,6 +117,7 @@ void fsManagerMsgThread::sendSailMsg(OldSage::sageMessage &msg) {
         */
 //	msg.setDest(sageappid);
 	send(socket, (char *)msg.getBuffer(), msg.getBufSize(), 0);
+//    qDebug() << "fsmThread::sendSailMsg() : msg sent" << QString(msg.getBuffer());
 //	msg.destroy();
 }
 

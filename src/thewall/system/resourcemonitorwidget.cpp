@@ -66,12 +66,12 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Priority
 
 
 	/**
-	  per widget perf data table on the bottom right
+	  per widget performance data table on the bottom right.
 	 **/
 	ui->perAppPerfTable->setColumnCount(6); // app id,  priority, cpu usage, curr recv FPS, curr quality, desired quality
 	ui->perAppPerfTable->setRowCount(0);
 	QStringList headers;
-	headers << "Id" << "Priority" << "CurrRecvFPS" << "CPUusage" << "Observed Q" << "Adjusted Q";
+	headers << "Id" << "Priority" << "CurrRecvFPS" << "CPU %" << "Cur Obsrvd.Q." << "Adjusted Q";
 	ui->perAppPerfTable->setHorizontalHeaderLabels(headers);
 
 	/**
@@ -111,6 +111,13 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Priority
     hlayout->addWidget(_priorityHistogramPlot);
     hlayout->addWidget(_qualityCurvePlot);
     ui->tablePlotVLayoutOnTheRight->addLayout(hlayout);
+
+    // tablePlotVLayoutOnTheRight has
+
+    // 0 perAppPerfTable
+    // 1 perAppPriorityTable
+    // 2 priorityGridFrame
+    // 3 QWT graphs
 #endif
 
 	/**
@@ -181,6 +188,8 @@ void ResourceMonitorWidget::on_printDataBtn_clicked()
         }
     }
     else {
+//        QString fname = QFileDialog::getSaveFileName(this);
+
         if (ui->dataFileName_lineedit->text().isEmpty()) {
             QMessageBox::critical(this, "Error", "Invalid filename");
         }
@@ -382,7 +391,9 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 				item->setData(Qt::DisplayRole, rw->perfMon()->getCurrRecvFps());
 				break;
 			case 3:
-				item->setData(Qt::DisplayRole, rw->perfMon()->getCpuUsage());
+				item->setData(Qt::DisplayRole, rw->perfMon()->getCpuUsage() * 100);
+//                item->setData(Qt::DisplayRole, rw->perfMon()->getAvgRecvFps());
+
 				break;
 			case 4:
 				item->setData(Qt::DisplayRole, rw->observedQuality());
@@ -416,7 +427,7 @@ void ResourceMonitorWidget::refresh() {
 
 
 	/***
-	  per CPU load
+	  per CPU load on the left
 	  */
 	refreshCPUdata();
 
@@ -549,13 +560,13 @@ void ResourceMonitorWidget::buildPerCpuHLayouts() {
 #ifdef USE_QWT
 void ResourceMonitorWidget::updatePriorityHistogram() {
 
-    QList<SN_RailawareWidget *>::iterator it;
-    QList<SN_RailawareWidget *> applist = _rMonitor->getWidgetList();
+    QList<SN_RailawareWidget *>::const_iterator it;
+    const QList<SN_RailawareWidget *> applist = _rMonitor->getWidgetList();
 
 
     QMap<int, int> rawdata; // priority, # app
 
-    for (it=applist.begin(); it!=applist.end(); it++) {
+    for (it=applist.constBegin(); it!=applist.constEnd(); it++) {
         SN_RailawareWidget *rw = (*it);
         Q_ASSERT(rw);
         int priority = rw->priority();
@@ -589,12 +600,12 @@ void ResourceMonitorWidget::updatePriorityHistogram() {
 }
 
 void ResourceMonitorWidget::updateQualityCurve() {
-    QList<SN_RailawareWidget *>::iterator it;
-    QList<SN_RailawareWidget *> applist = _rMonitor->getWidgetList();
+    QList<SN_RailawareWidget *>::const_iterator it;
+    const QList<SN_RailawareWidget *> applist = _rMonitor->getWidgetList();
 
     QMultiMap<int, double> rawdata; // priority, quality
 
-    for (it=applist.begin(); it!=applist.end(); it++) {
+    for (it=applist.constBegin(); it!=applist.constEnd(); it++) {
         SN_RailawareWidget *rw = (*it);
         Q_ASSERT(rw);
         int priority = rw->priority();

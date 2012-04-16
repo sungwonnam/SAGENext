@@ -10,14 +10,14 @@ PerfMonitor::PerfMonitor(QObject *parent)
     : QObject(parent)
     , _widget(static_cast<SN_BaseWidget *>(parent))
 
-	, recvFrameCount(0)
+	, _recvFrameCount(0)
     , currRecvLatency(0.0)
     , avgRecvLatency(0.0)
     , aggrRecvLatency(0.0)
-    , currRecvFps(0.0)
-    , aggrRecvFps(0.0)
-    , avgRecvFps(0.0)
-    , currBandwidth(0.0)
+    , _currEffectiveFps(0.0)
+    , _aggrEffectiveFps(0.0)
+    , _avgEffectiveFps(0.0)
+    , _currEffectiveBW(0.0)
     , _requiredBandwidth(0.0)
 
 	, drawCount(0),
@@ -52,13 +52,15 @@ PerfMonitor::PerfMonitor(QObject *parent)
 
 	_ts_currframe(0.0),
 	_ts_nextframe(0.0),
-	_deadline_missed(0.0),
+	_deadline_missed(0.0)
 
-	cpuUsage(0.0),
-	ruend_nvcsw(0),
-	ruend_nivcsw(0),
-	ruend_maxrss(0),
-	ruend_minflt(0)
+    , _cpuTimeSpent(0.0)
+    , _cpuTimeRequired(0.0)
+    , cpuUsage(0.0)
+    , ruend_nvcsw(0)
+    , ruend_nivcsw(0)
+    , ruend_maxrss(0)
+    , ruend_minflt(0)
 {
 	if ( _widget->widgetType() == SN_BaseWidget::Widget_RealTime) {
 		// set initial avgRecvLatency
@@ -72,7 +74,7 @@ PerfMonitor::PerfMonitor(QObject *parent)
 
 void PerfMonitor::printData() const {
 	// avgRecvLatency,  avgConvDelay,  avgDrawLatency,  avgRecvFps, avgDispFps, recvFpsVariance , avgAbsDeviation, recvFpsStdDeviation
-	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << avgRecvFps << avgDispFps  << recvFpsVariance << avgAbsDeviation << recvFpsStdDeviation;
+	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << _avgEffectiveFps << avgDispFps  << recvFpsVariance << avgAbsDeviation << recvFpsStdDeviation;
 }
 
 void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, rusage rustart, rusage ruend) {
@@ -86,55 +88,59 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 		return;
 	}
 
-	/** ASSUMES recvTimer.start() had been called **/
+    ++_recvFrameCount;
+
+    /***
+	  The netlatency is network pixel receive latency only (recv() system call).
+	  Therefore this can't be used to calculate observed frame rate.
+	****/
+	currRecvLatency = netlatency; // in second
+
+
+    /**
+      *
+	  * ASSUMES recvTimer.start() had been called once
+      *
+      */
 	int elapsed = recvTimer.restart(); // millisecond
 //	int elapsed = recvTimer.elapsed(); // millisecond
 
-	/***
-	  observed delay includes recv() latency plus any delay introduced until subsequent recv().
-	  Therefore, this is the FPS that user perceives.
+
+    /**
+      This is the total delay of a single iteration of a worker thread.
+	  Therefore, this could be the FPS that user perceives.
 	  **/
 	qreal observed_delay = (qreal)elapsed * 0.001; // to second
 
 
-
-	++recvFrameCount;
-
-
-
-//	currRecvLatency  = (qreal)elapsed * 0.001; // to second
-
-	/***
-	  The netlatency is network pixel receive latency only (recv() system call).
-	  Therefore this can't be used to calculate observed frame rate.
-	****/
-	currRecvLatency = netlatency;
-
-
-
-	// is calculated with network latency + delay enforced by scheduler
-    qreal bwtemp = (byteread * 8.0) / observed_delay; // bps
-    bwtemp /= 1000000.0; // Mbps
+    //
+	// The bandwidth (in Mbps) I'm currently consuming
+    //
+    qreal bwtemp = (byteread * 8.0) / (observed_delay * 1000000.0); // Mbps
     if ( bwtemp <= _requiredBandwidth)
-        currBandwidth = bwtemp;
+        _currEffectiveBW = bwtemp;
     else {
         // perhaps measurement error so discard the data measured
-        currBandwidth = _requiredBandwidth;
+        _currEffectiveBW = _requiredBandwidth;
     }
+
+//    _recentTenBandwidth.push_front(_currEffectiveBW);
+//    if (_recentTenBandwidth.size() > 10)
+//        _recentTenBandwidth.removeLast();
 
 
     //
     // fps that user perceives
     //
-	currRecvFps = 1.0 / observed_delay; // frame per second
+	_currEffectiveFps = 1.0 / observed_delay; // frame per second
 //	if ( currRecvFps > peakRecvFps )
 //		peakRecvFps = currRecvFps;
 
 	// deviation from expectedFps
-	qreal temp = expectedFps - currRecvFps;
+	qreal temp = expectedFps - _currEffectiveFps;
 	currAbsDeviation = (temp > 0) ? temp : 0;
 	//	fprintf(stderr, "%.2f\n", currAbsDeviation);
-	temp = adjustedFps - currRecvFps;
+	temp = adjustedFps - _currEffectiveFps;
 	currAdjDeviation = (temp > 0) ? temp : 0;
 
 
@@ -158,22 +164,22 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 
 
 	unsigned int skip = 200;
-	if ( recvFrameCount > skip ) {
+	if ( _recvFrameCount > skip ) {
 		aggrRecvLatency += currRecvLatency;
-		avgRecvLatency = aggrRecvLatency / (qreal)(recvFrameCount-skip);
+		avgRecvLatency = aggrRecvLatency / (qreal)(_recvFrameCount-skip);
 
 		/* observed fps */
-		aggrRecvFps += currRecvFps;
-		avgRecvFps = aggrRecvFps / (qreal)(recvFrameCount- skip);
+		_aggrEffectiveFps += _currEffectiveFps;
+		_avgEffectiveFps = _aggrEffectiveFps / (qreal)(_recvFrameCount- skip);
 
 		/* average absolute deviation */
 		aggrAbsDeviation += currAbsDeviation;
-		avgAbsDeviation = aggrAbsDeviation / (qreal)(recvFrameCount- skip);
+		avgAbsDeviation = aggrAbsDeviation / (qreal)(_recvFrameCount- skip);
 
 
 		/* variance Var(X0 = E[(X-u)2] */
-		aggrRecvFpsVariance += pow(currRecvFps - avgRecvFps, 2);
-		recvFpsVariance = aggrRecvFpsVariance / (qreal)(recvFrameCount - skip);
+		aggrRecvFpsVariance += pow(_currEffectiveFps - _avgEffectiveFps, 2);
+		recvFpsVariance = aggrRecvFpsVariance / (qreal)(_recvFrameCount - skip);
 
 		/* standard deviation */
 		recvFpsStdDeviation = sqrt(recvFpsVariance);
@@ -189,7 +195,12 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 	double usrtime = ((double)ruend.ru_utime.tv_sec + 0.000001*(double)ruend.ru_utime.tv_usec) - ((double)rustart.ru_utime.tv_sec + 0.000001 * (double)rustart.ru_utime.tv_usec);
 
 	// ratio of time spent actually doing something to the total time spent
-	double cutemp = (systime + usrtime) / observed_delay;
+    _cpuTimeSpent = 1000000 * (systime + usrtime); // in microsecond
+
+    _cpuTimeRequired = qMax(_cpuTimeRequired, _cpuTimeSpent);
+
+
+    double cutemp = (systime + usrtime) / observed_delay;
 	if(cutemp > 0) cpuUsage = cutemp;
 //	fprintf(stderr, "system %.4f, usrtime %.4f, currLatency %.4f\n", systime*1000.0, usrtime*1000.0, currRecvLatency*1000.0);
 
@@ -293,14 +304,14 @@ qreal PerfMonitor::updateEQDelay() {
 }
 
 void PerfMonitor::reset() {
-	recvFrameCount = 0;
+	_recvFrameCount = 0;
 	currRecvLatency =0.0;
 	avgRecvLatency = 1.0 / expectedFps; // set default
 	aggrRecvLatency = 0.0;
-	currRecvFps = 0.0;
-	aggrRecvFps = 0.0;
-	avgRecvFps = 0.0;
-	currBandwidth = 0.0;
+	_currEffectiveFps = 0.0;
+	_aggrEffectiveFps = 0.0;
+	_avgEffectiveFps = 0.0;
+	_currEffectiveBW = 0.0;
 
 	drawCount = 0;
 	currDrawLatency = 0.0;

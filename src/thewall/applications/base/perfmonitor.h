@@ -47,6 +47,8 @@ public:
 	qreal updateDrawLatency();
 
 	/*!
+      The delay of updating widget's contents to display
+
 	  If OpenGL, delay of binding new texture
 	  else delay of converting QImage to QPixmap
 	  */
@@ -90,14 +92,20 @@ public:
 	inline QTime & getUpdtTimer() { return updateTimer; }
 	inline QTime & getEqTimer() {return eqTimer;}
 
-	inline quint64 getRecvCount() const {return recvFrameCount;}
+	inline quint64 getRecvCount() const {return _recvFrameCount;}
 	inline quint64 getDrawCount() const {return drawCount;}
 
+    /*!
+      This is network latency (recv() syscalls)
+      */
 	inline qreal getCurrRecvLatency() const { return currRecvLatency; }
 	inline qreal getAvgRecvLatency() const { return avgRecvLatency; }
 
-	inline qreal getCurrRecvFps() const { return currRecvFps; }
-	inline qreal getAvgRecvFps() const { return avgRecvFps; }
+    /*!
+      This is 1 / (network latency + app's whatever delay)
+      */
+	inline qreal getCurrRecvFps() const { return _currEffectiveFps; }
+	inline qreal getAvgRecvFps() const { return _avgEffectiveFps; }
 //	inline qreal getPeakFps() const { return peakRecvFps; }
 
 	inline void setExpectedFps(qreal f) {expectedFps = f;}
@@ -124,7 +132,7 @@ public:
     /// Bandwidth
     ///
 
-	inline qreal getCurrBandwidthMbps() const {return currBandwidth;}
+	inline qreal getCurrBandwidthMbps() const {return _currEffectiveBW;}
 
     /*!
       Returns the required bandwidth to ensure the percentage of expected quality of the application.
@@ -169,6 +177,8 @@ public:
 	inline qreal ts_nextframe() const {return _ts_nextframe;}
 //	inline qreal deadline_miseed() const {return _deadline_missed;}
 
+    inline qreal getCpuTimeSpent() const {return _cpuTimeSpent;}
+
 	inline qreal getCpuUsage() const {return cpuUsage;}
 //	inline long getStartNvcsw() const {return rustart_nvcsw;}
 //	inline long getStartNivcsw() const {return rustart_nivcsw;}
@@ -192,7 +202,7 @@ private:
 	/*!
 	  * This counter increments whenever a frame received. This tells how many frames have received from network.
 	  */
-	quint64 recvFrameCount;
+	quint64 _recvFrameCount;
 
 	/*!
 	  * network receiving delay (Only recv() latency) in second
@@ -202,13 +212,13 @@ private:
 	qreal aggrRecvLatency;
 
 	/*!
-	  * Tells frame receiving rate. This is not actual display frame rate.
+	  Tells frame receiving rate. This might not actual display frame rate.
 	  This FPS is calculated with ObservedDelay.
 	  ObservedDelay = network recv() delay + any other delay during frame receive
 	  */
-	qreal currRecvFps;
-	qreal aggrRecvFps;
-	qreal avgRecvFps;
+	qreal _currEffectiveFps;
+	qreal _aggrEffectiveFps;
+	qreal _avgEffectiveFps;
 
 	/*!
 	  This is calculated from observed frame rate. (Mbps)
@@ -216,7 +226,9 @@ private:
 	  The current bandwidth is calculated using byteRead (frame size in Byte) and ObservedDelay.
 	  ObservedDelay = network recv() delay + any other delay during frame receive
 	  */
-	qreal currBandwidth;
+	qreal _currEffectiveBW;
+
+    QLinkedList<qreal> _recentTenBandwidth;
 
 
 
@@ -375,8 +387,20 @@ private:
 
 
 
+    /*!
+      Cpu time spent in kernel mode + Cpu time spent in user mode
+      SysTime + UserTime (in microsecond)
+      */
+    qreal _cpuTimeSpent;
 
-	/**
+    /*!
+      The CPU time required (in microsecond) to achieve 100% performance
+      */
+    qreal _cpuTimeRequired;
+
+	/*!
+      (Systime + UsrTime ) / observed_delay
+
 	  * please multiply this by 100 to get percentage
 	  */
 	qreal cpuUsage;

@@ -13,7 +13,7 @@ class SN_Priority : public QObject
 public:
 	explicit SN_Priority(SN_BaseWidget *widget, QObject *parent = 0);
 
-	enum IntrType {NOINTR, MOVE, RESIZE, CLICK};
+	enum IntrType {NOINTR, MOVE, RESIZE, CLICK, CONTENTS};
 
 	inline qint64 timeLastInteracted() const {return _timeLastIntr;}
 	inline IntrType lastInteractionType() const {return _typeLastIntr;}

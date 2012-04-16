@@ -973,7 +973,8 @@ void SN_ResourceMonitor::printData_AppPerColumn() {
         textout << "|";
         textout << rw->observedQuality();
         textout << "|";
-        textout << rw->demandedQuality();
+//        textout << rw->demandedQuality();
+        textout << rw->perfMon()->getCpuTimeSpent();
 
 
 		if (it + 1 == _widgetMap.constEnd()) {
