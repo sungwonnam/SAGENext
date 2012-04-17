@@ -172,7 +172,7 @@ void SN_ProcessorNode::printOverhead()  {
 			qDebug("ProcessorNode::%s() : Processor %d, app %llu [%.2f fps, %.2f Mbps, %.2f ms, %.2f ms, %.2f fps]", __FUNCTION__
 			       , id
 			       , widget->globalAppId()
-			       , perf->getCurrRecvFps()
+			       , perf->getCurrEffectiveFps()
 			       , perf->getCurrBandwidthMbps()
 			       , perf->getCurrConvDelay() * 1000.0
 			       , perf->getCurrDrawLatency() * 1000.0
@@ -243,7 +243,7 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
     , procVec(0)
     , settings(s)
     , _theScene(scene)
-    , schedcontrol(0)
+    , _schedcontrol(0)
     , _pGrid(0)
     , numaInfo(0)
     , _totalBWAchieved_Mbps(0.0)
@@ -350,9 +350,9 @@ SN_ResourceMonitor::~SN_ResourceMonitor() {
         delete _rMonWidget;
 	}
 
-	if (schedcontrol) {
-		schedcontrol->killScheduler();
-		delete schedcontrol;
+	if (_schedcontrol) {
+		_schedcontrol->killScheduler();
+		delete _schedcontrol;
 	}
 
 	if (procVec) {
@@ -478,6 +478,11 @@ void SN_ResourceMonitor::buildSimpleProcList() {
 //	rwlock.unlock();
 //}
 
+void SN_ResourceMonitor::setScheduler(SN_SchedulerControl *sc) {
+    Q_ASSERT(sc);
+    _schedcontrol = sc;
+    QObject::connect(this, SIGNAL(dataRefreshed()), _schedcontrol, SIGNAL(readyToSchedule()));
+}
 
 void SN_ResourceMonitor::refresh() {
 /*
@@ -733,8 +738,8 @@ int SN_ResourceMonitor::assignProcessor(SN_RailawareWidget *rw) {
 int SN_ResourceMonitor::assignProcessor() {
 
 	/* pause scheduler */
-	if(schedcontrol) {
-		schedcontrol->killScheduler();
+	if(_schedcontrol) {
+		_schedcontrol->killScheduler();
 	}
 
 	foreach (SN_RailawareWidget *w, widgetList) {
@@ -782,8 +787,8 @@ int SN_ResourceMonitor::assignProcessor() {
 
 
 	/* resume scheduler */
-	if(schedcontrol) {
-		schedcontrol->launchScheduler(settings->value("system/scheduler_type").toString());
+	if(_schedcontrol) {
+		_schedcontrol->launchScheduler(settings->value("system/scheduler_type").toString());
 	}
 
 	if (count != widgetList.size()) {
@@ -974,7 +979,7 @@ void SN_ResourceMonitor::printData_AppPerColumn() {
         textout << rw->observedQuality();
         textout << "|";
 //        textout << rw->demandedQuality();
-        textout << rw->perfMon()->getCpuTimeSpent();
+        textout << rw->perfMon()->getCpuTimeSpent_sec();
 
 
 		if (it + 1 == _widgetMap.constEnd()) {
@@ -1006,11 +1011,11 @@ void SN_ResourceMonitor::printPrelimDataHeader() {
 		qDebug() << "can't open prelim data file" << _dataFile.fileName();
 	}
 	QString dataHeader = "";
-	if ( schedcontrol && schedcontrol->isRunning() ) {
-		SN_SelfAdjustingScheduler *sas = static_cast<SN_SelfAdjustingScheduler *>(schedcontrol->scheduler());
+	if ( _schedcontrol && _schedcontrol->isRunning() ) {
+		SN_SelfAdjustingScheduler *sas = static_cast<SN_SelfAdjustingScheduler *>(_schedcontrol->scheduler());
 		dataHeader.append("Scheduler (");
 		// freq, sensitivity, aggression, greediness
-		dataHeader.append("Frequency: " + QString::number(schedcontrol->scheduler()->frequency()) );
+		dataHeader.append("Frequency: " + QString::number(_schedcontrol->scheduler()->frequency()) );
 		dataHeader.append(" Sensitivity: " + QString::number(sas->getQTH()));
 		dataHeader.append(" Aggression: " + QString::number(sas->getDecF()));
 		dataHeader.append(" Greediness: " + QString::number(sas->getIncF()));

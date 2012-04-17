@@ -82,9 +82,11 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
 	//
 	// Temporary
 	//
-	Q_ASSERT(infoTextItem);
-	infoTextItem->setFontPointSize(26);
-    drawInfo();
+    if (s->value("system/scheduler",false).toBool()) {
+        Q_ASSERT(infoTextItem);
+        infoTextItem->setFontPointSize(26);
+        drawInfo();
+    }
 }
 
 
@@ -269,7 +271,7 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
 qreal SN_SageStreamWidget::observedQuality() {
 	if (_perfMon) {
 		//qDebug() << _perfMon->getCurrRecvFps() << _perfMon->getExpetctedFps() << _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps();
-		return _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps(); // frame rate for now
+		return _perfMon->getCurrEffectiveFps() / _perfMon->getExpetctedFps(); // frame rate for now
 	}
 	else return -1;
 }
@@ -278,7 +280,7 @@ qreal SN_SageStreamWidget::observedQualityDemanded() {
 	//
 	// ratio of the current framerate to the ADJUSTED(demanded) framerate
 	//
-	return _perfMon->getCurrRecvFps() / _perfMon->getAdjustedFps();
+	return _perfMon->getCurrEffectiveFps() / _perfMon->getAdjustedFps();
 }
 
 
@@ -1281,7 +1283,7 @@ void SN_SageStreamWidget::updateInfoTextItem() {
 
 	QByteArray priorityText(256, '\0');
 	if(_priorityData) {
-		sprintf(priorityText.data(), "%llu\n%.2f (%hu, %hu, %.3f)"
+		sprintf(priorityText.data(), "%llu\n%.2f (Win %hu, Wal %hu, ipm %.3f)"
 		        , _globalAppId
                 , _priorityData->priority() /* qreal */
                 , _priorityData->evrToWin() /* unsigned short - quint16 */
@@ -1291,23 +1293,23 @@ void SN_SageStreamWidget::updateInfoTextItem() {
 	}
 
     QByteArray qualityText(256, 0);
-    sprintf(qualityText.data(), "\nReal [%.2f / 1.00]\nAdju [%.2f / %.2f]\n"
+    sprintf(qualityText.data(), "\nO %.2f / D %.2f"
             , observedQuality()
-            , observedQualityDemanded()
             , demandedQuality()
             );
 
     QByteArray perfText(256, 0);
-    qreal totaldelay = 1.0 / _perfMon->getCurrRecvFps(); // in second
+    qreal totaldelay = 1.0 / _perfMon->getCurrEffectiveFps(); // in second
     qreal cputime = _perfMon->getCpuUsage() * totaldelay; // in second
     cputime *= 1000; // millisecond
 
-    sprintf(perfText.data(), "%.2f / %.2f (%.2f)"
+    sprintf(perfText.data(), "\nC %.2f / A %.2f (E %.2f)\n%.3f / %.3f msec"
 //            , _appInfo->frameSizeInByte()
-//            , cputime
-            , _perfMon->getCurrRecvFps()
+            , _perfMon->getCurrEffectiveFps()
             , _perfMon->getAdjustedFps()
             , _perfMon->getExpetctedFps()
+            , _perfMon->getCpuTimeSpent_sec() * 1000.0
+            , 1000.0 / _perfMon->getCurrEffectiveFps()
 //            , _perfMon->getReqBandwidthMbps()
             );
 
@@ -1318,7 +1320,7 @@ void SN_SageStreamWidget::updateInfoTextItem() {
 
 		infoTextItem->setText(text);
 		infoTextItem->update();
-        infoTextItem->setScale(1.6);
+//        infoTextItem->setScale(1.6);
 	}
 }
 

@@ -131,17 +131,20 @@ void SN_SagePixelReceiver::run() {
 	}
 
 
-	// network recv latency
-//	struct timeval lats, late;
-	struct rusage ru_start, ru_end;
-	if(perf) {
-		perf->getRecvTimer().start(); //QTime::start()
+	// Actual time elapsed
+	struct timeval tvs, tve;
 
-#if defined(Q_OS_LINUX)
-		getrusage(RUSAGE_THREAD, &ru_start); // that of calling thread. Linux specific
-#elif defined(Q_OS_MAC)
-		getrusage(RUSAGE_SELF, &ru_start);
-#endif
+    // CPU time elapsed
+    struct timespec ts_start, ts_end;
+
+    if(perf && s->value("system/resourcemonitor",false).toBool()) {
+//		perf->getRecvTimer().start(); //QTime::start()
+
+        gettimeofday(&tvs, 0);
+
+        // #include <time.h>
+        // Link with -lrt
+        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_start);
 	}
 
 	int byteCount = appInfo->frameSizeInByte();
@@ -173,9 +176,6 @@ void SN_SagePixelReceiver::run() {
 			}
 		}
 
-		ssize_t totalread = 0;
-		ssize_t read = 0;
-
 
 		if (_usePbo) {
 			// wait for glMapBufferARB
@@ -183,18 +183,36 @@ void SN_SagePixelReceiver::run() {
 			while(!__bufferMapped) {
 //				qDebug() << "thread waiting ..";
 				pthread_cond_wait(_pboCond, _pboMutex);
-
-                qreal adjustment = 1000 * ((1.0 / perf->getAdjustedFps()) - (1.0 / perf->getExpetctedFps())); // millisecond
-
-				if ( adjustment > 0 ) {
-					// adding delay to respect the adjusted quality
-					QThread::msleep( (unsigned long)adjustment );
-                }
 			}
 			bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
 //			qDebug() << "thread writing to" << _pboBufIdx << bufptr;
 		}
 
+
+
+
+        if (s->value("system/scheduler",false).toBool()) {
+//            qreal adjustment = (1.0 / perf->getAdjustedFps()) - (1.0 / perf->getExpetctedFps()); // in second
+            qreal adjustment_msec = 1000.0 * (1.0/perf->getAdjustedFps());
+
+            if ( adjustment_msec > 0 ) {
+                // adding delay to respect the adjusted quality
+                QThread::msleep( (unsigned long)adjustment_msec );
+
+                /*
+                struct timespec request;
+                request.tv_sec = 0;
+                request.tv_nsec = (long)adjustment * 1e+9;
+                if ( clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &request, 0) != 0) {
+//                        perror("\n\nclock_nanosleep");
+                }
+                */
+
+            }
+        }
+
+        ssize_t totalread = 0;
+		ssize_t read = 0;
 
 //		gettimeofday(&lats, 0);
 
@@ -297,22 +315,25 @@ void SN_SagePixelReceiver::run() {
 		/********************************************/
 
 
-		if (perf) {
-#if defined(Q_OS_LINUX)
-			getrusage(RUSAGE_THREAD, &ru_end);
-#elif defined(Q_OS_MAC)
-			getrusage(RUSAGE_SELF, &ru_end);
-#endif
+		if (perf  && s->value("system/resourcemonitor",false).toBool()) {
 
-//			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001);
+            gettimeofday(&tve, 0);
+
+            qreal actualtime_second = ((double)tve.tv_sec + (double)tve.tv_usec * 1e-6) - ((double)tvs.tv_sec + (double)tvs.tv_usec * 1e-6);
+            tvs = tve;
+
+            clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_end);
+
+			qreal cputime_second = ((double)ts_end.tv_sec + (double)ts_end.tv_nsec * 1e-9) - ((double)ts_start.tv_sec + (double)ts_start.tv_nsec * 1e-9);
+            ts_start = ts_end;
+
 
             //
-			// calculate
-            // perfMon->recvTimer will be restarted in this function
+			// calculate delay, fps, cpu usage, everything...
+            // perfMon->recvTimer will be restarted in this function.
+            // So the delay calculated in this function includes blocking (which is forced by the pixel streamer) delay
             //
-			perf->updateObservedRecvLatency(read, 0, ru_start, ru_end);
-
-			ru_start = ru_end;
+			perf->updateDataWithLatencies(read, actualtime_second, cputime_second);
 		}
 	} /*** end of receiving loop ***/
 

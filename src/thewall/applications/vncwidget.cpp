@@ -383,18 +383,9 @@ void SN_VNCClientWidget::receivingThread() {
 	struct rusage ru_start, ru_end;
 
 	if(_perfMon) {
-		_perfMon->getRecvTimer().start(); //QTime::start()
-
-#if defined(Q_OS_LINUX)
-		getrusage(RUSAGE_THREAD, &ru_start); // that of calling thread. Linux specific
-#elif defined(Q_OS_MAC)
-		getrusage(RUSAGE_SELF, &ru_start);
-#endif
 	}
 
 	while (!_end) {
-
-
 
 		if ( _usePbo) {
 			Q_ASSERT(_pbomutex);
@@ -508,19 +499,13 @@ void SN_VNCClientWidget::receivingThread() {
 
 
 
-		if (_perfMon) {
+        if (_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
 			gettimeofday(&late, 0);
-#if defined(Q_OS_LINUX)
-			getrusage(RUSAGE_THREAD, &ru_end);
-#elif defined(Q_OS_MAC)
-			getrusage(RUSAGE_SELF, &ru_end);
-#endif
-			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001); // second
+			qreal actualdelay_sec = ((double)late.tv_sec + (double)late.tv_usec * 1e-6) - ((double)lats.tv_sec + (double)lats.tv_usec * 1e-6); // second
 
 			// calculate
-			_perfMon->updateObservedRecvLatency(vncclient->width * vncclient->height, networkrecvdelay, ru_start, ru_end);
+			_perfMon->updateDataWithLatencies(vncclient->width * vncclient->height, actualdelay_sec, 0);
 
-			ru_start = ru_end;
 			lats = late;
 		}
 

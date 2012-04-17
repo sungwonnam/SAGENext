@@ -22,14 +22,26 @@ SN_SchedulerControl::SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent
     , _scheduler(0)
 //    , _isRunning(false)
     , controlPanel(0)
+    , _sched_thread(new QThread)
 {
 //	qDebug("%s::%s() : %d scheduler have started", metaObject()->className(), __FUNCTION__, schedList.size());
 //	connect(resourceMonitor, SIGNAL(appRemoved(int)), this, SLOT(loadBalance()));
+
+     QObject::connect(_sched_thread, SIGNAL(started()), this, SIGNAL(schedulerStarted()));
+     QObject::connect(_sched_thread, SIGNAL(finished()), this, SIGNAL(schedulerFinished()));
+}
+
+SN_SchedulerControl::~SN_SchedulerControl() {
+    killScheduler();
+	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
 }
 
 bool SN_SchedulerControl::isRunning() {
     if (_scheduler) {
-        return _scheduler->isRunning();
+//        return _scheduler->isRunning();
+
+        if(_sched_thread)
+            return _sched_thread->isRunning();
     }
     return false;
 }
@@ -40,33 +52,72 @@ void SN_SchedulerControl::startScheduler() {
         return;
     }
 
+    /*
     _scheduler->setEnd(false);
     _scheduler->start();
+    */
+
+    Q_ASSERT(_sched_thread);
+
+    _scheduler->moveToThread(_sched_thread);
+    if ( ! QObject::connect(this, SIGNAL(readyToSchedule()), _scheduler, SLOT(doSchedule()), Qt::QueuedConnection)) {
+        qDebug() << "SN_SchedulerControl::startScheduler() : failed to connect doSchedule()";
+        return;
+    }
+
+    _sched_thread->start();
 }
 
 void SN_SchedulerControl::stopScheduler() {
+    /*
     if (_scheduler) {
         _scheduler->setEnd();
         _scheduler->wait();
         _scheduler->reset();
-//        _scheduler->wait();
+    }
+    */
+
+    if (_sched_thread) {
+        Q_ASSERT(_scheduler);
+        if ( ! QObject::disconnect(_scheduler, SLOT(doSchedule())) ) {
+            qDebug() << "SN_SchedulerControl::stopScheduler() : failed to disconnect doSchedule()";
+        }
+
+        if (_sched_thread->isRunning()) {
+            _sched_thread->quit();
+            _sched_thread->wait();
+            qDebug() << "SN_SchedulerControl::stopScheduler() : Scheduling thread finished";
+        }
+
+        _scheduler->reset();
     }
 }
 
 void SN_SchedulerControl::killScheduler() {
-	if(!_scheduler) return;
+    stopScheduler();
 
 	if (controlPanel) {
 		controlPanel->close();
 		delete controlPanel;
+        controlPanel = 0;
 	}
 
-    stopScheduler();
+    if (_sched_thread) {
+        delete _sched_thread;
+        _sched_thread = 0;
+    }
 
+    if (_scheduler) {
+        delete _scheduler;
+        _scheduler = 0;
+    }
+
+    /*
 	if (_scheduler->isRunning())
 		_scheduler->wait();
 	delete _scheduler;
 	_scheduler = 0;
+    */
 }
 
 void SN_SchedulerControl::toggleSchedulerStatus() {
@@ -86,10 +137,12 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 	_granularity = msec;
 	schedType = st;
 
+    /*
 	if (_scheduler && _scheduler->isRunning()) {
 		qCritical() << "SN_SchedulerControl::launchScheduler() : Scheduler is already running";
 		return -1;
 	}
+    */
 
 	switch(st) {
     case SN_SchedulerControl::ProportionalShare : {
@@ -105,7 +158,6 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
         if (!controlPanel)
             controlPanel = new QFrame;
         controlPanel->setLayout(hl);
-
 
         break;
     }
@@ -207,7 +259,9 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 
 
     if (start) {
-        _scheduler->start();
+
+        startScheduler();
+
         if (controlPanel) {
 
             if (_rMonitor->rMonWidget()) {
@@ -255,21 +309,6 @@ int SN_SchedulerControl::launchScheduler(bool start) {
 	return launchScheduler(schedType, _granularity, start);
 }
 
-SN_SchedulerControl::~SN_SchedulerControl() {
-
-//	setScheduleEnd(true);
-//	if ( futureWatcher.isRunning() ) {
-//		futureWatcher.waitForFinished();
-//	}
-
-	/** always destroy scheduler before resource monitor */
-//	for (int i=0; i<schedList.size(); ++i) {
-//		schedList.at(i)->setEnd(true);
-//		schedList.at(i)->wait();
-//	}
-	killScheduler();
-	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
-}
 
 bool SN_SchedulerControl::eventFilter(QObject *, QEvent *) {
 
@@ -431,23 +470,20 @@ void SN_ProportionalShareScheduler::reset() {
     for (it = wlist.begin(); it != wlist.end(); it++ ) {
         SN_RailawareWidget *rw = (*it);
         if (rw) {
+//            qDebug() << "SN_ProportionalShareScheduler::reset() : reset quality of" << rw->globalAppId();
             rw->setQuality(1.0);
         }
     }
 }
 
-void SN_ProportionalShareScheduler::run() {
-
-    qDebug() << "[[ Starting scheduling thread ]]";
-
-    while(!_end) {
-        QThread::msleep(_granularity);
-
-        doSchedule();
-    }
-
-    qDebug() << "[[ Scheduling thread finished ]]";
-}
+//void SN_ProportionalShareScheduler::run() {
+//    qDebug() << "[[ Starting scheduling thread ]]";
+//    while(!_end) {
+//        QThread::msleep(_granularity);
+//        doSchedule();
+//    }
+//    qDebug() << "[[ Scheduling thread finished ]]";
+//}
 
 void SN_ProportionalShareScheduler::doSchedule() {
     Q_ASSERT(rMonitor);
@@ -1301,7 +1337,7 @@ SMART_EventScheduler::SMART_EventScheduler(SN_ResourceMonitor *r, int granularit
 {
 //	proc = p;
 	workingSet.clear();
-	QThread::setTerminationEnabled(true);
+//	QThread::setTerminationEnabled(true);
 }
 
 

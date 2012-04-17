@@ -36,13 +36,6 @@ void WorkerThread::run() {
 	// init perf. monitor timer
 	//
 	if(_perfMon) {
-		_perfMon->getRecvTimer().start(); //QTime::start()
-
-#if defined(Q_OS_LINUX)
-		getrusage(RUSAGE_THREAD, &ru_start); // that of calling thread. Linux specific
-#elif defined(Q_OS_MAC)
-		getrusage(RUSAGE_SELF, &ru_start);
-#endif
 	}
 
 	writeData();
@@ -119,6 +112,7 @@ void WorkerThread::writeData() {
 		updateData();
 
 		if (_perfMon) {
+            /*
 #if defined(Q_OS_LINUX)
 			getrusage(RUSAGE_THREAD, &ru_end);
 #elif defined(Q_OS_MAC)
@@ -132,6 +126,7 @@ void WorkerThread::writeData() {
 			// So, QTimer::start() must have been called somewhere
 			_perfMon->updateObservedRecvLatency(_appInfo->frameSizeInByte(), latency, ru_start, ru_end);
 			ru_start = ru_end;
+            */
 		}
 	}
 }
@@ -931,6 +926,7 @@ void SN_CheckerGL_Old::_doInit() {
 	_init = true;
 
 	if(_perfMon) {
+        /*
 		_perfMon->getRecvTimer().start(); //QTime::start()
 
 #if defined(Q_OS_LINUX)
@@ -938,6 +934,7 @@ void SN_CheckerGL_Old::_doInit() {
 #elif defined(Q_OS_MAC)
 		getrusage(RUSAGE_SELF, &ru_start);
 #endif
+*/
 	}
 
 	qDebug() << "SN_Checker::_doInit() : starting recv thread";
@@ -1144,6 +1141,7 @@ void SN_CheckerGL_Old::_doRecvPixel() {
 
 
 	if (_perfMon) {
+        /*
 #if defined(Q_OS_LINUX)
 		getrusage(RUSAGE_THREAD, &ru_end);
 #elif defined(Q_OS_MAC)
@@ -1155,6 +1153,7 @@ void SN_CheckerGL_Old::_doRecvPixel() {
 		// calculate
 		_perfMon->updateObservedRecvLatency(_appInfo->frameSizeInByte(), networkrecvdelay, ru_start, ru_end);
 		ru_start = ru_end;
+        */
 	}
 
 //	qDebug() << red << green << blue;

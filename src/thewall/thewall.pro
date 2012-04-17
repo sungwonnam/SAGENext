@@ -17,7 +17,7 @@ TEMPLATE = app
 #INCLUDEPATH += $$WEBKITPATH/include/QtWebKit
 #LIBS += -L$$WEBKITPATH/lib -lQtWebKit
 
-LIBS += -lGL -lGLU
+LIBS += -lGL -lGLU -lrt
 
 # If unix (linux, mac)
 # use pkg-config

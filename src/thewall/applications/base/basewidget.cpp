@@ -880,7 +880,7 @@ void SN_BaseWidget::updateInfoTextItem()
 		        /*_perfMon->getCurrEqDelay() * 1000.0, _perfMon->getAvgEqDelay() * 1000.0,*/
 		        ,_perfMon->getCurrDrawLatency() * 1000.0 , _perfMon->getAvgDrawLatency() * 1000.0
 
-		        ,_perfMon->getCurrRecvFps(), _perfMon->getAvgRecvFps()
+		        ,_perfMon->getCurrEffectiveFps(), _perfMon->getAvgEffectiveFps()
 		        ,_perfMon->getCurrAbsDeviation(), _perfMon->getAvgAbsDeviation()
 		        ,_perfMon->getRecvFpsVariance()
 		        ,_perfMon->getCurrDispFps(), _perfMon->getAvgDispFps()

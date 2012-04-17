@@ -16,23 +16,11 @@ public:
 //	~PerfMonitor();
 
 	/*!
-	  * This function measures delay between subsequent frame receivings
-	  * recvTimer.restart() is called here
-	  * recvTimer.start() must be called somewhere before calling this function
-	  * It is converted to second and
-	  * all the private member variable is set
+      @param byteread : byte count of the frame
+      @param actualtime_sec : The delay (in second) of a frame
+      @param cputime_sec : CPU time (in second) spent for a frame
 	  */
-//	void updateRecvLatency(ssize_t read, struct rusage rus, struct rusage rue);
-
-
-	/*!
-	  System call recv() latency + delay enforced by scheduler. CPU usage is measured here as well.
-
-	  netlatency represents pure recv() delay and is passed from a caller.
-
-	  This function assumes the recvTimer.start() had called !
-	  */
-	void updateObservedRecvLatency(ssize_t byteread, qreal netlatency, struct rusage rus, struct rusage rue);
+	void updateDataWithLatencies(ssize_t byteread, qreal actualtime_sec, qreal cputime_sec);
 
 	/*!
 	  Increments updateCount and measure currDispFps, calculate avgDispFps
@@ -84,9 +72,7 @@ public:
 
 
 
-
-
-	inline QTime & getRecvTimer() { return recvTimer; }
+//	inline QTime & getRecvTimer() { return recvTimer; }
 	inline QTime & getDrawTimer() { return drawTimer; }
 	inline QTime & getDispTimer() { return dispTimer; }
 	inline QTime & getUpdtTimer() { return updateTimer; }
@@ -104,8 +90,8 @@ public:
     /*!
       This is 1 / (network latency + app's whatever delay)
       */
-	inline qreal getCurrRecvFps() const { return _currEffectiveFps; }
-	inline qreal getAvgRecvFps() const { return _avgEffectiveFps; }
+	inline qreal getCurrEffectiveFps() const { return _currEffectiveFps; }
+	inline qreal getAvgEffectiveFps() const { return _avgEffectiveFps; }
 //	inline qreal getPeakFps() const { return peakRecvFps; }
 
 	inline void setExpectedFps(qreal f) {expectedFps = f;}
@@ -177,7 +163,7 @@ public:
 	inline qreal ts_nextframe() const {return _ts_nextframe;}
 //	inline qreal deadline_miseed() const {return _deadline_missed;}
 
-    inline qreal getCpuTimeSpent() const {return _cpuTimeSpent;}
+    inline qreal getCpuTimeSpent_sec() const {return _cpuTimeSpent_sec;}
 
 	inline qreal getCpuUsage() const {return cpuUsage;}
 //	inline long getStartNvcsw() const {return rustart_nvcsw;}
@@ -197,7 +183,7 @@ private:
 	  A QTimer object to measure delay of recv() in stream receiver.
 	  This doesn't include swapBuffer delay
 	  */
-	QTime recvTimer;
+//	QTime recvTimer;
 
 	/*!
 	  * This counter increments whenever a frame received. This tells how many frames have received from network.
@@ -389,9 +375,9 @@ private:
 
     /*!
       Cpu time spent in kernel mode + Cpu time spent in user mode
-      SysTime + UserTime (in microsecond)
+      SysTime + UserTime (in second)
       */
-    qreal _cpuTimeSpent;
+    qreal _cpuTimeSpent_sec;
 
     /*!
       The CPU time required (in microsecond) to achieve 100% performance

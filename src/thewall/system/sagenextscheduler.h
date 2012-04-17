@@ -88,6 +88,15 @@ private:
 	  */
 	QFrame *controlPanel;
 
+    QThread *_sched_thread;
+
+signals:
+    void readyToSchedule();
+
+    void schedulerStarted();
+
+    void schedulerFinished();
+
 public slots:
     void startScheduler();
 
@@ -121,12 +130,12 @@ public slots:
 /*!
   Abstract scheduler class
   */
-class SN_AbstractScheduler : public QThread {
+class SN_AbstractScheduler : public QObject {
 	Q_OBJECT
 //	Q_PROPERTY(bool end READ isEnd WRITE setEnd)
 
 public:
-	explicit SN_AbstractScheduler(SN_ResourceMonitor *rmon, int granularity=2, QObject *parent=0) : QThread(parent), _end(false), proc(0), rMonitor(rmon), _granularity(granularity) {  }
+	explicit SN_AbstractScheduler(SN_ResourceMonitor *rmon, int granularity=2, QObject *parent=0) : QObject(parent), _end(false), proc(0), rMonitor(rmon), _granularity(granularity) {  }
 	virtual ~SN_AbstractScheduler();
 
 	inline bool isEnd() const {return _end;}
@@ -139,14 +148,13 @@ public:
       */
     virtual void reset() {}
 
-
 protected:
     bool _end;
 
 	/*!
 	  calls doSchedule every x msec. x is defined by granularity
 	  */
-    virtual void run() {}
+//    virtual void run() {}
 
 	/*!
 	  rail configuration
@@ -202,10 +210,6 @@ public:
     ~SN_ProportionalShareScheduler() {}
 
     void reset();
-
-protected:
-    void run();
-
 
 private slots:
     void doSchedule();

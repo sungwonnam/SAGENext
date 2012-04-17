@@ -197,7 +197,7 @@ public:
 	inline Numa_Info * getNumaInfo() const {return numaInfo;}
 
 
-	inline void setScheduler(SN_SchedulerControl *sc) {schedcontrol = sc;}
+	void setScheduler(SN_SchedulerControl *sc);
 
 	inline void setPriorityGrid(SN_PriorityGrid *p) {_pGrid = p;}
 
@@ -278,7 +278,7 @@ private:
 	/*!
 	  A pointer to the scheduler control object
 	  */
-	SN_SchedulerControl *schedcontrol;
+	SN_SchedulerControl *_schedcontrol;
 
 	/*!
 	  Priority Grid aka priority heatmap

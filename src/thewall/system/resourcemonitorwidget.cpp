@@ -388,7 +388,7 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 				item->setData(Qt::DisplayRole, rw->priority());
 				break;
 			case 2:
-				item->setData(Qt::DisplayRole, rw->perfMon()->getCurrRecvFps());
+				item->setData(Qt::DisplayRole, rw->perfMon()->getCurrEffectiveFps());
 				break;
 			case 3:
 				item->setData(Qt::DisplayRole, rw->perfMon()->getCpuUsage() * 100);

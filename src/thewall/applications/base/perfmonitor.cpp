@@ -54,7 +54,7 @@ PerfMonitor::PerfMonitor(QObject *parent)
 	_ts_nextframe(0.0),
 	_deadline_missed(0.0)
 
-    , _cpuTimeSpent(0.0)
+    , _cpuTimeSpent_sec(0.0)
     , _cpuTimeRequired(0.0)
     , cpuUsage(0.0)
     , ruend_nvcsw(0)
@@ -77,8 +77,9 @@ void PerfMonitor::printData() const {
 	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << _avgEffectiveFps << avgDispFps  << recvFpsVariance << avgAbsDeviation << recvFpsStdDeviation;
 }
 
-void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, rusage rustart, rusage ruend) {
+void PerfMonitor::updateDataWithLatencies(ssize_t byteread, qreal actualtime_sec, qreal cputime_sec) {
 
+    /*
 	if ( recvTimer.isNull() ) {
 		qWarning("PerfMonitor::%s() : recvTimer is null", __FUNCTION__);
 		return;
@@ -87,6 +88,7 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 		qWarning("PerfMonitor::%s() : recvTimer isn't valid", __FUNCTION__);
 		return;
 	}
+    */
 
     ++_recvFrameCount;
 
@@ -94,7 +96,7 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 	  The netlatency is network pixel receive latency only (recv() system call).
 	  Therefore this can't be used to calculate observed frame rate.
 	****/
-	currRecvLatency = netlatency; // in second
+//	currRecvLatency = netlatency; // in second
 
 
     /**
@@ -102,7 +104,7 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 	  * ASSUMES recvTimer.start() had been called once
       *
       */
-	int elapsed = recvTimer.restart(); // millisecond
+//	int elapsed = recvTimer.restart(); // millisecond
 //	int elapsed = recvTimer.elapsed(); // millisecond
 
 
@@ -110,13 +112,14 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
       This is the total delay of a single iteration of a worker thread.
 	  Therefore, this could be the FPS that user perceives.
 	  **/
-	qreal observed_delay = (qreal)elapsed * 0.001; // to second
+//	qreal observed_delay = (qreal)elapsed * 0.001; // to second
+
 
 
     //
 	// The bandwidth (in Mbps) I'm currently consuming
     //
-    qreal bwtemp = (byteread * 8.0) / (observed_delay * 1000000.0); // Mbps
+    qreal bwtemp = (byteread * 8.0) / (actualtime_sec * 1000000.0); // Mbps
     if ( bwtemp <= _requiredBandwidth)
         _currEffectiveBW = bwtemp;
     else {
@@ -124,24 +127,27 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
         _currEffectiveBW = _requiredBandwidth;
     }
 
-//    _recentTenBandwidth.push_front(_currEffectiveBW);
-//    if (_recentTenBandwidth.size() > 10)
-//        _recentTenBandwidth.removeLast();
-
 
     //
-    // fps that user perceives
+    // FPS that user perceives
     //
-	_currEffectiveFps = 1.0 / observed_delay; // frame per second
-//	if ( currRecvFps > peakRecvFps )
-//		peakRecvFps = currRecvFps;
+	_currEffectiveFps = 1.0 / actualtime_sec;
+    //peakRecvFps = currRecvFps;
 
 	// deviation from expectedFps
 	qreal temp = expectedFps - _currEffectiveFps;
 	currAbsDeviation = (temp > 0) ? temp : 0;
-	//	fprintf(stderr, "%.2f\n", currAbsDeviation);
+	//fprintf(stderr, "%.2f\n", currAbsDeviation);
 	temp = adjustedFps - _currEffectiveFps;
 	currAdjDeviation = (temp > 0) ? temp : 0;
+
+
+
+    //
+    // CPU time
+    //
+    _cpuTimeSpent_sec = cputime_sec;
+    cpuUsage = cputime_sec / actualtime_sec;
 
 
     /****
@@ -165,49 +171,42 @@ void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, 
 
 	unsigned int skip = 200;
 	if ( _recvFrameCount > skip ) {
-		aggrRecvLatency += currRecvLatency;
-		avgRecvLatency = aggrRecvLatency / (qreal)(_recvFrameCount-skip);
+//		aggrRecvLatency += currRecvLatency;
+//		avgRecvLatency = aggrRecvLatency / (qreal)(_recvFrameCount-skip);
 
 		/* observed fps */
 		_aggrEffectiveFps += _currEffectiveFps;
 		_avgEffectiveFps = _aggrEffectiveFps / (qreal)(_recvFrameCount- skip);
 
 		/* average absolute deviation */
-		aggrAbsDeviation += currAbsDeviation;
-		avgAbsDeviation = aggrAbsDeviation / (qreal)(_recvFrameCount- skip);
+//		aggrAbsDeviation += currAbsDeviation;
+//		avgAbsDeviation = aggrAbsDeviation / (qreal)(_recvFrameCount- skip);
 
 
 		/* variance Var(X0 = E[(X-u)2] */
-		aggrRecvFpsVariance += pow(_currEffectiveFps - _avgEffectiveFps, 2);
-		recvFpsVariance = aggrRecvFpsVariance / (qreal)(_recvFrameCount - skip);
+//		aggrRecvFpsVariance += pow(_currEffectiveFps - _avgEffectiveFps, 2);
+//		recvFpsVariance = aggrRecvFpsVariance / (qreal)(_recvFrameCount - skip);
 
 		/* standard deviation */
-		recvFpsStdDeviation = sqrt(recvFpsVariance);
+//		recvFpsStdDeviation = sqrt(recvFpsVariance);
 	}
 
 
 
 
 	// Time spent in operating system code on behalf of processes.
-	double systime = ((double)ruend.ru_stime.tv_sec + 0.000001*(double)ruend.ru_stime.tv_usec) - ((double)rustart.ru_stime.tv_sec + 0.000001 * (double)rustart.ru_stime.tv_usec);
+//	double systime = ((double)ruend.ru_stime.tv_sec + 0.000001*(double)ruend.ru_stime.tv_usec) - ((double)rustart.ru_stime.tv_sec + 0.000001 * (double)rustart.ru_stime.tv_usec);
 
 	// Time spent executing user instructions.
-	double usrtime = ((double)ruend.ru_utime.tv_sec + 0.000001*(double)ruend.ru_utime.tv_usec) - ((double)rustart.ru_utime.tv_sec + 0.000001 * (double)rustart.ru_utime.tv_usec);
+//	double usrtime = ((double)ruend.ru_utime.tv_sec + 0.000001*(double)ruend.ru_utime.tv_usec) - ((double)rustart.ru_utime.tv_sec + 0.000001 * (double)rustart.ru_utime.tv_usec);
 
 	// ratio of time spent actually doing something to the total time spent
-    _cpuTimeSpent = 1000000 * (systime + usrtime); // in microsecond
+//    _cpuTimeSpent = 1000000 * (systime + usrtime); // in microsecond
 
-    _cpuTimeRequired = qMax(_cpuTimeRequired, _cpuTimeSpent);
-
-
-    double cutemp = (systime + usrtime) / observed_delay;
-	if(cutemp > 0) cpuUsage = cutemp;
-//	fprintf(stderr, "system %.4f, usrtime %.4f, currLatency %.4f\n", systime*1000.0, usrtime*1000.0, currRecvLatency*1000.0);
-
-	ruend_nvcsw = ruend.ru_nvcsw;
-	ruend_nivcsw = ruend.ru_nivcsw;
-	ruend_maxrss = ruend.ru_maxrss;
-	ruend_minflt = ruend.ru_minflt;
+//	ruend_nvcsw = ruend.ru_nvcsw;
+//	ruend_nivcsw = ruend.ru_nivcsw;
+//	ruend_maxrss = ruend.ru_maxrss;
+//	ruend_minflt = ruend.ru_minflt;
 }
 
 
