@@ -246,7 +246,7 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 			// conversion at the mplayer is cheaper
 			// and image is converted to RGB using shader program
 			//
-		cmd.append(" -vo sage -nosound -loop 0 -sws 4 -framedrop ");
+		cmd.append(" -vo sage -nosound -loop 0 -sws 4 -framedrop -slave -quiet ");
 		cmd.append(filename);
 //		cmdargs << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" << "4" << "-identify" << filename;
 

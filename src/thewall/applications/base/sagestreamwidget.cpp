@@ -231,6 +231,7 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 
 
 int SN_SageStreamWidget::setQuality(qreal newQuality) {
+
     if ( newQuality > 1.0 ) {
 		_quality = 1.0;
 	}
@@ -256,6 +257,22 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
 //        QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::SAIL_FRAME_RATE), Q_ARG(QString, QString::number(adjustedfps)));
 
     //    QtConcurrent::run(_fsmMsgThread, &fsManagerMsgThread::sendSailMsg, OldSage::SAIL_FRAME_RATE, QString::number((int)adjustedFps));
+
+
+
+
+         ///
+         // Adjust speed of mplayer ??
+         // mplayer must be running with -slave option
+         ///
+         /*
+         if (_appInfo->executableName() == "mplayer" && _sailAppProc && _sailAppProc->state() == QProcess::Running) {
+             QString speed = "speed_set ";
+             speed.append(QString::number(_quality));
+             speed.append("\n");
+             _sailAppProc->write(qPrintable(speed));
+         }
+         */
 
         return adjustedfps;
     }
