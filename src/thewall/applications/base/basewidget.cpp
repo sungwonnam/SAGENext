@@ -30,6 +30,9 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	, _quality(1.0)
 	, _contextMenu(0)
 
+    , _isMoving(false)
+    , _isResizing(false)
+
     , _showInfoAction(0)
     , _hideInfoAction(0)
     , _minimizeAction(0)
@@ -68,6 +71,9 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	, _rMonitor(0)
 	, _quality(1.0)
 	, _contextMenu(0)
+
+    , _isMoving(false)
+    , _isResizing(false)
 
     , _showInfoAction(0)
     , _hideInfoAction(0)
@@ -664,6 +670,21 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
 	Q_UNUSED(btn);
 
 	setTopmost();
+
+    if (btn == Qt::LeftButton) {
+		if (resizeHandleRect().contains(point)) {
+            _isResizing = true;
+            _isMoving = false;
+        }
+        else {
+            _isResizing = false;
+
+            //
+            // This needs to be overriden by derived widget
+            //
+            _isMoving = true;
+        }
+    }
 }
 
 void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
@@ -672,38 +693,29 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
 	Q_UNUSED(btn);
 
 	// do nothing
+
+    _isMoving = false;
+    _isResizing = false;
 }
 
 void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
 	Q_UNUSED(pointer);
 
-	if (btn == Qt::LeftButton) {
-		if (resizeHandleRect().contains(point)) {
-			if (isWindow()) {
-				// do resize
-				resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);
-			}
-			else {
-				// do scale.
-				// For now, resizeHandleSceneRect is always bottom right corner of the widget
+    if (_isMoving) {
+        moveBy(pointerDeltaX, pointerDeltaY);
+    }
+    else if (_isResizing) {
 
-				//
-				// keep updating resize rectangle (QGraphicsRectItem)
-				// this rectangle will become invisible once the pointer releaed
-				//
-			}
-//			_intMon->setLastInteraction(InteractionMonitor::RESIZE);
-//			_intMon->setLastInteractionType(InteractionMonitor::RESIZE);
-		}
-		else {
-			//
-			// widget is moved with pointer dragging
-			//
-			moveBy(pointerDeltaX, pointerDeltaY);
-//			_intMon->setLastInteractionType(InteractionMonitor::MOVE);
-//			_intMon->setLastInteraction(InteractionMonitor::MOVE);
-		}
-	}
+        if (isWindow()) {
+            resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);
+        }
+        else {
+
+        }
+    }
+    else {
+
+    }
 }
 
 

@@ -231,6 +231,7 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 
 
 int SN_SageStreamWidget::setQuality(qreal newQuality) {
+    if (!_perfMon) return -1;
 
     if ( newQuality > 1.0 ) {
 		_quality = 1.0;
@@ -294,10 +295,13 @@ qreal SN_SageStreamWidget::observedQuality() {
 }
 
 qreal SN_SageStreamWidget::observedQualityDemanded() {
+    if (_perfMon) {
 	//
 	// ratio of the current framerate to the ADJUSTED(demanded) framerate
 	//
-	return _perfMon->getCurrEffectiveFps() / _perfMon->getAdjustedFps();
+        return _perfMon->getCurrEffectiveFps() / _perfMon->getAdjustedFps();
+    }
+    else return -1;
 }
 
 
@@ -537,7 +541,8 @@ void SN_SageStreamWidget::scheduleUpdate() {
 		return;
 	}
 
-	_perfMon->getUpdtTimer().start();
+//    if (_perfMon)
+//        _perfMon->getUpdtTimer().start();
 
 	if (_useOpenGL) {
 		glDisable(GL_TEXTURE_2D);
@@ -602,7 +607,8 @@ void SN_SageStreamWidget::scheduleUpdate() {
    //	}
 	}
 
-	_perfMon->updateUpdateDelay();
+//    if (_perfMon)
+//	_perfMon->updateUpdateDelay();
 
 	setScheduled(false); // reset scheduling flag for SMART scheduler
 
@@ -831,14 +837,16 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 	}
 
 //	qDebug() << "SN_SageStreamWidget : streamer connected. groupSize" << _appInfo->networkUserBufferLength() << "Byte. Framerate" << framerate << "fps";
-    _perfMon->setExpectedFps( (qreal)framerate );
-    _perfMon->setAdjustedFps( (qreal)framerate );
+    if (framerate > 0 && _perfMon) {
+        _perfMon->setPriori(true);
+        _perfMon->setExpectedFps( (qreal)framerate );
+        _perfMon->setAdjustedFps( (qreal)framerate );
 
-
-    /*!
-      A priori (in Mbps)
-      */
-    _perfMon->setRequiredBandwidthMbps( (_appInfo->frameSizeInByte() * 8 * (qreal)framerate) / 1000000.0 );
+        /*!
+          A priori (in Mbps)
+         */
+        _perfMon->setRequiredBandwidthMbps( (_appInfo->frameSizeInByte() * 8 * (qreal)framerate) / 1000000.0 );
+    }
 
 
     /* create double buffer if PBO is disabled */

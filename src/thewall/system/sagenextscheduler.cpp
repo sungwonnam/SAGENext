@@ -628,6 +628,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
 
                 //
                 // The amount of resource for THIS app to show X % of quality.
+                // !!! This assumes that an app provides its resource requirement !!!
                 //
                 qreal amount_needed_for_quality_X = rw->perfMon()->getReqBandwidthMbps( TheSizeOfBucket );
 

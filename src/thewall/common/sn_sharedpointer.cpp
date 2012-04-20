@@ -297,6 +297,13 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
 	}
 
 
+
+    //
+    // White pointer color
+    //
+    setBrush(Qt::white);
+
+
 	// note that pressEvent doesn't consider window frame
     if (!setAppUnderPointer(scenePos)) {
 		//qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
@@ -409,6 +416,12 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 			//
 		}
 	}
+
+
+    ///
+    // restore pointer color
+    //
+    setBrush(_color);
 }
 
 
@@ -499,6 +512,7 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 			*/
 		}
 
+
 		QGraphicsView *view = eventReceivingViewport(scenePos);
 		if ( !view ) {
 			qDebug() << "pointerClick: no view is available";
@@ -530,6 +544,13 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 			}
 		}
 	}
+
+
+    //
+    // Note that sagenextpointer will send PRESS -> CLICK for the pointer click
+    // There's no RELEASE !
+    //
+    setBrush(_color);
 }
 
 

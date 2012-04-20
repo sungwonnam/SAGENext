@@ -9,6 +9,7 @@
 PerfMonitor::PerfMonitor(QObject *parent)
     : QObject(parent)
     , _widget(static_cast<SN_BaseWidget *>(parent))
+    , _priori(false)
 
 	, _recvFrameCount(0)
     , currRecvLatency(0.0)

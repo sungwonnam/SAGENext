@@ -71,6 +71,9 @@ public:
 //	inline void setWidgetType(SN_BaseWidget::Widget_Type wt) {widgetType = wt;}
 
 
+    inline void setPriori(bool b = true) {_priori = b;}
+    inline bool priori() const {return _priori;}
+
 
 //	inline QTime & getRecvTimer() { return recvTimer; }
 	inline QTime & getDrawTimer() { return drawTimer; }
@@ -178,6 +181,11 @@ public:
 private:
 //	SN_BaseWidget::Widget_Type widgetType;
 	SN_BaseWidget *_widget;
+
+    /*!
+      Whether this app provided a priori
+      */
+    bool _priori;
 
 	/*!
 	  A QTimer object to measure delay of recv() in stream receiver.

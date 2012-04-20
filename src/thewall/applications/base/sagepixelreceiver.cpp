@@ -155,7 +155,7 @@ void SN_SagePixelReceiver::run() {
 	}
 
 	while(! _end ) {
-		if ( affInfo ) {
+		if ( affInfo && s->value("system/resourcemonitor",false).toBool()) {
 			if ( affInfo->isChanged() ) {
 				// apply new affinity;
 				//	qDebug("SagePixelReceiver::%s() : applying new affinity parameters", __FUNCTION__);

@@ -382,6 +382,13 @@ protected:
 
 
 
+        /*!
+          What's the purpose of mouse dragging ?
+          */
+        bool _isMoving;
+        bool _isResizing;
+
+
 
         /*!
           Derived class should implement paint()
