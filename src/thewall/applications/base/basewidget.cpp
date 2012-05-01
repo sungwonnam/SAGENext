@@ -32,6 +32,7 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 
     , _isMoving(false)
     , _isResizing(false)
+    , _resizeRectangle(new QGraphicsRectItem(this))
 
     , _showInfoAction(0)
     , _hideInfoAction(0)
@@ -74,6 +75,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 
     , _isMoving(false)
     , _isResizing(false)
+    , _resizeRectangle(new QGraphicsRectItem(this))
 
     , _showInfoAction(0)
     , _hideInfoAction(0)
@@ -203,6 +205,16 @@ void SN_BaseWidget::init()
 	infoTextItem->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 	//infoTextItem = new SwSimpleTextItem(settings->value("general/fontpointsize").toInt(), this);
 	infoTextItem->hide();
+
+
+//    _resizeRectangle->setFlag(QGraphicsItem::ItemStacksBehindParent);
+    _resizeRectangle->hide();
+    _resizeRectangle->setFlag(QGraphicsItem::ItemIsMovable, false);
+    _resizeRectangle->setFlag(QGraphicsItem::ItemIsSelectable, false);
+    _resizeRectangle->setAcceptedMouseButtons(0);
+    _resizeRectangle->setPen(QPen(QBrush(Qt::white), 10, Qt::DotLine));
+//    _resizeRectangle->setBrush(Qt::white);
+
 
 
 	//
@@ -615,7 +627,9 @@ void SN_BaseWidget::setTopmost()
 }
 
 
-
+/*!
+  rescaling won't change the boundingRectangle
+  */
 void SN_BaseWidget::reScale(int tick, qreal factor)
 {
 	qreal currentScale = scale();
@@ -652,11 +666,17 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 
 // This function will not change widget's size !!
 //	qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
+
+
 }
 
 QRectF SN_BaseWidget::resizeHandleRect() const
 {
 	QSizeF size(128, 128);
+
+    //
+    // bottom right corner of the window
+    //
 	QPointF pos( boundingRect().right() - size.width(), boundingRect().bottom() - size.height());
 //	return mapRectToScene(QRectF(pos, size));
 	return QRectF(pos, size);
@@ -675,13 +695,12 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
 		if (resizeHandleRect().contains(point)) {
             _isResizing = true;
             _isMoving = false;
+
+            _resizeRectangle->setRect(boundingRect());
+            _resizeRectangle->show();
         }
         else {
             _isResizing = false;
-
-            //
-            // This needs to be overriden by derived widget
-            //
             _isMoving = true;
         }
     }
@@ -692,29 +711,74 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
 	Q_UNUSED(point);
 	Q_UNUSED(btn);
 
-	// do nothing
-
     _isMoving = false;
+
+    if (_isResizing) {
+
+        //
+        // now resize
+        //
+        if (isWindow()) {
+            resize( _resizeRectangle->rect().size() );
+        }
+
+        //
+        // rescale
+        //
+        else {
+            qDebug() << _resizeRectangle->rect() << boundingRect() << size() << scale();
+            qreal se = _resizeRectangle->rect().width() * scale() / boundingRect().width();
+            setScale(se);
+        }
+
+        _resizeRectangle->hide();
+    }
     _isResizing = false;
+
+    // base implementation does nothing
 }
 
 void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
 	Q_UNUSED(pointer);
 
-    if (_isMoving) {
-        moveBy(pointerDeltaX, pointerDeltaY);
-    }
-    else if (_isResizing) {
+    if ( btn == Qt::LeftButton ) {
 
-        if (isWindow()) {
-            resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);
+        //
+        // move the window
+        //
+        if (_isMoving) {
+            moveBy(pointerDeltaX, pointerDeltaY);
         }
+
+        //
+        // resize/rescale window
+        //
+        else if (_isResizing) {
+
+            //
+            // show and resize the _resizeRectangle
+            //
+            QRectF rect = _resizeRectangle->rect();
+            if (isWindow()) {
+                rect.adjust(0, 0, pointerDeltaX, pointerDeltaY);
+            }
+            else {
+                qreal adjustment = 0.0;
+                if (size().width() < size().height()) {
+                    adjustment = pointerDeltaX / size().width();
+                }
+                else {
+                    adjustment = pointerDeltaY / size().height();
+                }
+                rect.adjust(0, 0, rect.width() * adjustment, rect.height() * adjustment);
+            }
+            _resizeRectangle->setRect(rect);
+        }
+
+
         else {
-
+            // do nothing in the base implementation
         }
-    }
-    else {
-
     }
 }
 

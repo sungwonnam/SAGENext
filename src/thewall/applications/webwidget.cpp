@@ -262,6 +262,11 @@ bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 }
 
 void SN_WebWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
+
+    //
+    // pointer button pressed on the content region
+    // so it's going to be mouse interaction with web page
+    //
     if (gwebview && gwebview->geometry().contains(point)) {
         _isMoving = false;
         _isResizing = false;

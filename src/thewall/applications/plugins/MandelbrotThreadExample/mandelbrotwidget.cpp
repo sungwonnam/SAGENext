@@ -140,15 +140,29 @@ void MandelbrotExample::wheelEvent(QGraphicsSceneWheelEvent *event)
 void MandelbrotExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn)
 {
     if (btn == Qt::LeftButton) {
+
+        //
+        // the rectangle of the content area
+        //
         QRectF content(15, 40, size().width()-30, size().height()-55);
+
+        //
+        // if the pointer button is pressed on the content region
+        // then this interaction isn't for window moving
+        //
         if (content.contains(point)) {
             lastDragPos = point.toPoint();
 
             //
-            // It's for interaction. Not window moving
+            // It's for interaction. Not for window moving
             //
             _isMoving = false;
         }
+
+        //
+        // if pointer button is pressed on the window frame
+        // keep the base implementatoin
+        //
         else {
             SN_BaseWidget::handlePointerPress(pointer, point, btn);
         }
@@ -159,6 +173,10 @@ void MandelbrotExample::handlePointerPress(SN_PolygonArrowPointer *pointer, cons
 //! [14]
 void MandelbrotExample::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier)
 {
+    //
+    // if the pointer press was on the content area
+    // then interact with the visualization
+    //
     if (!_isMoving && !_isResizing) {
 
         if (button == Qt::LeftButton) {
@@ -168,10 +186,7 @@ void MandelbrotExample::handlePointerDrag(SN_PolygonArrowPointer *pointer, const
         }
     }
     else {
-
-        if (button == Qt::LeftButton) {
-            SN_BaseWidget::handlePointerDrag(pointer, point, pointerDeltaX, pointerDeltaY, button, modifier);
-        }
+        SN_BaseWidget::handlePointerDrag(pointer, point, pointerDeltaX, pointerDeltaY, button, modifier);
     }
 }
 
@@ -190,6 +205,9 @@ void MandelbrotExample::handlePointerRelease(SN_PolygonArrowPointer *pointer, co
         }
     }
 
+    //
+    // _isMoving , _isResizing will be reset here
+    //
     SN_BaseWidget::handlePointerRelease(pointer, point, btn);
 }
 

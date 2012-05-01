@@ -89,6 +89,7 @@ void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const
 	qreal maxZ = 0.0;
 	TrackerItem *t = getTrackerItemUnderPoint(point);
 	if (t) {
+        _isMoving = false;
 
 		QMap<SN_PolygonArrowPointer *, TrackerItem *>::const_iterator it;
 		for (it=_dragTrackerMap.constBegin(); it!=_dragTrackerMap.constEnd(); it++) {
@@ -110,6 +111,9 @@ void MouseDragExample::handlePointerRelease(SN_PolygonArrowPointer *pointer, con
 	Q_UNUSED(btn);
 
 	_dragTrackerMap.erase(_dragTrackerMap.find(pointer));
+
+    _isMoving = false;
+    _isResizing = false;
 }
 
 void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {

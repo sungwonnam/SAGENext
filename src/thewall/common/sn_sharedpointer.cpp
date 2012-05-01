@@ -361,6 +361,7 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 			if (_scene->isOnAppRemoveButton(scenePos)) {
 				_scene->hoverAcceptingApps.removeAll(_basewidget);
 				_basewidget->close();
+                setBrush(_color);
 				return;
 
 //				if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {

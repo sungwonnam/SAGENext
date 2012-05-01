@@ -383,10 +383,26 @@ protected:
 
 
         /*!
-          What's the purpose of mouse dragging ?
+          If a pointer left button is pressed on the resizehandle, this flag is set
+          and mouse dragging will move the window.
+
+          Reimplment handlePointerPress() if you want to provide custom interaction. (See WebWidget & MandelbrotExample)
           */
         bool _isMoving;
+
+        /*!
+          If a pointer left button is pressed on the resizehandle, this flag is set
+          and mouse dragging will resize/rescale window
+          */
         bool _isResizing;
+
+
+        /*!
+          If pointer is draggin while _isResizing is set
+          then this rectangle will be shown.
+          Upon pointer releasing, window will be resized/rescaled based on the size of this rectangle
+          */
+        QGraphicsRectItem *_resizeRectangle;
 
 
 
