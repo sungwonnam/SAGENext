@@ -124,6 +124,11 @@ public:
 	inline qreal getCurrBandwidthMbps() const {return _currEffectiveBW;}
 
     /*!
+      Override the value calculated in updateDataWithLatencies()
+      */
+    inline void setCurrBandwidthMbpsManual(qreal r) {_currEffectiveBW = r;}
+
+    /*!
       Returns the required bandwidth to ensure the percentage of expected quality of the application.
       If percentage == 1.0 then the return value indicates the bandwidth required to make the application runs at full quality(speed)
 
@@ -183,7 +188,8 @@ private:
 	SN_BaseWidget *_widget;
 
     /*!
-      Whether this app provided a priori
+      Whether this app provided a priori.
+      constant frame rate periodic app will have this
       */
     bool _priori;
 
@@ -233,7 +239,6 @@ private:
       This can't be known for a best-effort application.
       */
     qreal _requiredBandwidth;
-
 
 
 

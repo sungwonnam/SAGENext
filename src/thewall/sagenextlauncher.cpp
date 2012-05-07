@@ -423,10 +423,11 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 			w = dpi->createInstance();
 
 			qDebug() << "SN_Launcher launching a plugin" << w;
-			w->setSettings(_settings);
+			w->setSettings(_settings); // SN_Priority will be created in here if system/scheduler is set
 			w->setGlobalAppId(_globalAppId++);
 			w->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_PLUGIN);
 			w->appInfo()->setFileInfo(filename);
+
 		}
 		else {
 			qDebug() << "SN_Launcher::launch() : MEDIA_TYPE_PLUGIN : dpi is null";
@@ -462,6 +463,14 @@ SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &scenepos) {
 			_scene->hoverAcceptingApps.push_back(w);
 		}
 		_scene->addItemOnTheLayout(w, scenepos);
+
+
+        if ( w->isSchedulable() ) {
+            if (_rMonitor) {
+                w->setRMonitor(_rMonitor);
+                _rMonitor->addSchedulableWidget(w);
+            }
+        }
 
 		//connect(this, SIGNAL(showInfo()), w, SLOT(drawInfo()));
 //		++_globalAppId; // increment only when widget is created successfully

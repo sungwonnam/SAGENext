@@ -12,6 +12,7 @@
 #include <QReadWriteLock>
 
 class QEvent;
+class SN_BaseWidget;
 class SN_RailawareWidget;
 class QGraphicsView;
 class QGraphicsScene;
@@ -40,7 +41,7 @@ public:
 	explicit SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent = 0);
 	~SN_SchedulerControl();
 
-    enum Scheduler_Type {ProportionalShare, DividerWidget, SelfAdjusting, DelayDistribution, SMART};
+    enum Scheduler_Type {ProportionalShare, DividerWidget, SelfAdjusting, DelayDistribution};
 
 	/*!
 	  qApp installs this eventFilter using qApp->installEventFileter(SagenextScheduler *) in main.cpp.
@@ -328,39 +329,6 @@ private slots:
 
 
 
-/*!
-  Partial implementation of SMART scheduler [Nieh and Lam 2003]
-  */
-class SMART_EventScheduler : public SN_AbstractScheduler {
-	Q_OBJECT
-public:
-	explicit SMART_EventScheduler(SN_ResourceMonitor *r, int granularity=2, QObject *parent=0);
-//	~SMART_EventScheduler();
-
-protected:
-//	void run();
-
-private:
-	/*!
-	  Scheduler always schedule from workingSet->top() until it isn't empty().
-	  Item in this container is sorted by deadline (ascending order)
-	  */
-	QList<SN_RailawareWidget *> workingSet;
-
-	/*!
-	  From the candidate set (processorNode->appList()) which is sorted by importance (priority, BVFT tuple),
-	  a new job (a new event) is inserted into working set in ascending earlist deadline order
-	  only when the new job wouldn't make more important jobs already in the working set miss their deadlines
-	  */
-	int insertIntoWorkingSet(SN_RailawareWidget *, qreal now);
-
-private slots:
-	/*!
-	  iterate over workingSet which is sorted by deadline
-	  */
-	void doSchedule();
-};
-
 
 /*!
   Resources are taken away from widget that has lower pirority than the fiducial widget
@@ -395,7 +363,7 @@ private:
 	qreal totalRedundantResource;
 
 
-	SN_RailawareWidget *fiducialWidget;
+	SN_BaseWidget *fiducialWidget;
 
 public:
 	void setQHighest(qreal qh) ;
@@ -414,23 +382,6 @@ private slots:
 
 
 
-
-
-/*!
-  Delay is distributed proportional to priority
-  Proportional Fairness
-
-  Quality * weight / SUM(weight);
-  */
-class DelayDistributionScheduler : public SN_AbstractScheduler {
-	Q_OBJECT
-public:
-	explicit DelayDistributionScheduler(SN_ResourceMonitor *r, int granularity = 1000, QObject *parent=0);
-
-private slots:
-	void doSchedule();
-
-};
 
 
 #endif // SAGENEXTSCHEDULER_H

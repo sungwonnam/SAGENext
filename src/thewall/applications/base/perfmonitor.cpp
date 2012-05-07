@@ -15,9 +15,11 @@ PerfMonitor::PerfMonitor(QObject *parent)
     , currRecvLatency(0.0)
     , avgRecvLatency(0.0)
     , aggrRecvLatency(0.0)
+
     , _currEffectiveFps(0.0)
     , _aggrEffectiveFps(0.0)
     , _avgEffectiveFps(0.0)
+
     , _currEffectiveBW(0.0)
     , _requiredBandwidth(0.0)
 
@@ -121,12 +123,22 @@ void PerfMonitor::updateDataWithLatencies(ssize_t byteread, qreal actualtime_sec
 	// The bandwidth (in Mbps) I'm currently consuming
     //
     qreal bwtemp = (byteread * 8.0) / (actualtime_sec * 1000000.0); // Mbps
-    if ( bwtemp <= _requiredBandwidth)
-        _currEffectiveBW = bwtemp;
-    else {
-        // perhaps measurement error so discard the data measured
-        _currEffectiveBW = _requiredBandwidth;
+
+    if (_priori) {
+        if (bwtemp <= _requiredBandwidth)
+            _currEffectiveBW = bwtemp;
+        else {
+            // perhaps measurement error so discard the data measured
+            _currEffectiveBW = _requiredBandwidth;
+        }
     }
+    else {
+         _currEffectiveBW = bwtemp;
+         if (_currEffectiveBW > _requiredBandwidth) {
+             _requiredBandwidth = _currEffectiveBW;
+         }
+    }
+
 
 
     //

@@ -68,6 +68,8 @@ qreal SN_Priority::computePriority(qint64 currTimeEpoch) {
 
 	_priority = weight_evrwin * visualfactor + ipm();
 
+//    qDebug() << "computePriority()" << weight_evrwin << visualfactor << ipm();
+
 	return _priority;
 }
 

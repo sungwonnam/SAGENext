@@ -29,10 +29,6 @@ public:
 
 	virtual ~SN_RailawareWidget();
 
-        /*!
-          Resource Monitor may want this to reschedule an app
-          */
-	inline AffinityInfo * affInfo() {return _affInfo;}
 
         /*!
           In this function, AffinityInfo::cpuOfMineChanged() signal is connected to ResourceMonitor::updateAffInfo() slot if ResourceMonitor object exist. This connection ensures resourceMonitor to maintain up to date info on which app is affine to which processor.

@@ -207,12 +207,12 @@ public:
 	/*!
 	  returns a copy of the widget list.
 	  */
-	inline QList<SN_RailawareWidget *> getWidgetList() const {return widgetList;}
+	inline QList<SN_BaseWidget *> getWidgetList() const {return widgetList;}
 
     /*!
       returns a reference of the list
       */
-    inline QList<SN_RailawareWidget *> * getWidgetListRef() {return &widgetList;}
+    inline QList<SN_BaseWidget *> * getWidgetListRef() {return &widgetList;}
 
 	inline QReadWriteLock * getWidgetListRWLock() {return &_widgetListRWlock;}
 
@@ -239,18 +239,18 @@ public:
 	/*!
 	  writer's lock needs to be acquired
 	  */
-	void addSchedulableWidget(SN_RailawareWidget *rw);
+	void addSchedulableWidget(SN_BaseWidget *rw);
 
 	/*!
 	  writer's lock needs to be acquired
 	  */
-	void removeSchedulableWidget(SN_RailawareWidget *rw);
+	void removeSchedulableWidget(SN_BaseWidget *rw);
 
 	/*!
 	  return a widget with earliest deadline in the list
 	  reader's lock
 	  */
-	SN_RailawareWidget * getEarliestDeadlineWidget();
+//	SN_RailawareWidget * getEarliestDeadlineWidget();
 
 
 protected:
@@ -304,7 +304,7 @@ private:
 	/*!
 	  An array index represents cpu id seen by OS
 	  */
-	void buildProcVector();
+//	void buildProcVector();
 
 	void buildSimpleProcList();
 
@@ -313,14 +313,14 @@ private:
 	  A list of all schedulable widgets.
 	  Accessing to this list is protected by rwlock
 	  */
-	QList<SN_RailawareWidget *> widgetList;
+	QList<SN_BaseWidget *> widgetList;
 
 	/*!
 	  The items in a QMap is sorted by a key (Ascendant order)
 
       Key is globalAppId
 	  */
-	QMap<quint64, SN_RailawareWidget *> _widgetMap;
+	QMap<quint64, SN_BaseWidget *> _widgetMap;
 
 	/*!
 	  read/write lock for accessing widgetList
@@ -360,7 +360,7 @@ public slots:
 	  This function is called at RailawareWidget::fadeOutClose(), it calls ProcessorNode::removeApp()
 	  The signal appRemoved(int) is emitted in this function.
 	  */
-	void removeApp(SN_RailawareWidget *);
+//	void removeApp(SN_BaseWidget *);
 
 	/*!
 	  AffinityInfo class has functions that will emit affInfoChanged signal. AffinityInfo::setCpuOfMine(), AffinityInfo::applyNewParameter()
@@ -379,26 +379,26 @@ public slots:
 	/*!
 	  Assign a processor pn to rw
 	  */
-	int assignProcessor(SN_RailawareWidget *rw, SN_ProcessorNode *pn);
+//	int assignProcessor(SN_RailawareWidget *rw, SN_ProcessorNode *pn);
 
 	/*!
 	  Assign the most under loaded processor to rw.
 	  returns assigned processor id, -1 on error.
 	  */
-	int assignProcessor(SN_RailawareWidget *rw);
+//	int assignProcessor(SN_BaseWidget *rw);
 
 	/*!
 	  overloaded function.
 	  assign a processor for each widget in the widgetList
 	  returns number of assigned widgets -1 on error
 	  */
-	int assignProcessor();
+//	int assignProcessor();
 
 
 	/*!
 	  set processor affinity for rw to FFFFFFFFF
 	  */
-	void resetProcessorAllocation(SN_RailawareWidget *rw);
+	void resetProcessorAllocation(SN_BaseWidget *rw);
 
 	/*!
 	  overloaded function. Assign FFFF for all widgets.
@@ -411,7 +411,7 @@ public slots:
 	/*!
 	  This is experimental and incomplete
 	  */
-	void loadBalance();
+//	void loadBalance();
 
 	/*!
 	  print perf data header

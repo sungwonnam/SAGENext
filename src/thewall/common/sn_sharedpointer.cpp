@@ -511,9 +511,25 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 			Q_ASSERT(_basewidget->priorityData());
 			_basewidget->priorityData()->setLastInteraction(SN_Priority::CLICK);
 			*/
+
+            if (_basewidget->handlePointerClick(this, _basewidget->mapFromScene(scenePos), btn)) {
+
+                //
+                // no mouse event will be generated
+                // if an application returns true in that function
+                //
+                setBrush(_color);
+                return;
+            }
 		}
 
 
+        //
+        //
+        // Generate system's mouse events
+        // Press -> Relese
+        //
+        //
 		QGraphicsView *view = eventReceivingViewport(scenePos);
 		if ( !view ) {
 			qDebug() << "pointerClick: no view is available";

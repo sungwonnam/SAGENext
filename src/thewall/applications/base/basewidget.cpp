@@ -7,6 +7,8 @@
 
 #include "../../common/commonitem.h"
 
+//#include "../../system/resourcemonitor.h"
+
 #include <QtGui>
 
 #if QT_VERSION < 0x040700
@@ -52,6 +54,8 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
     , _bordersize(10)
     , _showInfo(false)
 
+    , _isSchedulable(false)
+
 {
 	init();
 }
@@ -95,30 +99,23 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
     , _bordersize(10)
     , _showInfo(false)
 
+    , _isSchedulable(false)
+
 {
-
-	// This will affect boundingRect(), windowFrameRect() of the widget.
-	_bordersize = _settings->value("gui/framemargin", 8).toInt();
-	if (isWindow()) {
-		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
-		setContentsMargins(_bordersize, _bordersize + 40, _bordersize, _bordersize); // by default, this is 0 0 0 0
-	}
-	else {
-		// setting frameMargins won't have any effect.. (Qt::Widget doesn't have frame)
-		// setting contentMargins won't have any effect unless this widget has a layout.
-	}
-
-	_useOpenGL = _settings->value("graphics/openglviewport").toBool();
-
-	if (_settings->value("system/resourcemonitor").toBool()) {
-		_priorityData = new SN_Priority(this);
-	}
+	setSettings(s);
 
 	init();
 }
 
 SN_BaseWidget::~SN_BaseWidget()
 {
+//    if (_isSchedulable) {
+//        if (_rMonitor) {
+//            _rMonitor->removeSchedulableWidget(this);
+//        }
+//    }
+
+
     if ( scene() ) {
         scene()->removeItem(this);
 
@@ -266,6 +263,27 @@ void SN_BaseWidget::init()
 //	setGraphicsEffect(shadow); // you can set only one effect
 }
 
+
+void SN_BaseWidget::setSettings(const QSettings *s) {
+    _settings = s;
+
+    // This will affect boundingRect(), windowFrameRect() of the widget.
+	_bordersize = _settings->value("gui/framemargin", 8).toInt();
+	if (isWindow()) {
+		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
+		setContentsMargins(_bordersize, _bordersize + 40, _bordersize, _bordersize); // by default, this is 0 0 0 0
+	}
+	else {
+		// setting frameMargins won't have any effect.. (Qt::Widget doesn't have frame)
+		// setting contentMargins won't have any effect unless this widget has a layout.
+	}
+
+	_useOpenGL = _settings->value("graphics/openglviewport").toBool();
+
+	if (_settings->value("system/scheduler").toBool()) {
+		_priorityData = new SN_Priority(this);
+	}
+}
 
 QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 	QRegion effectiveRegion;

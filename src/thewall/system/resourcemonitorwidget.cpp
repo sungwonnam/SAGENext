@@ -219,7 +219,7 @@ void ResourceMonitorWidget::setSchedCtrlFrame(QFrame *frame) {
 
 void ResourceMonitorWidget::on_toggleRefreshDataBtn_clicked()
 {
-    qDebug() << "FUCK";
+    qDebug() << "ResourceMonitorWidget::on_toggleRefreshDataBtn_clicked()";
 
     if (_isRefreshEnabled) {
         _isRefreshEnabled = false;
@@ -310,7 +310,7 @@ void ResourceMonitorWidget::refreshPerAppPriorityData() {
 	ui->perAppPriorityTable->setRowCount(_rMonitor->getWidgetList().size());
 	int currentRow = 0;
 
-	foreach(SN_RailawareWidget *rw, _rMonitor->getWidgetList()) {
+	foreach(SN_BaseWidget *rw, _rMonitor->getWidgetList()) {
 		if (!rw) continue;
 
 		Q_ASSERT(rw->priorityData());
@@ -366,7 +366,7 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 	int currentRow = 0;
 
 	// An widget per row
-	foreach(SN_RailawareWidget *rw, _rMonitor->getWidgetList()) {
+	foreach(SN_BaseWidget *rw, _rMonitor->getWidgetList()) {
 		if (!rw) continue;
 
 		Q_ASSERT(rw->perfMon());
@@ -560,14 +560,14 @@ void ResourceMonitorWidget::buildPerCpuHLayouts() {
 #ifdef USE_QWT
 void ResourceMonitorWidget::updatePriorityHistogram() {
 
-    QList<SN_RailawareWidget *>::const_iterator it;
-    const QList<SN_RailawareWidget *> applist = _rMonitor->getWidgetList();
+    QList<SN_BaseWidget *>::const_iterator it;
+    const QList<SN_BaseWidget *> applist = _rMonitor->getWidgetList();
 
 
     QMap<int, int> rawdata; // priority, # app
 
     for (it=applist.constBegin(); it!=applist.constEnd(); it++) {
-        SN_RailawareWidget *rw = (*it);
+        SN_BaseWidget *rw = (*it);
         Q_ASSERT(rw);
         int priority = rw->priority();
 
@@ -600,13 +600,13 @@ void ResourceMonitorWidget::updatePriorityHistogram() {
 }
 
 void ResourceMonitorWidget::updateQualityCurve() {
-    QList<SN_RailawareWidget *>::const_iterator it;
-    const QList<SN_RailawareWidget *> applist = _rMonitor->getWidgetList();
+    QList<SN_BaseWidget *>::const_iterator it;
+    const QList<SN_BaseWidget *> applist = _rMonitor->getWidgetList();
 
     QMultiMap<int, double> rawdata; // priority, quality
 
     for (it=applist.constBegin(); it!=applist.constEnd(); it++) {
-        SN_RailawareWidget *rw = (*it);
+        SN_BaseWidget *rw = (*it);
         Q_ASSERT(rw);
         int priority = rw->priority();
 
