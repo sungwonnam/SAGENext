@@ -574,9 +574,6 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 		break;
 	}
 
-	/**
-	  mouseReleaseEvent from external GUI sends POINTER_CLICK message
-	*/
     case SAGENext::POINTER_CLICK:
 	{
         quint32 uiclientid;

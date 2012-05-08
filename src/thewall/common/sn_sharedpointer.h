@@ -72,9 +72,9 @@ public:
 	virtual void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
-          This doesn't generate any mouse event. This is used to know the start of mouse dragging
+		  This is called by UiServer upon receiving SAGENext::POINTER_PRESS.
 
-          The setAppUnderPointer() is called if left button.
+          The setAppUnderPointer() is called if left button is pressed.
 		  Initiate selection rectangle if right button.
           */
 	virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
@@ -84,16 +84,19 @@ public:
 		  Both left and right release can be sent if the manhattan distance b/w pressed pos and released pos is greater than 3.
 		  So, this is triggered at the end of mouseDragging by the client.
 
-		  LeftRelease can mean app droping
-		  RightRelease can mean the end position of selection rectangle
+		  LeftRelease can mean the end of widget moving or resizing.
+		  RightRelease can mean the end position of selection rectangle.
+		  
+		  Note that, _basewidget/_specialItem will be reset in this function.
 		  */
 	virtual void pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 		/**
-          simulate mouse click by sending mousePressEvent followed by mouseReleaseEvent
-
-		  press
-		  release
+		  This is called by UiServer upon receiving SAGENext::POINTER_CLICK.
+		  Note that, POINTER_CLICK always follows the POINTER_PRESS.
+		  
+          This handler simulates mouse click by sending mousePressEvent followed by mouseReleaseEvent
+		  unless SN_BaseWidget::handlePointerClick() returns TRUE.
           */
 	virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button,  Qt::KeyboardModifier modifier = Qt::NoModifier);
 

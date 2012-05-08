@@ -140,7 +140,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 
 	//////
 	///
-	// handle hovering
+	// handle hovering if No button is pressed
 	///
 	//////
 	if (btnFlags == 0 || btnFlags & Qt::NoButton) {
@@ -180,9 +180,15 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	}
 
 
-
+	///////////
 	//
     // LEFT button mouse dragging
+	//
+    // Because of the pointerPress action immediately preceding this,
+	// the _basewidget or _specialItem might be set at this point.
+	// The _basewidget is set if item's type is >= QGraphicsItem::UserType + BASEWIDGET_USER
+	// The _specialItem is set if item's type is >= QGraphicsItem::UserType + INTERACTIVE_ITEM
+    //
 	//
     else if ( btnFlags & Qt::LeftButton ) {
 		
@@ -199,10 +205,11 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		}
 		*/
 
+
 		//
-        // Because of pointerPress, appUnderPointer has already been set at this point
-		// _basewidget is set if items type is >= UserType + BASEWIDGET_USER
-        //
+		// If user's pointer is now dragging (w/ Left button pressed) on the user widget (SN_BaseWidget)
+		// the widget will handle this. Base implementation is either resizing or moving.
+		//		
         if (_basewidget) {
 			_basewidget->handlePointerDrag(this, _basewidget->mapFromScene(_scenePos), deltax, deltay, Qt::LeftButton, modifier);
         }
@@ -272,6 +279,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
         */
     }
 
+	////////////////////////
 	//
 	// RIGHT button mouse dragging
 	//

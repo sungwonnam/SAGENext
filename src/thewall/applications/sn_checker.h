@@ -8,8 +8,12 @@
 #include <QFuture>
 #include <QFutureWatcher>
 
+#if defined(Q_OS_LINUX)
 #define GL_GLEXT_PROTOTYPES
 #include <GL/glu.h>
+#elif defined(Q_OS_MACX)
+#include <OpenGL.h>
+#endif
 
 #include <sys/resource.h>
 
