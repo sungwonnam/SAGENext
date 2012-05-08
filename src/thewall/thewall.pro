@@ -97,15 +97,17 @@ macx {
 
 
 
-BUILD_DIR = BUILD
+BUILD_DIR = _BUILD
 !exists($$BUILD_DIR) {
         #message("Creating build directory")
         system(mkdir $${BUILD_DIR})
 }
 
 
-MOC_DIR = MOC
-OBJECTS_DIR = $${BUILD_DIR}
+MOC_DIR = $$BUILD_DIR/_MOC
+OBJECTS_DIR = $$BUILD_DIR/_OBJ
+UI_DIR = $$BUILD_DIR/_UI
+
 
 
 # Use parenthesis to read from environment variable
@@ -141,7 +143,6 @@ SESSIONS_DIR = $$(HOME)/.sagenext/sessions
 !exists($$SESSIONS_DIR) {
     system(mkdir $$SESSIONS_DIR)
 }
-
 
 
 
