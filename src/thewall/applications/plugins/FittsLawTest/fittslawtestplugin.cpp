@@ -8,17 +8,29 @@
 
 FittsLawTest::FittsLawTest()
     : SN_BaseWidget(Qt::Window)
+
+    , _NUM_ROUND(4)
+    , _NUM_TARGET_PER_ROUND(10)
+
     , _isRunning(false)
     , _isReady(false)
-    , _testCount(0)
+    , _targetCount(0)
+    , _roundCount(0)
     , _contentWidget(new QGraphicsWidget)
-    , _initCircle(0)
+    , _simpleText(0)
+    , _startstop(0)
     , _target(0)
 //    , _handle(new QGraphicsPixmapItem(QPixmap(":/blackhand_48.png"), this))
 
-    , _resetbutton(new QGraphicsProxyWidget(this))
+    , _resetRoundButton(new QGraphicsProxyWidget(this))
+    , _resetTargetPosList(new QGraphicsProxyWidget(this))
     , _readybutton(new QGraphicsProxyWidget(this))
     , _donebutton(new QGraphicsProxyWidget(this))
+    , _initbutton(new QGraphicsProxyWidget(this))
+
+    , _numRound(new QGraphicsProxyWidget(this))
+    , _numTargets(new QGraphicsProxyWidget(this))
+    , _userid(new QGraphicsProxyWidget(this))
 
     , _myPointer(0)
 
@@ -29,16 +41,20 @@ FittsLawTest::FittsLawTest()
     //
 	// register myself to the hoveraccepting app list of the scene
 	//
-	setRegisterForMouseHover(true);
+//	setRegisterForMouseHover(true);
 
+
+    clearTargetPosList();
 
     //
     // Schedulable widget
     //
     setSchedulable();
 
+    _startPixmap = QPixmap(":/greenplay128.png");
+    _stopPixmap = QPixmap(":/stopsign48.png").scaledToWidth(128);
 
-    _cursorPixmap = QPixmap(":/blackhand_48.png");
+    _cursorPixmap = QPixmap(":/blackarrow_upleft128.png");
 
 
     setContentsMargins(16, 40, 16, 16);
@@ -63,21 +79,48 @@ FittsLawTest::FittsLawTest()
     // buttons for operator
     // remember these buttons will only react to real mouse
     //
-    QPushButton *reset = new QPushButton("Reset");
+
+    /*
+    QPushButton *init = new QPushButton("Init");
+    QObject::connect(init, SIGNAL(clicked()), this, SLOT(init()));
+    _initbutton->setWidget(init);
+
+    QLineEdit *userid = new QLineEdit("");
+    QLabel *numround = new QLabel(QString::number(_NUM_ROUND) + " rounds");
+    QLabel *numtarget = new QLabel(QString::number(_NUM_TARGET_PER_ROUND) + " targets");
+    _userid->setWidget(userid);
+    _numRound->setWidget(numround);
+    _numTargets->setWidget(numtarget);
+
+    QGraphicsLinearLayout *initlayout = new QGraphicsLinearLayout(Qt::Horizontal);
+    initlayout->addItem(_userid);
+    initlayout->addItem(_numRound);
+    initlayout->addItem(_numTargets);
+    initlayout->addItem(_initbutton);
+    */
+
+
+
+
+    QPushButton *reset = new QPushButton("Reset roundCount");
+    QPushButton *resetList = new QPushButton("Reset targetList");
     QPushButton *ready = new QPushButton("set READY");
     QPushButton *done = new QPushButton("Write Data");
 
     QObject::connect(ready, SIGNAL(clicked()), this, SLOT(setReady()));
     QObject::connect(reset, SIGNAL(clicked()), this, SLOT(resetTest()));
+    QObject::connect(resetList, SIGNAL(clicked()), this, SLOT(clearTargetPosList()));
     QObject::connect(done, SIGNAL(clicked()), this, SLOT(finishTest()));
 
-    _resetbutton->setWidget(reset);
+    _resetTargetPosList->setWidget(resetList);
+    _resetRoundButton->setWidget(reset);
     _readybutton->setWidget(ready);
     _donebutton->setWidget(done);
 
     QGraphicsLinearLayout *buttonlayout = new QGraphicsLinearLayout(Qt::Horizontal);
     buttonlayout->addItem(_readybutton);
-    buttonlayout->addItem(_resetbutton);
+    buttonlayout->addItem(_resetRoundButton);
+    buttonlayout->addItem(_resetTargetPosList);
     buttonlayout->addItem(_donebutton);
 
 
@@ -85,7 +128,10 @@ FittsLawTest::FittsLawTest()
     //
     /// the green circle
     //
-    _initCircle = new QGraphicsRectItem(0, 0, 128, 128, _contentWidget);
+//    _initCircle = new QGraphicsRectItem(0, 0, 128, 128, _contentWidget);
+    _startstop = new QGraphicsPixmapItem(_contentWidget);
+    _startstop->setPixmap(_stopPixmap);
+    _startstop->setAcceptedMouseButtons(0);
 
     //
     // yellow targets that the user will click
@@ -98,10 +144,14 @@ FittsLawTest::FittsLawTest()
     _target->hide();
     _target->setOpacity(0.5);
 
-    _initCircle->setAcceptedMouseButtons(0);
-    _initCircle->setBrush(Qt::green);
-    _initCircle->hide();
 
+
+    _simpleText = new QGraphicsSimpleTextItem(_contentWidget);
+    _simpleText->setAcceptedMouseButtons(0);
+    _simpleText->setFlag(QGraphicsItem::ItemStacksBehindParent);
+    QFont f;
+    f.setPointSize(64);
+    _simpleText->setFont(f);
 
 
 
@@ -113,6 +163,7 @@ FittsLawTest::FittsLawTest()
     // content's area where targets will be placed
     //
     QGraphicsLinearLayout *mainlayout = new QGraphicsLinearLayout(Qt::Vertical);
+//    mainlayout->addItem(initlayout);
     mainlayout->addItem(buttonlayout);
     mainlayout->addItem(_contentWidget);
 
@@ -127,7 +178,7 @@ FittsLawTest::FittsLawTest()
     //
     // signal slot connection
     //
-    QObject::connect(this, SIGNAL(roundFinished()), this, SLOT(resetTest()));
+    QObject::connect(this, SIGNAL(roundFinished()), this, SLOT(finishRound()));
     QObject::connect(this, SIGNAL(initClicked()), this, SLOT(startRound()));
 }
 
@@ -205,12 +256,15 @@ void FittsLawTest::resizeEvent(QGraphicsSceneResizeEvent *event) {
     Q_UNUSED(event);
 //    qDebug() << boundingRect() << _contentWidget->size();
 
-    _initCircle->setPos( _contentWidget->size().width() / 2 - 64 , _contentWidget->size().height() / 2 - 64);
+//    _initCircle->setPos( _contentWidget->size().width() / 2 - 64 , _contentWidget->size().height() / 2 - 64);
+    _startstop->setPos( _contentWidget->size().width() / 2 - 64 , _contentWidget->size().height() / 2 - 64);
+}
+
+void FittsLawTest::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *) {
+    // do nothing
 }
 
 void FittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
-
-
 
 //    painter->drawRect(mapRectFromItem(_contentWidget, _contentWidget->boundingRect()));
 
@@ -226,20 +280,19 @@ void FittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, Q
 bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
     Q_UNUSED(btn);
 
-    if (_isRunning && _myPointer) {
+    _simpleText->setText(QString::number(_roundCount) + ", " + QString::number(_targetCount));
+
+    if (_isRunning) {
         // see if the click cocurred on the target (hit)
         // then show next dot
-        if ( _myPointer == pointer && _target->boundingRect().contains( _target->mapFromItem(this, point).toPoint() )) {
+        if ( _myPointer == pointer && _target->contains( _target->mapFromItem(this, point).toPoint() )) {
 
 //            qDebug() << "FittsLawTest::handlePointerClick() : hit";
 
-            _testCount++;
-
-            if (_testCount == 10) {
-                qDebug() << "FittsLawTest::handlePointerClick() : round finished";
+            if (_targetCount == 10) {
+                qDebug() << "FittsLawTest::handlePointerClick() : round" << _roundCount << "finished";
                 emit roundFinished();
-                _testCount = 0;
-                pointer->setOpacity(1.0);
+                pointer->setOpacity(1);
             }
             else {
                 determineNextTargetPosition();
@@ -254,21 +307,32 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
     }
     else {
 
+        //
+        // User need to click the green rectangle to start
+        //
         if (_isReady) {
+
             // see if the click occurred on the initating circle
             // if yes then start the process
+            //
+            if ( _startstop->contains(_startstop->mapFromItem(this, point).toPoint())) {
 
-            _cursorPoint = point;
+                _cursorPoint = point; // update cursor position
 
-            _myPointer = pointer;
+                _myPointer = pointer;
 
-            emit initClicked();
+                //
+                // trap the pointer so that it can only move within this widget
+                //
+                pointer->setTrapWidget(this);
 
-            pointer->setOpacity(0.01);
+                emit initClicked();
 
-            determineNextTargetPosition();
-            _target->show();
-            _testCount++;
+                pointer->setOpacity(0);
+
+                determineNextTargetPosition();
+                _target->show();
+            }
         }
 
 
@@ -282,25 +346,15 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
     return true;
 }
 
-void FittsLawTest::handlePointerHover(SN_PolygonArrowPointer *pointer, const QPointF &point, bool isHovering) {
-
-    if (isHovering) {
+void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
+    if (pointer == _myPointer) {
         if (_isRunning) {
-
-            if (_myPointer && _myPointer == pointer) {
-                pointer->setOpacity(0.0);
-                _cursorPoint = point;
-            }
-
-        }
-        else {
+            _cursorPoint = point;
         }
     }
     else {
-        // do nothing
-        pointer->setOpacity(1.0);
+        qDebug() << "pointer != _myPointer";
     }
-
 }
 
 void FittsLawTest::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
@@ -320,12 +374,13 @@ void FittsLawTest::setReady() {
         launchExternalStreamer("127.0.0.1");
     }
 
-
     _isReady = true;
-    _testCount = 0;
+    _targetCount = 0;
 
-    _initCircle->setBrush(Qt::green);
-    _initCircle->show();
+//    _initCircle->setBrush(Qt::green);
+//    _initCircle->show();
+    _startstop->setPixmap(_startPixmap);
+    _startstop->show();
 }
 
 /*!
@@ -351,11 +406,92 @@ void FittsLawTest::startRound() {
 
 
      _isRunning = true;
-    _initCircle->hide();
+//    _initCircle->hide();
+     _startstop->hide();
     _target->show();
 }
 
+void FittsLawTest::finishRound() {
+    if (_perfMon) {
+        _perfMon->setRequiredBandwidthMbps(0);
+        _perfMon->setCurrBandwidthMbpsManual(0);
+    }
+
+    if (_recvThread)
+        _recvThread->endThreadLoop();
+
+    _isRunning = false;
+    _isReady = false;
+    _targetCount = 0;
+
+    if (_myPointer) {
+        _myPointer->setOpacity(1);
+        _myPointer->setTrapWidget(0); // reset
+        _myPointer = 0;
+    }
+
+    _target->hide();
+//    _initCircle->hide();
+    _startstop->setPixmap(_stopPixmap);
+    _startstop->show();
+
+    //
+    // increment round count
+    //
+    _roundCount++;
+}
+
 void FittsLawTest::determineNextTargetPosition() {
+
+    QPointF nextPos = _targetPosList.value(_roundCount * 10 + _targetCount);
+
+    //
+    // there's saved value
+    //
+    if (! nextPos.isNull() ) {
+        qDebug() << _roundCount << _targetCount << "has point data" << nextPos;
+    }
+
+    //
+    // get value and save it
+    //
+    else {
+        nextPos = m_getRandomPos();
+
+//        _targetPosList.append(nextPos);
+
+        //
+        // Assumes the list is already filled with numm data
+        //
+        _targetPosList[ _roundCount * 10 + _targetCount ] = nextPos;
+
+        qDebug() << _roundCount << _targetCount << "choose random pos" << nextPos << "list size is now" << _targetPosList.size();
+    }
+
+    Q_ASSERT(_target);
+    _target->setPos(nextPos);
+
+    _targetCount++;
+}
+
+void FittsLawTest::resetTest() {
+    finishRound();
+
+    _roundCount = 0;
+}
+
+void FittsLawTest::clearTargetPosList() {
+    _roundCount = 0;
+    _targetPosList.clear();
+
+    for (int i=0; i< _NUM_ROUND * _NUM_TARGET_PER_ROUND; i++) {
+        _targetPosList.append( QPointF() ); // init with null point
+    }
+}
+
+QPointF FittsLawTest::m_getRandomPos() {
+    Q_ASSERT(_contentWidget);
+    Q_ASSERT(_target);
 
     int possible_x = _contentWidget->size().width() - _target->boundingRect().width();
     int possible_y = _contentWidget->size().height() - _target->boundingRect().height();
@@ -366,25 +502,7 @@ void FittsLawTest::determineNextTargetPosition() {
     randi = qrand();
     qreal rand_y = (qreal)possible_y * ( (qreal)randi / (qreal)RAND_MAX ); // 0 ~ height
 
-    Q_ASSERT(_target);
-    _target->setPos(rand_x, rand_y);
-}
-
-void FittsLawTest::resetTest() {
-
-    _perfMon->setRequiredBandwidthMbps(0);
-    _perfMon->setCurrBandwidthMbpsManual(0);
-
-    _recvThread->endThreadLoop();
-
-    _isRunning = false;
-    _isReady = false;
-    _testCount = 0;
-
-    _myPointer = 0;
-
-    _target->hide();
-    _initCircle->hide();
+    return QPointF(rand_x, rand_y);
 }
 
 // TARGET name, Class name

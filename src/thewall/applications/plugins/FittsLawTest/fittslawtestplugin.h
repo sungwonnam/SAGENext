@@ -54,15 +54,20 @@ public:
     /*!
       If user clicked the initiating circle then pointer movement will be handled within this app
       */
-    void handlePointerHover(SN_PolygonArrowPointer * pointer, const QPointF & point, bool isHovering);
+    void handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
 
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 protected:
     void resizeEvent(QGraphicsSceneResizeEvent *event);
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *);
 
 private:
+    int _NUM_ROUND;
+
+    int _NUM_TARGET_PER_ROUND;
+
     /*!
       FittsLawTest is running.
       Uesrs is moving pointer and clicking dots
@@ -75,11 +80,19 @@ private:
     /*!
       How many dots a user have to click
       */
-    int _testCount;
+    int _targetCount;
+
+    int _roundCount;
 
     QGraphicsWidget *_contentWidget;
 
-    QGraphicsRectItem *_initCircle;
+    QGraphicsSimpleTextItem *_simpleText;
+
+
+    QGraphicsPixmapItem *_startstop;
+
+    QPixmap _startPixmap;
+    QPixmap _stopPixmap;
 
     QGraphicsRectItem *_target;
 
@@ -91,9 +104,21 @@ private:
 
     QPointF _cursorPoint;
 
-    QGraphicsProxyWidget *_resetbutton;
+    /*!
+      buttons
+      */
+    QGraphicsProxyWidget *_resetRoundButton;
+    QGraphicsProxyWidget *_resetTargetPosList;
     QGraphicsProxyWidget *_readybutton;
     QGraphicsProxyWidget *_donebutton;
+    QGraphicsProxyWidget *_initbutton;
+
+    /*!
+      lineEdits
+      */
+    QGraphicsProxyWidget *_numRound;
+    QGraphicsProxyWidget *_numTargets;
+    QGraphicsProxyWidget *_userid;
 
     QPixmap _cursorPixmap;
 
@@ -119,6 +144,15 @@ private:
       */
     QString _userID;
 
+
+    /*!
+      QPointF of 10 targets of a single round
+      */
+    QList<QPointF> _targetPosList;
+
+
+    QPointF m_getRandomPos();
+
 signals:
     /*!
       The user clicked the green circle.
@@ -142,17 +176,31 @@ signals:
     void miss();
 
 public slots:
+    void init();
+
     void setSize(int w, int h);
 
     void setReady();
 
+    /*!
+      A round consists of 10 targets
+      */
     void startRound();
+
+    void finishRound();
 
     void determineNextTargetPosition();
 
+    /*!
+      reset _roundCount
+      */
     void resetTest();
 
+    void clearTargetPosList();
+
     /*!
+      A test consists of 4 rounds.
+
       write data to a file
       */
     void finishTest();

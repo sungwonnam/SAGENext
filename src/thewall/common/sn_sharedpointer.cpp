@@ -23,6 +23,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread 
     , _settings(s)
     , _textItem(0)
 	, _color(c)
+    , _trapWidget(0)
     , _basewidget(0)
     , _specialItem(0)
 	, _selectionRect(0)
@@ -115,13 +116,6 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
     qreal deltay = _scenePos.y() - oldp.y();
 
 
-	//
-    // move pointer itself
-    // Sets the position of the item to pos, which is in parent coordinates. For items with no parent, pos is in scene coordinates.
-	//
-    setPos(_scenePos);
-
-
 	////////////////////////////
 	//
 	// Record pointer move (2)
@@ -135,6 +129,28 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		_scenarioFile->write(record);
 	}
 	//////////////////////////////
+
+
+
+    if (_trapWidget) {
+        QPointF localPoint = _trapWidget->mapFromScene(_scenePos);
+        if (_trapWidget->contains(localPoint)) {
+
+            setPos(_scenePos);
+            _trapWidget->handlePointerDrag(this, localPoint, deltax, deltay, Qt::NoButton);
+        }
+
+        // return w/o moving pointer and further actions
+        return;
+    }
+
+
+
+    //
+    // move pointer itself
+    // Sets the position of the item to pos, which is in parent coordinates. For items with no parent, pos is in scene coordinates.
+	//
+    setPos(_scenePos);
 
 
 

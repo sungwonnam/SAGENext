@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/">
-        <file>blackhand_48.png</file>
+        <file>stopsign48.png</file>
+        <file>greenplay128.png</file>
+        <file>blackarrow_upleft128.png</file>
     </qresource>
 </RCC>
