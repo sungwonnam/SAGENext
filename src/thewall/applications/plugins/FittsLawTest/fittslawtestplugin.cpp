@@ -6,6 +6,8 @@
 
 #include <QtGui>
 
+
+
 FittsLawTest::FittsLawTest()
     : SN_BaseWidget(Qt::Window)
 
@@ -35,7 +37,14 @@ FittsLawTest::FittsLawTest()
     , _myPointer(0)
 
     , _recvThread(0)
+    , _recvObject(0)
     , _extProgram(0)
+
+    , _streamerIpAddr(QString("127.0.0.1"))
+
+    , _missCount(0)
+    , _targetAppearTime(0.0)
+    , _targetHitTime(0.0)
 
 {
     //
@@ -45,6 +54,8 @@ FittsLawTest::FittsLawTest()
 
 
     clearTargetPosList();
+
+    clearData();
 
     //
     // Schedulable widget
@@ -128,7 +139,6 @@ FittsLawTest::FittsLawTest()
     //
     /// the green circle
     //
-//    _initCircle = new QGraphicsRectItem(0, 0, 128, 128, _contentWidget);
     _startstop = new QGraphicsPixmapItem(_contentWidget);
     _startstop->setPixmap(_stopPixmap);
     _startstop->setAcceptedMouseButtons(0);
@@ -200,6 +210,13 @@ FittsLawTest::~FittsLawTest() {
         delete _recvThread;
     }
 
+    if (_recvObject) {
+        if (_thread.isRunning()) {
+            _thread.quit();
+        }
+        delete _recvObject;
+    }
+
     if (_extProgram) {
         if (_extProgram->state() == QProcess::Running) {
             _extProgram->kill();
@@ -213,6 +230,11 @@ void FittsLawTest::scheduleUpdate() {
     update();
 }
 
+
+/*!
+  setReady() will call this
+  if _extProgram doesn't exist
+  */
 void FittsLawTest::launchExternalStreamer(const QString &ipaddr) {
 
     if (!_extProgram) {
@@ -289,20 +311,41 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
 
 //            qDebug() << "FittsLawTest::handlePointerClick() : hit";
 
+            _targetHitTime = QDateTime::currentMSecsSinceEpoch(); // msec
+
+            (_data.misscount)[ _roundCount * 10 + _targetCount] = _missCount;
+            (_data.hitlatency)[_roundCount * 10 + _targetCount] = _targetHitTime - _targetAppearTime;
+
+            qDebug() << "ID" << _globalAppId << "R#" << _roundCount << "T#" << _targetCount << "miss" << _data.misscount.at(_roundCount *10 + _targetCount) << "delay" << _data.hitlatency.at(_roundCount *10 + _targetCount) << "msec";
+
+            _missCount = 0;
+            _targetCount++;
+
+            //
+            // if current round is compeleted
+            //
             if (_targetCount == 10) {
-                qDebug() << "FittsLawTest::handlePointerClick() : round" << _roundCount << "finished";
+                qDebug() << "FittsLawTest::handlePointerClick() : round #" << _roundCount << "finished";
                 emit roundFinished();
                 pointer->setOpacity(1);
             }
+
+            //
+            // otherwise, show next target
+            //
             else {
                 determineNextTargetPosition();
             }
         }
 
+        //
         // otherwise it's miss
+        //
         else {
-            qDebug() << "FittsLawTest::handlePointerClick() : missed  !";
+//            qDebug() << "FittsLawTest::handlePointerClick() : missed  !";
             emit miss();
+
+            _missCount++;
         }
     }
     else {
@@ -335,7 +378,6 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
             }
         }
 
-
         // otherwise do nothing
     }
 
@@ -349,6 +391,27 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
 void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
     if (pointer == _myPointer) {
         if (_isRunning) {
+
+            /*
+            if (_recvObject && _thread.isRunning()) {
+                if ( ! QMetaObject::invokeMethod(_recvObject, "recvFrame", Qt::QueuedConnection) ) {
+                    qDebug() << "FittsLawTest::handlePointerDrag() : Failed to invoke recvFrame()";
+                }
+            }
+            */
+
+
+
+            //
+            //
+            //
+            // Maybe in here,
+            // I can keep track of the frame rate based on how often this function is called.
+            // then apply this to recv() thread so that it's frame rate can variate based on user interaction.
+            //
+            //
+            //
+
             _cursorPoint = point;
         }
     }
@@ -377,21 +440,25 @@ void FittsLawTest::setReady() {
     _isReady = true;
     _targetCount = 0;
 
-//    _initCircle->setBrush(Qt::green);
-//    _initCircle->show();
+    if (_roundCount >= _NUM_ROUND) {
+        _roundCount = 0;
+    }
+
     _startstop->setPixmap(_startPixmap);
     _startstop->show();
 }
 
 /*!
-  user clicked the green circle
+  A user clicked the green play icon.
+  (Upon receiving initClicked() signal)
   */
 void FittsLawTest::startRound() {
     //
     // streaming resumes
     //
+
     if (!_recvThread) {
-        _recvThread = new FittsLawTestStreamReceiver(_streamImageSize, 30, _streamerIpAddr, _globalAppId + 60000, _perfMon);
+        _recvThread = new FittsLawTestStreamReceiverThread(_streamImageSize, 30, _streamerIpAddr, _globalAppId + 60000, _perfMon);
 
         QObject::connect(_recvThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
 
@@ -405,16 +472,52 @@ void FittsLawTest::startRound() {
     _recvThread->resumeThreadLoop();
 
 
+    /***
+      * if you uncomment this, then you only need to uncomment the block in handlePointerDragg()
+    if (!_recvObject) {
+        _recvObject = new FittsLawTestStreamReceiver(_streamImageSize, _streamerIpAddr, _globalAppId + 60000, _perfMon);
+
+        QObject::connect(_recvObject, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()), Qt::QueuedConnection);
+
+//        QObject::connect(&_thread, SIGNAL(started()), _recvObject, SLOT(connectToStreamer()), Qt::QueuedConnection);
+
+        _recvObject->moveToThread(&_thread);
+
+        if (!_thread.isRunning()) {
+            _thread.start();
+        }
+
+        if ( ! QMetaObject::invokeMethod(_recvObject, "connectToStreamer", Qt::QueuedConnection) ) {
+            qDebug() << "FittsLawTest::startRound() : Failed to invoke connectToStreamer()";
+        }
+    }
+    ***/
+
      _isRunning = true;
-//    _initCircle->hide();
      _startstop->hide();
     _target->show();
 }
 
 void FittsLawTest::finishRound() {
     if (_perfMon) {
+        //
+        // user interaction stops until next round starts
+        //
         _perfMon->setRequiredBandwidthMbps(0);
+
+        //
+        //  This is hacking..
+        // There's no way to keep track of current resource usage (currFrameRate)
+        // when the receiving thread is not running
+        //
+        //
         _perfMon->setCurrBandwidthMbpsManual(0);
+
+
+        //
+        // However, if I keep track of cumulative byte received with a global timer
+        // I can know above two even the thread is not running
+        //
     }
 
     if (_recvThread)
@@ -424,6 +527,8 @@ void FittsLawTest::finishRound() {
     _isReady = false;
     _targetCount = 0;
 
+    _missCount = 0;
+
     if (_myPointer) {
         _myPointer->setOpacity(1);
         _myPointer->setTrapWidget(0); // reset
@@ -431,7 +536,6 @@ void FittsLawTest::finishRound() {
     }
 
     _target->hide();
-//    _initCircle->hide();
     _startstop->setPixmap(_stopPixmap);
     _startstop->show();
 
@@ -439,6 +543,10 @@ void FittsLawTest::finishRound() {
     // increment round count
     //
     _roundCount++;
+
+    if (_roundCount >= _NUM_ROUND) {
+        qDebug() << _roundCount << "rounds finished";
+    }
 }
 
 void FittsLawTest::determineNextTargetPosition() {
@@ -458,20 +566,18 @@ void FittsLawTest::determineNextTargetPosition() {
     else {
         nextPos = m_getRandomPos();
 
-//        _targetPosList.append(nextPos);
-
         //
         // Assumes the list is already filled with numm data
         //
         _targetPosList[ _roundCount * 10 + _targetCount ] = nextPos;
 
-        qDebug() << _roundCount << _targetCount << "choose random pos" << nextPos << "list size is now" << _targetPosList.size();
+        qDebug() << _roundCount << _targetCount << "choose random pos" << nextPos;
     }
 
     Q_ASSERT(_target);
     _target->setPos(nextPos);
 
-    _targetCount++;
+    _targetAppearTime = QDateTime::currentMSecsSinceEpoch(); // msec
 }
 
 void FittsLawTest::resetTest() {
@@ -486,6 +592,14 @@ void FittsLawTest::clearTargetPosList() {
 
     for (int i=0; i< _NUM_ROUND * _NUM_TARGET_PER_ROUND; i++) {
         _targetPosList.append( QPointF() ); // init with null point
+    }
+}
+
+void FittsLawTest::clearData() {
+    for (int i=0; i< _NUM_ROUND * _NUM_TARGET_PER_ROUND; i++) {
+
+        _data.misscount.append(0);
+        _data.hitlatency.append(0.0);
     }
 }
 

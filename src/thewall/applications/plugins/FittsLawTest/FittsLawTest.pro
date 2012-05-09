@@ -6,7 +6,7 @@
 
 include(../pluginbase.pri)
 
-QT       += core gui
+QT       += core gui network
 
 TARGET = FittsLawTestPlugin
 #TEMPLATE = lib

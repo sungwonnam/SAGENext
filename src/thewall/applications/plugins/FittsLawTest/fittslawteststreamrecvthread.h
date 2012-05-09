@@ -5,12 +5,15 @@
 
 class PerfMonitor;
 
-class FittsLawTestStreamReceiver : public QThread
+/*!
+  Inherits QThread
+  */
+class FittsLawTestStreamReceiverThread : public QThread
 {
     Q_OBJECT
 public:
-    explicit FittsLawTestStreamReceiver(const QSize &imgsize, qreal frate, const QString &streamerip, int tcpport, PerfMonitor *pmon, QObject *parent = 0);
-    ~FittsLawTestStreamReceiver();
+    explicit FittsLawTestStreamReceiverThread(const QSize &imgsize, qreal frate, const QString &streamerip, int tcpport, PerfMonitor *pmon, QObject *parent = 0);
+    ~FittsLawTestStreamReceiverThread();
 
 protected:
     void run();
@@ -58,6 +61,69 @@ public slots:
       blocking wait ( ::accept() )
       */
     bool connectToStreamer();
+};
+
+
+
+
+
+
+
+#include <QTcpSocket>
+
+
+class FittsLawTestStreamReceiver : public QObject
+{
+    Q_OBJECT
+
+public:
+    FittsLawTestStreamReceiver(const QSize &imgsize, const QString &streamerip, int tcpport, PerfMonitor *pmon, QObject *parent = 0);
+    ~FittsLawTestStreamReceiver();
+
+protected:
+    void timerEvent(QTimerEvent *e);
+
+private:
+    QSize _imgsize;
+
+    QString _streamerIp;
+
+    int _streamerPort;
+
+    PerfMonitor *_perfMon;
+
+    QTcpSocket _tcpSock;
+
+    int _timerId;
+
+    qint64 _cumulativeByteReceived;
+
+    qint64 _cumulativeByteReceivedPrev;
+
+
+    /*!
+      actual time between frames
+      */
+    struct timeval _tvs;
+    struct timeval _tve;
+
+    /*!
+      cpu usage
+      */
+    struct timespec _ts_start;
+    struct timespec _ts_end;
+
+signals:
+    void frameReceived();
+
+public slots:
+    void connectToStreamer();
+
+    void recvFrame();
+
+    void measurePerf();
+
+    void handleSocketError(QAbstractSocket::SocketError err);
 };
 
 #endif // STREAMRECVTHREAD_H

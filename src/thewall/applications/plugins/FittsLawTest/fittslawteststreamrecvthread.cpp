@@ -8,7 +8,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-FittsLawTestStreamReceiver::FittsLawTestStreamReceiver(const QSize &imgsize, qreal frate,  const QString &streamerip, int tcpport, PerfMonitor *pmon, QObject *parent)
+FittsLawTestStreamReceiverThread::FittsLawTestStreamReceiverThread(const QSize &imgsize, qreal frate,  const QString &streamerip, int tcpport, PerfMonitor *pmon, QObject *parent)
     : QThread(parent)
     , _framerate(frate)
     , _imgSize(imgsize)
@@ -22,7 +22,7 @@ FittsLawTestStreamReceiver::FittsLawTestStreamReceiver(const QSize &imgsize, qre
     Q_ASSERT(_socket);
 }
 
-FittsLawTestStreamReceiver::~FittsLawTestStreamReceiver() {
+FittsLawTestStreamReceiverThread::~FittsLawTestStreamReceiverThread() {
     _end = true;
 //    ::shutdown(_socket, SHUT_RDWR);
     ::close(_socket);
@@ -31,7 +31,7 @@ FittsLawTestStreamReceiver::~FittsLawTestStreamReceiver() {
     qDebug() << "StreamReceiver::~StreamReceiver()";
 }
 
-void FittsLawTestStreamReceiver::run() {
+void FittsLawTestStreamReceiverThread::run() {
 
     Q_ASSERT(_socket);
 
@@ -105,16 +105,16 @@ void FittsLawTestStreamReceiver::run() {
     qDebug() << "StreamReceiver::run() : thread finished";
 }
 
-void FittsLawTestStreamReceiver::endThreadLoop() {
+void FittsLawTestStreamReceiverThread::endThreadLoop() {
     _end = true;
 }
 
-void FittsLawTestStreamReceiver::resumeThreadLoop() {
+void FittsLawTestStreamReceiverThread::resumeThreadLoop() {
     _end = false;
     start();
 }
 
-bool FittsLawTestStreamReceiver::connectToStreamer() {
+bool FittsLawTestStreamReceiverThread::connectToStreamer() {
 
     if (_tcpPort <= 0) {
         qCritical() << "StreamReceiver::acceptStreamerConnection() : Invalid port number" << _tcpPort;
@@ -147,4 +147,162 @@ bool FittsLawTestStreamReceiver::connectToStreamer() {
     }
 
     return true;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+FittsLawTestStreamReceiver::FittsLawTestStreamReceiver(const QSize &imgsize, const QString &streamerip, int tcpport, PerfMonitor *pmon, QObject *parent)
+    : QObject(parent)
+    , _imgsize(imgsize)
+    , _streamerIp(streamerip)
+    , _streamerPort(tcpport)
+    , _perfMon(pmon)
+    , _cumulativeByteReceived(0)
+    , _cumulativeByteReceivedPrev(0)
+{
+    _timerId = startTimer(500);
+
+    QObject::connect(&_tcpSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
+}
+
+void FittsLawTestStreamReceiver::handleSocketError(QAbstractSocket::SocketError err) {
+    qDebug() << "FittsLawTestStreamReceiver::handleSocketError() :" << err;
+}
+
+FittsLawTestStreamReceiver::~FittsLawTestStreamReceiver() {
+    _tcpSock.close();
+    killTimer(_timerId);
+}
+
+void FittsLawTestStreamReceiver::timerEvent(QTimerEvent *e) {
+    if ( e->timerId() == _timerId) {
+
+        measurePerf();
+
+        _cumulativeByteReceivedPrev = _cumulativeByteReceived;
+    }
+}
+
+void FittsLawTestStreamReceiver::connectToStreamer() {
+    qDebug() << "FittsLawTestStreamReceiver::connectToStreamer() : " << _streamerIp << _streamerPort;
+    _tcpSock.connectToHost(_streamerIp, _streamerPort);
+
+    if (_perfMon) {
+        gettimeofday(&_tvs, 0);
+
+        // #include <time.h>
+        // Link with -lrt
+        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &_ts_start);
+    }
+
+    if (_tcpSock.waitForConnected(-1)) {
+
+    }
+    else {
+        qDebug() << "FittsLawTestStreamReceiver::connectToStreamer() : Failed to Connect !";
+    }
+}
+
+void FittsLawTestStreamReceiver::recvFrame() {
+    if (_tcpSock.state() == QAbstractSocket::ConnectedState) {
+
+        QByteArray buffer(_imgsize.width() * _imgsize.height() * 3, 0); // 3 byte per pixel
+
+        qint64 read = _tcpSock.read(buffer.data(), buffer.size());
+
+        if (read > 0)  {
+            _cumulativeByteReceived += read;
+        }
+
+        if (read == buffer.size()) {
+            qDebug() << "FittsLawTestStreamReceiver::recvFrame() : frame received";
+            emit frameReceived();
+
+            if (_perfMon) {
+
+                gettimeofday(&_tve, 0);
+
+                qreal actualtime_second = ((double)_tve.tv_sec + (double)_tve.tv_usec * 1e-6) - ((double)_tvs.tv_sec + (double)_tvs.tv_usec * 1e-6);
+                _tvs = _tve;
+
+                clock_gettime(CLOCK_THREAD_CPUTIME_ID, &_ts_end);
+
+                qreal cputime_second = ((double)_ts_end.tv_sec + (double)_ts_end.tv_nsec * 1e-9) - ((double)_ts_start.tv_sec + (double)_ts_start.tv_nsec * 1e-9);
+                _ts_start = _ts_end;
+
+                _perfMon->updateDataWithLatencies(read, actualtime_second, cputime_second);
+
+                qDebug() << "current BW" << _perfMon->getCurrBandwidthMbps() << "Mbps" << _perfMon->getCurrEffectiveFps();
+            }
+        }
+    }
+    else {
+        qDebug() << "FittsLawTestStreamReceiver::recvFrame() : not connected";
+    }
+}
+
+void FittsLawTestStreamReceiver::measurePerf() {
+
+    qint64 delta = _cumulativeByteReceived - _cumulativeByteReceivedPrev;
+
+    ///
+    // this is required resource
+    //
+    qreal bw = (qreal)(delta * 8) / 0.5; // bits / second
+
+    qDebug() << "FittsLawTestStreamReceiver::measurePerf() : d/dt of cumulative resource usage" <<  bw * 1e-6 << "Mbps";
+
+    _perfMon->setRequiredBandwidthMbps( bw * 1e-6 );
 }

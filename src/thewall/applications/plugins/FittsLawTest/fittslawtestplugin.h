@@ -22,6 +22,12 @@ public:
 */
 
 
+typedef struct {
+    QList<int> misscount;
+    QList<qint64> hitlatency; // msec
+} Data;
+
+
 
 class FittsLawTest : public SN_BaseWidget, SN_PluginInterface
 {
@@ -36,10 +42,6 @@ public:
 
     /*!
       Only a user application will have the value >= UserType + BASEWIDGET_USER.
-      So, please use a number greater than 12 for your own custom application if you're to reimplement this.
-
-      Note that SAGENext-generic graphics items will use the value between UserType and UserType + 12
-      e.g. SN_PartitionBar
      */
     enum { Type = QGraphicsItem::UserType + BASEWIDGET_USER + 76};
     int type() const { return Type;}
@@ -57,51 +59,88 @@ public:
     void handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
 
 
+    /*!
+      Draw the cursor
+      */
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 protected:
     void resizeEvent(QGraphicsSceneResizeEvent *event);
+
+    /*!
+      The base implementation doesn maximize/restore.
+      I'm doing nothing.
+      */
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *);
 
+    /*!
+      keep track of cumulative byte received to find out
+
+      Resource required (d/dt of cumulative resource usage)
+      Current resource consumption (  currentBandwidth )
+      */
+    void timerEvent(QTimerEvent *);
+
 private:
+    /*!
+      How many round
+      */
     int _NUM_ROUND;
 
+    /*!
+      How may targets will appear in a round
+      */
     int _NUM_TARGET_PER_ROUND;
 
     /*!
-      FittsLawTest is running.
-      Uesrs is moving pointer and clicking dots
+      Whether the test is running.
+      Uesrs is moving pointer and clicking targets.
+
+      Recv() thread will run.
       */
     bool _isRunning;
 
 
+    /*!
+      User can now click the green icon to start the test
+      */
     bool _isReady;
 
     /*!
-      How many dots a user have to click
+      How many targets a user successfully clicked so far
       */
     int _targetCount;
 
+    /*!
+      How many rounds completed so far
+      */
     int _roundCount;
 
+    /*!
+      A Dummy widget where targets will appear
+      */
     QGraphicsWidget *_contentWidget;
 
     QGraphicsSimpleTextItem *_simpleText;
 
-
+    /*!
+      green icon or stop sign
+      */
     QGraphicsPixmapItem *_startstop;
 
     QPixmap _startPixmap;
     QPixmap _stopPixmap;
 
+    /*!
+      This is the target user will click
+      */
     QGraphicsRectItem *_target;
 
+
     /*!
-      cursor within the app
+      user's mouse movement will update this value
+      _cursorPixmap will be drawin in paint() on this position
       */
-//    QGraphicsPixmapItem *_handle;
-
-
     QPointF _cursorPoint;
 
     /*!
@@ -120,6 +159,9 @@ private:
     QGraphicsProxyWidget *_numTargets;
     QGraphicsProxyWidget *_userid;
 
+    /*!
+      A pixmap of cursor during the test
+      */
     QPixmap _cursorPixmap;
 
 
@@ -128,15 +170,26 @@ private:
     /*!
       Thread receiving image from external program
       */
-    FittsLawTestStreamReceiver *_recvThread;
+    FittsLawTestStreamReceiverThread *_recvThread;
+
+
+
+    QThread _thread;
+    FittsLawTestStreamReceiver *_recvObject;
+
+
 
     /*!
-      ssh process
+      The ssh process of streamer program
       */
     QProcess *_extProgram;
 
     QString _streamerIpAddr;
 
+    /*!
+      This is streaming overhead.
+      So, the buffer size is width * height * 3
+      */
     QSize _streamImageSize;
 
     /*!
@@ -151,7 +204,20 @@ private:
     QList<QPointF> _targetPosList;
 
 
+    /*!
+      Decide next target's position randomly
+      */
     QPointF m_getRandomPos();
+
+    /*!
+      The miss count per target
+      */
+    int _missCount;
+
+    qint64 _targetAppearTime;
+    qint64 _targetHitTime;
+
+    Data _data;
 
 signals:
     /*!
@@ -178,17 +244,33 @@ signals:
 public slots:
     void init();
 
+    /*!
+      This slot resizes the widget.
+      Note that the size of the widget doesn't affect streaming overhead.
+      */
     void setSize(int w, int h);
 
+    /*!
+      Upon clicking (with system's mouse not the shared pointer) the ready button.
+      If the external program (streamer) isn't running then it's going to be fired in here.
+      */
     void setReady();
 
     /*!
-      A round consists of 10 targets
+      A round consists of 10 targets.
+      The streaming thread will resume.
       */
     void startRound();
 
+    /*!
+      The streaming thread will stop
+      */
     void finishRound();
 
+    /*!
+      If there's no saved position then randomly choose one by calling m_getRandomPos()
+      otherwise, use the saved value in the _targetPosList.
+      */
     void determineNextTargetPosition();
 
     /*!
@@ -197,6 +279,8 @@ public slots:
     void resetTest();
 
     void clearTargetPosList();
+
+    void clearData();
 
     /*!
       A test consists of 4 rounds.
@@ -211,7 +295,9 @@ public slots:
       */
     void launchExternalStreamer(const QString &ipaddr);
 
-
+    /*!
+      This slot will just call update()
+      */
     void scheduleUpdate();
 
     inline void setUserID(const QString &str) {_userID = str;}
