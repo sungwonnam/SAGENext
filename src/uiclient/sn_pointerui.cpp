@@ -794,16 +794,16 @@ void SN_PointerUI::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btns /
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
 	if ( btns & Qt::LeftButton) {
-//		qDebug() << "send left dargging";
+//		qDebug() << "POINTER_DRAGGING";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_DRAGGING, _uiclientid, x, y);
 	}
 	else if (btns & Qt::RightButton) {
-//		qDebug() << "sendMouseMove() Rightbutton dragging";
+//		qDebug() << "POINTER_RIGHTDRAGGING";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTDRAGGING, _uiclientid, x, y);
 	}
 	else {
 		// just move pointer
-//		qDebug() << "sendMouseMove() Moving" << globalPos;
+//		qDebug() << "POINTER_MOVING" << globalPos;
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_MOVING, _uiclientid, x, y);
 	}
 	sendMessage(msg);
@@ -822,12 +822,14 @@ void SN_PointerUI::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns 
 		//
 		// this is needed to setPos of selection rectangle
 		//
+//		qDebug() << "POINTER_RIGHTPRESS";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTPRESS, _uiclientid, x, y);
 	}
 	else {
 		//
 		// will trigger setAppUnderPointer() which is needed for left mouse dragging
 		//
+//		qDebug() << "POINTER_PRESS";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_PRESS, _uiclientid, x, y);
 	}
 	sendMessage(msg);
@@ -844,10 +846,12 @@ void SN_PointerUI::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btn
 
 	if (btns & Qt::RightButton) {
 		// will finish selection rectangle
+//		qDebug() << "POINTER_RIGHTRELEASE";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTRELEASE, _uiclientid, x, y);
 	}
 	else {
 		// will pretend droping operation
+//		qDebug() << "POINTER_RELEASE";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RELEASE, _uiclientid, x, y);
 	}
 	sendMessage(msg);
@@ -860,9 +864,11 @@ void SN_PointerUI::sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns 
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 	
 	if (btns & Qt::RightButton) {
+//		qDebug() << "POINTER_RIGHTCLICK";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTCLICK, _uiclientid, x, y);
 	}
 	else {
+//		qDebug() << "POINTER_CLICK";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_CLICK, _uiclientid, x, y);
 	}
 	sendMessage(msg);
@@ -876,6 +882,8 @@ void SN_PointerUI::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons /*
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
+	
+//	qDebug() << "POINTER_DOUBLECLICK";
 	sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_DOUBLECLICK, _uiclientid, x, y);
 	sendMessage(msg);
 

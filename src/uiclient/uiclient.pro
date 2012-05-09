@@ -37,10 +37,13 @@ macx {
 	    system(gcc -Wall -o macCapture macCapture.c -framework ApplicationServices)
 		!exists(macCapture) {
 			error(macCapture failed to compiple)
-		} else {
-			system(mv macCapture ../../)
 		}
 	}
+}
+
+macx {
+# append & at the end of each command if you want multiple command
+QMAKE_POST_LINK = cp macCapture ../../sagenextpointer.app/Contents/MacOS/
 }
 
 
