@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>ExternalGUIMain</string>
+   <string>SAGENext Pointer</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
@@ -30,7 +30,7 @@
       <item>
        <widget class="QLabel" name="isConnectedLabel">
         <property name="text">
-         <string>connected</string>
+         <string/>
         </property>
         <property name="scaledContents">
          <bool>true</bool>

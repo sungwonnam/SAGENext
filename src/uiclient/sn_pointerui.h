@@ -70,13 +70,12 @@ protected:
 
 	/**
 	  This is NOT the mouseRelease that results pointerClick()
-	  This is to know the point where mouse draggin has finished
+	  This is to know the point where mouse draggin has finished.
 	  */
 	void sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btns = Qt::LeftButton);
 
 	/**
-	  mouse press followed by mouse release triggers this.
-	  However, if mouse has moved (while button pressed) greater than 3 manhattan length, then it's not a click
+	  The mouse press followed by mouse release will triggers this.
 	  */
 	void sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns = Qt::LeftButton | Qt::NoButton);
 
@@ -211,6 +210,19 @@ private:
 	QPoint currentGlobalPos;
 
 
+    /*!
+      In Linux, where Qt's mouse event handlers call sendMouseXXXX(),
+      The double click event deliver following messages
+      PRESS -> CLICK -> DBLCLICK -> CLICK
+
+      The last CLICK, which shouldn't be there, is because of the mouseReleaseEvent
+
+      So, this flag prevents sending CLICK in mouseReleaseEvent if
+      the event preceding is sendDblClick
+      */
+    bool _wasDblClick;
+
+
 		/**
 		  Queue invoking MessageThread::sendMsg()
 		  */
@@ -262,6 +274,8 @@ public slots:
 
 private slots:
     void handleSocketError(QAbstractSocket::SocketError error);
+
+    void handleSocketStateChange(QAbstractSocket::SocketState newstate);
 
         /*!
           CMD + N triggers the connection dialog.

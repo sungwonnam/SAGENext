@@ -32,11 +32,11 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
     , _sharingEdge(QString("top"))
 	, macCapture(0)
 	, mouseBtnPressed(0)
+    , _wasDblClick(false)
 
 {
 	ui->setupUi(this);
 
-	ui->isConnectedLabel->hide();
 #ifdef Q_OS_MAC
 	ui->hookMouseBtn->hide();
 #endif
@@ -54,6 +54,10 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
     //
     QObject::connect(&_tcpMsgSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
 
+    //
+    // handle msg socket state change
+    //
+    QObject::connect(&_tcpMsgSock, SIGNAL(stateChanged(QAbstractSocket::SocketState)), this, SLOT(handleSocketStateChange(QAbstractSocket::SocketState)));
 
 	//
 	// to receive a message from SAGENext
@@ -120,6 +124,64 @@ SN_PointerUI::~SN_PointerUI()
 
 void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
     qDebug() << "SN_PointerUI::handleSocketError() :" << error;
+
+
+    //
+    // SAGENext is closed
+    //
+    if (error == QAbstractSocket::RemoteHostClosedError) {
+
+        ui->isConnectedLabel->setText("Wall closed");
+
+        if (macCapture) {
+            macCapture->kill();
+            macCapture->waitForFinished(-1);
+            macCapture = 0;
+        }
+    }
+
+    //
+    // IP addr is valid, but SAGENext isn't available
+    //
+    else if (error == QAbstractSocket::ConnectionRefusedError) {
+
+        ui->isConnectedLabel->setText("Failed to connect\nIs wall running?");
+    }
+}
+
+void SN_PointerUI::handleSocketStateChange(QAbstractSocket::SocketState newstate) {
+    switch (newstate) {
+    case QAbstractSocket::UnconnectedState : {
+        ui->isConnectedLabel->setText("Not Connected");
+
+        //
+        // Maybe schedule connection in 1 sec here ?
+        //
+
+        break;
+    }
+    case QAbstractSocket::HostLookupState : {
+        ui->isConnectedLabel->setText("Looking up host...");
+        break;
+    }
+    case QAbstractSocket::ConnectingState : {
+        ui->isConnectedLabel->setText("Connecting ...");
+        break;
+    }
+    case QAbstractSocket::ConnectedState : {
+        ui->isConnectedLabel->setText("Connected to Wall\n" + _wallAddress);
+        break;
+    }
+    case QAbstractSocket::BoundState : {
+        break;
+    }
+    case QAbstractSocket::ClosingState : {
+        break;
+    }
+    case QAbstractSocket::ListeningState : {
+        break;
+    }
+    }
 }
 
 // triggered by CMD (CTRL) + n
@@ -213,14 +275,13 @@ void SN_PointerUI::on_actionSend_text_triggered()
 
 
 
-
+/**
+  This is called upon receiving ACK_FROM_WALL
+  */
 void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight, int ftpPort) {
 
 	_uiclientid = uiclientid;
 	fileTransferPort = ftpPort;
-
-	ui->isConnectedLabel->setText("Connected to the wall");
-	ui->isConnectedLabel->show();
 
 	wallSize.rwidth() = wallwidth;
 	wallSize.rheight() = wallheight;
@@ -954,8 +1015,14 @@ void SN_PointerUI::mouseReleaseEvent(QMouseEvent *e) {
 		int ml = (e->globalPos() - mousePressedPos).manhattanLength();
 		//		qDebug() << "release" << e->button() << e->globalPos() << ml;
 		if ( ml <= 3 ) {
-			qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse CLICK";
-			sendMouseClick(e->globalPos(), e->button() | Qt::NoButton);
+
+            if (_wasDblClick) {
+                _wasDblClick = false; // reset the flag
+            }
+            else {
+                qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse CLICK";
+                sendMouseClick(e->globalPos(), e->button() | Qt::NoButton);
+            }
 		}
 		else {
 			//
@@ -986,6 +1053,9 @@ void SN_PointerUI::mouseDoubleClickEvent(QMouseEvent *e) {
 	if ( isMouseCapturing ) {
 		qDebug() << "mouseDoubleClickEvent()" << e->button() << "sending mouse DBLCLICK";
 		sendMouseDblClick(e->globalPos()); // Left double click
+
+        _wasDblClick = true;
+
 		e->accept();
 	}
 	else {
