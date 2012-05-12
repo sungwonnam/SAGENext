@@ -64,6 +64,13 @@ public:
       */
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
+
+    void updateInfoTextItem();
+
+
+    int setQuality(qreal newQuality);
+
+
 protected:
     void resizeEvent(QGraphicsSceneResizeEvent *event);
 
@@ -79,7 +86,7 @@ protected:
       Resource required (d/dt of cumulative resource usage)
       Current resource consumption (  currentBandwidth )
       */
-    void timerEvent(QTimerEvent *);
+//    void timerEvent(QTimerEvent *);
 
 private:
     /*!
@@ -116,12 +123,13 @@ private:
       */
     int _roundCount;
 
+
     /*!
       A Dummy widget where targets will appear
       */
     QGraphicsWidget *_contentWidget;
 
-    QGraphicsSimpleTextItem *_simpleText;
+    QGraphicsSimpleTextItem *_infoText;
 
     /*!
       green icon or stop sign
@@ -218,6 +226,9 @@ private:
     qint64 _targetHitTime;
 
     Data _data;
+
+
+    QSemaphore _sema;
 
 signals:
     /*!

@@ -2,6 +2,7 @@
 #define STREAMRECVTHREAD_H
 
 #include <QtGui>
+#include <QSemaphore>
 
 class PerfMonitor;
 
@@ -12,7 +13,7 @@ class FittsLawTestStreamReceiverThread : public QThread
 {
     Q_OBJECT
 public:
-    explicit FittsLawTestStreamReceiverThread(const QSize &imgsize, qreal frate, const QString &streamerip, int tcpport, PerfMonitor *pmon, QObject *parent = 0);
+    explicit FittsLawTestStreamReceiverThread(const QSize &imgsize, qreal frate, const QString &streamerip, int tcpport, PerfMonitor *pmon, QSemaphore *sm, QObject *parent = 0);
     ~FittsLawTestStreamReceiverThread();
 
 protected:
@@ -32,6 +33,13 @@ private:
     bool _end;
 
     PerfMonitor *_perfMon;
+
+    /*!
+      set by the scheduler
+      */
+    unsigned long _extraDelay;
+
+    QSemaphore *_sema;
 
 signals:
     /*!
@@ -61,6 +69,12 @@ public slots:
       blocking wait ( ::accept() )
       */
     bool connectToStreamer();
+
+
+    /*!
+      This is to adjust quality
+      */
+    inline void setExtraDelay_Msec(unsigned long delay) {_extraDelay = delay;}
 };
 
 
@@ -80,8 +94,6 @@ public:
     FittsLawTestStreamReceiver(const QSize &imgsize, const QString &streamerip, int tcpport, PerfMonitor *pmon, QObject *parent = 0);
     ~FittsLawTestStreamReceiver();
 
-protected:
-    void timerEvent(QTimerEvent *e);
 
 private:
     QSize _imgsize;
@@ -93,8 +105,6 @@ private:
     PerfMonitor *_perfMon;
 
     QTcpSocket _tcpSock;
-
-    int _timerId;
 
     qint64 _cumulativeByteReceived;
 
@@ -120,8 +130,6 @@ public slots:
     void connectToStreamer();
 
     void recvFrame();
-
-    void measurePerf();
 
     void handleSocketError(QAbstractSocket::SocketError err);
 };

@@ -88,15 +88,6 @@ public:
       */
     int setQuality(qreal newQuality);
 
-    /*!
-      Returns *absolute* observed quality which is based on expected quality set by a user
-      */
-	qreal observedQuality();
-
-    /*!
-      Returns *relative* observed quality which is based on adjusted quality
-      */
-	qreal observedQualityDemanded();
 
 
 protected:

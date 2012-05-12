@@ -46,7 +46,7 @@ void SN_ProcessorNode::addApp(SN_RailawareWidget *app) {
 
 		_appList->push_back(app);
 		cpuUsage += app->perfMon()->getCpuUsage();
-		bandwidth += app->perfMon()->getCurrBandwidthMbps();
+		bandwidth += app->perfMon()->getCurrBW_Mbps();
 	}
 	_rwlock.unlock();
 }
@@ -121,7 +121,7 @@ void SN_ProcessorNode::refresh() {
             Q_ASSERT(perf);
 			qDebug() << "[" << QTime::currentTime().toString("hh:mm:ss.zzz") << "] SN_ProcessorNode::refresh() : widget id" << rw->globalAppId();
             cpuUsage += perf->getCpuUsage(); // Ratio
-            bandwidth += perf->getCurrBandwidthMbps(); // Mbps
+            bandwidth += perf->getCurrBW_Mbps(); // Mbps
         }
     }
 
@@ -173,8 +173,8 @@ void SN_ProcessorNode::printOverhead()  {
 			       , id
 			       , widget->globalAppId()
 			       , perf->getCurrEffectiveFps()
-			       , perf->getCurrBandwidthMbps()
-			       , perf->getCurrConvDelay() * 1000.0
+			       , perf->getCurrBW_Mbps()
+			       , perf->getCurrUpdateDelay() * 1000.0
 			       , perf->getCurrDrawLatency() * 1000.0
 			       , perf->getCurrDispFps()
 			       );
@@ -522,6 +522,8 @@ void SN_ResourceMonitor::refresh() {
 
     qreal currentTotalBandwidth = 0.0;
 
+    qint64 currentMsec = QDateTime::currentMSecsSinceEpoch();
+
 	QMap<quint64, SN_BaseWidget *>::const_iterator it;
 	for (it=_widgetMap.constBegin(); it!=_widgetMap.constEnd(); it++) {
 		SN_BaseWidget *bw = it.value();
@@ -531,10 +533,23 @@ void SN_ResourceMonitor::refresh() {
 //		Q_ASSERT(pm);
         if (!pm) continue;
 
+
+        //
+        // Each app updates its own cumulativeByteReceived in its receiving thread.
+        // rMonitor triggers them to update performance data based only on the cumulativeByteReceived
+        //
+        pm->updateDataWithCumulativeByteReceived(currentMsec);
+
+
+        bw->updateInfoTextItem();
+
+
+
         //
         // Aggregate the bandwidth the application is actually achieving at this moment.
         //
-        currentTotalBandwidth += pm->getCurrBandwidthMbps();
+        currentTotalBandwidth += pm->getCurrBW_Mbps();
+
 
 		//
 		// Assumes the _cpuOfMine is continusouly updated by worker thread (affInfo->setCpuOfMine())
@@ -548,7 +563,7 @@ void SN_ResourceMonitor::refresh() {
             Q_ASSERT(spn);
 
             spn->addCpuUsage(pm->getCpuUsage());
-            spn->addNetBWUsage(pm->getCurrBandwidthMbps()); // Mbps
+            spn->addNetBWUsage(pm->getCurrBW_Mbps()); // Mbps
             spn->addNumWidgets(1);
         }
 	}
@@ -987,7 +1002,7 @@ void SN_ResourceMonitor::printData_AppPerColumn() {
 
         textout << rw->priority();
         textout << "|";
-        textout << rw->observedQuality();
+        textout << rw->observedQuality_Rq();
         textout << "|";
 //        textout << rw->demandedQuality();
         textout << rw->perfMon()->getCpuTimeSpent_sec();
@@ -1082,10 +1097,10 @@ void SN_ResourceMonitor::printPrelimData() {
 		// time slice is implicit (each row = single time slice)
 
 		// Observed quality of each app
-		if ( rw->observedQuality() >= 1 )
+		if ( rw->observedQuality_Rq() >= 1 )
 			_dataFile.write( "1.0" );
 		else
-			_dataFile.write( qPrintable(QString::number(rw->observedQuality())) );
+			_dataFile.write( qPrintable(QString::number(rw->observedQuality_Rq())) );
 
 		if (count < widgetList.size())
 			_dataFile.write(",");

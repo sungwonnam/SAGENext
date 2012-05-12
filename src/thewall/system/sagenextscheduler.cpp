@@ -551,7 +551,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
         resources[i] = 0;
     }
 
-    // resources array index
+    // resources[] array index
     int index = 0;
 
     // loop's terminate condition
@@ -569,7 +569,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
            )
     {
 
-        index = 0; // reset the array index
+//        index = 0; // reset the array index
 
         qreal AdjustedSumPriority = SumPriority; // reset the sum
 
@@ -577,7 +577,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
         //
         // For each app
         //
-        for (wmap_it = widgetMapByPriority.constBegin(); wmap_it != widgetMapByPriority.constEnd(); wmap_it++) {
+        for (wmap_it = widgetMapByPriority.constBegin(), index=0; wmap_it != widgetMapByPriority.constEnd(); wmap_it++, index++) {
             SN_BaseWidget *rw = wmap_it.value();
 
             Q_ASSERT(rw);
@@ -587,7 +587,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
             //
             // This is the amount I need to ensure 100% performance (quality 1.0)
             //
-            qreal rwDesired = rw->perfMon()->getReqBandwidthMbps();
+            qreal rwDesired = rw->perfMon()->getRequiredBW_Mbps();
 
             //
             // I'm over allocated
@@ -621,7 +621,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
                 // The amount of resource for THIS app to show X % of quality.
                 // !!! This assumes that an app provides its resource requirement !!!
                 //
-                qreal amount_needed_for_quality_X = rw->perfMon()->getReqBandwidthMbps( TheSizeOfBucket );
+                qreal amount_needed_for_quality_X = rw->perfMon()->getRequiredBW_Mbps( TheSizeOfBucket );
 
                 //
                 // During a single iteration, this app should receive this amount.
@@ -666,9 +666,10 @@ void SN_ProportionalShareScheduler::doSchedule() {
                     bitarray.setBit(index, false); // There might be resources that I can get more. So, I'm not done yet.
                 }
             }
-            index++;
-        }
-    }
+
+        } // ENd of for each app
+
+    } // end of while( TotalResource > 0   &&   bitarray.count(true) < # apps )
 
 
     //
@@ -683,7 +684,12 @@ void SN_ProportionalShareScheduler::doSchedule() {
 
 //        qDebug() << "\t" << rw->globalAppId() << ":" << rw->priority() << ":" << 100 * (resources[index]/rw->perfMon()->getReqBandwidthMbps()) << "%";
 
-        rw->setQuality( resources[index] / rw->perfMon()->getReqBandwidthMbps() );
+        if ( rw->perfMon()->getRequiredBW_Mbps() > 0 ) {
+            rw->setQuality( resources[index] / rw->perfMon()->getRequiredBW_Mbps() );
+        }
+        else {
+            rw->setQuality(0);
+        }
 
         index++;
     }
@@ -908,11 +914,11 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 
 
 
-		qreal rwQuality = rw->observedQuality(); // current observed quality based on EXPECTED quality.
+		qreal rwQuality = rw->observedQuality_Rq(); // current observed quality based on EXPECTED quality.
 //		PerfMonitor *rwPm = rw->perfMon();
 //		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
 
-		qreal rwQualityAdjusted = rw->observedQualityDemanded(); // current observed quality based on ADJUSTED quality
+		qreal rwQualityAdjusted = rw->observedQuality_Dq(); // current observed quality based on ADJUSTED quality
 
 		if (priorityRank == 1.0) {
 			// the highest priority widget
@@ -943,7 +949,7 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 			if (rw == other) continue;
 
 			int otherPriority = other->priority();
-			qreal otherQuality = other->observedQuality();
+			qreal otherQuality = other->observedQuality_Rq();
 //			qreal otherQualityAdjusted = other->observedQualityAdjusted();
 
 //			qDebug() << "\t" << other->globalAppId() << otherPriority << otherQuality << otherQualityAdjusted;
@@ -1040,7 +1046,7 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 			if (!rw || !rw->perfMon()) continue;
 
 			qreal rwPriority = rw->priority(currMsecSinceEpoch);
-			qreal rwQuality = rw->observedQuality();
+			qreal rwQuality = rw->observedQuality_Rq();
 	//		PerfMonitor *rwPm = rw->perfMon();
 	//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
 
@@ -1052,7 +1058,7 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 				if (rw == higher) continue;
 
 				qreal otherPriority = higher->priority(currMsecSinceEpoch);
-				qreal otherQuality = higher->observedQuality();
+				qreal otherQuality = higher->observedQuality_Rq();
 
 				if ( rwPriority < otherPriority  &&  rwQuality > otherQuality) {
 					if (otherQuality < temp) temp = otherQuality;
@@ -1080,7 +1086,7 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 			if (!rw || !rw->perfMon()) continue;
 
 			qreal rwPriority = rw->priority(currMsecSinceEpoch);
-			qreal rwQuality = rw->observedQuality();
+			qreal rwQuality = rw->observedQuality_Rq();
 	//		PerfMonitor *rwPm = rw->perfMon();
 	//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
 
@@ -1093,7 +1099,7 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 				if (rw == lower) continue;
 
 				qreal otherPriority = lower->priority(currMsecSinceEpoch);
-				qreal otherQuality = lower->observedQuality();
+				qreal otherQuality = lower->observedQuality_Rq();
 
 				if ( rwPriority > otherPriority ) {
 					if (rwQuality < otherQuality) {
@@ -1371,7 +1377,7 @@ void DividerWidgetScheduler::setPAnchor(qreal pa) {
 	if (rMonitor) {
 		qreal temp = 100000.0;
 		foreach (SN_BaseWidget *rw, rMonitor->getWidgetList()) {
-			if ( rw->observedQuality() <= 0) continue;
+			if ( rw->observedQuality_Rq() <= 0) continue;
 
 			qreal priority = rw->priority(currMsecSinceEpoch); // TODO : priority() must be light !
 
@@ -1545,7 +1551,7 @@ void DividerWidgetScheduler::doSchedule() {
 		higher->setQuality(newQualityScale);
 
 		qreal expectedBW = 8 * higher->appInfo()->frameSizeInByte() * higher->perfMon()->getAdjustedFps(); // desired bandwidth based on the curve (in bps)
-		qreal observedBW = 1000000 * higher->perfMon()->getCurrBandwidthMbps(); // current observed bandwidth in bps
+		qreal observedBW = 1000000 * higher->perfMon()->getCurrBW_Mbps(); // current observed bandwidth in bps
 		qreal requiredBW = expectedBW - observedBW;
 		if (requiredBW > 0)
 			totalRequiredResource += requiredBW; // fixed size knapsack (in bps)
@@ -1591,17 +1597,17 @@ void DividerWidgetScheduler::doSchedule() {
 			// sort widget by unit value
 			foreach (SN_BaseWidget *lower, widgetList) {
 				if ( lower->priority(currMsecSinceEpoch) >= fiducialWidgetPriority ) continue;
-				if ( lower->perfMon()->getCurrBandwidthMbps() <= 0 ) continue;
+				if ( lower->perfMon()->getCurrBW_Mbps() <= 0 ) continue;
 
 				// init widget's adjusted Fps to curretn fps
 				//		lower->perfMon()->setAdjustedFps(  lower->perfMon()->getAvgRecvFps() );
 
-				qreal unitValue = lower->priority(currMsecSinceEpoch) / lower->perfMon()->getCurrBandwidthMbps();
+				qreal unitValue = lower->priority(currMsecSinceEpoch) / lower->perfMon()->getCurrBW_Mbps();
 
 				// sorted by unitValue - ascending order. will preempt more from smaller unitvalue
 				for (iter=wlist.begin(); iter!=wlist.end(); iter++) {
 					SN_BaseWidget *r = *iter;
-					if ( (r->priority(currMsecSinceEpoch) / r->perfMon()->getCurrBandwidthMbps())  >  unitValue ) {
+					if ( (r->priority(currMsecSinceEpoch) / r->perfMon()->getCurrBW_Mbps())  >  unitValue ) {
 						// lower is less important. insert before *iter
 						wlist.insert(iter, lower);
 						break;

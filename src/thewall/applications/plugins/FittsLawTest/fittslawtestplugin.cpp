@@ -3,9 +3,9 @@
 #include "system/resourcemonitor.h"
 #include "applications/base/appinfo.h"
 #include "applications/base/perfmonitor.h"
+#include "applications/base/sn_priority.h"
 
 #include <QtGui>
-
 
 
 FittsLawTest::FittsLawTest()
@@ -19,7 +19,7 @@ FittsLawTest::FittsLawTest()
     , _targetCount(0)
     , _roundCount(0)
     , _contentWidget(new QGraphicsWidget)
-    , _simpleText(0)
+    , _infoText(0)
     , _startstop(0)
     , _target(0)
 //    , _handle(new QGraphicsPixmapItem(QPixmap(":/blackhand_48.png"), this))
@@ -49,6 +49,8 @@ FittsLawTest::FittsLawTest()
 {
     //
 	// register myself to the hoveraccepting app list of the scene
+    // This no longer needed since this widget will trap the pointer
+    // see SN_PolygonArrowPointer::trapWidget()
 	//
 //	setRegisterForMouseHover(true);
 
@@ -58,7 +60,8 @@ FittsLawTest::FittsLawTest()
     clearData();
 
     //
-    // Schedulable widget
+    // set Schedulable widget
+    // SN_Launcher will be able to add this widget to rMonitor's widget list
     //
     setSchedulable();
 
@@ -156,12 +159,13 @@ FittsLawTest::FittsLawTest()
 
 
 
-    _simpleText = new QGraphicsSimpleTextItem(_contentWidget);
-    _simpleText->setAcceptedMouseButtons(0);
-    _simpleText->setFlag(QGraphicsItem::ItemStacksBehindParent);
+    _infoText = new QGraphicsSimpleTextItem(_contentWidget);
+    _infoText->setAcceptedMouseButtons(0);
+    _infoText->setFlag(QGraphicsItem::ItemStacksBehindParent);
     QFont f;
-    f.setPointSize(64);
-    _simpleText->setFont(f);
+    f.setPointSize(32);
+    _infoText->setFont(f);
+    _showInfo = true;
 
 
 
@@ -206,6 +210,7 @@ FittsLawTest::~FittsLawTest() {
     if (_recvThread) {
         if (_recvThread->isRunning()) {
             _recvThread->endThreadLoop();
+            _sema.release();
         }
         delete _recvThread;
     }
@@ -228,6 +233,38 @@ FittsLawTest::~FittsLawTest() {
 void FittsLawTest::scheduleUpdate() {
 //    qDebug() << "FittsLawTest::scheduleUpdate()";
     update();
+}
+
+
+int FittsLawTest::setQuality(qreal newQuality) {
+
+    if (!_perfMon) return -1;
+
+    if (newQuality <= 0) {
+        //
+        // this can hapeen when the requiredBW is 0
+        //
+        return -1;
+    }
+
+    if ( newQuality > 1.0 ) {
+		_quality = 1.0;
+	}
+	else {
+		_quality = newQuality;
+	}
+
+    if (_recvThread) {
+
+        qreal bwallowed = _perfMon->getRequiredBW_Mbps(_quality); // demanded by the scheduler
+
+//            qreal fpsallowed =  1e+6 * bwallowed / (_appInfo->frameSizeInByte() * 8.0f); // demanded by the scheduler
+
+//            _recvThread->setExtraDelay_Msec( );
+
+    }
+
+    return -1;
 }
 
 
@@ -301,8 +338,6 @@ void FittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, Q
 
 bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
     Q_UNUSED(btn);
-
-    _simpleText->setText(QString::number(_roundCount) + ", " + QString::number(_targetCount));
 
     if (_isRunning) {
         // see if the click cocurred on the target (hit)
@@ -388,9 +423,20 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
     return true;
 }
 
-void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
-    if (pointer == _myPointer) {
-        if (_isRunning) {
+void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal dx, qreal dy, Qt::MouseButton btn, Qt::KeyboardModifier mod) {
+    if (_isRunning) {
+        if (pointer == _myPointer) {
+
+            qint64 currTS = QDateTime::currentMSecsSinceEpoch();
+            _priorityData->setLastInteraction(SN_Priority::CONTENTS, currTS);
+
+
+            //
+            // variable frame rate based on mouse interaction
+            //
+            _sema.release(1); // create one resource
+
+
 
             /*
             if (_recvObject && _thread.isRunning()) {
@@ -400,23 +446,12 @@ void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
             }
             */
 
-
-
-            //
-            //
-            //
-            // Maybe in here,
-            // I can keep track of the frame rate based on how often this function is called.
-            // then apply this to recv() thread so that it's frame rate can variate based on user interaction.
-            //
-            //
-            //
-
             _cursorPoint = point;
         }
     }
+
     else {
-        qDebug() << "pointer != _myPointer";
+        SN_BaseWidget::handlePointerDrag(pointer, point, dx, dy, btn, mod);
     }
 }
 
@@ -458,7 +493,7 @@ void FittsLawTest::startRound() {
     //
 
     if (!_recvThread) {
-        _recvThread = new FittsLawTestStreamReceiverThread(_streamImageSize, 30, _streamerIpAddr, _globalAppId + 60000, _perfMon);
+        _recvThread = new FittsLawTestStreamReceiverThread(_streamImageSize, 30, _streamerIpAddr, _globalAppId + 60000, _perfMon, &_sema);
 
         QObject::connect(_recvThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
 
@@ -503,7 +538,7 @@ void FittsLawTest::finishRound() {
         //
         // user interaction stops until next round starts
         //
-        _perfMon->setRequiredBandwidthMbps(0);
+//        _perfMon->setRequiredBW_Mbps(0);
 
         //
         //  This is hacking..
@@ -511,7 +546,7 @@ void FittsLawTest::finishRound() {
         // when the receiving thread is not running
         //
         //
-        _perfMon->setCurrBandwidthMbpsManual(0);
+//        _perfMon->overrideCurrBW_Mbps(0);
 
 
         //
@@ -617,6 +652,28 @@ QPointF FittsLawTest::m_getRandomPos() {
     qreal rand_y = (qreal)possible_y * ( (qreal)randi / (qreal)RAND_MAX ); // 0 ~ height
 
     return QPointF(rand_x, rand_y);
+}
+
+void FittsLawTest::updateInfoTextItem() {
+    if (! _infoText  ||  ! _showInfo) return;
+
+    QByteArray text(4096, '\0');
+
+    sprintf(text.data(),
+            "Round %d, Target %d \n P %.2f (Win %hu, Wal %hu, ipm %.3f) \n OQ_Rq %.1f OQ_Dq %.1f DQ %.1f \n CurBW %.3f, ReqBW %.3f \n allowedBW %.3f"
+            , _roundCount, _targetCount
+
+            , priority() /* qreal */
+            , _priorityData->evrToWin() /* unsigned short - quint16 */
+            , _priorityData->evrToWall()  /* unsigned short - quint16 */
+            , _priorityData->ipm() /* qreal */
+
+            , observedQuality_Rq(), observedQuality_Dq(), _quality
+            , _perfMon->getCurrBW_Mbps(), _perfMon->getRequiredBW_Mbps()
+            , _perfMon->getRequiredBW_Mbps(_quality)
+            );
+
+    _infoText->setText(QString(text));
 }
 
 // TARGET name, Class name

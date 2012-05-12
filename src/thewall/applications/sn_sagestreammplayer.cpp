@@ -1,4 +1,6 @@
 #include "sn_sagestreammplayer.h"
+#include "applications/base/perfmonitor.h"
+#include "applications/base/appinfo.h"
 
 SN_SageStreamMplayer::SN_SageStreamMplayer(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
     : SN_SageStreamWidget(globalappid, s, rm, parent, wFlags)
@@ -44,6 +46,7 @@ void SN_SageStreamMplayer::pauseMplayer(int p) {
 	_playButton->show();
 
 //	_perfMon->setAdjustedFps(0);
+    _perfMon->setRequiredBW_Mbps(0);
 }
 
 void SN_SageStreamMplayer::playMplayer(int p) {
@@ -52,6 +55,8 @@ void SN_SageStreamMplayer::playMplayer(int p) {
 	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("play")));
 	_playButton->hide();
 	_pauseButton->show();
+
+    _perfMon->setRequiredBW_Mbps( _appInfo->frameSizeInByte() * 8.0f * _perfMon->getExpetctedFps() * 1e-6 );
 }
 
 void SN_SageStreamMplayer::fforwardMplayer(int p) {

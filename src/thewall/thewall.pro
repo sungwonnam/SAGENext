@@ -153,7 +153,6 @@ DESTDIR = ../../
 #CONFIG(release, debug|release):DESTDIR += release
 
 FORMS += \
-#        settingdialog.ui \
         applications/base/affinitycontroldialog.ui \
         system/resourcemonitorwidget.ui \
     settingstackeddialog.ui \

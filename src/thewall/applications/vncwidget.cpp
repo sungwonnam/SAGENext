@@ -54,6 +54,11 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	// 4 Byte/pixel
 	vncclient = rfbGetClient(8, 3, 4);
 
+    if (!vncclient) {
+        deleteLater();
+        return;
+    }
+
 	vncclient->canHandleNewFBSize = false;
 	vncclient->appData.useRemoteCursor = true;
 	vncclient->MallocFrameBuffer = SN_VNCClientWidget::resize_func;
@@ -107,6 +112,10 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 	if (_perfMon) {
+
+        //
+        // maybe treat this widget as non-periodic
+        //
 		_perfMon->setExpectedFps( (qreal)_framerate );
 		_perfMon->setAdjustedFps( (qreal)_framerate );
 	}
@@ -380,13 +389,18 @@ void SN_VNCClientWidget::scheduleUpdate() {
 
 void SN_VNCClientWidget::receivingThread() {
 	struct timeval lats, late;
-	struct rusage ru_start, ru_end;
-
-	if(_perfMon) {
-	}
 
 	while (!_end) {
 
+
+        if (_perfMon)
+			gettimeofday(&lats, 0);
+
+
+
+        //
+        // wait until pbo buffer mapped
+        //
 		if ( _usePbo) {
 			Q_ASSERT(_pbomutex);
 			Q_ASSERT(_pbobufferready);
@@ -403,8 +417,9 @@ void SN_VNCClientWidget::receivingThread() {
 
 
 
-
+        //
 		// sleep to ensure desired fps
+        //
 		qint64 now = 0;
         
 #if QT_VERSION < 0x040700
@@ -450,9 +465,9 @@ void SN_VNCClientWidget::receivingThread() {
 
 
 
-		if (_perfMon)
-			gettimeofday(&lats, 0);
-
+        //
+        // Now receive the image
+        //
 
 		unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
 
@@ -482,6 +497,9 @@ void SN_VNCClientWidget::receivingThread() {
 
 			if (_usePbo) {
 				Q_ASSERT(_mappedBufferPtr);
+                //
+                // copy to GPU memory
+                //
 //				qDebug() << "thread writing pixel to buffer" << _mappedBufferPtr;
 				::memcpy(_mappedBufferPtr, vncpixels, _appInfo->frameSizeInByte());
 
@@ -502,11 +520,11 @@ void SN_VNCClientWidget::receivingThread() {
         if (_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
 			gettimeofday(&late, 0);
 			qreal actualdelay_sec = ((double)late.tv_sec + (double)late.tv_usec * 1e-6) - ((double)lats.tv_sec + (double)lats.tv_usec * 1e-6); // second
+            lats = late;
+
 
 			// calculate
-			_perfMon->updateDataWithLatencies(vncclient->width * vncclient->height, actualdelay_sec, 0);
-
-			lats = late;
+			_perfMon->addToCumulativeByteReceived(_appInfo->frameSizeInByte(), actualdelay_sec, 0);
 		}
 
 

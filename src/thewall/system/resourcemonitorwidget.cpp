@@ -1,5 +1,3 @@
-
-
 #include "resourcemonitorwidget.h"
 
 #include "ui_resourcemonitorwidget.h"
@@ -396,7 +394,7 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 
 				break;
 			case 4:
-				item->setData(Qt::DisplayRole, rw->observedQuality());
+				item->setData(Qt::DisplayRole, rw->observedQuality_Rq());
 				break;
 			case 5:
 				item->setData(Qt::DisplayRole, rw->demandedQuality());
@@ -611,7 +609,7 @@ void ResourceMonitorWidget::updateQualityCurve() {
         int priority = rw->priority();
 
         // sorted by the priority
-        rawdata.insert(priority, rw->observedQuality());
+        rawdata.insert(priority, rw->observedQuality_Rq());
     }
 
     QVector<double> x,y;

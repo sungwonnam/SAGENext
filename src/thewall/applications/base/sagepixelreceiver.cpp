@@ -25,6 +25,7 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
     , _end(false)
     , _tcpsocket(sockfd)
     , _udpsocket(0)
+    , _delay(0)
     , doubleBuffer(idb)
     , appInfo(ap)
     , perf(pm)
@@ -191,6 +192,7 @@ void SN_SagePixelReceiver::run() {
 
 
 
+        /*
         if (s->value("system/scheduler",false).toBool()) {
 //            qreal adjustment = (1.0 / perf->getAdjustedFps()) - (1.0 / perf->getExpetctedFps()); // in second
             qreal adjustment_msec = 1000.0 * (1.0/perf->getAdjustedFps());
@@ -199,17 +201,22 @@ void SN_SagePixelReceiver::run() {
                 // adding delay to respect the adjusted quality
                 QThread::msleep( (unsigned long)adjustment_msec );
 
-                /*
-                struct timespec request;
-                request.tv_sec = 0;
-                request.tv_nsec = (long)adjustment * 1e+9;
-                if ( clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &request, 0) != 0) {
-//                        perror("\n\nclock_nanosleep");
-                }
-                */
-
+//                //
+//                struct timespec request;
+//                request.tv_sec = 0;
+//                request.tv_nsec = (long)adjustment * 1e+9;
+//                if ( clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &request, 0) != 0) {
+////                        perror("\n\nclock_nanosleep");
+//                }
+//                //
             }
         }
+        */
+        if (_delay > 0) {
+            QThread::msleep(_delay);
+        }
+
+
 
         ssize_t totalread = 0;
 		ssize_t read = 0;
@@ -315,7 +322,7 @@ void SN_SagePixelReceiver::run() {
 		/********************************************/
 
 
-		if (perf  && s->value("system/resourcemonitor",false).toBool()) {
+		if (perf && s->value("system/resourcemonitor",false).toBool()) {
 
             gettimeofday(&tve, 0);
 
@@ -333,7 +340,7 @@ void SN_SagePixelReceiver::run() {
             // perfMon->recvTimer will be restarted in this function.
             // So the delay calculated in this function includes blocking (which is forced by the pixel streamer) delay
             //
-			perf->updateDataWithLatencies(read, actualtime_second, cputime_second);
+			perf->addToCumulativeByteReceived(read, actualtime_second, cputime_second);
 		}
 	} /*** end of receiving loop ***/
 

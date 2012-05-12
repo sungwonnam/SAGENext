@@ -25,6 +25,7 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 
     , infoTextItem(0)
 	, _appInfo(new AppInfo())
+    , _showInfo(false)
     , _priorityData(0)
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
@@ -49,10 +50,9 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
     , _parallelAnimGroup(0)
     , pAnim_opacity(0)
 
-    , _timerID(0)
+//    , _timerID(0)
 	, _registerForMouseHover(false)
     , _bordersize(10)
-    , _showInfo(false)
 
     , _isSchedulable(false)
 
@@ -70,6 +70,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 
     , infoTextItem(0)
 	, _appInfo(new AppInfo())
+    , _showInfo(false)
     , _priorityData(0)
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
@@ -94,10 +95,9 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
     , _parallelAnimGroup(0)
     , pAnim_opacity(0)
 
-    , _timerID(0)
+//    , _timerID(0)
 	, _registerForMouseHover(false)
     , _bordersize(10)
-    , _showInfo(false)
 
     , _isSchedulable(false)
 
@@ -332,11 +332,30 @@ qreal SN_BaseWidget::priority(qint64 ctepoch /* 0 */) {
     Q_UNUSED(ctepoch);
 //	Q_ASSERT(_priorityData);
 	if (!_priorityData) return 0.0;
+
+    if (_perfMon && _perfMon->getRequiredBW_Mbps() == 0) return 0.0;
+
 	return _priorityData->priority();
 }
 
 int SN_BaseWidget::priorityQuantized(qint64 currTimeEpoch, int bias /* 1 */) {
 	return bias * priority(currTimeEpoch);
+}
+
+
+qreal SN_BaseWidget::observedQuality_Rq() const {
+    if (_perfMon) {
+        return _perfMon->observedQuality_Rq();
+    }
+
+    return -1;
+}
+
+qreal SN_BaseWidget::observedQuality_Dq() const {
+    if (_perfMon) {
+        return _perfMon->observedQuality_Dq();
+    }
+    return -1;
 }
 
 
@@ -350,7 +369,7 @@ void SN_BaseWidget::drawInfo()
 		//update();
 
 		/* starts timer */
-		_timerID = startTimer(1000); // timerEvent every 1000 msec
+//		_timerID = startTimer(1000); // timerEvent every 1000 msec
 	}
 	else {
 		hideInfo();
@@ -360,11 +379,11 @@ void SN_BaseWidget::drawInfo()
 void SN_BaseWidget::hideInfo()
 {
 	if (_showInfo) {
-		killTimer(_timerID);
+//		killTimer(_timerID);
 		_showInfo = false;
 		_hideInfoAction->setDisabled(true);
 		_showInfoAction->setEnabled(true);
-		update();
+//		update();
 	}
 }
 
@@ -758,6 +777,7 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
 
 void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
 	Q_UNUSED(pointer);
+    Q_UNUSED(point);
 
     if ( btn == Qt::LeftButton ) {
 
@@ -801,7 +821,7 @@ void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QP
 }
 
 
-void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
+void SN_BaseWidget::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *) {
 	/**
 	  changing painter state will hurt performance
 	  */
@@ -889,11 +909,11 @@ void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphi
 /**
   drawInfo() will start the timer
   */
-void SN_BaseWidget::timerEvent(QTimerEvent *e) {
+void SN_BaseWidget::timerEvent(QTimerEvent *) {
 //	qDebug("BaseWidget::%s()", __FUNCTION__);
-	if (e->timerId() == _timerID) {
-		updateInfoTextItem();
-	}
+//	if (e->timerId() == _timerID) {
+//		updateInfoTextItem();
+//	}
 }
 
 
@@ -934,7 +954,7 @@ void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 
 void SN_BaseWidget::updateInfoTextItem()
 {
-	if (!infoTextItem) return;
+	if (!infoTextItem || !_showInfo) return;
 
 	QByteArray infotext(256, '\0');
 	QByteArray perftext(512, '\0');
@@ -968,21 +988,23 @@ void SN_BaseWidget::updateInfoTextItem()
 	}
 
 	if ( _perfMon ) {
-		sprintf(perftext.data(), "\nCurr/Avg Recv Lat : %.2f / %.2f ms\nCurr/Avg Conv Lat : %.2f / %.2f ms\nCurr/Avg Draw Lat : %.2f / %.2f ms\n\nCurr/Avg Recv FPS : %.2f / %.2f\nCurr/Avg recvFps AbsDevi. %.2f / %.2f\nRecv FPS variance %.4f\nCurr/Avg Disp FPS : %.2f / %.2f\n\nRecv/Draw Count %llu/%llu\nCurr Bandwidth : %.3f Mbps\nCPU usage : %.6f\nVol/InVol Ctx Sw : %ld / %ld" /*maxrss %ld, pageReclaims %ld"*/
+		sprintf(perftext.data(), "\nCurr/Avg Recv Lat : %.2f / %.2f ms \n Curr/Avg Upd Lat : %.2f / %.2f ms \n Curr/Avg Draw Lat : %.2f / %.2f ms \n Curr/Avg Recv FPS : %.2f / %.2f \n Curr/Avg Disp FPS : %.2f / %.2f \n Recv/Draw Count %llu/%llu \n Curr/ReqBW %.3f / %.3f Mbps \n CPU %.6f" /*\nVol/InVol Ctx Sw : %ld / %ld*/ /*maxrss %ld, pageReclaims %ld"*/
 		        ,_perfMon->getCurrRecvLatency() * 1000.0 , _perfMon->getAvgRecvLatency() * 1000.0
-		       ,_perfMon->getCurrConvDelay() * 1000.0 , _perfMon->getAvgConvDelay() * 1000.0
+		       ,_perfMon->getCurrUpdateDelay() * 1000.0 , _perfMon->getAvgUpdateDelay() * 1000.0
 		        /*_perfMon->getCurrEqDelay() * 1000.0, _perfMon->getAvgEqDelay() * 1000.0,*/
 		        ,_perfMon->getCurrDrawLatency() * 1000.0 , _perfMon->getAvgDrawLatency() * 1000.0
 
 		        ,_perfMon->getCurrEffectiveFps(), _perfMon->getAvgEffectiveFps()
-		        ,_perfMon->getCurrAbsDeviation(), _perfMon->getAvgAbsDeviation()
-		        ,_perfMon->getRecvFpsVariance()
+//		        ,_perfMon->getCurrAbsDeviation(), _perfMon->getAvgAbsDeviation()
+//		        ,_perfMon->getRecvFpsVariance()
 		        ,_perfMon->getCurrDispFps(), _perfMon->getAvgDispFps()
 
 		        ,_perfMon->getRecvCount(), _perfMon->getDrawCount()
-		        ,_perfMon->getCurrBandwidthMbps()
+		        ,_perfMon->getCurrBW_Mbps()
+                , _perfMon->getRequiredBW_Mbps()
 
-		        ,_perfMon->getCpuUsage() * 100.0, _perfMon->getEndNvcsw(), _perfMon->getEndNivcsw()
+		        ,_perfMon->getCpuUsage() * 100.0
+//                , _perfMon->getEndNvcsw(), _perfMon->getEndNivcsw()
 		        /*perfMon->getEndMaxrss(), perfMon->getEndMinflt()*/
 		        );
 		text.append(perftext);
@@ -990,7 +1012,7 @@ void SN_BaseWidget::updateInfoTextItem()
 	}
 
 	if (infoTextItem) {
-		infoTextItem->setText(QString(text));
+		infoTextItem->setText(text);
 		infoTextItem->update();
 	}
 }

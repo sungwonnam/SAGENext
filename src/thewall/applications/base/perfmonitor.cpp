@@ -12,26 +12,28 @@ PerfMonitor::PerfMonitor(QObject *parent)
     , _priori(false)
 
 	, _recvFrameCount(0)
-    , currRecvLatency(0.0)
-    , avgRecvLatency(0.0)
+    , currRecvLatency(-1)
+    , avgRecvLatency(-1)
     , aggrRecvLatency(0.0)
 
     , _currEffectiveFps(0.0)
     , _aggrEffectiveFps(0.0)
     , _avgEffectiveFps(0.0)
 
-    , _currEffectiveBW(0.0)
-    , _requiredBandwidth(0.0)
+    , _currEffectiveBW_Mbps(0.0)
+    , _maxBWachieved(0.0)
+    , _requiredBW_Mbps(0.0)
+    , _cumulativeByteRecved(0)
 
-	, drawCount(0),
-	currDrawLatency(0.0),
-	avgDrawLatency(0.0),
-	aggrDrawLatency(0.0),
+	, drawCount(0)
+    , currDrawLatency(-1)
+    , avgDrawLatency(-1)
+    , aggrDrawLatency(0.0)
 
-	updateDispCount(0),
-	currDispFps(0.0),
-	aggrDispFps(0.0),
-	avgDispFps(0.0),
+    , updateDispCount(0)
+    , currDispFps(0.0)
+    , aggrDispFps(0.0)
+    , avgDispFps(0.0),
 
 	updateCount(0),
 	currUpdateDelay(0.0),
@@ -45,13 +47,13 @@ PerfMonitor::PerfMonitor(QObject *parent)
 
 	expectedFps(24), /* set default value just in case */
 	adjustedFps(24),
-	currAbsDeviation(0.0),
-	aggrAbsDeviation(0.0),
-	avgAbsDeviation(0.0),
+//	currAbsDeviation(0.0),
+//	aggrAbsDeviation(0.0),
+//	avgAbsDeviation(0.0),
 
-	aggrRecvFpsVariance(0.0),
-	recvFpsVariance(0.0),
-	recvFpsStdDeviation(0.0),
+//	aggrRecvFpsVariance(0.0),
+//	recvFpsVariance(0.0),
+//	recvFpsStdDeviation(0.0),
 
 	_ts_currframe(0.0),
 	_ts_nextframe(0.0),
@@ -76,135 +78,168 @@ PerfMonitor::PerfMonitor(QObject *parent)
 }
 
 void PerfMonitor::printData() const {
-	// avgRecvLatency,  avgConvDelay,  avgDrawLatency,  avgRecvFps, avgDispFps, recvFpsVariance , avgAbsDeviation, recvFpsStdDeviation
-	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << _avgEffectiveFps << avgDispFps  << recvFpsVariance << avgAbsDeviation << recvFpsStdDeviation;
+	// avgRecvLatency,  avgConvDelay,  avgDrawLatency,  avgRecvFps, avgDispFps
+//	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << _avgEffectiveFps << avgDispFps;
 }
 
-void PerfMonitor::updateDataWithLatencies(ssize_t byteread, qreal actualtime_sec, qreal cputime_sec) {
+void PerfMonitor::_updateBWdata(qreal bwtemp) {
 
-    /*
-	if ( recvTimer.isNull() ) {
-		qWarning("PerfMonitor::%s() : recvTimer is null", __FUNCTION__);
-		return;
-	}
-	if ( ! recvTimer.isValid()) {
-		qWarning("PerfMonitor::%s() : recvTimer isn't valid", __FUNCTION__);
-		return;
-	}
-    */
-
-    ++_recvFrameCount;
-
-    /***
-	  The netlatency is network pixel receive latency only (recv() system call).
-	  Therefore this can't be used to calculate observed frame rate.
-	****/
-//	currRecvLatency = netlatency; // in second
-
-
-    /**
-      *
-	  * ASSUMES recvTimer.start() had been called once
-      *
-      */
-//	int elapsed = recvTimer.restart(); // millisecond
-//	int elapsed = recvTimer.elapsed(); // millisecond
-
-
-    /**
-      This is the total delay of a single iteration of a worker thread.
-	  Therefore, this could be the FPS that user perceives.
-	  **/
-//	qreal observed_delay = (qreal)elapsed * 0.001; // to second
-
-
-
+    ///
+    // If app provided resource required (e.g. constant framerate streaming such as Sage app)
+    // then I know current BW is always less than or equal to required BW
     //
-	// The bandwidth (in Mbps) I'm currently consuming
-    //
-    qreal bwtemp = (byteread * 8.0) / (actualtime_sec * 1000000.0); // Mbps
-
     if (_priori) {
-        if (bwtemp <= _requiredBandwidth)
-            _currEffectiveBW = bwtemp;
+        if (bwtemp == 0) {
+            _currEffectiveBW_Mbps = bwtemp;
+//                _requiredBW_Mbps = 0; // how to restore this ???
+        }
+        else if (bwtemp <= _requiredBW_Mbps) {
+            _currEffectiveBW_Mbps = bwtemp;
+        }
         else {
             // perhaps measurement error so discard the data measured
-            _currEffectiveBW = _requiredBandwidth;
+            _currEffectiveBW_Mbps = _requiredBW_Mbps;
         }
     }
+
+    //
+    // No priori
+    //
     else {
-         _currEffectiveBW = bwtemp;
-         if (_currEffectiveBW > _requiredBandwidth) {
-             _requiredBandwidth = _currEffectiveBW;
-         }
+        _currEffectiveBW_Mbps = bwtemp; // have to believe current measurement
+
+        //
+        // the widget isn't consuming resource, so update requiredBW so that scheduler won't count this widget
+        //
+        if ( _currEffectiveBW_Mbps == 0 ) {
+            _requiredBW_Mbps = 0;
+        }
+
+        //
+        // The observed quality > 1
+        // The required bw is set too low, so update required BW
+        //
+        else if (_currEffectiveBW_Mbps > _requiredBW_Mbps) {
+            _requiredBW_Mbps = _currEffectiveBW_Mbps;
+        }
+
+        //
+        // The observedQuality is <= 1
+        //
+        else if (_currEffectiveBW_Mbps <= _requiredBW_Mbps) {
+
+            if ( observedQuality_Dq() >= 0.9 ) {
+                // it's following what the scheduler demanded
+                //
+                // Maybe it could consume more if either the requiredBW or the demandedQuality set higher
+                //
+            }
+            else if (observedQuality_Dq() > 1) {
+                // it's consuming more than the scheduler demanded. !!
+            }
+            else if (observedQuality_Dq() < 1) {
+                // it's not even consuming the amount the scheduler allowed
+                // so lower the requiredBW a bit
+
+                _requiredBW_Mbps = _currEffectiveBW_Mbps;
+            }
+        }
     }
 
+    _maxBWachieved = qMax(_maxBWachieved, _currEffectiveBW_Mbps);
+}
 
+//
+// Resource monitor calls this function
+//
+void PerfMonitor::updateDataWithCumulativeByteReceived(qint64 timestamp) {
+
+    if (!_cumulativeByteRecvedList.isEmpty()) {
+        const QPair<qint64, quint64> recentValue = _cumulativeByteRecvedList.front();
+        quint64 deltaByte = _cumulativeByteRecved  -  recentValue.second;
+        qint64 deltaMsec = timestamp - recentValue.first;
+
+        //
+        // current BW usage
+        //
+        qreal bwtemp = (1e-6 * 8.0f * (qreal)deltaByte) / ((qreal)deltaMsec / 1000.0f); // Mbps
+
+        _updateBWdata( bwtemp );
+    }
 
     //
-    // FPS that user perceives
+    // update value & maintain 10 data points
     //
-	_currEffectiveFps = 1.0 / actualtime_sec;
-    //peakRecvFps = currRecvFps;
+    _cumulativeByteRecvedList.push_front( QPair<qint64, quint64>(timestamp, _cumulativeByteRecved) );
+    if (_cumulativeByteRecvedList.size() > 10) {
+        _cumulativeByteRecvedList.pop_back();
+    }
+}
 
-	// deviation from expectedFps
-	qreal temp = expectedFps - _currEffectiveFps;
-	currAbsDeviation = (temp > 0) ? temp : 0;
-	//fprintf(stderr, "%.2f\n", currAbsDeviation);
-	temp = adjustedFps - _currEffectiveFps;
-	currAdjDeviation = (temp > 0) ? temp : 0;
+//
+// The widget updates this
+//
+void PerfMonitor::addToCumulativeByteReceived(quint64 byte, qreal actualtime_sec /* 0 */, qreal cputime_sec /* 0 */) {
 
+     ++_recvFrameCount;
 
+    _cumulativeByteRecved += byte;
 
-    //
-    // CPU time
-    //
-    _cpuTimeSpent_sec = cputime_sec;
-    cpuUsage = cputime_sec / actualtime_sec;
+    if ( actualtime_sec > 0) {
 
+        // this is handled by rMonitor
+//        _updateBWdata(bwtemp);
 
-    /****
-	struct timeval tv;
-	gettimeofday(&tv, 0);
-	qreal now = (qreal)(tv.tv_sec) + 0.000001 * (qreal)(tv.tv_usec); // seconds
+        //
+        // FPS that user perceives
+        //
+        _currEffectiveFps = 1.0 / actualtime_sec;
+        //peakRecvFps = currRecvFps;
 
-	// set current timestamp
-	_ts_currframe = now;
-
-	if ( _ts_nextframe > 0 )
-		_deadline_missed = _ts_currframe - _ts_nextframe;
-
-	// update _ts_nextframe
-	if (expectedFps > 0) {
-//		_ts_nextframe = _ts_currframe + 1.0 / expectedFps;
-		_ts_nextframe = _ts_currframe + 1.0 / adjustedFps;
-	}
-    ***/
+        // deviation from expectedFps
+        /*
+        qreal temp = expectedFps - _currEffectiveFps;
+        currAbsDeviation = (temp > 0) ? temp : 0;
+        //fprintf(stderr, "%.2f\n", currAbsDeviation);
+        temp = adjustedFps - _currEffectiveFps;
+        currAdjDeviation = (temp > 0) ? temp : 0;
+        */
 
 
-	unsigned int skip = 200;
-	if ( _recvFrameCount > skip ) {
-//		aggrRecvLatency += currRecvLatency;
-//		avgRecvLatency = aggrRecvLatency / (qreal)(_recvFrameCount-skip);
+        unsigned int skip = 200;
+        if ( _recvFrameCount > skip ) {
+    //		aggrRecvLatency += currRecvLatency;
+    //		avgRecvLatency = aggrRecvLatency / (qreal)(_recvFrameCount-skip);
 
-		/* observed fps */
-		_aggrEffectiveFps += _currEffectiveFps;
-		_avgEffectiveFps = _aggrEffectiveFps / (qreal)(_recvFrameCount- skip);
+            //
+            // observed average fps
+            //
+            _aggrEffectiveFps += _currEffectiveFps;
+            _avgEffectiveFps = _aggrEffectiveFps / (qreal)(_recvFrameCount - skip);
 
-		/* average absolute deviation */
-//		aggrAbsDeviation += currAbsDeviation;
-//		avgAbsDeviation = aggrAbsDeviation / (qreal)(_recvFrameCount- skip);
-
-
-		/* variance Var(X0 = E[(X-u)2] */
-//		aggrRecvFpsVariance += pow(_currEffectiveFps - _avgEffectiveFps, 2);
-//		recvFpsVariance = aggrRecvFpsVariance / (qreal)(_recvFrameCount - skip);
-
-		/* standard deviation */
-//		recvFpsStdDeviation = sqrt(recvFpsVariance);
-	}
+            /* average absolute deviation */
+    //		aggrAbsDeviation += currAbsDeviation;
+    //		avgAbsDeviation = aggrAbsDeviation / (qreal)(_recvFrameCount- skip);
 
 
+            /* variance Var(X0 = E[(X-u)2] */
+    //		aggrRecvFpsVariance += pow(_currEffectiveFps - _avgEffectiveFps, 2);
+    //		recvFpsVariance = aggrRecvFpsVariance / (qreal)(_recvFrameCount - skip);
+
+            /* standard deviation */
+    //		recvFpsStdDeviation = sqrt(recvFpsVariance);
+        }
+
+    }
+
+    if (cputime_sec > 0) {
+
+        //
+        // CPU time
+        //
+        _cpuTimeSpent_sec = cputime_sec;
+        cpuUsage = cputime_sec / actualtime_sec;
+    }
 
 
 	// Time spent in operating system code on behalf of processes.
@@ -220,6 +255,31 @@ void PerfMonitor::updateDataWithLatencies(ssize_t byteread, qreal actualtime_sec
 //	ruend_nivcsw = ruend.ru_nivcsw;
 //	ruend_maxrss = ruend.ru_maxrss;
 //	ruend_minflt = ruend.ru_minflt;
+}
+
+
+
+qreal PerfMonitor::observedQuality_Rq() const {
+    if ( _requiredBW_Mbps > 0) {
+        return _currEffectiveBW_Mbps / _requiredBW_Mbps;
+    }
+    else {
+        return -1;
+    }
+}
+
+qreal PerfMonitor::observedQuality_Dq() const {
+    if (_widget) {
+        qreal demandedBW = _widget->demandedQuality() * _requiredBW_Mbps;
+        if (demandedBW > 0) {
+            return _currEffectiveBW_Mbps / demandedBW;
+        }
+    }
+    else {
+        qDebug() << "PerfMonitor::observedQuality_Dq() : _widget is null";
+    }
+
+    return -1;
 }
 
 
@@ -258,11 +318,11 @@ void PerfMonitor::updateDispFps() {
 }
 
 /*!
-  Pixmap painting delay
+  The time spent in paint()
   */
 qreal PerfMonitor::updateDrawLatency() {
 	if ( drawTimer.isNull() ) {
-		qWarning("PerfMonitor::%s() : drawTimer object is null", __FUNCTION__);
+		qWarning("PerfMonitor::%s() : drawTimer is null. Please start it first.", __FUNCTION__);
 		return -1.0;
 	}
 //	if ( ! drawTimer.isValid()) {
@@ -272,6 +332,10 @@ qreal PerfMonitor::updateDrawLatency() {
 
 	/* to measure painting delay */
 	++drawCount;
+
+    //
+    // drawTimer.start() must be called by the widget
+    //
 	int elapsed = drawTimer.elapsed();
 	currDrawLatency  = (qreal)elapsed * 0.001; // to second
 
@@ -285,6 +349,7 @@ qreal PerfMonitor::updateDrawLatency() {
 
 qreal PerfMonitor::updateUpdateDelay() {
 	if (updateTimer.isNull()) {
+        qWarning("PerfMonitor::%s() : updateTimer is null. Please start it first.", __FUNCTION__);
 		return -1.0;
 	}
 
@@ -302,6 +367,7 @@ qreal PerfMonitor::updateUpdateDelay() {
 
 qreal PerfMonitor::updateEQDelay() {
 	if (eqTimer.isNull()) {
+        qWarning("PerfMonitor::%s() : eqTimer is null. Please start it first.", __FUNCTION__);
 		return -1.0;
 	}
 
@@ -323,7 +389,7 @@ void PerfMonitor::reset() {
 	_currEffectiveFps = 0.0;
 	_aggrEffectiveFps = 0.0;
 	_avgEffectiveFps = 0.0;
-	_currEffectiveBW = 0.0;
+	_currEffectiveBW_Mbps = 0.0;
 
 	drawCount = 0;
 	currDrawLatency = 0.0;
@@ -348,13 +414,13 @@ void PerfMonitor::reset() {
 //	expectedFps = 0.0;
 	if (_widget->widgetType() == SN_BaseWidget::Widget_RealTime)
 		adjustedFps = expectedFps;
-	currAbsDeviation = 0.0;
-	aggrAbsDeviation = 0.0;
-	avgAbsDeviation = 0.0;
+//	currAbsDeviation = 0.0;
+//	aggrAbsDeviation = 0.0;
+//	avgAbsDeviation = 0.0;
 
-	aggrRecvFpsVariance = 0.0;
-	recvFpsVariance = 0.0;
-	recvFpsStdDeviation = 0.0;
+//	aggrRecvFpsVariance = 0.0;
+//	recvFpsVariance = 0.0;
+//	recvFpsStdDeviation = 0.0;
 
 	_ts_currframe = 0.0;
 	_ts_nextframe = 0.0;
@@ -368,16 +434,12 @@ void PerfMonitor::reset() {
 }
 
 
-qreal PerfMonitor::getReqBandwidthMbps(qreal percentage /* = 1.0 */) const {
-    if (_requiredBandwidth <= 0) {
-        return 0.0;
-    }
-
+qreal PerfMonitor::getRequiredBW_Mbps(qreal percentage /* = 1.0 */) const {
     if (percentage > 1) {
-        return _requiredBandwidth;
+        return _requiredBW_Mbps;
     }
 
-    return _requiredBandwidth * percentage;
+    return _requiredBW_Mbps * percentage;
 }
 
 

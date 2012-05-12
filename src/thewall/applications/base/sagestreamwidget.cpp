@@ -123,6 +123,9 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
         }
     }
 
+    /**
+      Remove myself from schedulable widget list
+      */
     if (_rMonitor) {
         //_affInfo->disconnect();
         _rMonitor->removeSchedulableWidget(this); // remove this from ResourceMonitor::widgetListMap
@@ -134,7 +137,7 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 
 
     /**
-      1. close fsm message channel
+      1. close the fsManager message channel
     **/
     _fsmMsgThread->sendSailShutdownMsg();
     _fsmMsgThread->wait();
@@ -144,7 +147,7 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
         disconnect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
 
         /**
-          2. pixel receiving thread must exit from run()
+          2. The pixel receiving thread must exit from run()
           **/
         _receiverThread->endReceiver();
     }
@@ -171,7 +174,8 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 			//
 			// without below two statements, _receiverThread->wait() will block forever
 			//
-			_receiverThread->flip(0); // very important !
+			_receiverThread->flip(0); // very important !!!!!!!!!!!
+
 			pthread_cond_signal(_pbobufferready);
 		}
     /**
@@ -233,15 +237,43 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 int SN_SageStreamWidget::setQuality(qreal newQuality) {
     if (!_perfMon) return -1;
 
+    if (newQuality == 0) {
+        //
+        // this can happen
+        // when this app's requiredBW is set to 0.
+        // And it means the streamer (SAGE app) isn't sending any pixel
+        //
+
+        return -1;
+    }
+
     if ( newQuality > 1.0 ) {
 		_quality = 1.0;
 	}
-	else if ( newQuality <= 0.0 ) {
-		_quality = 0.1;
+	else if ( newQuality < 0.0 ) {
+		_quality = 0.0;
 	}
 	else {
 		_quality = newQuality;
 	}
+
+
+//    qreal BWallowed_Mbps = _perfMon->getRequiredBW_Mbps( _quality );
+    qreal newfps = _quality * _perfMon->getExpetctedFps();
+    unsigned long delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps()));
+    if (_receiverThread) {
+        if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(unsigned long, delayneeded)) ) {
+            qDebug() << "SN_SageStreamWidget::setQuality() : failed to invoke setDelay_msec()";
+            return -1;
+        }
+    }
+    else {
+        qDebug() << "SN_SageStreamWidget::setQuality() : _receiverThread is null";
+        return -1;
+    }
+
+
+    /******
 
     // there's change
     if ( _perfMon->getAdjustedFps()  !=  (_perfMon->getExpetctedFps() * _quality)) {
@@ -249,6 +281,10 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
         _perfMon->setAdjustedFps(_perfMon->getExpetctedFps() * _quality);
 
          int adjustedfps = _perfMon->getExpetctedFps() * _quality;
+
+
+
+
 
         //
         // How about send a message (SAIL_FRAME_RATE) to SAIL using _fsmMsgThread ??
@@ -262,18 +298,18 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
 
 
 
+
+
          ///
          // Adjust speed of mplayer ??
          // mplayer must be running with -slave option
          ///
-         /*
-         if (_appInfo->executableName() == "mplayer" && _sailAppProc && _sailAppProc->state() == QProcess::Running) {
-             QString speed = "speed_set ";
-             speed.append(QString::number(_quality));
-             speed.append("\n");
-             _sailAppProc->write(qPrintable(speed));
-         }
-         */
+//         if (_appInfo->executableName() == "mplayer" && _sailAppProc && _sailAppProc->state() == QProcess::Running) {
+//             QString speed = "speed_set ";
+//             speed.append(QString::number(_quality));
+//             speed.append("\n");
+//             _sailAppProc->write(qPrintable(speed));
+//         }
 
         return adjustedfps;
     }
@@ -283,26 +319,11 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
         return 0;
     }
 
-    return -1;
+    *******/
+
+    return 0;
 }
 
-qreal SN_SageStreamWidget::observedQuality() {
-	if (_perfMon) {
-		//qDebug() << _perfMon->getCurrRecvFps() << _perfMon->getExpetctedFps() << _perfMon->getCurrRecvFps() / _perfMon->getExpetctedFps();
-		return _perfMon->getCurrEffectiveFps() / _perfMon->getExpetctedFps(); // frame rate for now
-	}
-	else return -1;
-}
-
-qreal SN_SageStreamWidget::observedQualityDemanded() {
-    if (_perfMon) {
-	//
-	// ratio of the current framerate to the ADJUSTED(demanded) framerate
-	//
-        return _perfMon->getCurrEffectiveFps() / _perfMon->getAdjustedFps();
-    }
-    else return -1;
-}
 
 
 /**
@@ -845,7 +866,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
         /*!
           A priori (in Mbps)
          */
-        _perfMon->setRequiredBandwidthMbps( (_appInfo->frameSizeInByte() * 8 * (qreal)framerate) / 1000000.0 );
+        _perfMon->setRequiredBW_Mbps( (_appInfo->frameSizeInByte() * 8 * (qreal)framerate) / 1e+6 );
     }
 
 
@@ -1302,7 +1323,7 @@ GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment)
 
 
 void SN_SageStreamWidget::updateInfoTextItem() {
-	if (!infoTextItem) return;
+	if (!infoTextItem || !_showInfo) return;
 
     QString text = "";
 
@@ -1310,7 +1331,7 @@ void SN_SageStreamWidget::updateInfoTextItem() {
 	if(_priorityData) {
 		sprintf(priorityText.data(), "%llu\n%.2f (Win %hu, Wal %hu, ipm %.3f)"
 		        , _globalAppId
-                , _priorityData->priority() /* qreal */
+                , priority() /* qreal */
                 , _priorityData->evrToWin() /* unsigned short - quint16 */
                 , _priorityData->evrToWall()  /* unsigned short - quint16 */
                 , _priorityData->ipm() /* qreal */
@@ -1318,8 +1339,9 @@ void SN_SageStreamWidget::updateInfoTextItem() {
 	}
 
     QByteArray qualityText(256, 0);
-    sprintf(qualityText.data(), "\nO %.2f / D %.2f"
-            , observedQuality()
+    sprintf(qualityText.data(), "\nOQ_Rq %.2f / OQ_Dq %.2f / DQ %.2f"
+            , observedQuality_Rq()
+            , observedQuality_Dq()
             , demandedQuality()
             );
 
@@ -1328,14 +1350,16 @@ void SN_SageStreamWidget::updateInfoTextItem() {
     qreal cputime = _perfMon->getCpuUsage() * totaldelay; // in second
     cputime *= 1000; // millisecond
 
-    sprintf(perfText.data(), "\nC %.2f / A %.2f (E %.2f)\n%.3f / %.3f msec"
+    sprintf(perfText.data(), "\nC %.2f / A %.2f (E %.2f) \n CurBW %.3f ReqBW %.3f \n CPU %.3f"
 //            , _appInfo->frameSizeInByte()
             , _perfMon->getCurrEffectiveFps()
             , _perfMon->getAdjustedFps()
             , _perfMon->getExpetctedFps()
+
+            , _perfMon->getCurrBW_Mbps()
+            , _perfMon->getRequiredBW_Mbps()
+
             , _perfMon->getCpuTimeSpent_sec() * 1000.0
-            , 1000.0 / _perfMon->getCurrEffectiveFps()
-//            , _perfMon->getReqBandwidthMbps()
             );
 
 	if (infoTextItem) {

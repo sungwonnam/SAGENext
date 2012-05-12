@@ -419,13 +419,16 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 			schedcontrol->launchScheduler( s.value("system/scheduler_type").toString(), s.value("system/scheduler_freq").toInt() );
 		}
 
-
+        //
+        // do initial refresh
+        //
 		resourceMonitor->refresh();
 
 
-
-		// this will trigger resourceMonitor->refresh() every 1sec
-		rMonitorTimerId = resourceMonitor->startTimer(1000);
+        //
+		// this will trigger resourceMonitor->refresh() periodically
+        //
+		rMonitorTimerId = resourceMonitor->startTimer(s.value("system/scheduler_freq", 1000).toInt());
 	}
 
 

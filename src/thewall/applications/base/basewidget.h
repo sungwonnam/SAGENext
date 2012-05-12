@@ -206,18 +206,23 @@ public:
           This is dummy function. A schedulable widget should reimplement this properly.
           The function should return the ratio of the current performance to the performance the application is expecting.
           */
-        virtual qreal observedQuality() {return _quality;}
+        virtual qreal observedQuality_Rq() const;
 
         /*!
           This is dummy function. A schedulable widget should reimplement this properly.
           The function should return the ratio of the current performance to the performance the scheduler sets for this application.
           So, The return value indicates how much this application is obeying the scheduler's demand.
           */
-        virtual qreal observedQualityDemanded() {return _quality;}
+        virtual qreal observedQuality_Dq() const;
 
 
 
 
+        /*!
+          is called every 1 second by timerEvent. Reimplement this to update infoTextItem to display real-time information.
+          draw/hideInfo() sets/kills the timer
+          */
+        virtual void updateInfoTextItem();
 
 
 
@@ -289,7 +294,12 @@ public:
 
           @return return TRUE to prevent SN_PolygonArrowPointer from generating mouse events
           */
-        virtual bool handlePointerClick(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {return false;}
+        virtual bool handlePointerClick(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
+            Q_UNUSED(pointer);
+            Q_UNUSED(point);
+            Q_UNUSED(btn);
+            return false;
+        }
 
 		/*!
           Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to unexpected behavior.
@@ -339,11 +349,7 @@ protected:
         AppInfo *_appInfo; /**< app name, frame dimension, rect */
 
 
-		/*!
-          is called every 1 second by timerEvent. Reimplement this to update infoTextItem to display real-time information.
-          draw/hideInfo() sets/kills the timer
-          */
-        virtual void updateInfoTextItem();
+        bool _showInfo; /**< flag to toggle show/hide info item */
 
 
 
@@ -508,7 +514,7 @@ private:
         /*!
           * startTimer() returns unique timerID.
           */
-        int _timerID;
+//        int _timerID;
 
 
 		/*!
@@ -523,8 +529,6 @@ private:
 		  */
 		int _bordersize;
 
-
-		bool _showInfo; /**< flag to toggle show/hide info item */
 
 
         /*!

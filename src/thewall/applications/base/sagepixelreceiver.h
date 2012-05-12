@@ -56,6 +56,8 @@ private:
 	  */
 	QAbstractSocket *_udpsocket;
 
+    unsigned long _delay;
+
 	/*!
 	  texture handle for the image frame
 	  */
@@ -136,6 +138,9 @@ public slots:
 	  This slot is invoked in SageStreamWidget to flip the pbo buffer index
 	  */
 	void flip(int idx);
+
+
+    inline void setDelay_msec(unsigned long delay) {_delay = delay;}
 
 };
 

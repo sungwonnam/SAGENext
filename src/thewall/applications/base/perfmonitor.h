@@ -16,11 +16,40 @@ public:
 //	~PerfMonitor();
 
 	/*!
-      @param byteread : byte count of the frame
-      @param actualtime_sec : The delay (in second) of a frame
-      @param cputime_sec : CPU time (in second) spent for a frame
+      This function is called by the widget.
+      It assumes that this function is called at the end of every frame is received by the receiving thread of the widget.
+
+      @param byteread : Byte received
+      @param actualtime_sec : The time spent (in second), including any overhead in the receiving thread, in receiving the amount of 'byteread' Byte.
+      @param cputime_sec : CPU time spent (in second) for receiving
 	  */
-	void updateDataWithLatencies(ssize_t byteread, qreal actualtime_sec, qreal cputime_sec);
+//	void updateDataWithLatencies(ssize_t byteread, qreal actualtime_sec, qreal cputime_sec);
+
+    /*!
+      Updates _cumulativeByteReceived
+      */
+    void addToCumulativeByteReceived(quint64 byte, qreal actualtime_sec = 0, qreal cputim_sec = 0);
+
+
+    /*!
+      This function is called by the resource monitor periodically.
+      It assumes the widget keeps updating the _cumulativeByteReceived.
+
+      The _currEffectiveBW, _requiredBW, maxBWachieved are updated in this function
+      */
+    void updateDataWithCumulativeByteReceived(qint64 timestamp);
+
+
+    /*!
+      returns Current BW / Required BW or -1 if Required BW == 0
+      */
+    qreal observedQuality_Rq() const;
+
+    /*!
+      returns Current BW / Demanded BW by scheduler or -1 if Demanded BW == 0
+      */
+    qreal observedQuality_Dq() const;
+
 
 	/*!
 	  Increments updateCount and measure currDispFps, calculate avgDispFps
@@ -29,19 +58,29 @@ public:
 
 
 	/*!
-	  Increments drawCount, and measure currDrawLatency, calculate avgDrawLatency.
-	  Returns currDrawLatency on success, -1.0 on error
+      This function is used to measure drawing latency (in paint() function)
+      Note than drawTimer.start() must be called before calling this function
+
+	  It increments drawCount, update the currDrawLatency and the avgDrawLatency.
+
+	  @return currDrawLatency on success, -1.0 on error
 	  */
 	qreal updateDrawLatency();
 
 	/*!
-      The delay of updating widget's contents to display
+      This function is used to measure widget's contents updating latency.
+      Such as coping pixels to GPU memory (in SN_SageStreamWidget)
+      reading new pdf page and render the page (in SN_PDFViewerWidget)
 
-	  If OpenGL, delay of binding new texture
-	  else delay of converting QImage to QPixmap
+      Note that updateTimer must be started before calling this function.
 	  */
 	qreal updateUpdateDelay();
 
+
+    /*!
+      event queuing delay.
+      This is not used
+      */
 	qreal updateEQDelay();
 
 
@@ -71,6 +110,9 @@ public:
 //	inline void setWidgetType(SN_BaseWidget::Widget_Type wt) {widgetType = wt;}
 
 
+    /*!
+      If the widget provides a priori
+      */
     inline void setPriori(bool b = true) {_priori = b;}
     inline bool priori() const {return _priori;}
 
@@ -102,13 +144,13 @@ public:
 
 
 
-	inline qreal getCurrAbsDeviation() const {return currAbsDeviation;}
-	inline qreal getAvgAbsDeviation() const {return avgAbsDeviation;}
+//	inline qreal getCurrAbsDeviation() const {return currAbsDeviation;}
+//	inline qreal getAvgAbsDeviation() const {return avgAbsDeviation;}
 
-	inline qreal getCurrAdjDeviation() const {return currAdjDeviation;}
+//	inline qreal getCurrAdjDeviation() const {return currAdjDeviation;}
 
-	inline qreal getRecvFpsVariance() const {return recvFpsVariance;}
-	inline qreal getRecvFpsStdDeviation() const {return recvFpsStdDeviation;}
+//	inline qreal getRecvFpsVariance() const {return recvFpsVariance;}
+//	inline qreal getRecvFpsStdDeviation() const {return recvFpsStdDeviation;}
 
 
 	inline qreal getCurrDispFps() const { return currDispFps;}
@@ -121,28 +163,28 @@ public:
     /// Bandwidth
     ///
 
-	inline qreal getCurrBandwidthMbps() const {return _currEffectiveBW;}
+	inline qreal getCurrBW_Mbps() const {return _currEffectiveBW_Mbps;}
 
     /*!
       Override the value calculated in updateDataWithLatencies()
       */
-    inline void setCurrBandwidthMbpsManual(qreal r) {_currEffectiveBW = r;}
+//    inline void overrideCurrBW_Mbps(qreal r) {_currEffectiveBW_Mbps = r;}
 
     /*!
       Returns the required bandwidth to ensure the percentage of expected quality of the application.
-      If percentage == 1.0 then the return value indicates the bandwidth required to make the application runs at full quality(speed)
+      If percentage == 1.0 then the return value indicates the bandwidth required to make the application runs at full quality
 
       @param percentage must be between 0.0 <= percentage <= 1.0
       */
-    qreal getReqBandwidthMbps(qreal percentage = 1.0) const;
+    qreal getRequiredBW_Mbps(qreal percentage = 1.0) const;
+
 
     /*!
       image streaming (SAGE) app : The image width * height * bpp * framerate (in Mbps)
 
       An interactive app (best-effort type) will set this to 0 when there's no interaction thereby the app is sitting idle
       */
-    inline void setRequiredBandwidthMbps(qreal b) {_requiredBandwidth = b;}
-
+    inline void setRequiredBW_Mbps(qreal b) {_requiredBW_Mbps = b;}
 
 
 
@@ -154,8 +196,8 @@ public:
 	inline qreal getCurrDrawLatency() const { return currDrawLatency; }
 	inline qreal getAvgDrawLatency() const { return avgDrawLatency; }
 
-	inline qreal getCurrConvDelay() const {return currUpdateDelay;}
-	inline qreal getAvgConvDelay() const {return avgUpdateDelay;}
+	inline qreal getCurrUpdateDelay() const {return currUpdateDelay;}
+	inline qreal getAvgUpdateDelay() const {return avgUpdateDelay;}
 
 	inline qreal getCurrEqDelay() const {return currEqDelay;}
 	inline qreal getAvgEqDelay() const {return avgEqDelay;}
@@ -187,17 +229,22 @@ private:
 //	SN_BaseWidget::Widget_Type widgetType;
 	SN_BaseWidget *_widget;
 
+
+    /*!
+      Updates
+      _currEffectiveBW
+      _requiredBW
+      _maxBWachieved
+      */
+    void _updateBWdata(qreal bw);
+
+
     /*!
       Whether this app provided a priori.
       constant frame rate periodic app will have this
       */
     bool _priori;
 
-	/*!
-	  A QTimer object to measure delay of recv() in stream receiver.
-	  This doesn't include swapBuffer delay
-	  */
-//	QTime recvTimer;
 
 	/*!
 	  * This counter increments whenever a frame received. This tells how many frames have received from network.
@@ -226,9 +273,13 @@ private:
 	  The current bandwidth is calculated using byteRead (frame size in Byte) and ObservedDelay.
 	  ObservedDelay = network recv() delay + any other delay during frame receive
 	  */
-	qreal _currEffectiveBW;
+	qreal _currEffectiveBW_Mbps;
 
-    QLinkedList<qreal> _recentTenBandwidth;
+
+    /*!
+      The max BW achieved so far
+      */
+    qreal _maxBWachieved;
 
 
 
@@ -238,7 +289,20 @@ private:
 
       This can't be known for a best-effort application.
       */
-    qreal _requiredBandwidth;
+    qreal _requiredBW_Mbps;
+
+
+
+    /*!
+      Cumulative Byte received
+      */
+    quint64 _cumulativeByteRecved;
+
+    /*!
+      key timestamp
+      value cumulative Byte
+      */
+    QList< QPair<qint64, quint64> > _cumulativeByteRecvedList;
 
 
 
@@ -292,6 +356,8 @@ private:
 
 
 	/*!
+      Basically, it's content updating delay.
+
 	  If OpenGL it's used to measure texture uploading delay.
 	  If OpenGL PBO it's used to measure texture binding plus buffer mapping delay.
 	  If no OpenGL it's used to measure the delay of converting QImage to QPixmap.
@@ -346,14 +412,14 @@ private:
 	  The current absolute deviation from the expected fps.
 	  The observed(measured) fps is from currRecvFps (which is not display frame rate)
 	  */
-	qreal currAbsDeviation;
-	qreal aggrAbsDeviation;
-	qreal avgAbsDeviation;
+//	qreal currAbsDeviation;
+//	qreal aggrAbsDeviation;
+//	qreal avgAbsDeviation;
 
 	/*!
 	  current frame rate deviation from the adjusted fps
 	  */
-	qreal currAdjDeviation;
+//	qreal currAdjDeviation;
 
 
 
@@ -362,9 +428,9 @@ private:
 	/*!
 	  Recv FPS variance, standard deviation
 	  */
-	qreal aggrRecvFpsVariance;
-	qreal recvFpsVariance;
-	qreal recvFpsStdDeviation;
+//	qreal aggrRecvFpsVariance;
+//	qreal recvFpsVariance;
+//	qreal recvFpsStdDeviation;
 
 
 

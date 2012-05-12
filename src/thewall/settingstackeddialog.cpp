@@ -128,10 +128,10 @@ SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 void SystemSettingDialog::on_schedulerCheckBox_stateChanged(int state) {
 	if (state == Qt::Checked) {
 		ui->rmonitorCheckBox->setChecked(true);
-		ui->schedFreqLineEdit->setEnabled(true);
+//		ui->schedFreqLineEdit->setEnabled(true);
 	}
 	else {
-		ui->schedFreqLineEdit->setDisabled(true);
+//		ui->schedFreqLineEdit->setDisabled(true);
 	}
 }
 
@@ -140,7 +140,11 @@ void SystemSettingDialog::on_rmonitorCheckBox_stateChanged(int state) {
 		ui->pGridCheckBox->setCheckState(Qt::Unchecked);
 		ui->schedulerCheckBox->setCheckState(Qt::Unchecked);
 		ui->rmonitorWidgetCheckBox->setCheckState(Qt::Unchecked);
+        ui->schedFreqLineEdit->setEnabled(false);
 	}
+    else if (state == Qt::Checked) {
+        ui->schedFreqLineEdit->setEnabled(true);
+    }
 }
 
 void SystemSettingDialog::accept() {
@@ -159,27 +163,50 @@ void SystemSettingDialog::accept() {
 	_settings->setValue("system/sailaffinity", false);
 
 
-	_settings->setValue("system/resourcemonitor", false);
+    //
+    // enable/disable resource monitor
+    //
+	_settings->setValue("system/resourcemonitor", ui->rmonitorCheckBox->isChecked());
+
+    //
+    // rmonitor and scheduling frequency in msec
+    //
+    _settings->setValue("system/scheduler_freq", ui->schedFreqLineEdit->text().toInt());
+
+    //
+    // enable/disable resource monitor widget for real-time monitoring
+    //
 	_settings->setValue("system/resourcemonitorwidget", ui->rmonitorWidgetCheckBox->isChecked());
+
+    //
+    // enable/disable priority grid for setting priority based on wall usage
+    //
 	_settings->setValue("system/prioritygrid", ui->pGridCheckBox->isChecked());
-	_settings->setValue("system/scheduler", false);
+
+    //
+    // enable/disable scheduler
+    //
+	_settings->setValue("system/scheduler", ui->schedulerCheckBox->isChecked());
 
 
+    if (ui->schedulerCheckBox->isChecked()) {
+        //
+        // scheduler type
+        //
+        //	_settings->setValue("system/scheduler_type", "SelfAdjusting");
+        _settings->setValue("system/scheduler_type", "ProportionalShare");
+    }
+    else {
+        _settings->setValue("system/scheduler_type", "");
+    }
 
 
-//	_settings->setValue("system/scheduler_type", "SelfAdjusting");
-    _settings->setValue("system/scheduler_type", "ProportionalShare");
-
-
-
-
-
-
+/*
 	if ( ui->schedulerCheckBox->isChecked() ) {
 		_settings->setValue("system/scheduler", true);
 		_settings->setValue("system/resourcemonitor", true);
 //		_settings->setValue("system/scheduler_type", ui->schedulerComboBox->currentText() );
-		_settings->setValue("system/scheduler_freq", ui->schedFreqLineEdit->text().toInt());
+
 	}
 	else if (ui->rmonitorCheckBox->isChecked()) {
 		_settings->setValue("system/scheduler", false);
@@ -192,6 +219,7 @@ void SystemSettingDialog::accept() {
 		_settings->setValue("system/prioritygrid", false);
 		_settings->setValue("system/resourcemonitorwidget", false);
 	}
+    */
 }
 
 SystemSettingDialog::~SystemSettingDialog() {delete ui;}
