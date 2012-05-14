@@ -46,15 +46,6 @@ MouseDragExample::MouseDragExample()
 	  */
 	setContentsMargins(_marginleft, _margintop, _marginright, _marginbottom);
 
-	for (int i=0; i<_numItems; i++) {
-		QColor color(128, i * 12, 255 / (i+1));
-
-		// MouseDragExample's child item
-		TrackerItem *ti = new TrackerItem(0,0,128,128, QBrush(color), this);
-
-		ti->moveBy(_marginleft + i * 64, _margintop);
-	}
-
 	resize(1024, 768);
 }
 
@@ -67,7 +58,19 @@ MouseDragExample::~MouseDragExample()
   Don't forget this
   */
 SN_BaseWidget * MouseDragExample::createInstance() {
-	return new MouseDragExample;
+
+    MouseDragExample *instance = new MouseDragExample;
+
+    for (int i=0; i<_numItems; i++) {
+		QColor color(128, i * 12, 255 / (i+1));
+
+		// MouseDragExample's child item
+		TrackerItem *ti = new TrackerItem(0,0,128,128, QBrush(color), instance);
+
+		ti->moveBy(_marginleft + i * 64, _margintop);
+	}
+
+	return instance;
 }
 
 TrackerItem * MouseDragExample::getTrackerItemUnderPoint(const QPointF &point) {

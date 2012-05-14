@@ -7,27 +7,46 @@
 
 #include <QtGui>
 
-/*
-class FittsLawTestMain : public SN_BaseWidget , SN_PluginInterface
+class FittsLawTest;
+
+class FittsLawTestData : public QObject
 {
     Q_OBJECT
-    Q_INTERFACES(SN_PluginInterface)
 
 public:
-    FittsLawTestMain();
-    ~FittsLawTestMain();
+    FittsLawTestData(QObject *parent=0);
+    ~FittsLawTestData();
 
-    SN_BaseWidget * createInstance() {return new FittsLawTestMain;}
+    void addWidget(FittsLawTest *widget);
+
+private:
+    QFile *_globalDataFile;
+
+    QTextStream *_globalOut;
+
+
+    QMap<QChar, QFile *> _perAppDataFiles;
+
+    QMap<QChar, QTextStream *> _perAppOuts;
+
+    QMap<QChar, FittsLawTest *> _widgetMap;
+
+private slots:
+    void writeData(const QString &id, const QString &str);
+
+    void writeData(const QString &id, const QByteArray &bytearry);
 };
-*/
+
+
+
+
+
 
 
 typedef struct {
     QList<int> misscount;
     QList<qint64> hitlatency; // msec
 } Data;
-
-
 
 class FittsLawTest : public SN_BaseWidget, SN_PluginInterface
 {
@@ -38,13 +57,21 @@ public:
     FittsLawTest();
     ~FittsLawTest();
 
-    SN_BaseWidget * createInstance() {return new FittsLawTest;}
+
+
+    inline QString userID() const {return _userID;}
+
+
+
+    SN_BaseWidget * createInstance();
+
 
     /*!
       Only a user application will have the value >= UserType + BASEWIDGET_USER.
      */
     enum { Type = QGraphicsItem::UserType + BASEWIDGET_USER + 76};
     int type() const { return Type;}
+
 
     void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
 
@@ -89,15 +116,19 @@ protected:
 //    void timerEvent(QTimerEvent *);
 
 private:
+    static FittsLawTestData *_dataObject;
+
+    void _init();
+
     /*!
-      How many round
+      How many round per user
       */
-    int _NUM_ROUND;
+    static const int _NUM_ROUND = 4;
 
     /*!
       How may targets will appear in a round
       */
-    int _NUM_TARGET_PER_ROUND;
+    static const int _NUM_TARGET_PER_ROUND = 10;
 
     /*!
       Whether the test is running.
@@ -116,7 +147,7 @@ private:
     /*!
       How many targets a user successfully clicked so far
       */
-    int _targetCount;
+    int _targetHitCount;
 
     /*!
       How many rounds completed so far
@@ -136,8 +167,8 @@ private:
       */
     QGraphicsPixmapItem *_startstop;
 
-    QPixmap _startPixmap;
-    QPixmap _stopPixmap;
+    static const QPixmap _startPixmap;
+    static const QPixmap _stopPixmap;
 
     /*!
       This is the target user will click
@@ -158,21 +189,17 @@ private:
     QGraphicsProxyWidget *_resetTargetPosList;
     QGraphicsProxyWidget *_readybutton;
     QGraphicsProxyWidget *_donebutton;
-    QGraphicsProxyWidget *_initbutton;
 
-    /*!
-      lineEdits
-      */
-    QGraphicsProxyWidget *_numRound;
-    QGraphicsProxyWidget *_numTargets;
-    QGraphicsProxyWidget *_userid;
 
     /*!
       A pixmap of cursor during the test
       */
-    QPixmap _cursorPixmap;
+    static const QPixmap _cursorPixmap;
 
 
+    /*!
+      The shared pointer (a user) interacting with this widget
+      */
     SN_PolygonArrowPointer *_myPointer;
 
     /*!
@@ -182,8 +209,8 @@ private:
 
 
 
-    QThread _thread;
-    FittsLawTestStreamReceiver *_recvObject;
+//    QThread _thread;
+//    FittsLawTestStreamReceiver *_recvObject;
 
 
 
@@ -192,13 +219,14 @@ private:
       */
     QProcess *_extProgram;
 
-    QString _streamerIpAddr;
+    static const QString _streamerIpAddr;
+
 
     /*!
       This is streaming overhead.
       So, the buffer size is width * height * 3
       */
-    QSize _streamImageSize;
+    static const QSize _streamImageSize;
 
     /*!
       string representation of user id
@@ -220,7 +248,9 @@ private:
     /*!
       The miss count per target
       */
-    int _missCount;
+    int _missCountPerTarget;
+    int _missCountPerRound;
+    int _missCountTotal;
 
     qint64 _targetAppearTime;
     qint64 _targetHitTime;
@@ -228,6 +258,10 @@ private:
     Data _data;
 
 
+
+    /*!
+      Semaphore to trigger recv() of the recvThread whenever user interact
+      */
     QSemaphore _sema;
 
 signals:
@@ -252,14 +286,24 @@ signals:
       */
     void miss();
 
-public slots:
-    void init();
 
+public slots:
     /*!
-      This slot resizes the widget.
-      Note that the size of the widget doesn't affect streaming overhead.
+      Sets the size of the streaming overhead.
+
+      @returns -1 on error
       */
-    void setSize(int w, int h);
+    /*
+    bool setOverheadSize(int w, int h);
+
+    bool setOverheadSize(const QSize &size);
+
+    bool setStreamerIP(const QString &str);
+*/
+
+    inline void setUserID(const QString &str) {_userID = str;}
+
+
 
     /*!
       Upon clicking (with system's mouse not the shared pointer) the ready button.
@@ -268,6 +312,8 @@ public slots:
     void setReady();
 
     /*!
+      invoked upon receiving initClicked() signal
+
       A round consists of 10 targets.
       The streaming thread will resume.
       */
@@ -289,14 +335,18 @@ public slots:
       */
     void resetTest();
 
+    /*!
+      clear all saved target position data and populate it with null values
+      */
     void clearTargetPosList();
 
+    /*!
+      clear all measurement data and populate it with null values
+      */
     void clearData();
 
     /*!
       A test consists of 4 rounds.
-
-      write data to a file
       */
     void finishTest();
 
@@ -310,8 +360,6 @@ public slots:
       This slot will just call update()
       */
     void scheduleUpdate();
-
-    inline void setUserID(const QString &str) {_userID = str;}
 };
 
 #endif // FITTSLAWTESTPLUGIN_H

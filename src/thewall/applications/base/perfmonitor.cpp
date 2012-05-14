@@ -116,32 +116,50 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
         }
 
         //
-        // The observed quality > 1
+        // The observedQ_Rq > 1
         // The required bw is set too low, so update required BW
         //
         else if (_currEffectiveBW_Mbps > _requiredBW_Mbps) {
-            _requiredBW_Mbps = _currEffectiveBW_Mbps;
+            _requiredBW_Mbps = _currEffectiveBW_Mbps; // INCREASE Rq
         }
 
         //
-        // The observedQuality is <= 1
+        // The observedQ_Rq <= 1
         //
         else if (_currEffectiveBW_Mbps <= _requiredBW_Mbps) {
 
             if ( observedQuality_Dq() >= 0.9 ) {
+                //
                 // it's following what the scheduler demanded
                 //
-                // Maybe it could consume more if either the requiredBW or the demandedQuality set higher
+
                 //
+                // If this is high priority app then demandedQuality could be closer to 1.0
+                // (Even if this is low priority app, with high TotalResource demandedQuality could be closer to 1.0)
+                // This means observedQ_Rq ~= observedQ_Dq ~= 1.0
+                // Then let's increase Rq and see what happens !
+                // because it may be able to consume more
+                //
+                if ( _widget->demandedQuality() >= 0.9) {
+                    _requiredBW_Mbps = 1.2f * _requiredBW_Mbps; // INCREASE Rq
+                }
+
+                //
+                // The low demandedQuality means
+                // The TotalResource is low enough and this app is somewhat low priority
+                //
+                else {
+                    // do nothing
+                }
             }
             else if (observedQuality_Dq() > 1) {
                 // it's consuming more than the scheduler demanded. !!
             }
-            else if (observedQuality_Dq() < 1) {
+            else if (observedQuality_Dq() < 0.9) {
                 // it's not even consuming the amount the scheduler allowed
                 // so lower the requiredBW a bit
 
-                _requiredBW_Mbps = _currEffectiveBW_Mbps;
+                _requiredBW_Mbps = _currEffectiveBW_Mbps; // DECREASE Rq
             }
         }
     }

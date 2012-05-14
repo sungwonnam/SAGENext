@@ -4,36 +4,17 @@
 #
 #-------------------------------------------------
 
+include(../pluginbase.pri)
+
 QT       += core gui
 
 TARGET = MouseClickExamplePlugin
-TEMPLATE = lib
-CONFIG += plugin
-DESTDIR = $$(HOME)/.sagenext/media/plugins
 
-BUILD_DIR = build
-!exists($$BUILD_DIR) {
-	system(mkdir build)
-}
-MOC_DIR = $$BUILD_DIR
-OBJECTS_DIR = $$BUILD_DIR
 
-INCLUDEPATH += ../../../
 
 SOURCES += \
-simpleguiexample.cpp \
-../../base/basewidget.cpp \
-../../base/appinfo.cpp \
-../../base/perfmonitor.cpp \
-../../base/sn_priority.cpp \
-../../../common/commonitem.cpp
+simpleguiexample.cpp
 
 
 HEADERS  += \
-simpleguiexample.h \
-../../base/SN_plugininterface.h \
-../../base/basewidget.h \
-../../base/appinfo.h \
-../../base/perfmonitor.h \
-../../base/sn_priority.h \
-../../../common/commonitem.h
+simpleguiexample.h

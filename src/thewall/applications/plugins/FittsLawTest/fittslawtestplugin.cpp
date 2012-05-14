@@ -7,113 +7,76 @@
 
 #include <QtGui>
 
+FittsLawTestData * FittsLawTest::_dataObject = new FittsLawTestData;
+
+const QString FittsLawTest::_streamerIpAddr = QString("127.0.0.1");
+
+const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
+
+const QPixmap FittsLawTest::_startPixmap = QPixmap(":/greenplay128.png");
+
+const QPixmap FittsLawTest::_stopPixmap = QPixmap(":/stopsign48.png").scaledToWidth(128);
+
+const QPixmap FittsLawTest::_cursorPixmap = QPixmap(":/blackarrow_upleft128.png");
+
+
 
 FittsLawTest::FittsLawTest()
-    : SN_BaseWidget(Qt::Window)
 
-    , _NUM_ROUND(4)
-    , _NUM_TARGET_PER_ROUND(10)
+    : SN_BaseWidget(Qt::Window)
 
     , _isRunning(false)
     , _isReady(false)
-    , _targetCount(0)
+    , _targetHitCount(0)
     , _roundCount(0)
-    , _contentWidget(new QGraphicsWidget)
+    , _contentWidget(0)
     , _infoText(0)
     , _startstop(0)
     , _target(0)
-//    , _handle(new QGraphicsPixmapItem(QPixmap(":/blackhand_48.png"), this))
 
-    , _resetRoundButton(new QGraphicsProxyWidget(this))
-    , _resetTargetPosList(new QGraphicsProxyWidget(this))
-    , _readybutton(new QGraphicsProxyWidget(this))
-    , _donebutton(new QGraphicsProxyWidget(this))
-    , _initbutton(new QGraphicsProxyWidget(this))
-
-    , _numRound(new QGraphicsProxyWidget(this))
-    , _numTargets(new QGraphicsProxyWidget(this))
-    , _userid(new QGraphicsProxyWidget(this))
+    , _resetRoundButton(0)
+    , _resetTargetPosList(0)
+    , _readybutton(0)
+    , _donebutton(0)
 
     , _myPointer(0)
 
-    , _recvThread(0)
-    , _recvObject(0)
+//    , _recvThread(0)
+//    , _recvObject(0)
     , _extProgram(0)
 
-    , _streamerIpAddr(QString("127.0.0.1"))
-
-    , _missCount(0)
+    , _missCountPerTarget(0)
+    , _missCountTotal(0)
     , _targetAppearTime(0.0)
     , _targetHitTime(0.0)
-
 {
-    //
-	// register myself to the hoveraccepting app list of the scene
-    // This no longer needed since this widget will trap the pointer
-    // see SN_PolygonArrowPointer::trapWidget()
-	//
-//	setRegisterForMouseHover(true);
-
-
-    clearTargetPosList();
-
-    clearData();
-
     //
     // set Schedulable widget
     // SN_Launcher will be able to add this widget to rMonitor's widget list
+    // upon launching this widget.
     //
     setSchedulable();
 
-    _startPixmap = QPixmap(":/greenplay128.png");
-    _stopPixmap = QPixmap(":/stopsign48.png").scaledToWidth(128);
-
-    _cursorPixmap = QPixmap(":/blackarrow_upleft128.png");
-
-
     setContentsMargins(16, 40, 16, 16);
+}
 
+SN_BaseWidget * FittsLawTest::createInstance() {
+    FittsLawTest *newwidget = new FittsLawTest;
 
+    newwidget->_init();
+
+    _dataObject->addWidget(newwidget);
+
+    return newwidget;
+}
+
+void FittsLawTest::_init() {
     //
-    // initial GUI interacted with system mouse by operator
+    // content area wher targets will appear
     //
-    /*
-    QLineEdit *le_userID = new QLineEdit("");
-    QLineEdit *le_streamerIP = new QLineEdit("127.0.0.1");
-    QLineEdit *le_width = new QLineEdit("1280");
-    QLineEdit *le_height = new QLineEdit("1024");
-    QPushButton *init  = new QPushButton("INIT");
-
-    QGraphicsLinearLayout *initguilayout = new QGraphicsLinearLayout(Qt::Horizontal);
-    */
-
-
-
-    //
-    // buttons for operator
-    // remember these buttons will only react to real mouse
-    //
-
-    /*
-    QPushButton *init = new QPushButton("Init");
-    QObject::connect(init, SIGNAL(clicked()), this, SLOT(init()));
-    _initbutton->setWidget(init);
-
-    QLineEdit *userid = new QLineEdit("");
-    QLabel *numround = new QLabel(QString::number(_NUM_ROUND) + " rounds");
-    QLabel *numtarget = new QLabel(QString::number(_NUM_TARGET_PER_ROUND) + " targets");
-    _userid->setWidget(userid);
-    _numRound->setWidget(numround);
-    _numTargets->setWidget(numtarget);
-
-    QGraphicsLinearLayout *initlayout = new QGraphicsLinearLayout(Qt::Horizontal);
-    initlayout->addItem(_userid);
-    initlayout->addItem(_numRound);
-    initlayout->addItem(_numTargets);
-    initlayout->addItem(_initbutton);
-    */
-
-
+    _contentWidget = new QGraphicsWidget;
+    _contentWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::DefaultType);
+    _contentWidget->setAcceptedMouseButtons(0);
 
 
     QPushButton *reset = new QPushButton("Reset roundCount");
@@ -125,6 +88,11 @@ FittsLawTest::FittsLawTest()
     QObject::connect(reset, SIGNAL(clicked()), this, SLOT(resetTest()));
     QObject::connect(resetList, SIGNAL(clicked()), this, SLOT(clearTargetPosList()));
     QObject::connect(done, SIGNAL(clicked()), this, SLOT(finishTest()));
+
+    _resetRoundButton = new QGraphicsProxyWidget(this);
+    _resetTargetPosList = new QGraphicsProxyWidget(this);
+    _readybutton = new QGraphicsProxyWidget(this);
+    _donebutton = new QGraphicsProxyWidget(this);
 
     _resetTargetPosList->setWidget(resetList);
     _resetRoundButton->setWidget(reset);
@@ -138,9 +106,8 @@ FittsLawTest::FittsLawTest()
     buttonlayout->addItem(_donebutton);
 
 
-
     //
-    /// the green circle
+    /// the green round start button
     //
     _startstop = new QGraphicsPixmapItem(_contentWidget);
     _startstop->setPixmap(_stopPixmap);
@@ -150,7 +117,6 @@ FittsLawTest::FittsLawTest()
     // yellow targets that the user will click
     //
     _target = new QGraphicsRectItem(0, 0, 64, 64, _contentWidget);
-
     _target->setFlag(QGraphicsItem::ItemStacksBehindParent);
     _target->setAcceptedMouseButtons(0);
     _target->setBrush(Qt::yellow);
@@ -168,29 +134,23 @@ FittsLawTest::FittsLawTest()
     _showInfo = true;
 
 
-
-    _contentWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::DefaultType);
-    _contentWidget->setAcceptedMouseButtons(0);
-
-
     //
-    // content's area where targets will be placed
+    // buttons on the top
+    // content area on the bottom
     //
     QGraphicsLinearLayout *mainlayout = new QGraphicsLinearLayout(Qt::Vertical);
-//    mainlayout->addItem(initlayout);
     mainlayout->addItem(buttonlayout);
     mainlayout->addItem(_contentWidget);
 
     setLayout(mainlayout);
 
-
     resize(1280, 1024);
-    _streamImageSize = QSize(1280, 1024);
-    _appInfo->setFrameSize(1280, 1024, 24);
 
+    _appInfo->setExecutableName("fittslawteststreamer");
+    _appInfo->setSrcAddr(_streamerIpAddr);
 
     //
-    // signal slot connection
+    // signal slot connection for start/stop round
     //
     QObject::connect(this, SIGNAL(roundFinished()), this, SLOT(finishRound()));
     QObject::connect(this, SIGNAL(initClicked()), this, SLOT(startRound()));
@@ -206,7 +166,6 @@ FittsLawTest::~FittsLawTest() {
 
     disconnect(this);
 
-
     if (_recvThread) {
         if (_recvThread->isRunning()) {
             _recvThread->endThreadLoop();
@@ -215,12 +174,14 @@ FittsLawTest::~FittsLawTest() {
         delete _recvThread;
     }
 
+    /*
     if (_recvObject) {
         if (_thread.isRunning()) {
             _thread.quit();
         }
         delete _recvObject;
     }
+    */
 
     if (_extProgram) {
         if (_extProgram->state() == QProcess::Running) {
@@ -281,7 +242,8 @@ void FittsLawTest::launchExternalStreamer(const QString &ipaddr) {
     QString cmd = "ssh -fx ";
     cmd.append(ipaddr);
     cmd.append(" ");
-    cmd.append("fittslawteststreamer ");
+    cmd.append(_appInfo->executableName());
+    cmd.append(" ");
 
     cmd.append(QString::number(_streamImageSize.width()));
     cmd.append(" ");
@@ -307,15 +269,38 @@ void FittsLawTest::launchExternalStreamer(const QString &ipaddr) {
     }
 }
 
-void FittsLawTest::setSize(int w, int h) {
-    resize(w, h);
+/*
+bool FittsLawTest::setOverheadSize(int w, int h) {
+    return setOverheadSize(QSize(w,h));
 }
+
+bool FittsLawTest::setOverheadSize(const QSize &size) {
+    if (_extProgram && _extProgram->state() == QProcess::Running) {
+        qDebug() << "FittsLawTest::setOverheadSize() : set this before running the streamer";
+        return false;
+    }
+
+    _streamImageSize = size;
+    _appInfo->setFrameSize(size.width(), size.height(), 24); // 3 Byte per pixel
+    return true;
+}
+
+bool FittsLawTest::setStreamerIP(const QString &str) {
+    if (_extProgram && _extProgram->state() == QProcess::Running) {
+        qDebug() << "FittsLawTest::setStreamerIP() : set this before running the streamer";
+        return false;
+    }
+
+    _streamerIpAddr = str;
+    _appInfo->setSrcAddr(str);
+
+    return true;
+}
+*/
 
 void FittsLawTest::resizeEvent(QGraphicsSceneResizeEvent *event) {
     Q_UNUSED(event);
 //    qDebug() << boundingRect() << _contentWidget->size();
-
-//    _initCircle->setPos( _contentWidget->size().width() / 2 - 64 , _contentWidget->size().height() / 2 - 64);
     _startstop->setPos( _contentWidget->size().width() / 2 - 64 , _contentWidget->size().height() / 2 - 64);
 }
 
@@ -348,18 +333,24 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
 
             _targetHitTime = QDateTime::currentMSecsSinceEpoch(); // msec
 
-            (_data.misscount)[ _roundCount * 10 + _targetCount] = _missCount;
-            (_data.hitlatency)[_roundCount * 10 + _targetCount] = _targetHitTime - _targetAppearTime;
+            (_data.misscount)[ _roundCount * 10 + _targetHitCount] = _missCountPerTarget;
+            (_data.hitlatency)[_roundCount * 10 + _targetHitCount] = _targetHitTime - _targetAppearTime;
 
-            qDebug() << "ID" << _globalAppId << "R#" << _roundCount << "T#" << _targetCount << "miss" << _data.misscount.at(_roundCount *10 + _targetCount) << "delay" << _data.hitlatency.at(_roundCount *10 + _targetCount) << "msec";
+            qDebug() << "ID" << _globalAppId << "R#" << _roundCount << "T#" << _targetHitCount << "miss" << _data.misscount.at(_roundCount *10 + _targetHitCount) << "delay" << _data.hitlatency.at(_roundCount *10 + _targetHitCount) << "msec";
 
-            _missCount = 0;
-            _targetCount++;
+            //
+            // reset this upon successful hit
+            //
+            _missCountPerTarget = 0;
+
+            emit hit();
+
+            _targetHitCount++;
 
             //
             // if current round is compeleted
             //
-            if (_targetCount == 10) {
+            if (_targetHitCount == 10) {
                 qDebug() << "FittsLawTest::handlePointerClick() : round #" << _roundCount << "finished";
                 emit roundFinished();
                 pointer->setOpacity(1);
@@ -378,9 +369,15 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
         //
         else {
 //            qDebug() << "FittsLawTest::handlePointerClick() : missed  !";
+
+            _missCountPerTarget++;
+
             emit miss();
 
-            _missCount++;
+            _missCountPerRound += _missCountPerTarget;
+
+            _missCountTotal += _missCountPerTarget;
+
         }
     }
     else {
@@ -437,7 +434,6 @@ void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
             _sema.release(1); // create one resource
 
 
-
             /*
             if (_recvObject && _thread.isRunning()) {
                 if ( ! QMetaObject::invokeMethod(_recvObject, "recvFrame", Qt::QueuedConnection) ) {
@@ -462,18 +458,25 @@ void FittsLawTest::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPo
     else {
         SN_BaseWidget::handlePointerPress(pointer, point, btn);
     }
+
+    // can't resize all times
+    _isResizing = false;
 }
 
 /*!
   invoked by the test controller (not a user)
   */
 void FittsLawTest::setReady() {
+
+    //
+    // Run the external streamer process
+    //
     if (!_extProgram) {
-        launchExternalStreamer("127.0.0.1");
+        launchExternalStreamer(_appInfo->srcAddr());
     }
 
     _isReady = true;
-    _targetCount = 0;
+    _targetHitCount = 0;
 
     if (_roundCount >= _NUM_ROUND) {
         _roundCount = 0;
@@ -502,6 +505,7 @@ void FittsLawTest::startRound() {
             qDebug() << "FittsLawTest::startRound() : failed to connect to the streamer" << _streamerIpAddr << _globalAppId + 60000;
         }
     }
+
 
     // will call QThread::start()
     _recvThread->resumeThreadLoop();
@@ -534,11 +538,12 @@ void FittsLawTest::startRound() {
 }
 
 void FittsLawTest::finishRound() {
+    /*
     if (_perfMon) {
         //
         // user interaction stops until next round starts
         //
-//        _perfMon->setRequiredBW_Mbps(0);
+        _perfMon->setRequiredBW_Mbps(0);
 
         //
         //  This is hacking..
@@ -546,7 +551,7 @@ void FittsLawTest::finishRound() {
         // when the receiving thread is not running
         //
         //
-//        _perfMon->overrideCurrBW_Mbps(0);
+        _perfMon->overrideCurrBW_Mbps(0);
 
 
         //
@@ -554,15 +559,18 @@ void FittsLawTest::finishRound() {
         // I can know above two even the thread is not running
         //
     }
+*/
+
 
     if (_recvThread)
         _recvThread->endThreadLoop();
 
     _isRunning = false;
     _isReady = false;
-    _targetCount = 0;
+    _targetHitCount = 0;
 
-    _missCount = 0;
+    _missCountPerTarget = 0;
+    _missCountPerRound = 0;
 
     if (_myPointer) {
         _myPointer->setOpacity(1);
@@ -581,18 +589,19 @@ void FittsLawTest::finishRound() {
 
     if (_roundCount >= _NUM_ROUND) {
         qDebug() << _roundCount << "rounds finished";
+        emit finishTest();
     }
 }
 
 void FittsLawTest::determineNextTargetPosition() {
 
-    QPointF nextPos = _targetPosList.value(_roundCount * 10 + _targetCount);
+    QPointF nextPos = _targetPosList.value(_roundCount * 10 + _targetHitCount);
 
     //
     // there's saved value
     //
     if (! nextPos.isNull() ) {
-        qDebug() << _roundCount << _targetCount << "has point data" << nextPos;
+        qDebug() << _roundCount << _targetHitCount << "has point data" << nextPos;
     }
 
     //
@@ -604,9 +613,9 @@ void FittsLawTest::determineNextTargetPosition() {
         //
         // Assumes the list is already filled with numm data
         //
-        _targetPosList[ _roundCount * 10 + _targetCount ] = nextPos;
+        _targetPosList[ _roundCount * 10 + _targetHitCount ] = nextPos;
 
-        qDebug() << _roundCount << _targetCount << "choose random pos" << nextPos;
+        qDebug() << _roundCount << _targetHitCount << "choose random pos" << nextPos;
     }
 
     Q_ASSERT(_target);
@@ -614,6 +623,7 @@ void FittsLawTest::determineNextTargetPosition() {
 
     _targetAppearTime = QDateTime::currentMSecsSinceEpoch(); // msec
 }
+
 
 void FittsLawTest::resetTest() {
     finishRound();
@@ -661,7 +671,7 @@ void FittsLawTest::updateInfoTextItem() {
 
     sprintf(text.data(),
             "Round %d, Target %d \n P %.2f (Win %hu, Wal %hu, ipm %.3f) \n OQ_Rq %.1f OQ_Dq %.1f DQ %.1f \n CurBW %.3f, ReqBW %.3f \n allowedBW %.3f"
-            , _roundCount, _targetCount
+            , _roundCount, _targetHitCount
 
             , priority() /* qreal */
             , _priorityData->evrToWin() /* unsigned short - quint16 */
@@ -676,5 +686,137 @@ void FittsLawTest::updateInfoTextItem() {
     _infoText->setText(QString(text));
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+FittsLawTestData::FittsLawTestData(QObject *parent)
+    : QObject(parent)
+    , _globalDataFile(0)
+    , _globalOut(0)
+{
+    _globalDataFile = new QFile("/home/snam5/.sagenext/global.csv", this);
+    if ( ! _globalDataFile->open(QIODevice::ReadWrite) ) {
+        qDebug() << "FittsLawTestData::FittsLawTestData() failed to open" << _globalDataFile->fileName();
+    }
+    _globalOut = new QTextStream(_globalDataFile);
+}
+
+FittsLawTestData::~FittsLawTestData() {
+    if (_globalOut)
+        _globalOut->flush();
+
+    if (_globalDataFile) {
+        _globalDataFile->close();
+    }
+
+
+    QMap<QChar, QTextStream *>::iterator itt;
+    for (itt=_perAppOuts.begin(); itt!=_perAppOuts.end(); itt++) {
+        QTextStream *out = itt.value();
+        out->flush();
+    }
+
+    QMap<QChar, QFile *>::iterator itf;
+    for (itf = _perAppDataFiles.begin(); itf!=_perAppDataFiles.end(); itf++) {
+        QFile *f = itf.value();
+        f->close();
+    }
+}
+
+void FittsLawTestData::addWidget(FittsLawTest *widget) {
+    Q_ASSERT(widget);
+
+    static QChar id = QChar();
+
+    if (id.isNull()) {
+        id = 'A';
+    }
+    else if (id == 'A') {
+        id = 'B';
+    }
+    else if (id == 'B') {
+        id = 'C';
+    }
+    widget->setUserID(QString(id));
+    _widgetMap.insert(id, widget);
+
+    QString fname = "/home/snam5/.sagenext/";
+    fname.append(id);
+
+    QFile *f = new QFile(fname, this);
+    QTextStream *out = new QTextStream(f);
+    if ( ! f->open(QIODevice::ReadWrite) ) {
+        qDebug() << "FittsLawTestData::addWidget() : failed to open a file" << f->fileName();
+    }
+
+    _perAppDataFiles.insert(id, f);
+    _perAppOuts.insert(id, out);
+
+}
+
+
+void FittsLawTestData::writeData(const QString &id, const QByteArray &bytearry) {
+    writeData(id, QString(bytearry));
+}
+
+void FittsLawTestData::writeData(const QString &id, const QString &str) {
+
+    qint64 ts = QDateTime::currentMSecsSinceEpoch();
+
+    if (_globalOut) {
+        (*_globalOut) << ts << "," << str;
+    }
+
+    QTextStream *appOut= 0;
+    QMap<QChar, QTextStream *>::iterator it = _perAppOuts.find(id[0]);
+    if (it != _perAppOuts.end()) {
+        appOut = it.value();
+    }
+
+    if (appOut) {
+        (*appOut) << ts << "," << id << "," << str;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 // TARGET name, Class name
 Q_EXPORT_PLUGIN2(FittsLawTestPlugin, FittsLawTest)
+
+
+
