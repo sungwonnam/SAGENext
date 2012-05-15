@@ -331,9 +331,14 @@ QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 qreal SN_BaseWidget::priority(qint64 ctepoch /* 0 */) {
     Q_UNUSED(ctepoch);
 //	Q_ASSERT(_priorityData);
-	if (!_priorityData) return 0.0;
+	if (!_priorityData) return -1;
 
-    if (_perfMon && _perfMon->getRequiredBW_Mbps() == 0) return 0.0;
+    //
+    // The widget doesn't need resource
+    //
+    if (_perfMon && _perfMon->getRequiredBW_Mbps() == 0) {
+        return 0.0;
+    }
 
 	return _priorityData->priority();
 }

@@ -263,7 +263,7 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
                 _rMonitor->rMonWidget()->setSchedCtrlFrame(controlPanel);
 
                 // rMonWidget will take ownership of the controlPanel
-                // so make sure sched control will not touch anymore
+                // so make sure the schedControl doesn't touch the controlPanel
                 controlPanel = 0;
             }
             else {

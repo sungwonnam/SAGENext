@@ -322,14 +322,26 @@ bool SN_ResourceMonitor::setPrintFile(const QString &filepath) {
         qWarning() << "SN_ResourceMonitor::setPrintFile() :" << filepath;
         qWarning() << "=====================================================================================================\n";
 
+        if (_dataFile.isOpen()) {
+            closeDataFile();
+        }
 
-        _dataFile.setFileName(filepath);
+        QString fname = filepath;
+        if (_schedcontrol && _schedcontrol->isRunning()) {
+            fname.append("_Sched.csv");
+        }
+        else {
+            fname.append("_Nosched.csv");
+        }
+
+        _dataFile.setFileName(fname);
 
         if (!_dataFile.open(QIODevice::WriteOnly)) {
             qDebug() << "SN_ResourceMonitor::setPrintFile() : failed to open a file" << _dataFile.fileName();
             _printDataFlag = false;
         }
         else {
+            _dataTextOut.setDevice(&_dataFile);
             _printDataFlag = true;
             return true;
         }
@@ -412,7 +424,7 @@ void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 	//
 	if (_printDataFlag) {
 //		printPrelimData();
-		printData_AppPerColumn();
+		printData_AppPerColumn(_dataTextOut);
 	}
 }
 
@@ -916,41 +928,60 @@ void SN_ResourceMonitor::loadBalance() {
 
 void SN_ResourceMonitor::stopPrintData() {
     _printDataFlag = false;
+    _dataTextOut.flush();
+    _dataTextOut.setDevice(0);
+
     closeDataFile();
 }
 
 void SN_ResourceMonitor::closeDataFile() {
 	if (_dataFile.isOpen()) {
+        qDebug() << "SN_ResourceMonitor::closeDataFile() : closing the data file" << _dataFile.fileName();
 		_dataFile.close();
 	}
 }
 
 
-void SN_ResourceMonitor::printData_AppPerColumn() {
+void SN_ResourceMonitor::printData_AppPerColumn(QTextStream &textout) {
 	if (!_dataFile.exists()) {
-		qDebug() << "printData() : _dataFile doesn't exist" << _dataFile.fileName();
+		qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : _dataFile doesn't exist" << _dataFile.fileName();
 		return;
 	}
 	if (!_dataFile.isOpen()) {
 		if (!_dataFile.open(QIODevice::WriteOnly)) {
-			qDebug() << "printData() : failed to open a _dataFile" << _dataFile.fileName();
+			qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : failed to open a _dataFile" << _dataFile.fileName();
 			return;
 		}
 	}
 	if (!_dataFile.isWritable()) {
-		qDebug() << "printData() : _dataFile is not writable" << _dataFile.fileName();
+		qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : _dataFile is not writable" << _dataFile.fileName();
 		return;
 	}
+
 	if (_widgetMap.size() == 0) return;
 
 
-	QTextStream textout(&_dataFile);
+    if (! textout.device()) {
+        qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : QTextStream has null device";
+        return;
+    }
+
+    if (! textout.device()->isWritable()) {
+        qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : QTextStream's device isn't writable";
+        return;
+    }
 
 
+    //
+    // The 1st column
+    //
 	static quint64 counter;
 	textout << counter << ",";
 
-	// wall layout factor
+    //
+    // 2nd, 3rd, 4th, 5th are
+	// the wall layout factors
+    //
 	textout << _widgetMap.size() << ","
 	        << _theScene->getRatioEmptySpace() << ","
 	        << _theScene->getRatioOverlapped() << ",";
@@ -984,8 +1015,8 @@ void SN_ResourceMonitor::printData_AppPerColumn() {
 
 		SN_BaseWidget *rw = it.value();
 		Q_ASSERT(rw);
-		Q_ASSERT(rw->priorityData());
 
+        /*
 		QSize qwinsize = (rw->scale() * rw->boundingRect().size().toSize());
 		int winsize = qwinsize.width() * qwinsize.height();
 
@@ -993,7 +1024,6 @@ void SN_ResourceMonitor::printData_AppPerColumn() {
         // data item is going to be
         // priority|windowsize
         //
-        /*
 		textout << rw->priority();
 		textout << "|";
 		textout << winsize;
@@ -1002,10 +1032,10 @@ void SN_ResourceMonitor::printData_AppPerColumn() {
 
         textout << rw->priority();
         textout << "|";
-        textout << rw->observedQuality_Rq();
+        textout << rw->observedQuality_Rq(); // currentBW / requiredBW
         textout << "|";
-//        textout << rw->demandedQuality();
-        textout << rw->perfMon()->getCpuTimeSpent_sec();
+        textout << rw->demandedQuality();
+//        textout << rw->perfMon()->getCpuTimeSpent_sec();
 
 
 		if (it + 1 == _widgetMap.constEnd()) {

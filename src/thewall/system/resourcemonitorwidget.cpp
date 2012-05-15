@@ -217,7 +217,7 @@ void ResourceMonitorWidget::setSchedCtrlFrame(QFrame *frame) {
 
 void ResourceMonitorWidget::on_toggleRefreshDataBtn_clicked()
 {
-    qDebug() << "ResourceMonitorWidget::on_toggleRefreshDataBtn_clicked()";
+//    qDebug() << "ResourceMonitorWidget::on_toggleRefreshDataBtn_clicked()";
 
     if (_isRefreshEnabled) {
         _isRefreshEnabled = false;

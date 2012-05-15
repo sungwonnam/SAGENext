@@ -345,6 +345,7 @@ private:
 	  */
 	QFile _dataFile;
 
+    QTextStream _dataTextOut;
 
 signals:
 	/*!
@@ -439,7 +440,7 @@ public slots:
       It prints data (priority|winsize) for each app separated by ','
       Note that each column X in a line represents priority and window size of the application with global app id X
       */
-	void printData_AppPerColumn();
+	void printData_AppPerColumn(QTextStream &tout);
 
 
 	void closeDataFile();

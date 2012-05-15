@@ -7,35 +7,9 @@
 
 #include <QtGui>
 
-class FittsLawTest;
-
-class FittsLawTestData : public QObject
-{
-    Q_OBJECT
-
-public:
-    FittsLawTestData(QObject *parent=0);
-    ~FittsLawTestData();
-
-    void addWidget(FittsLawTest *widget);
-
-private:
-    QFile *_globalDataFile;
-
-    QTextStream *_globalOut;
+class FittsLawTestData;
 
 
-    QMap<QChar, QFile *> _perAppDataFiles;
-
-    QMap<QChar, QTextStream *> _perAppOuts;
-
-    QMap<QChar, FittsLawTest *> _widgetMap;
-
-private slots:
-    void writeData(const QString &id, const QString &str);
-
-    void writeData(const QString &id, const QByteArray &bytearry);
-};
 
 
 
@@ -57,11 +31,29 @@ public:
     FittsLawTest();
     ~FittsLawTest();
 
+    static int RoundID;
+
+    /*!
+      How many round per user
+      */
+    static int _NUM_ROUND;
+
+    /*!
+      How may targets will appear in a round
+      */
+    static int _NUM_TARGET_PER_ROUND;
+
+
+    static const QString _streamerIpAddr;
+
+    /*!
+      This is streaming overhead.
+      So, the buffer size is width * height * 3
+      */
+    static const QSize _streamImageSize;
 
 
     inline QString userID() const {return _userID;}
-
-
 
     SN_BaseWidget * createInstance();
 
@@ -97,7 +89,6 @@ public:
 
     int setQuality(qreal newQuality);
 
-
 protected:
     void resizeEvent(QGraphicsSceneResizeEvent *event);
 
@@ -121,16 +112,6 @@ private:
     void _init();
 
     /*!
-      How many round per user
-      */
-    static const int _NUM_ROUND = 4;
-
-    /*!
-      How may targets will appear in a round
-      */
-    static const int _NUM_TARGET_PER_ROUND = 10;
-
-    /*!
       Whether the test is running.
       Uesrs is moving pointer and clicking targets.
 
@@ -138,6 +119,7 @@ private:
       */
     bool _isRunning;
 
+    bool _isDryRun;
 
     /*!
       User can now click the green icon to start the test
@@ -153,6 +135,8 @@ private:
       How many rounds completed so far
       */
     int _roundCount;
+
+    int _roudnId;
 
 
     /*!
@@ -190,11 +174,25 @@ private:
     QGraphicsProxyWidget *_readybutton;
     QGraphicsProxyWidget *_donebutton;
 
+    /*!
+      Labels
+      */
+    QLabel *_lbl_userid;
+    QLabel *_lbl_roundid;
+    QLabel *_lbl_tgtcount;
+    QLabel *_lbl_hitlatency;
+    QGraphicsProxyWidget *_lblproxy_userid;
+    QGraphicsProxyWidget *_lblproxy_roundid;
+    QGraphicsProxyWidget *_lblproxy_tgtcount;
+    QGraphicsProxyWidget *_lblproxy_hitlatency;
+
 
     /*!
       A pixmap of cursor during the test
       */
     static const QPixmap _cursorPixmap;
+
+    QGraphicsPixmapItem *_cursor;
 
 
     /*!
@@ -208,25 +206,11 @@ private:
     FittsLawTestStreamReceiverThread *_recvThread;
 
 
-
-//    QThread _thread;
-//    FittsLawTestStreamReceiver *_recvObject;
-
-
-
     /*!
       The ssh process of streamer program
       */
     QProcess *_extProgram;
 
-    static const QString _streamerIpAddr;
-
-
-    /*!
-      This is streaming overhead.
-      So, the buffer size is width * height * 3
-      */
-    static const QSize _streamImageSize;
 
     /*!
       string representation of user id
@@ -239,6 +223,7 @@ private:
       */
     QList<QPointF> _targetPosList;
 
+    qreal _tgtDistance;
 
     /*!
       Decide next target's position randomly
@@ -274,17 +259,17 @@ signals:
     /*!
       when a single round finishes
       */
-    void roundFinished();
+//    void roundFinished(QChar uid, int roundid);
 
     /*!
       user clicked the dot successfully
       */
-    void hit();
+//    void hit();
 
     /*!
       user clicked but missed the dot
       */
-    void miss();
+//    void miss();
 
 
 public slots:
@@ -304,12 +289,11 @@ public slots:
     inline void setUserID(const QString &str) {_userID = str;}
 
 
-
     /*!
       Upon clicking (with system's mouse not the shared pointer) the ready button.
       If the external program (streamer) isn't running then it's going to be fired in here.
       */
-    void setReady();
+    void setReady(bool isDryrun = false);
 
     /*!
       invoked upon receiving initClicked() signal
@@ -320,7 +304,8 @@ public slots:
     void startRound();
 
     /*!
-      The streaming thread will stop
+       This is called (in handlePointerClick) after user successfully clicked 10 targets
+      The streaming thread will stop.
       */
     void finishRound();
 
@@ -348,7 +333,7 @@ public slots:
     /*!
       A test consists of 4 rounds.
       */
-    void finishTest();
+//    void finishTest();
 
     /*!
       launches external program using ssh command.
@@ -360,6 +345,104 @@ public slots:
       This slot will just call update()
       */
     void scheduleUpdate();
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class FittsLawTestData : public QObject
+{
+    Q_OBJECT
+
+public:
+    FittsLawTestData(QObject *parent=0);
+    ~FittsLawTestData();
+
+    static int _NUM_SUBJECTS;
+
+    /*!
+      This is called by user widget (FittsLawTest)
+      or in recreateAllDataFiles()
+      */
+    void addWidget(FittsLawTest *widget, const QChar id = QChar());
+
+    inline QFrame * getFrame() {return _frame;}
+
+    void createGUI();
+
+    void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, const QString &data = QString());
+
+//    void writeData(const QString &id, const QString &actionType, int targetcount = -1, const QByteArray &bytearry = QByteArray());
+
+    void flushCloseAll();
+
+private:
+    const QString _filenameBase;
+
+    QFile *_globalDataFile;
+
+    QTextStream *_globalOut;
+
+
+    QMap<QChar, QFile *> _perAppDataFiles;
+
+    QMap<QChar, QTextStream *> _perAppOuts;
+
+    QMap<QChar, FittsLawTest *> _widgetMap;
+
+    QChar _currentID;
+
+    QFrame *_frame;
+
+    /*!
+      closes and deletes all QIODevices and QTextStream.
+      This will be called after completing a test.
+      */
+    void _deleteFileAndStreamObjects();
+
+    bool _openGlobalDataFile();
+
+    bool _openPerAppDataFile(const QChar id);
+
+    /*!
+      Dry run for users to learn
+      */
+    bool _isDryRun;
+
+    QReadWriteLock _rwlock;
+
+    /*!
+      A test consists of pow(2, _NUM_SUBJECTS) rounds.
+      ANd there will be two tests.
+      One w/ scheduler
+      The other w/o scheduler
+      */
+//    int _testCount;
+
+private slots:
+    void closeAll();
+
+    void closeApp(QObject *obj);
+
+    /*!
+      After completing a test (w or w/o sched), run this function to re-create data files
+      */
+    void recreateAllDataFiles();
+
+    void advanceRound();
+
 };
 
 #endif // FITTSLAWTESTPLUGIN_H
