@@ -621,6 +621,11 @@ void FittsLawTest::startRound() {
     _isRunning = true;
     _startstop->hide();
     _target->show();
+
+    //
+    // user is interacting
+    //
+    _perfMon->setInteracting(true);
 }
 
 //
@@ -649,6 +654,8 @@ void FittsLawTest::finishRound() {
         //
     }
 */
+
+    _perfMon->setInteracting(false);
 
     _cursor->hide();
 
@@ -781,7 +788,7 @@ QPointF FittsLawTest::m_getRandomPos() {
 void FittsLawTest::updateInfoTextItem() {
     if (! _infoText  ||  ! _showInfo) return;
 
-    QByteArray text(4096, '\0');
+    QByteArray text(2048, '\0');
 
     sprintf(text.data(),
             "Round %d, Target %d \n P %.2f (Win %hu, Wal %hu, ipm %.3f) \n OQ_Rq %.1f OQ_Dq %.1f DQ %.1f \n CurBW %.3f, ReqBW %.3f \n allowedBW %.3f"

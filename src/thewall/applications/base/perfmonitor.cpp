@@ -24,6 +24,7 @@ PerfMonitor::PerfMonitor(QObject *parent)
     , _maxBWachieved(0.0)
     , _requiredBW_Mbps(0.0)
     , _cumulativeByteRecved(0)
+    , _isInteracting(false)
 
 	, drawCount(0)
     , currDrawLatency(-1)
@@ -33,20 +34,20 @@ PerfMonitor::PerfMonitor(QObject *parent)
     , updateDispCount(0)
     , currDispFps(0.0)
     , aggrDispFps(0.0)
-    , avgDispFps(0.0),
+    , avgDispFps(0.0)
 
-	updateCount(0),
-	currUpdateDelay(0.0),
-	aggrUpdateDelay(0.0),
-	avgUpdateDelay(0.0),
+    , updateCount(0)
+    , currUpdateDelay(0.0)
+    , aggrUpdateDelay(0.0)
+    , avgUpdateDelay(0.0)
 
-	eqCount(0),
-	currEqDelay(0.0),
-	aggrEqDelay(0.0),
-	avgEqDelay(0.0),
+    , eqCount(0)
+    , currEqDelay(0.0)
+    , aggrEqDelay(0.0)
+    , avgEqDelay(0.0)
 
-	expectedFps(24), /* set default value just in case */
-	adjustedFps(24),
+    , expectedFps(24) /* set default value just in case */
+	, adjustedFps(24)
 //	currAbsDeviation(0.0),
 //	aggrAbsDeviation(0.0),
 //	avgAbsDeviation(0.0),
@@ -55,9 +56,9 @@ PerfMonitor::PerfMonitor(QObject *parent)
 //	recvFpsVariance(0.0),
 //	recvFpsStdDeviation(0.0),
 
-	_ts_currframe(0.0),
-	_ts_nextframe(0.0),
-	_deadline_missed(0.0)
+	, _ts_currframe(0.0)
+    , _ts_nextframe(0.0)
+    , _deadline_missed(0.0)
 
     , _cpuTimeSpent_sec(0.0)
     , _cpuTimeRequired(0.0)

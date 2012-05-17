@@ -395,7 +395,6 @@ public slots:
 	  */
 //	int assignProcessor();
 
-
 	/*!
 	  set processor affinity for rw to FFFFFFFFF
 	  */
@@ -408,17 +407,10 @@ public slots:
 	  */
 	void resetProcessorAllocation();
 
-
 	/*!
 	  This is experimental and incomplete
 	  */
 //	void loadBalance();
-
-	/*!
-	  print perf data header
-	  This slot shoud be called once
-	  */
-	void printPrelimDataHeader();
 
 
     /*!
@@ -429,21 +421,30 @@ public slots:
 
     void stopPrintData();
 
-	/*!
-	  print perf data for SAGENext paper.
-	  This slot should be called periodically
-	  */
-	void printPrelimData();
-
+    void closeDataFile();
 
     /*!
       It prints data (priority|winsize) for each app separated by ','
       Note that each column X in a line represents priority and window size of the application with global app id X
       */
-	void printData_AppPerColumn(QTextStream &tout);
+	void printData(QTextStream *out, bool widgetIDasColCount = false);
 
 
-	void closeDataFile();
+
+
+
+
+    /*!
+	  print perf data header
+	  This slot shoud be called once
+	  */
+	void printPrelimDataHeader();
+
+    /*!
+	  print perf data for SAGENext paper.
+	  This slot should be called periodically
+	  */
+	void printPrelimData();
 };
 
 #endif // RESOURCEMONITOR_H

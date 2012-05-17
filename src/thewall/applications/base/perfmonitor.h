@@ -26,7 +26,12 @@ public:
 //	void updateDataWithLatencies(ssize_t byteread, qreal actualtime_sec, qreal cputime_sec);
 
     /*!
-      Updates _cumulativeByteReceived
+      The application keeps updating _cumulativeByteReceived by calling this function.
+      Optionally, the time(and CPU time) spent receiving a frame can be passed to calculate
+      FPS and CPU usage.
+
+      The _cumulativeByteReceived will be used to find out
+      the current BW usage (in Mbps)
       */
     void addToCumulativeByteReceived(quint64 byte, qreal actualtime_sec = 0, qreal cputim_sec = 0);
 
@@ -35,7 +40,7 @@ public:
       This function is called by the resource monitor periodically.
       It assumes the widget keeps updating the _cumulativeByteReceived.
 
-      The _currEffectiveBW, _requiredBW, maxBWachieved are updated in this function
+      The _currEffectiveBW, _requiredBW, maxBWachieved are updated in this function.
       */
     void updateDataWithCumulativeByteReceived(qint64 timestamp);
 
@@ -160,7 +165,7 @@ public:
 
 
     ///
-    /// Bandwidth
+    /// The Bandwidth
     ///
 
 	inline qreal getCurrBW_Mbps() const {return _currEffectiveBW_Mbps;}
@@ -188,6 +193,8 @@ public:
 
 
 
+    inline bool isInteracting() const {return _isInteracting;}
+    inline void setInteracting(bool b=true) {_isInteracting = b;}
 
 
 
@@ -303,6 +310,11 @@ private:
       value cumulative Byte
       */
     QList< QPair<qint64, quint64> > _cumulativeByteRecvedList;
+
+    /*!
+      true if the widget is being interacted by user
+      */
+    bool _isInteracting;
 
 
 

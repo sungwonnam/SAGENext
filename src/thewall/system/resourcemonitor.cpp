@@ -312,46 +312,6 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 //	_theScene->addItem(databutton);
 }
 
-bool SN_ResourceMonitor::setPrintFile(const QString &filepath) {
-    if (!filepath.isNull() && !filepath.isEmpty()) {
-
-//        QString now = QDateTime::currentDateTime().toString("_MM.dd_hh.mm.ss.zzz.CSV");
-//        filename = filename.append(now);
-
-        qWarning() << "\n=====================================================================================================";
-        qWarning() << "SN_ResourceMonitor::setPrintFile() :" << filepath;
-        qWarning() << "=====================================================================================================\n";
-
-        if (_dataFile.isOpen()) {
-            closeDataFile();
-        }
-
-        QString fname = filepath;
-        if (_schedcontrol && _schedcontrol->isRunning()) {
-            fname.append("_Sched.csv");
-        }
-        else {
-            fname.append("_Nosched.csv");
-        }
-
-        _dataFile.setFileName(fname);
-
-        if (!_dataFile.open(QIODevice::WriteOnly)) {
-            qDebug() << "SN_ResourceMonitor::setPrintFile() : failed to open a file" << _dataFile.fileName();
-            _printDataFlag = false;
-        }
-        else {
-            _dataTextOut.setDevice(&_dataFile);
-            _printDataFlag = true;
-            return true;
-        }
-    }
-    else {
-        qDebug() << "SN_ResourceMonitor::setPrintFile() : wrong file name" << filepath;
-    }
-    return false;
-}
-
 SN_ResourceMonitor::~SN_ResourceMonitor() {
 
     QObject::disconnect(this, 0, 0, 0); // disconnect everything connected to this
@@ -424,7 +384,7 @@ void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 	//
 	if (_printDataFlag) {
 //		printPrelimData();
-		printData_AppPerColumn(_dataTextOut);
+		printData(&_dataTextOut, true);
 	}
 }
 
@@ -436,9 +396,17 @@ void SN_ResourceMonitor::addSchedulableWidget(SN_BaseWidget *bw) {
 		if (!widgetList.contains(bw)) {
 			widgetList.push_front(bw);
 		}
+        else {
+            qDebug() << "\nSN_ResourceMonitor::addSchedulableWidget() : !! duplicate item in the widget list !!" << bw->globalAppId();
+        }
 
-//        qDebug() << "adding " << bw->globalAppId();
-		_widgetMap.insertMulti(bw->globalAppId(), bw);
+        if (_widgetMap.key(bw, 0) == 0) {
+            //qDebug() << "adding " << bw->globalAppId();
+            _widgetMap.insert(bw->globalAppId(), bw);
+        }
+        else {
+            qDebug() << "\nSN_ResourceMonitor::addSchedulableWidget() : !! duplicate item in the widget map !!" << bw->globalAppId();
+        }
 	}
 
 	_widgetListRWlock.unlock();
@@ -924,6 +892,46 @@ void SN_ResourceMonitor::loadBalance() {
 
 
 
+bool SN_ResourceMonitor::setPrintFile(const QString &filepath) {
+    if (!filepath.isNull() && !filepath.isEmpty()) {
+
+//        QString now = QDateTime::currentDateTime().toString("_MM.dd_hh.mm.ss.zzz.CSV");
+//        filename = filename.append(now);
+
+        if (_dataFile.isOpen()) {
+            closeDataFile();
+        }
+
+        QString fname = filepath;
+        if (_schedcontrol && _schedcontrol->isRunning()) {
+            fname.append("_Sched.csv");
+        }
+        else {
+            fname.append("_Nosched.csv");
+        }
+
+        _dataFile.setFileName(fname);
+
+        if (!_dataFile.open(QIODevice::WriteOnly)) {
+            qDebug() << "SN_ResourceMonitor::setPrintFile() : failed to open a file" << _dataFile.fileName();
+            _printDataFlag = false;
+        }
+        else {
+            _dataTextOut.setDevice(&_dataFile);
+            _printDataFlag = true;
+
+            qWarning() << "\n=====================================================================================================";
+            qWarning() << "SN_ResourceMonitor::setPrintFile() :" << fname;
+            qWarning() << "=====================================================================================================\n";
+
+            return true;
+        }
+    }
+    else {
+        qDebug() << "SN_ResourceMonitor::setPrintFile() : wrong file name" << filepath;
+    }
+    return false;
+}
 
 
 void SN_ResourceMonitor::stopPrintData() {
@@ -942,32 +950,34 @@ void SN_ResourceMonitor::closeDataFile() {
 }
 
 
-void SN_ResourceMonitor::printData_AppPerColumn(QTextStream &textout) {
+void SN_ResourceMonitor::printData(QTextStream *out, bool widgetIDasColCount /* = false */) {
 	if (!_dataFile.exists()) {
-		qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : _dataFile doesn't exist" << _dataFile.fileName();
+		qDebug() << "SN_ResourceMonitor::printData() : _dataFile doesn't exist" << _dataFile.fileName();
 		return;
 	}
 	if (!_dataFile.isOpen()) {
 		if (!_dataFile.open(QIODevice::WriteOnly)) {
-			qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : failed to open a _dataFile" << _dataFile.fileName();
+			qDebug() << "SN_ResourceMonitor::printData() : failed to open a _dataFile" << _dataFile.fileName();
 			return;
 		}
 	}
 	if (!_dataFile.isWritable()) {
-		qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : _dataFile is not writable" << _dataFile.fileName();
+		qDebug() << "SN_ResourceMonitor::printData() : _dataFile is not writable" << _dataFile.fileName();
 		return;
 	}
 
-	if (_widgetMap.size() == 0) return;
-
-
-    if (! textout.device()) {
-        qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : QTextStream has null device";
+    if (!out) {
+        qDebug() << "SN_ResourceMonitor::printData() : null QTextStream";
         return;
     }
 
-    if (! textout.device()->isWritable()) {
-        qDebug() << "SN_ResourceMonitor::printData_AppPerColumn() : QTextStream's device isn't writable";
+    if (! out->device()) {
+        qDebug() << "SN_ResourceMonitor::printData() : QTextStream has null device";
+        return;
+    }
+
+    if (! out->device()->isWritable()) {
+        qDebug() << "SN_ResourceMonitor::printData() : QTextStream's device isn't writable";
         return;
     }
 
@@ -975,21 +985,32 @@ void SN_ResourceMonitor::printData_AppPerColumn(QTextStream &textout) {
     //
     // The 1st column
     //
-	static quint64 counter;
-	textout << counter << ",";
+	static qint64 timestamp = 0;
+    if (timestamp == 0) {
+        timestamp = QDateTime::currentMSecsSinceEpoch();
+        (*out) << "Data from the rMonitor. Timestamp " << timestamp << "rMon & Sched Freq " << settings->value("system/scheduler_freq").toInt() << "\n";
+    }
+
+
+    if (_widgetMap.size() == 0) {
+        qDebug() << "SN_ResourceMonitor::printData() : there's no widget";
+        return;
+    }
+
 
     //
-    // 2nd, 3rd, 4th, 5th are
 	// the wall layout factors
     //
-	textout << _widgetMap.size() << ","
-	        << _theScene->getRatioEmptySpace() << ","
-	        << _theScene->getRatioOverlapped() << ",";
+	(*out) << _widgetMap.size()
+//	        << "," << _theScene->getRatioEmptySpace()
+	        << "," << _theScene->getRatioOverlapped();
 
+    /*
 	QSize avgqwinsize = _theScene->getAvgWinSize().toSize();
 	int avgwinsize = avgqwinsize.width() * avgqwinsize.height();
 
-	textout << avgwinsize << ",";
+	(*out) << avgwinsize << ",";
+    */
 
 
 	//
@@ -1001,20 +1022,23 @@ void SN_ResourceMonitor::printData_AppPerColumn(QTextStream &textout) {
 	QMap<quint64, SN_BaseWidget *>::const_iterator it;
 	for (it = _widgetMap.constBegin(); it != _widgetMap.constEnd(); it++) {
 
-		//
-		// I need to write the data in the right column
-		// it.key() is the globalAppId
-		// So each column represents unique app
-		//
-		int offset = it.key() - colcount; // difference b/w actual globalAppId and the expected value
+        if (widgetIDasColCount) {
+            //
+            // I need to write the data in the right column
+            // it.key() is the globalAppId
+            // So each column represents unique app
+            //
+            int offset = it.key() - colcount; // difference b/w actual globalAppId and the expected value
 
-		for (int i=0; i<offset; i++) {
-			textout << ",";
-			colcount++;
-		}
+            for (int i=0; i<offset; i++) {
+                (*out) << ",";
+                colcount++; // advance column count to synchronize with the next widget's gid in the map
+            }
+        }
 
 		SN_BaseWidget *rw = it.value();
 		Q_ASSERT(rw);
+        Q_ASSERT(rw->perfMon());
 
         /*
 		QSize qwinsize = (rw->scale() * rw->boundingRect().size().toSize());
@@ -1024,25 +1048,28 @@ void SN_ResourceMonitor::printData_AppPerColumn(QTextStream &textout) {
         // data item is going to be
         // priority|windowsize
         //
-		textout << rw->priority();
-		textout << "|";
-		textout << winsize;
+		(*out) << rw->priority();
+		(*out) << "|";
+		(*out) << winsize;
         */
 
+        //
+        // , priority | curBW | reqBW | D.Q. | isInteracting ,
+        //
 
-        textout << rw->priority();
-        textout << "|";
-        textout << rw->observedQuality_Rq(); // currentBW / requiredBW
-        textout << "|";
-        textout << rw->demandedQuality();
-//        textout << rw->perfMon()->getCpuTimeSpent_sec();
+        (*out) << "," << rw->priority();
+//        (*out) << "|" << rw->observedQuality_Rq(); // currentBW / requiredBW
+        (*out) << "|" << rw->perfMon()->getCurrBW_Mbps();
+        (*out) << "|" << rw->perfMon()->getRequiredBW_Mbps();
+        (*out) << "|" << rw->demandedQuality();
+//        (*out) << rw->perfMon()->getCpuTimeSpent_sec();
+        if (rw->perfMon()->isInteracting()) {
+            (*out) << "|Intr";
+        }
 
 
 		if (it + 1 == _widgetMap.constEnd()) {
-			textout << "\n"; // this the last app of the line
-		}
-		else {
-			textout << ","; // there's more to come
+			(*out) << "\n"; // this the last app of the line
 		}
 
 		colcount++; // the expected globalAppId of the next item
@@ -1050,9 +1077,7 @@ void SN_ResourceMonitor::printData_AppPerColumn(QTextStream &textout) {
 
 	_widgetListRWlock.unlock();
 
-	textout.flush();
-
-	++counter;
+	out->flush();
 }
 
 

@@ -18,7 +18,7 @@ class MandelbrotExample : public SN_BaseWidget, SN_PluginInterface
 public:
     MandelbrotExample();
 
-    SN_BaseWidget * createInstance() {return new MandelbrotExample;}
+    SN_BaseWidget * createInstance();
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
@@ -38,6 +38,8 @@ private slots:
     void zoom(double zoomFactor);
 
 private:
+    void m_init();
+
     void scroll(int deltaX, int deltaY);
 
     MandelbrotRenderer thread;

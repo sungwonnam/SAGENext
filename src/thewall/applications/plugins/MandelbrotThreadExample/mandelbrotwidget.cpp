@@ -36,21 +36,27 @@ MandelbrotExample::MandelbrotExample()
 
     setContentsMargins(15, 40, 15, 15);
 
-    QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Vertical, this);
-
-
-    setLayout(layout);
-
-
     setWindowTitle(tr("Mandelbrot"));
 #ifndef QT_NO_CURSOR
     setCursor(Qt::CrossCursor);
 #endif
     resize(550, 400);
 
-    qDebug() << boundingRect();
+//    qDebug() << "MandelbrotExample::MandelbrotExample() : boundingRect() " << boundingRect();
 }
 //! [1]
+
+void MandelbrotExample::m_init() {
+    QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Vertical, this);
+
+    setLayout(layout);
+}
+
+SN_BaseWidget * MandelbrotExample::createInstance() {
+    MandelbrotExample *bw = new MandelbrotExample;
+    bw->m_init();
+    return bw;
+}
 
 //! [2]
 void MandelbrotExample::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
