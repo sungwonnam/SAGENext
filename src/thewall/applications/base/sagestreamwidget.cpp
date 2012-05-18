@@ -82,11 +82,13 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
 	//
 	// Temporary
 	//
+    /*
     if (s->value("system/scheduler",false).toBool()) {
         Q_ASSERT(infoTextItem);
         infoTextItem->setFontPointSize(26);
         drawInfo();
     }
+    */
 }
 
 
@@ -241,17 +243,17 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
         //
         // this can happen
         // when this app's requiredBW is set to 0.
+        // or its priority is 0 (completely obscured by other widget)
+        //
         // And it means the streamer (SAGE app) isn't sending any pixel
         //
-
-        return -1;
     }
 
     if ( newQuality > 1.0 ) {
 		_quality = 1.0;
 	}
-	else if ( newQuality < 0.0 ) {
-		_quality = 0.0;
+	else if ( newQuality <= 0.0 ) {
+		_quality = 0.1;
 	}
 	else {
 		_quality = newQuality;
@@ -732,6 +734,11 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 		if (!_pixmapForDrawing.isNull()) {
 			painter->drawPixmap(0, 0, _pixmapForDrawing);
 		}
+        else {
+            QPixmap pm(size().toSize());
+            pm.loadFromData((uchar *)(_pbobufarray[_pboBufIdx]), _appInfo->frameSizeInByte(), 0, Qt::AutoColor | Qt::ThresholdDither);
+            painter->drawPixmap(0, 0, pm);
+        }
 	}
 
 	SN_BaseWidget::paint(painter,o,w);
@@ -900,6 +907,12 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 //		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : Execname(sageappname) :" << _appInfo->executableName();
 //		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : CmdArgs :" << _appInfo->cmdArgsString();
 	}
+
+    if ( appname == "mplayer") {
+//        QString arg = "-vo sage -nosound -loop 0 -sws 4 -framedrop -quiet";
+//		_appInfo->setCmdArgs(arg);
+//        _appInfo->setFileInfo();
+    }
 
     emit streamerInitialized();
 

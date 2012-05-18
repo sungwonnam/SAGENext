@@ -78,7 +78,7 @@ private:
 		/**
 		  This is called once in the Constructor. It starts fsManager (QTcpServer)
 		  */
-	void createFsManager();
+	void _createFsManager();
 
 	SN_ResourceMonitor *_rMonitor;
 
@@ -96,7 +96,10 @@ private:
 		  This is called once in the constructor.
 		  To launch an actual instance, call SN_PluginInterface::createInstance()
 		  */
-	void loadPlugins();
+	void _loadPlugins();
+
+
+    quint64 _getUpdatedGlobalAppId(quint64 gaid = 0);
 
 
 public slots:
@@ -108,17 +111,17 @@ public slots:
           */
 	SN_BaseWidget * launch(fsManagerMsgThread *);
 
-	SN_BaseWidget * launchSageApp(int mtype, const QString &filename, const QPointF &scenepos = QPointF(30,30), const QString &senderIP = "127.0.0.1", const QString &args = QString(), const QString &sageappname = QString());
+	SN_BaseWidget * launchSageApp(int mtype, const QString &filename, const QPointF &scenepos = QPointF(30,30), const QString &senderIP = "127.0.0.1", const QString &args = QString(), const QString &sageappname = QString(), quint64 gaid = 0);
 
         /**
           this is general launch function
           */
-	SN_BaseWidget * launch(int mediatype, const QString &filename, const QPointF &scenepos = QPointF(30,30));
+	SN_BaseWidget * launch(int mediatype, const QString &filename, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
         /**
           just for VNC widget
           */
-	SN_BaseWidget * launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30));
+	SN_BaseWidget * launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
         /**
           The widget is added to the scene in here.

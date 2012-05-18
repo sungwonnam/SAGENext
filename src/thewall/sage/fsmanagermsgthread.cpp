@@ -42,16 +42,16 @@ fsManagerMsgThread::fsManagerMsgThread(const quint64 sageappId, int sockfd, cons
 fsManagerMsgThread::~fsManagerMsgThread() {
 //	sendSailShutdownMsg(sageAppId);
 
-        if ( ::shutdown(socket, SHUT_RDWR) != 0 ) {
-                qDebug("fsManagerMsgThread::%s() : ::shutdown error", __FUNCTION__);
-        }
-        if ( ::close(socket) == -1 ) {
-                qDebug("fsManagerMsgThread::%s() : error closing socket", __FUNCTION__);
-        }
+    if ( ::shutdown(socket, SHUT_RDWR) != 0 ) {
+        qDebug("fsManagerMsgThread::%s() : ::shutdown error", __FUNCTION__);
+    }
+    if ( ::close(socket) == -1 ) {
+        qDebug("fsManagerMsgThread::%s() : error closing socket", __FUNCTION__);
+    }
 
-        // this is important, without this, program will finishes with an error
-        wait();
-		qDebug() << "[" << QTime::currentTime().toString("hh:mm:ss.zzz") << "] ~fsManagerMsgThread";
+    // this is important, without this, program will finishes with an error
+    wait();
+    qDebug() << "[" << QTime::currentTime().toString("hh:mm:ss.zzz") << "] ~fsManagerMsgThread";
 }
 
 void fsManagerMsgThread::breakWhileLoop() {
@@ -63,48 +63,48 @@ void fsManagerMsgThread::sendSailShutdownMsg() {
 }
 
 void fsManagerMsgThread::sendSailShutdownMsg(quint64 sageappid) {
-        if ( _sageAppId != sageappid ) return;
+    if ( _sageAppId != sageappid ) return;
 
-        OldSage::sageMessage msg;
-        msg.init(36); // MESSAGE_HEADER_SIZE (4 * 9Byte)
-        msg.setDest(sageappid);
-        msg.setCode(OldSage::APP_QUIT); // send APP_QUIT to sail. sail will send SAIL_SHUTDOWN
-        if ( ::send(socket, (char *)msg.getBuffer(), msg.getBufSize(), 0) <= 0 ) {
-            qDebug("fsManagerMsgThread::%s() : failed to send APP_QUIT to sageappid %llu", __FUNCTION__, sageappid);
-        }
-        else {
-            //qDebug("fsManagerMsgThread::%s() : APP_QUIT sent for sageappid %llu", __FUNCTION__, sageappid);
-        }
-        msg.destroy();
-        _end = true;
+    OldSage::sageMessage msg;
+    msg.init(36); // MESSAGE_HEADER_SIZE (4 * 9Byte)
+    msg.setDest(sageappid);
+    msg.setCode(OldSage::APP_QUIT); // send APP_QUIT to sail. sail will send SAIL_SHUTDOWN
+    if ( ::send(socket, (char *)msg.getBuffer(), msg.getBufSize(), 0) <= 0 ) {
+        qDebug("fsManagerMsgThread::%s() : failed to send APP_QUIT to sageappid %llu", __FUNCTION__, sageappid);
+    }
+    else {
+        //qDebug("fsManagerMsgThread::%s() : APP_QUIT sent for sageappid %llu", __FUNCTION__, sageappid);
+    }
+    msg.destroy();
+    _end = true;
 }
 
 void fsManagerMsgThread::sendSailSetRailMsg(AffinityInfo *aff, quint64 sageappid) {
-        if (!aff) return;
-        if ( _sageAppId != sageappid) return;
+    if (!aff) return;
+    if ( _sageAppId != sageappid) return;
 
-        QString data = "";
-        data.append(QString::number( aff->getNumCpus()) );
-        data.append(" ");
-        data.append(aff->getStreamerCpuMask());
+    QString data = "";
+    data.append(QString::number( aff->getNumCpus()) );
+    data.append(" ");
+    data.append(aff->getStreamerCpuMask());
 
-        OldSage::sageMessage msg;
-        msg.init(sageappid, OldSage::SAIL_SET_RAIL, 0, data.length(), qPrintable(data));
+    OldSage::sageMessage msg;
+    msg.init(sageappid, OldSage::SAIL_SET_RAIL, 0, data.length(), qPrintable(data));
 
-        // MESSAGE_HEADER_SIZE 36 Byte
-        // d_dddd...d (numcpu space cpumask)
-//	msg.init( 36 + sizeof(char) * data.length() );
-//	msg.setDest(sageappid);
-//	msg.setCode(SAIL_SET_RAIL); // send APP_QUIT to sail. sail will send SAIL_SHUTDOWN
-//	msg.setData(data.length(), (void *)data.data());
+    // MESSAGE_HEADER_SIZE 36 Byte
+    // d_dddd...d (numcpu space cpumask)
+    //	msg.init( 36 + sizeof(char) * data.length() );
+    //	msg.setDest(sageappid);
+    //	msg.setCode(SAIL_SET_RAIL); // send APP_QUIT to sail. sail will send SAIL_SHUTDOWN
+    //	msg.setData(data.length(), (void *)data.data());
 
-        if ( ::send(socket, (char *)msg.getBuffer(), msg.getBufSize(), 0) <= 0 ) {
-			qDebug() << "fsmMsgThread: error sending SAIL_SET_RAIL message";
-        }
-        else {
-//		qDebug("fsManagerMsgThread::%s() : SAIL_SET_RAIL [%s] has sent", __FUNCTION__, (char *)msg.getData());
-        }
-        msg.destroy();
+    if ( ::send(socket, (char *)msg.getBuffer(), msg.getBufSize(), 0) <= 0 ) {
+        qDebug() << "fsmMsgThread: error sending SAIL_SET_RAIL message";
+    }
+    else {
+        //qDebug("fsManagerMsgThread::%s() : SAIL_SET_RAIL [%s] has sent", __FUNCTION__, (char *)msg.getData());
+    }
+    msg.destroy();
 }
 
 void fsManagerMsgThread::sendSailMsg(OldSage::sageMessage &msg) {
@@ -128,64 +128,14 @@ void fsManagerMsgThread::sendSailMsg(int msgcode, const QString &msgdata) {
 	msg.destroy();
 }
 
+void fsManagerMsgThread::signalSageWidgetCreated() {
+    _isSageWidgetCreated.wakeOne();
+}
+
 void fsManagerMsgThread::run() {
 //	qDebug("fsManagerMsgThread::%s() : msgThread starting. sageAppId %llu, sockfd %d",  __FUNCTION__, sageAppId, socket);
-
 	OldSage::sageMessage sageMsg;
 	QByteArray msgStr(OldSage::MESSAGE_FIELD_SIZE, '\0');
-
-        /*
-        while (!_end) {
-                qDebug("%s() : socket error %d", __FUNCTION__, socket.error());
-                if ( socket.error() == QAbstractSocket::RemoteHostClosedError ) {
-                        // socket is closed automatically
-                        qDebug("%s() : remoteHostClosedError", __FUNCTION__);
-                        break;
-                }
-                if ( !socket.isValid() ) {
-                        qDebug("%s() : socket is not valid", __FUNCTION__);
-                        continue;
-                }
-
-                if ( socket.isOpen() && socket.waitForReadyRead(10) ) {
-                        qDebug("%s() : thread appID %llu, data available", __FUNCTION__, appID);
-
-                         // read the first 9 byte (size)
-                        if ( socket.read(msgStr.data(), MESSAGE_FIELD_SIZE) == -1 )
-                                break;
-
-                        int dataSize = msgStr.toInt();
-                        sageMsg.init(dataSize);
-                        dataSize = dataSize - MESSAGE_FIELD_SIZE; // skip first MESSAGE_FIELD_SIZE byte (which is *size)
-
-                        if ( socket.read((char *)sageMsg.getBuffer()+MESSAGE_FIELD_SIZE, dataSize) == -1 ) // nonblock
-                                break;
-
-                        qDebug("size %d, dest %d, code %d, appCode %d, data [%s]", sageMsg.getSize(), sageMsg.getDest(), sageMsg.getCode(), sageMsg.getAppCode(), (char *)sageMsg.getData());
-
-                        **
-                        if (msg.getCode() < DISP_MESSAGE) {
-                                fprintf(stderr,"fsServer::%s() : msg code %d < %d, msgToCore\n", __FUNCTION__, msg.getCode(), DISP_MESSAGE);
-                                fsm->msgToCore(msg, i+SYSTEM_CLIENT_BASE);
-                        }
-                        else if (msg.getCode() < GRCV_MESSAGE) {
-                                fprintf(stderr,"fsServer::%s() : msg code %d < %d, msgToDisp\n", __FUNCTION__, msg.getCode(), GRCV_MESSAGE);
-                                fsm->msgToDisp(msg, i+SYSTEM_CLIENT_BASE);
-                        }
-                        else {
-                                fprintf(stderr,"fsServer::%s() : msg code %d. invoke sendMessage()\n", __FUNCTION__, msg.getCode());
-                                sendMessage(msg);
-                        }
-                        **
-
-                        // parse message
-                        this->parseMessage(sageMsg);
-                }
-                else {
-                        //qDebug("sibal");
-                }
-        }
-        */
 
 	int read=0;
 	while(!_end) {
@@ -225,21 +175,19 @@ void fsManagerMsgThread::run() {
 
 void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
 
-        QString msgStr((char *)sageMsg.getData());
-
         switch(sageMsg.getCode()) {
         case OldSage::REG_APP : {
-//                        qDebug("fsManagerMsgThread::%s() : REG_APP : msgData [%s] \n", __FUNCTION__, qPrintable(msgStr));
-                        char appn[128];
-                        char temp[512];
-                        int x, y;
-                        int width, height;
-                        int dummy;
-                        int protocol;
-                        sscanf((char *)sageMsg.getData(), "%s %d %d %d %d %d %s %d %d %d %d",
-                                   appn, &x, &y, &dummy, &dummy, &dummy, temp, &width, &height, &dummy, &protocol);
+            //qDebug("fsManagerMsgThread::%s() : REG_APP : msgData [%s] \n", __FUNCTION__, qPrintable(msgStr));
+            char appn[128];
+            char temp[512];
+            int x, y;
+            int width, height;
+            int dummy;
+            int protocol;
+            sscanf((char *)sageMsg.getData(), "%s %d %d %d %d %d %s %d %d %d %d",
+                   appn, &x, &y, &dummy, &dummy, &dummy, temp, &width, &height, &dummy, &protocol);
 
-                        /*
+            /*
                         sscanf((char *)msg.getData(), "%s %d %d %d %d %d %s %d %d %d %d %d %d %s %d",
                                    app->appName,
                                    &app->x,
@@ -256,135 +204,154 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                                    &app->instID,
                                    app->launcherID,
 
-								   // portForwarding is passed only in google code version
-								   // cube ratko version doesn't send this !!
+                                   // portForwarding is passed only in google code version
+                                   // cube ratko version doesn't send this !!
                                    &app->portForwarding);
                                    */
 
 
-                        /** send SAIL_INIT_MSG to sender. It will trigger... **/
 
-                        //sageNwConfig nwCfg;
-                        // reading network parameters set in fsManager.conf
-                        //sscanf(msgData, "%d %d %d %d", &winID, &nwCfg.rcvBufSize, &nwCfg.sendBufSize, &nwCfg.mtuSize);
-                        //fprintf(stderr,"sail::%s() : SAIL_INIT_MSG(code %d) : received [%s]\n", __FUNCTION__, msg.getCode(), msgData);
+            /**
+              send the SAIL_INIT_MSG to the streamer.
+              The SAIL_INIT_MSG will trigger...
 
-                        //if (config.rendering) {
-                        //pixelStreamer->setWinID(winID);
-                        //pixelStreamer->setNwConfig(nwCfg); // block partition and block group objects are created here
+              sageNwConfig nwCfg;
+              reading network parameters set in fsManager.conf
+              sscanf(msgData, "%d %d %d %d", &winID, &nwCfg.rcvBufSize, &nwCfg.sendBufSize, &nwCfg.mtuSize);
+              fprintf(stderr,"sail::%s() : SAIL_INIT_MSG(code %d) : received [%s]\n", __FUNCTION__, msg.getCode(), msgData);
 
-                        /**
-                          send SAIL_INIT_MSG
-                         **/
-                        OldSage::sageMessage sageMsg;
-                        QByteArray initMsg(32, '\0');
-                        sprintf(initMsg.data(), "%d %d %d %d",
-                                        (int)_sageAppId,
-                                        _settings->value("network/recvwindow", 16777216).toInt(),
-                                        _settings->value("network/sendwindow", 1048576).toInt(),
-                                        _settings->value("network/mtu", 1450).toInt()); // snd/rcv network socket size followed by MTU
+              if (config.rendering) {
+                  pixelStreamer->setWinID(winID);
+                  pixelStreamer->setNwConfig(nwCfg); // block partition and block group objects are created here
+              }
+            */
+            OldSage::sageMessage sageMsg;
+            QByteArray initMsg(32, '\0');
+            sprintf(initMsg.data(), "%d %d %d %d",
+                    (int)_sageAppId,
+                    _settings->value("network/recvwindow", 16777216).toInt(),
+                    _settings->value("network/sendwindow", 1048576).toInt(),
+                    _settings->value("network/mtu", 1450).toInt()); // snd/rcv network socket size followed by MTU
 
-                        if (sageMsg.init(_sageAppId, OldSage::SAIL_INIT_MSG, 0, initMsg.size(), initMsg.data()) < 0) {
-                                qCritical("fsManagerMsgThread::%s() : failed to init sageMessage", __FUNCTION__);
-                                _end=true;
-                                break;
-                        }
+            if (sageMsg.init(_sageAppId, OldSage::SAIL_INIT_MSG, 0, initMsg.size(), initMsg.data()) < 0) {
+                qCritical("fsManagerMsgThread::%s() : failed to init sageMessage", __FUNCTION__);
+                _end=true;
+                break;
+            }
 
-                        int dataSize = sageMsg.getBufSize();
-                        int sent = send(socket, (char *)sageMsg.getBuffer(), dataSize, 0);
-                        if ( sent == -1 ) {
-                                qCritical("fsManagerMsgThread::%s() : error while sending SAIL_INIT_MSG", __FUNCTION__);
-                                _end=true;
-                        }
-                        if ( sent == 0 ) {
-                                // remote side disconnected
-                                qCritical("fsManagerMsgThread::%s() : while sending SAIL_INIT_MSG, sail disconnected.", __FUNCTION__);
-                                _end = true;
-                        }
-                        sageMsg.destroy();
-                        if(_end) return;
+            int dataSize = sageMsg.getBufSize();
+            int sent = send(socket, (char *)sageMsg.getBuffer(), dataSize, 0);
+            if ( sent == -1 ) {
+                qCritical("fsManagerMsgThread::%s() : error while sending SAIL_INIT_MSG", __FUNCTION__);
+                _end=true;
+            }
+            if ( sent == 0 ) {
+                // remote side disconnected
+                qCritical("fsManagerMsgThread::%s() : while sending SAIL_INIT_MSG, sail disconnected.", __FUNCTION__);
+                _end = true;
+            }
+            sageMsg.destroy();
+            if(_end) return;
 
 
-                        /**
-                         starts SageStreamWidget
-                        **/
-						_sageAppName = QString(appn);
 
-                        // fsm stream base port is fsm port + 3. This is set in settingsDialog::onsavebuttonclicked()
-                        int streamPort = _settings->value("general/fsmstreambaseport", 20005).toInt() + _sageAppId;
-                        if(streamPort > 65535) {
-                                qCritical("\nfsManagerMsgThread::%s() : streamPort  has set to %d\n", __FUNCTION__, streamPort);
-                                return;
-                        }
 
-                        // fsManager receives this signal and emit forwardSailConnection signal to MainWindow, then MainWindow invoke startSageApp()
-                        QRect initRect(x, y, width, height);
+            //
+            // Now init the receiver (SN_SageStreamWidget)
+            // and make it wait for the streamer ( ::accept )
+            //
+            _mutex.lock();
+            while(!_sageWidget) {
+                qDebug("%s::%s() : fsm is waiting for SN_SageStreamWidget is created", metaObject()->className(), __FUNCTION__);
+                _isSageWidgetCreated.wait(&_mutex);
+            }
+            // SN_SageStreamWidget created at this point
+            _mutex.unlock();
 
-                        Q_ASSERT(_sageWidget);
+            //
+            // The SageStreamWidget is created either
+            //
+            // by the slot SN_Launcher::launch(fsmThread *) which is connected to fsManager::incomingSail(fsmThread *) signal
+            // or
+            // by the slot SN_Launcher::launchSageApp() which is invoked internally
+            //
+            Q_ASSERT(_sageWidget);
 
-//						qDebug() << "fsmsgthread invoking doInitReceiver() for sage app" << sageAppId << "streamport" << streamPort << QTime::currentTime().toString("hh:mm:ss.zzz");
-                        QMetaObject::invokeMethod(_sageWidget, "doInitReceiver", Qt::QueuedConnection,
-                                                                          Q_ARG(quint64, _sageAppId),
-                                                                          Q_ARG(QString, _sageAppName),
-                                                                          Q_ARG(QRect, initRect),
-                                                                          Q_ARG(int, protocol),
-                                                                          Q_ARG(int, streamPort));
+            _sageAppName = QString(appn);
 
-                        // wait a bit so that SageStreamWidget / SagePixelReceiver can be started
-                        // If this is too short, sender could connect() before accept() is called at the sageStreamWidget
+            // fsm stream base port is fsm port + 3. This is set in settingsDialog::onsavebuttonclicked()
+            int streamPort = _settings->value("general/fsmstreambaseport", 20005).toInt() + _sageAppId;
+            if(streamPort > 65535) {
+                qCritical("\nfsManagerMsgThread::%s() : streamPort  has set to %d\n", __FUNCTION__, streamPort);
+                return;
+            }
+
+            // fsManager receives this signal and emit forwardSailConnection signal to MainWindow, then MainWindow invoke startSageApp()
+            QRect initRect(x, y, width, height);
+
+            //	qDebug() << "fsmsgthread invoking doInitReceiver() for sage app" << sageAppId << "streamport" << streamPort << QTime::currentTime().toString("hh:mm:ss.zzz");
+            QMetaObject::invokeMethod(_sageWidget, "doInitReceiver", Qt::QueuedConnection,
+                                      Q_ARG(quint64, _sageAppId),
+                                      Q_ARG(QString, _sageAppName),
+                                      Q_ARG(QRect, initRect),
+                                      Q_ARG(int, protocol),
+                                      Q_ARG(int, streamPort));
+
+            // wait a bit so that SageStreamWidget / SagePixelReceiver can be started
+            // If this is too short, sender could connect() before accept() is called at the sageStreamWidget
 //			QCoreApplication::sendPostedEvents();
 
-						forever {
-							if ( _sageWidget->isWaitingSailToConnect() ) {
-								QThread::msleep(100);
-								break;
-							}
-							else {
-//								QThread::yieldCurrentThread();
-		                        QThread::msleep(100);
-							}
-						}
-
-
-                        /**
-                          * send SAIL_CONNECT_TO_RCV to sender
-                          */
-                        //pixelStreamer->initNetworks(msgData)
-                        // sail will send back SAIL_CONNECTED_TO_RCV
-                        // [22000 1 131.193.78.140 0 ]
-                        initMsg.fill('\0');
-                        sprintf(initMsg.data(), "%d %d %s %d",
-                                        streamPort, // streamer port
-                                        1, // number of SDM
-//					qobject_cast<QTcpServer *>(parent())->serverAddress().toString().toAscii().constData(),
-                                        qPrintable(_settings->value("general/fsmip").toString()), // ip addr of receiver (which can be different from fsManager IP)
-                                        0); // SDM id
-
-                        if (sageMsg.init(_sageAppId, OldSage::SAIL_CONNECT_TO_RCV, 0, initMsg.size(), initMsg.constData()) < 0) {
-                                qCritical("fsManagerMsgThread::%s() : failed to init sageMessage", __FUNCTION__);
-                                _end=true;
-                                break;
-                        }
-                        dataSize = sageMsg.getBufSize();
-//						qDebug() << "fsmsgthread send SAIL_CONNECT_TO_RCV for sageappid" << sageAppId << QTime::currentTime().toString("hh:mm:ss.zzz");
-                        sent = send(socket, (char *)sageMsg.getBuffer(), dataSize, 0);
-                        if ( sent == -1 ) {
-                                qCritical("fsManagerMsgThread::%s() : error while sending SAIL_CONNECT_TO_RCV", __FUNCTION__);
-                                _end=true;
-                        }
-                        if ( sent == 0 ) {
-                                // remote side disconnected
-                                qCritical("fsManagerMsgThread::%s() : while sending SAIL_CONNECT_TO_RCV, sail disconnected.", __FUNCTION__);
-                                _end = true;
-                        }
-                        sageMsg.destroy();
-
-                        break;
+            forever {
+                if ( _sageWidget->isWaitingSailToConnect() ) {
+                    QThread::msleep(100);
+                    break;
                 }
+                else {
+                    //QThread::yieldCurrentThread();
+                    QThread::msleep(100);
+                }
+            }
+
+
+            /**
+             * send SAIL_CONNECT_TO_RCV to sender
+             */
+            //pixelStreamer->initNetworks(msgData)
+            // sail will send back SAIL_CONNECTED_TO_RCV
+            // [22000 1 131.193.78.140 0 ]
+            initMsg.fill('\0');
+            sprintf(initMsg.data(), "%d %d %s %d",
+                    streamPort, // streamer port
+                    1, // number of SDM
+                    //					qobject_cast<QTcpServer *>(parent())->serverAddress().toString().toAscii().constData(),
+                    qPrintable(_settings->value("general/fsmip").toString()), // ip addr of receiver (which can be different from fsManager IP)
+                    0); // SDM id
+
+            if (sageMsg.init(_sageAppId, OldSage::SAIL_CONNECT_TO_RCV, 0, initMsg.size(), initMsg.constData()) < 0) {
+                qCritical("fsManagerMsgThread::%s() : failed to init sageMessage", __FUNCTION__);
+                _end=true;
+                break;
+            }
+            dataSize = sageMsg.getBufSize();
+            //						qDebug() << "fsmsgthread send SAIL_CONNECT_TO_RCV for sageappid" << sageAppId << QTime::currentTime().toString("hh:mm:ss.zzz");
+            sent = send(socket, (char *)sageMsg.getBuffer(), dataSize, 0);
+            if ( sent == -1 ) {
+                qCritical("fsManagerMsgThread::%s() : error while sending SAIL_CONNECT_TO_RCV", __FUNCTION__);
+                _end=true;
+            }
+            if ( sent == 0 ) {
+                // remote side disconnected
+                qCritical("fsManagerMsgThread::%s() : while sending SAIL_CONNECT_TO_RCV, sail disconnected.", __FUNCTION__);
+                _end = true;
+            }
+            sageMsg.destroy();
+
+            break;
+        }
         case OldSage::SAIL_SHUTDOWN : {
-                        _end = true;
-                        break;
-                }
+            _end = true;
+            break;
+        }
         }
 
         /**

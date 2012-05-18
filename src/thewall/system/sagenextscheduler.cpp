@@ -599,6 +599,8 @@ void SN_ProportionalShareScheduler::doSchedule() {
                 bitarray.setBit(index, true); // I don't need further actions
 
                 AdjustedSumPriority -= rw->priority();
+
+//                qDebug() << "Overallocated" << resources[index] << rwDesired;
             }
 
             //
@@ -608,14 +610,24 @@ void SN_ProportionalShareScheduler::doSchedule() {
                 bitarray.setBit(index, true); // I don't need further actions
 
                 AdjustedSumPriority -= rw->priority();
+
+//                qDebug() << "Perfect allocation" << rwDesired;
             }
 
 
             else {
+//                qDebug() << "need allocation" << rwDesired;
+
                 //
                 // This tells how much this app is important compared to others.
                 //
-                qreal priorityProportion = rw->priority() / AdjustedSumPriority; // priority proportion
+                qreal priorityProportion = 0;
+                if ( AdjustedSumPriority <= 0) {
+//                    qDebug() << "SN_ProportionalShareScheduler::doSchedule() : AdjustedSumPriority <= 0";
+                }
+                else {
+                    priorityProportion = rw->priority() / AdjustedSumPriority; // priority proportion
+                }
 
                 //
                 // The amount of resource for THIS app to show X % of quality.

@@ -158,8 +158,8 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 
 //	painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
-	if (_useOpenGL) {
-		Q_ASSERT(painter->paintEngine()->type() == QPaintEngine::OpenGL2);
+//	if (_useOpenGL) {
+	if (painter->paintEngine()->type() == QPaintEngine::OpenGL2) {
 
 		if (!glIsTexture(_textureid)) return;
 
@@ -181,7 +181,12 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 		painter->endNativePainting();
 	}
 	else {
-		painter->drawPixmap(0,0, _drawingPixmap);
+        if (!_drawingPixmap.isNull()) {
+            painter->drawPixmap(0, 0, _drawingPixmap);
+        }
+        else {
+
+        }
 	}
 
 	SN_BaseWidget::paint(painter, o, w);

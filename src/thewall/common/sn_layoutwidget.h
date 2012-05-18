@@ -8,6 +8,7 @@ class SN_LayoutWidget;
 class SN_Launcher;
 class SN_PixmapButton;
 class SN_BaseWidget;
+class SN_TheScene;
 
 class SN_WallPartitionBar : public QGraphicsLineItem {
 public:
@@ -62,7 +63,7 @@ public:
 class SN_LayoutWidget : public QGraphicsWidget {
 	Q_OBJECT
 public:
-	SN_LayoutWidget(const QString &posStr, SN_LayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent=0);
+	SN_LayoutWidget(const QString &posStr, SN_LayoutWidget *parentWidget, SN_TheScene *scene, const QSettings *s, QGraphicsItem *parent=0);
 	~SN_LayoutWidget();
 
 //	inline SN_LayoutWidget * leftWidget() {return _leftWidget;}
@@ -107,6 +108,8 @@ protected:
 	void resizeEvent(QGraphicsSceneResizeEvent *event);
 
 private:
+    SN_TheScene *_theScene;
+
 	const QSettings *_settings;
 
 	SN_LayoutWidget *_parentLayoutWidget;

@@ -271,9 +271,6 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 		}
 	}
 
-
-
-
 	//
 	// write some data to a file
 	//
@@ -302,7 +299,6 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 		}
 	}
     */
-
 
 	//
 	// temporarily attach writeData button

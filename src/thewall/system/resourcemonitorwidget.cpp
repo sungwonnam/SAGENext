@@ -66,10 +66,10 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Priority
 	/**
 	  per widget performance data table on the bottom right.
 	 **/
-	ui->perAppPerfTable->setColumnCount(6); // app id,  priority, cpu usage, curr recv FPS, curr quality, desired quality
+	ui->perAppPerfTable->setColumnCount(7); // app id,  priority, cpu usage, curr recv FPS, curr quality, desired quality
 	ui->perAppPerfTable->setRowCount(0);
 	QStringList headers;
-	headers << "Id" << "Priority" << "CurrRecvFPS" << "CPU %" << "Cur Obsrvd.Q." << "Adjusted Q";
+    headers << "Id" << "Priority" << "CurBW" << "ReqBW" << "O.Q._Rq" << "D.Q." << "CurFPS";
 	ui->perAppPerfTable->setHorizontalHeaderLabels(headers);
 
 	/**
@@ -314,7 +314,7 @@ void ResourceMonitorWidget::refreshPerAppPriorityData() {
 		Q_ASSERT(rw->priorityData());
 
 		// fill data for each column on current row
-		for (int i=0; i<ui->perAppPerfTable->columnCount(); ++i) {
+		for (int i=0; i<ui->perAppPriorityTable->columnCount(); ++i) {
 			QTableWidgetItem *item = ui->perAppPriorityTable->item(currentRow, i);
 			if (!item) {
 				item = new QTableWidgetItem;
@@ -386,10 +386,10 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 				item->setData(Qt::DisplayRole, rw->priority());
 				break;
 			case 2:
-				item->setData(Qt::DisplayRole, rw->perfMon()->getCurrEffectiveFps());
+				item->setData(Qt::DisplayRole, rw->perfMon()->getCurrBW_Mbps());
 				break;
 			case 3:
-				item->setData(Qt::DisplayRole, rw->perfMon()->getCpuUsage() * 100);
+				item->setData(Qt::DisplayRole, rw->perfMon()->getRequiredBW_Mbps());
 //                item->setData(Qt::DisplayRole, rw->perfMon()->getAvgRecvFps());
 
 				break;
@@ -399,10 +399,9 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 			case 5:
 				item->setData(Qt::DisplayRole, rw->demandedQuality());
 				break;
-//			case 6:
-//				//item->setData(Qt::DisplayRole, rw->perfMon()->getRecvFpsStdDeviation());
-//				item->setData(Qt::DisplayRole, rw->perfMon()->getAdjustedFps());
-//				break;
+			case 6:
+				item->setData(Qt::DisplayRole, rw->perfMon()->getCurrEffectiveFps());
+				break;
 //			case 7:
 //				item->setData(Qt::DisplayRole, rw->failToSchedule);
 //				break;

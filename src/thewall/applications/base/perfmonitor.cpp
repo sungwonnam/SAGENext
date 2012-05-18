@@ -92,7 +92,8 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
     if (_priori) {
         if (bwtemp == 0) {
             _currEffectiveBW_Mbps = bwtemp;
-//                _requiredBW_Mbps = 0; // how to restore this ???
+            // _requiredBW_Mbps = 0; // how to restore this ???
+            _currEffectiveFps = 0;
         }
         else if (bwtemp <= _requiredBW_Mbps) {
             _currEffectiveBW_Mbps = bwtemp;
