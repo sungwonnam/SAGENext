@@ -511,29 +511,28 @@ void SN_ProportionalShareScheduler::doSchedule() {
         SN_BaseWidget *rw = (*iter0);
 		if (!rw || !rw->priorityData()) continue;
 
-        /**
-          *
+        /**************
           *
           *
           compute priority !
           *
           *
-          *
-          **/
+          ***************/
         rw->priorityData()->computePriority(0);
 
-        SumPriority += rw->priority();
+        if (rw->priority() > 0) {
+            SumPriority += rw->priority();
+
+            //
+            // priority offset based on ROI can be applied here
+            //
 
 
-        //
-        // priority offset based on ROI can be applied here
-        //
-
-
-		//
-		// The key is widget's priority, the value is the widget itself.
-		//
-		widgetMapByPriority.insertMulti(rw->priority(), rw);
+            //
+            // The key is widget's priority, the value is the widget itself.
+            //
+            widgetMapByPriority.insertMulti(rw->priority(), rw);
+        }
 	}
 
 
@@ -563,15 +562,17 @@ void SN_ProportionalShareScheduler::doSchedule() {
     // to calculate the amount resource for each application will receive
     //
     while (
-           TotalResource > 0 /* until there's no more resource to allocate */
+           /* until there's no more resource to allocate */
+           TotalResource > 0
+
            &&
-           bitarray.count(true) < widgetMapByPriority.size() /* as long as there's a process that can consume resource */
+
+           /* as long as there's a process that can consume resource */
+           bitarray.count(true) < widgetMapByPriority.size()
            )
     {
 
-//        index = 0; // reset the array index
-
-        qreal AdjustedSumPriority = SumPriority; // reset the sum
+        qreal AdjustedSumPriority = SumPriority; // reset the sum for next iteration
 
 
         //
@@ -646,6 +647,10 @@ void SN_ProportionalShareScheduler::doSchedule() {
 
                 //
                 // I don't need any resource !!
+                // because either
+                // my priority is 0
+                // or
+                // my Rq is 0
                 //
                 if (size_of_single_scoop == 0) {
                     TotalResource += resources[index]; // return resources
@@ -663,7 +668,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
                     TotalResource -= remainingroom; // take resources
                     resources[index] += remainingroom;
 
-                    bitarray.setBit(index, true); // I don't need further actions
+                    bitarray.setBit(index, true); // I don't need further actions because I'm getting the amount == Rq
 
                     AdjustedSumPriority -= rw->priority();
                 }

@@ -125,11 +125,12 @@ void fsManager::incomingConnection(int sockfd) {
 
     fsManagerMsgThread *thread = _createMsgThread(sockfd);
 
-	/**
-	  connected to the SN_Launcher::launch(fsManagerMsgThread *)
-	  */
-	emit incomingSail(thread);
-//	thread->start();
+    if (!thread) {
+        qDebug() << "fsManager::incomingConnection() : failed to create fsmMsgThread";
+    }
+    else {
+        thread->start();
+    }
 }
 
 fsManagerMsgThread * fsManager::_createMsgThread(int sockfd) {
@@ -138,6 +139,11 @@ fsManagerMsgThread * fsManager::_createMsgThread(int sockfd) {
 //	qDebug("fsManager::%s() : Incoming Connection, sockfd %d, sageAppId %llu. Starting msgThread", __FUNCTION__, sockfd, _sageAppId);
 
 	fsManagerMsgThread *thread = new fsManagerMsgThread(_sageAppId, sockfd, _settings);
+
+    if ( ! QObject::connect(thread, SIGNAL(sageAppConnectedToFSM(QString,fsManagerMsgThread*)), this, SIGNAL(sageAppConnectedToFSM(QString,fsManagerMsgThread*))) ) {
+        qDebug() << "fsManager::_createMsgThread() : failed to connect sageAppConnectedToFSM signals";
+    }
+
 //	connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
 	connect(this, SIGNAL(destroyed()), thread, SLOT(sendSailShutdownMsg()));
 

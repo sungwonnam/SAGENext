@@ -78,6 +78,8 @@ signals:
 	  */
 //	void sailConnected(const quint64 sageAppId, QString appName, int protocol, int port, const QRect rect);
 
+    void sageAppConnectedToFSM(const QString &sageappname, fsManagerMsgThread *msgthread);
+
 public slots:
     /*!
       To signal _isSageWidgetCreated condition

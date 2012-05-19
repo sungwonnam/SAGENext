@@ -132,11 +132,18 @@ void SN_Launcher::_createFsManager() {
           QTcpServer::listen() will be called in constructor
           */
 	_fsm = new fsManager(_settings, this);
-//	connect(_fsm, SIGNAL(sailConnected(const quint64, QString, int, int, const QRect)), this, SLOT(startSageApp(const quint64,QString, int, int, const QRect)));
-	connect(_fsm, SIGNAL(incomingSail(fsManagerMsgThread*)), this, SLOT(launch(fsManagerMsgThread*)));
+
+    if (_fsm) {
+        if ( ! QObject::connect(_fsm, SIGNAL(sageAppConnectedToFSM(QString,fsManagerMsgThread*)), this, SLOT(launch(QString,fsManagerMsgThread*))) ) {
+            qDebug() << "SN_Launcher::_createFsManager() : failed to connect sageAppConnectedToFSM signal to the launch()";
+        }
+    }
+    else {
+        qDebug() << "SN_Launcher::_createFsManager() : failed to create the fsManager";
+    }
 }
 
-SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
+SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThread *fsmThread) {
 	SN_SageStreamWidget *sw = 0;
 	QPointF pos;
 
@@ -147,13 +154,19 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 	//
 	if (_sageWidgetQueue.isEmpty()) {
 
-		quint64 gaid = _globalAppId++;
+		quint64 GID = _getUpdatedGlobalAppId();
 
 		// create new sageWidget
-		sw = new SN_SageStreamWidget(gaid, _settings, _rMonitor); // 127.0.0.1 ??????????
-		sw->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_SAGE_STREAM);
+        if (sageappname == "mplayer") {
+            sw = new SN_SageStreamMplayer(GID, _settings, _rMonitor);
+            sw->appInfo()->setExecutableName(sageappname);
+        }
+        else {
+            sw = new SN_SageStreamWidget(GID, _settings, _rMonitor); // 127.0.0.1 ??????????
+        }
+         sw->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_SAGE_STREAM);
 
-		fsmThread->setGlobalAppId(gaid);
+		fsmThread->setGlobalAppId(GID);
 
 		/*
 		  for launchRatko..()
@@ -175,6 +188,7 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 		_sageWidgetPosQueue.pop_front();
 	}
 
+
 	// give fsmThread the sagewidget
 	if (sw) {
 		fsmThread->setSageWidget(sw);
@@ -182,7 +196,13 @@ SN_BaseWidget * SN_Launcher::launch(fsManagerMsgThread *fsmThread) {
 
 		QObject::connect(sw, SIGNAL(destroyed()), fsmThread, SLOT(sendSailShutdownMsg()));
 
-         fsmThread->signalSageWidgetCreated();
+        //
+        // Now I'm sure there exist a SN_SageStreamWidget for this fsmThread so signal the thread so that the fsmThread wakes up
+        // and the SN_SageStreamWidget::doInitReceiver() can be invoked in the fsmThread.
+        //
+        // Note that the doInitReceiver() will run SN_SageStreamWidget::waitForStreamerConnection() in a separate thread
+        //
+        fsmThread->signalSageWidgetCreated();
 	}
 
 	/*!

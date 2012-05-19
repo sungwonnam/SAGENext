@@ -77,7 +77,7 @@ signals:
 	void sailDisconnected(quint64);
 	void shutdownSail(quint64 sageappid);
 	void sailSendSetRailMsg(AffinityInfo *, quint64);
-	void incomingSail(fsManagerMsgThread *);
+	void sageAppConnectedToFSM(const QString &sageappname, fsManagerMsgThread *);
 
 public slots:
 	/**

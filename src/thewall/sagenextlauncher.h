@@ -109,7 +109,7 @@ public slots:
         /**
           This slot is invoked by the signal fsManager::incomingSail() in fsManager::incomingConnection
           */
-	SN_BaseWidget * launch(fsManagerMsgThread *);
+	SN_BaseWidget * launch(const QString &sageappname, fsManagerMsgThread * fsmThread);
 
 	SN_BaseWidget * launchSageApp(int mtype, const QString &filename, const QPointF &scenepos = QPointF(30,30), const QString &senderIP = "127.0.0.1", const QString &args = QString(), const QString &sageappname = QString(), quint64 gaid = 0);
 

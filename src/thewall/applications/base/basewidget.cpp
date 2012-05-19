@@ -334,9 +334,14 @@ qreal SN_BaseWidget::priority(qint64 ctepoch /* 0 */) {
 	if (!_priorityData) return -1;
 
     //
-    // The widget doesn't need resource
+    // The widget doesn't need resource.
+    // This is useful only for non-periodic widgets (where there's no fixed Rq)
+    // Usually, Rq is set to 0 when currBW is 0
     //
     if (_perfMon && _perfMon->getRequiredBW_Mbps() == 0) {
+        //
+        // no resource will be allocated by the scheduler
+        //
         return 0.0;
     }
 

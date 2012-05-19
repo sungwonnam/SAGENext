@@ -187,6 +187,11 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             sscanf((char *)sageMsg.getData(), "%s %d %d %d %d %d %s %d %d %d %d",
                    appn, &x, &y, &dummy, &dummy, &dummy, temp, &width, &height, &dummy, &protocol);
 
+            _sageAppName = QString(appn);
+
+            emit sageAppConnectedToFSM(_sageAppName, this);
+//            qDebug() << "fsmThread signal emitted" << _sageAppName;
+
             /*
                         sscanf((char *)msg.getData(), "%s %d %d %d %d %d %s %d %d %d %d %d %d %s %d",
                                    app->appName,
@@ -277,8 +282,6 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             //
             Q_ASSERT(_sageWidget);
 
-            _sageAppName = QString(appn);
-
             // fsm stream base port is fsm port + 3. This is set in settingsDialog::onsavebuttonclicked()
             int streamPort = _settings->value("general/fsmstreambaseport", 20005).toInt() + _sageAppId;
             if(streamPort > 65535) {
@@ -297,10 +300,10 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                                       Q_ARG(int, protocol),
                                       Q_ARG(int, streamPort));
 
-            // wait a bit so that SageStreamWidget / SagePixelReceiver can be started
-            // If this is too short, sender could connect() before accept() is called at the sageStreamWidget
-//			QCoreApplication::sendPostedEvents();
-
+            //
+            // wait a bit so that the SN_SageStreamWidget / SagePixelReceiver can be started
+            // If this is too short, sender (the sage app) could run ::connect() before ::accept() is called (thus blocking waiting) at the SN_SageStreamWidget (receiver)
+            //
             forever {
                 if ( _sageWidget->isWaitingSailToConnect() ) {
                     QThread::msleep(100);
