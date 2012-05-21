@@ -794,6 +794,10 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     memset(&clientAddr, 0, sizeof(clientAddr));
     int addrLen = sizeof(struct sockaddr_in);
 
+    //
+    // The fsmMsgThread for this widget will blocing wait for this bool variable
+    // right before it sends SAIL_CONNECT_TO_RCV to the streamer.
+    //
 	_readyForStreamer = true;
 
     if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {

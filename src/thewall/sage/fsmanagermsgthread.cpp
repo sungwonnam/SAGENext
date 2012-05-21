@@ -129,6 +129,7 @@ void fsManagerMsgThread::sendSailMsg(int msgcode, const QString &msgdata) {
 }
 
 void fsManagerMsgThread::signalSageWidgetCreated() {
+    qDebug() << "fsManagerMsgThread::signalSageWidgetCreated()";
     _isSageWidgetCreated.wakeOne();
 }
 

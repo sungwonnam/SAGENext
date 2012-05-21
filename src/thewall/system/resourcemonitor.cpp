@@ -979,12 +979,12 @@ void SN_ResourceMonitor::printData(QTextStream *out, bool widgetIDasColCount /* 
 
 
     //
-    // The 1st column
+    // The header
     //
 	static qint64 timestamp = 0;
     if (timestamp == 0) {
         timestamp = QDateTime::currentMSecsSinceEpoch();
-        (*out) << "Data from the rMonitor. Timestamp " << timestamp << "rMon & Sched Freq " << settings->value("system/scheduler_freq").toInt() << "\n";
+        (*out) << "Data from the rMonitor. Timestamp " << timestamp << " msec, rMon & Sched Freq " << settings->value("system/scheduler_freq").toInt() << "msec \n";
     }
 
 
@@ -993,6 +993,9 @@ void SN_ResourceMonitor::printData(QTextStream *out, bool widgetIDasColCount /* 
         return;
     }
 
+    //
+    // ex)  < # widgets , ratio overlapped , [globalAppId | priority | curBW | reqBW | Dq [|Intr]] , ... >
+    //
 
     //
 	// the wall layout factors
@@ -1053,7 +1056,8 @@ void SN_ResourceMonitor::printData(QTextStream *out, bool widgetIDasColCount /* 
         // , priority | curBW | reqBW | D.Q. | isInteracting ,
         //
 
-        (*out) << "," << rw->priority();
+        (*out) << "," << rw->globalAppId();
+        (*out) << "|" << rw->priority();
 //        (*out) << "|" << rw->observedQuality_Rq(); // currentBW / requiredBW
         (*out) << "|" << rw->perfMon()->getCurrBW_Mbps();
         (*out) << "|" << rw->perfMon()->getRequiredBW_Mbps();

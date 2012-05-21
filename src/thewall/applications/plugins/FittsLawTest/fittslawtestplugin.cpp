@@ -7,13 +7,13 @@
 
 #include <QtGui>
 
-int FittsLawTestData::_NUM_SUBJECTS = 2;
+int FittsLawTestData::_NUM_SUBJECTS = 1;
 FittsLawTestData * FittsLawTest::_dataObject = new FittsLawTestData;
 
 
 int FittsLawTest::RoundID = -1;
 int FittsLawTest::_NUM_ROUND = pow(2, FittsLawTestData::_NUM_SUBJECTS - 1);
-int FittsLawTest::_NUM_TARGET_PER_ROUND = 10;
+int FittsLawTest::_NUM_TARGET_PER_ROUND = 2;
 const QString FittsLawTest::_streamerIpAddr = QString("127.0.0.1");
 const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
 const QPixmap FittsLawTest::_startPixmap = QPixmap(":/greenplay128.png");
@@ -65,10 +65,6 @@ FittsLawTest::FittsLawTest()
 
 SN_BaseWidget * FittsLawTest::createInstance() {
     FittsLawTest *newwidget = new FittsLawTest;
-
-    if (!_dataObject->getFrame()) {
-        _dataObject->createGUI();
-    }
 
     _dataObject->addWidget(newwidget);
 
@@ -371,8 +367,8 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
 
             _targetHitTime = QDateTime::currentMSecsSinceEpoch(); // msec
 
-//            (_data.misscount)[ _roundCount * 10 + _targetHitCount] = _missCountPerTarget;
-//            (_data.hitlatency)[_roundCount * 10 + _targetHitCount] = _targetHitTime - _targetAppearTime;
+//            (_data.misscount)[ _roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount] = _missCountPerTarget;
+//            (_data.hitlatency)[_roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount] = _targetHitTime - _targetAppearTime;
 
             qint64 hitlatency = _targetHitTime - _targetAppearTime;
 
@@ -399,7 +395,7 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
             //
             // if current round is compeleted
             //
-            if (_targetHitCount == 10) {
+            if (_targetHitCount == FittsLawTest::_NUM_TARGET_PER_ROUND) {
 //                qDebug() << "FittsLawTest::handlePointerClick() : round #" << _roundCount << "finished";
                 pointer->setOpacity(1);
                 finishRound();
@@ -585,6 +581,12 @@ void FittsLawTest::startRound() {
         }
     }
 
+    _targetHitCount = 0;
+    _isRunning = true;
+    _startstop->hide();
+    _target->show();
+
+
     if (!_isDryRun) {
         _dataObject->writeData(_userID, QString("START_RND"), FittsLawTest::RoundID);
 
@@ -593,6 +595,13 @@ void FittsLawTest::startRound() {
         // will call QThread::start()
         //
         _recvThread->resumeThreadLoop();
+
+
+        //
+        // let the rMonitor knows the user is interacting. This is just for rMonitor::printData()
+        // The system can know this just by monitoring currBW
+        //
+        _perfMon->setInteracting(true);
     }
 
 
@@ -616,16 +625,6 @@ void FittsLawTest::startRound() {
         }
     }
     ***/
-
-    _targetHitCount = 0;
-    _isRunning = true;
-    _startstop->hide();
-    _target->show();
-
-    //
-    // user is interacting
-    //
-    _perfMon->setInteracting(true);
 }
 
 //
@@ -711,7 +710,7 @@ void FittsLawTest::finishRound() {
 
 void FittsLawTest::determineNextTargetPosition() {
 
-    QPointF nextPos = _targetPosList.value(_roundCount * 10 + _targetHitCount);
+    QPointF nextPos = _targetPosList.value(_roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount);
 
     //
     // there's saved value
@@ -730,7 +729,7 @@ void FittsLawTest::determineNextTargetPosition() {
         // Assumes the list is already filled with null data (call clearTargetPosList() !!)
         //
         if (!_isDryRun)
-            _targetPosList[ _roundCount * 10 + _targetHitCount ] = nextPos;
+            _targetPosList[ _roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount ] = nextPos;
 
 //        qDebug() << _roundCount << _targetHitCount << "choose random pos" << nextPos;
     }
@@ -846,17 +845,28 @@ FittsLawTestData::FittsLawTestData(QObject *parent)
     , _frame(0)
     , _isDryRun(true)
 {
-    qDebug() << "FittsLawTestData::FittsLawTestData()";
+//    qDebug() << "FittsLawTestData::FittsLawTestData()";
 }
 
-void FittsLawTestData::createGUI() {
+FittsLawTestData::~FittsLawTestData() {
+    qDebug() << "FittsLawTestData::~FittsLawTestData()";
+
     if (_frame) {
-        if (!_frame->isVisible()) {
-            _frame->show();
-        }
+        delete _frame;
     }
-    else {
+    _deleteFileAndStreamObjects();
+
+    _widgetMap.clear();
+    _perAppDataFiles.clear();
+    _perAppOuts.clear();
+}
+
+void FittsLawTestData::m_createGUI() {
+
+    if (!_frame) {
         _frame = new QFrame;
+
+        _frame->setWindowTitle("FittsLawTest Controller");
 
         QPushButton *nextRnd = new QPushButton("NextRound");
         QObject::connect(nextRnd, SIGNAL(clicked()), this, SLOT(advanceRound()));
@@ -872,8 +882,9 @@ void FittsLawTestData::createGUI() {
         hl->addWidget(recreateFiles);
         hl->addWidget(close);
         _frame->setLayout(hl);
-        _frame->show();
     }
+
+    _frame->show();
 }
 
 void FittsLawTestData::closeAll() {
@@ -1031,19 +1042,6 @@ bool FittsLawTestData::_openPerAppDataFile(const QChar id) {
     return true;
 }
 
-FittsLawTestData::~FittsLawTestData() {
-    qDebug() << "FittsLawTestData::~FittsLawTestData()";
-
-    if (_frame) {
-        delete _frame;
-    }
-    _deleteFileAndStreamObjects();
-
-    _widgetMap.clear();
-    _perAppDataFiles.clear();
-    _perAppOuts.clear();
-}
-
 void FittsLawTestData::addWidget(FittsLawTest *widget, const QChar id) {
     Q_ASSERT(widget);
 
@@ -1080,6 +1078,8 @@ void FittsLawTestData::addWidget(FittsLawTest *widget, const QChar id) {
         else {
             qDebug() << "FittsLawTestData::addWidget() : the global data file created" << _globalDataFile->fileName();
         }
+
+        m_createGUI();
     }
 }
 
@@ -1136,7 +1136,9 @@ void FittsLawTestData::recreateAllDataFiles() {
 
     _deleteFileAndStreamObjects();
 
-    _currentID = QChar();
+    _currentID = QChar(); // reset
+
+    _filenameBase.append("second_");
 
     QMap<QChar, FittsLawTest *>::const_iterator it;
     for (it=_widgetMap.constBegin(); it!=_widgetMap.constEnd(); it++) {
@@ -1173,21 +1175,33 @@ void FittsLawTestData::_deleteFileAndStreamObjects() {
     }
 }
 
+/*!
+  this is called whenever a round finished
+  */
 void FittsLawTestData::flushCloseAll() {
+    static int count = 0;
 
-    if (_globalOut) _globalOut->flush();
-    if (_globalDataFile) _globalDataFile->close();
+    count += 1;
 
-    QMap<QChar, QTextStream *>::iterator itt;
-    for (itt=_perAppOuts.begin(); itt!=_perAppOuts.end(); itt++) {
-        QTextStream *out = itt.value();
-        out->flush();
-    }
+    if (count == FittsLawTestData::_NUM_SUBJECTS) {
+        count = 0; // reset
 
-    QMap<QChar, QFile *>::iterator itf;
-    for (itf = _perAppDataFiles.begin(); itf!=_perAppDataFiles.end(); itf++) {
-        QFile *f = itf.value();
-        f->close();
+        qDebug() << "FittsLawTestData::flushCloseAll() : The tests finished for all subjects ! \n";
+
+        if (_globalOut) _globalOut->flush();
+        if (_globalDataFile) _globalDataFile->close();
+
+        QMap<QChar, QTextStream *>::iterator itt;
+        for (itt=_perAppOuts.begin(); itt!=_perAppOuts.end(); itt++) {
+            QTextStream *out = itt.value();
+            out->flush();
+        }
+
+        QMap<QChar, QFile *>::iterator itf;
+        for (itf = _perAppDataFiles.begin(); itf!=_perAppDataFiles.end(); itf++) {
+            QFile *f = itf.value();
+            f->close();
+        }
     }
 }
 

@@ -110,7 +110,7 @@ void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const
 }
 
 void MouseDragExample::handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
-	Q_UNUSED(pointer);
+    Q_UNUSED(point);
 	Q_UNUSED(btn);
 
 	_dragTrackerMap.erase(_dragTrackerMap.find(pointer));

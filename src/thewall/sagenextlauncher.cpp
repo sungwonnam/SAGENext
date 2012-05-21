@@ -153,6 +153,7 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThre
 	// In this case, fsManagerThread's incomingSail signal will trigger this slot.
 	//
 	if (_sageWidgetQueue.isEmpty()) {
+        qDebug() << "SN_Launcher::launch() : SAGE app fired manually. fsManager led me here.";
 
 		quint64 GID = _getUpdatedGlobalAppId();
 
@@ -160,6 +161,12 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThre
         if (sageappname == "mplayer") {
             sw = new SN_SageStreamMplayer(GID, _settings, _rMonitor);
             sw->appInfo()->setExecutableName(sageappname);
+
+            //
+            // !!!!!
+            // But there's no way for me to know the remote media file name
+            // !!!!!
+            //
         }
         else {
             sw = new SN_SageStreamWidget(GID, _settings, _rMonitor); // 127.0.0.1 ??????????
@@ -170,6 +177,7 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThre
 
 		/*
 		  for launchRatko..()
+          this is not used.
 		  */
 		theLastLaunched = sw;
 	}
@@ -180,6 +188,8 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThre
 	// This is a typical way to launch a sage app.
 	//
 	else {
+        qDebug() << "SN_Launcher::launch() : SAGE app fired by SAGENext. launchSageApp led me here.";
+
 		// Therefore, there's already a SN_SageStreamWidget waiting for SAIL connection
 		sw = _sageWidgetQueue.front();
 		_sageWidgetQueue.pop_front();
@@ -187,7 +197,6 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThre
 		pos = _sageWidgetPosQueue.front();
 		_sageWidgetPosQueue.pop_front();
 	}
-
 
 	// give fsmThread the sagewidget
 	if (sw) {
@@ -202,8 +211,19 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThre
         //
         // Note that the doInitReceiver() will run SN_SageStreamWidget::waitForStreamerConnection() in a separate thread
         //
-        fsmThread->signalSageWidgetCreated();
+        // ! Possible race condition !
+        //   1. fsmThread has null _sageWidget pointer.
+        // 1.5. fsmThread->signalSageWidgetCreated called in here.
+        //   2. fsmThread waits for the condition variable.
+        //
+        if ( ! QMetaObject::invokeMethod(fsmThread, "signalSageWidgetCreated", Qt::QueuedConnection) ) {
+            qDebug() << "SN_Launcher::launch() : failed to invoke fsmThread->signalSageWidgetCreated.";
+        }
 	}
+    else {
+        qDebug() << "SN_Launcher::launch() : fsManagerMsgThread is waiting for receiver. But there's no SageStreamWidget to receive images ..";
+        return 0;
+    }
 
 	/*!
 	  Resource monitor & processor assignment

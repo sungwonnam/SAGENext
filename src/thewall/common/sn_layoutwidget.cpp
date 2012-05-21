@@ -815,6 +815,15 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 		QString sageappname;
 		QString cmdargs;
 
+        //
+        // See if there exist a widget with the globalAppId.
+        // If there is one then keep the existing widget and apply window geometries (pos, size, scale)
+        //
+        // Why I did this ?
+        // One issue with save/load session is it can't know the media file info of a SAGE widget where its streamer runs in remote machine.
+        // Temporary workaround for this is launching remote SAGE apps manually and then do loadSession to restore their window geometries.
+        // You must manually launch them in exact order so that they can have exactly same globalAppId.
+        //
         Q_ASSERT(_theScene);
 		SN_BaseWidget *bw = _theScene->getUserWidget(gaid);
 
@@ -845,7 +854,7 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
             // command and its arguments will be overriden
             if (!bw) {
                 bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, file, scenepos, "127.0.0.1", "", "mplayer", gaid);
-                ::usleep(100 * 1e+3); // 100 msec
+                ::usleep(200 * 1e+3); // 200 msec
             }
             break;
         }
@@ -853,7 +862,7 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
             in >> srcaddr >> sageappname >> cmdargs;
             if (!bw) {
                 bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_SAGE_STREAM, file, scenepos, srcaddr, cmdargs, sageappname, gaid);
-                ::usleep(100 * 1e+3); // 100 msec
+                ::usleep(200 * 1e+3); // 200 msec
             }
             break;
         }

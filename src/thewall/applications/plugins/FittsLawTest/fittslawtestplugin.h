@@ -380,8 +380,6 @@ public:
 
     inline QFrame * getFrame() {return _frame;}
 
-    void createGUI();
-
     void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, const QString &data = QString());
 
 //    void writeData(const QString &id, const QString &actionType, int targetcount = -1, const QByteArray &bytearry = QByteArray());
@@ -389,7 +387,7 @@ public:
     void flushCloseAll();
 
 private:
-    const QString _filenameBase;
+    QString _filenameBase;
 
     QFile *_globalDataFile;
 
@@ -430,6 +428,10 @@ private:
       The other w/o scheduler
       */
 //    int _testCount;
+
+    void m_createGUI();
+
+signals:
 
 private slots:
     void closeAll();
