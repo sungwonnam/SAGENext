@@ -29,6 +29,9 @@ public:
 	inline QFileInfo fileInfo() const {return _fileinfo;}
 	inline QString mediaFilename() const { return _fileinfo.absoluteFilePath(); }
 
+//    inline void setRemoteFilepath(const QString &rf) {_remoteFilepath = rf;}
+//    QString remoteFilepath() const {return _remoteFilepath;}
+
 	/**
 	  useful for SageStreamWidget
 	  */
@@ -108,6 +111,11 @@ private:
 	  SAIL application name for SAGE app
 	  */
 	QString _executableName;
+
+    /*!
+      The absolute filepath of remote media
+      */
+//    QString _remoteFilepath;
 
 	/*!
 	  cmd line arguments for SAIL app

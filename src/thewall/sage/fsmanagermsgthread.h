@@ -78,7 +78,7 @@ signals:
 	  */
 //	void sailConnected(const quint64 sageAppId, QString appName, int protocol, int port, const QRect rect);
 
-    void sageAppConnectedToFSM(const QString &sageappname, fsManagerMsgThread *msgthread);
+    void sageAppConnectedToFSM(const QString &sageappname, const QString &mediafilepath, fsManagerMsgThread *msgthread);
 
 public slots:
     /*!

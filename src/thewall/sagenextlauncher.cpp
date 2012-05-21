@@ -134,7 +134,7 @@ void SN_Launcher::_createFsManager() {
 	_fsm = new fsManager(_settings, this);
 
     if (_fsm) {
-        if ( ! QObject::connect(_fsm, SIGNAL(sageAppConnectedToFSM(QString,fsManagerMsgThread*)), this, SLOT(launch(QString,fsManagerMsgThread*))) ) {
+        if ( ! QObject::connect(_fsm, SIGNAL(sageAppConnectedToFSM(QString,QString,fsManagerMsgThread*)), this, SLOT(launch(QString,QString,fsManagerMsgThread*))) ) {
             qDebug() << "SN_Launcher::_createFsManager() : failed to connect sageAppConnectedToFSM signal to the launch()";
         }
     }
@@ -143,7 +143,7 @@ void SN_Launcher::_createFsManager() {
     }
 }
 
-SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThread *fsmThread) {
+SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &mediafilepath, fsManagerMsgThread *fsmThread) {
 	SN_SageStreamWidget *sw = 0;
 	QPointF pos;
 
@@ -153,25 +153,21 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThre
 	// In this case, fsManagerThread's incomingSail signal will trigger this slot.
 	//
 	if (_sageWidgetQueue.isEmpty()) {
-        qDebug() << "SN_Launcher::launch() : SAGE app fired manually. fsManager led me here.";
+//        qDebug() << "SN_Launcher::launch() : SAGE app fired manually. fsManager led me here.";
 
 		quint64 GID = _getUpdatedGlobalAppId();
 
 		// create new sageWidget
         if (sageappname == "mplayer") {
             sw = new SN_SageStreamMplayer(GID, _settings, _rMonitor);
-            sw->appInfo()->setExecutableName(sageappname);
-
-            //
-            // !!!!!
-            // But there's no way for me to know the remote media file name
-            // !!!!!
-            //
+            sw->appInfo()->setCmdArgs("-vo sage -nosound -loop 0 -sws 4 -quiet -framedrop");
         }
         else {
             sw = new SN_SageStreamWidget(GID, _settings, _rMonitor); // 127.0.0.1 ??????????
         }
-         sw->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_SAGE_STREAM);
+        sw->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_SAGE_STREAM);
+        sw->appInfo()->setExecutableName(sageappname);
+        sw->appInfo()->setFileInfo(mediafilepath);
 
 		fsmThread->setGlobalAppId(GID);
 
@@ -188,7 +184,7 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThre
 	// This is a typical way to launch a sage app.
 	//
 	else {
-        qDebug() << "SN_Launcher::launch() : SAGE app fired by SAGENext. launchSageApp led me here.";
+//        qDebug() << "SN_Launcher::launch() : SAGE app fired by SAGENext. launchSageApp led me here.";
 
 		// Therefore, there's already a SN_SageStreamWidget waiting for SAIL connection
 		sw = _sageWidgetQueue.front();
@@ -197,6 +193,9 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, fsManagerMsgThre
 		pos = _sageWidgetPosQueue.front();
 		_sageWidgetPosQueue.pop_front();
 	}
+
+
+
 
 	// give fsmThread the sagewidget
 	if (sw) {
@@ -258,16 +257,9 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 
 	SN_SageStreamWidget *sws = 0;
 
-	QString cmd = "ssh -fx";
-	cmd.append(" "); cmd.append(senderIP);
-	cmd.append(" "); cmd.append(sageappname);
+	QString cmd;
 
-    if (!args.isEmpty())
-        cmd.append(" "); cmd.append(args);
-
-    if (!filename.isEmpty()) {
-        cmd.append(" "); cmd.append(filename);
-    }
+    bool isSSH = false;
 
     quint64 GID = _getUpdatedGlobalAppId(gaid);
 
@@ -284,8 +276,33 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 			qWarning() << "SN_Launcher::launch() : source IP addr is required for MEDIA_TYPE_SAGE_STREAM";
 			return 0;
 		}
-        sws = new SN_SageStreamWidget(GID, _settings, _rMonitor);
+
+        if (sageappname == "mplayer") {
+            sws = new SN_SageStreamMplayer(GID, _settings, _rMonitor);
+            sws->appInfo()->setFileInfo(filename);
+        }
+        else {
+            sws = new SN_SageStreamWidget(GID, _settings, _rMonitor);
+        }
+
 		sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_SAGE_STREAM);
+
+        isSSH = true;
+
+        cmd = "ssh -fx";
+        cmd.append(" "); cmd.append(senderIP);
+        cmd.append(" "); cmd.append(sageappname);
+
+        if (!args.isEmpty()) {
+            cmd.append(" "); cmd.append(args);
+            sws->appInfo()->setCmdArgs(args);
+        }
+
+        if (!filename.isEmpty()) {
+            cmd.append(" "); cmd.append(filename);
+            sws->appInfo()->setFileInfo(filename);
+        }
+
 		break;
 	}
 
@@ -304,17 +321,12 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 			return 0;
 		}
 
-		//
-		// override command cause we don't need to ssh to localmachine
-		//
-		cmd = "mplayer";
-
 		/**
 		  create sageWidget
 		  */
 		sws = new SN_SageStreamMplayer(GID, _settings, _rMonitor);
+        sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_LOCAL_VIDEO);
 		sws->appInfo()->setFileInfo(filename);
-		sws->appInfo()->setSrcAddr("localhost");
 
 			//
 			// mplayer converts image frame to RGB24 using CPU
@@ -328,11 +340,12 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 			// conversion at the mplayer is cheaper
 			// and image is converted to RGB using shader program
 			//
-		cmd.append(" -vo sage -nosound -loop 0 -sws 4 -framedrop -slave -quiet ");
-		cmd.append(filename);
-//		cmdargs << "-vo" << "sage" << "-nosound" << "-loop" << "0" << "-sws" << "4" << "-identify" << filename;
+        QString arg = "-vo sage -nosound -loop 0 sws 4 -framedrop -slave -quiet";
+        sws->appInfo()->setCmdArgs(arg);
 
-		sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_LOCAL_VIDEO);
+        cmd = "mplayer";
+        cmd.append(" "); cmd.append(arg);
+		cmd.append(" "); cmd.append(filename);
 
 		break;
 	}
@@ -340,59 +353,63 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 
 	qDebug() << "SN_Launcher::launchSageApp() : The command for QProcess is" << cmd;
 
-	/**
+	sws->appInfo()->setExecutableName(sageappname);
+	sws->appInfo()->setSrcAddr(senderIP);
+
+
+
+    /**
       add the widget to the queue
       */
 	_sageWidgetQueue.push_back(sws);
 	_sageWidgetPosQueue.push_back(scenepos);
 
-	/**
-      initiate SAIL process
-      */
-	QProcess *proc = new QProcess(this);
-	//proc->setWorkingDirectory("$SAGE_DIRECTORY");
-	//proc->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
 
-	sws->appInfo()->setExecutableName(sageappname);
-	sws->appInfo()->setSrcAddr(senderIP);
-//	sws->appInfo()->setCmdArgs(args.split(QRegExp("\\s+"), QString::SkipEmptyParts));
-	sws->appInfo()->setCmdArgs(args);
 
-	//
-	// this will invoke sail (outside of SAGENext) which will trigger fsManager::incomingSail(fsmThread *) signal which is connected to launch(fsmThread *)
-	//
-	//qDebug() << proc->environment();
+    if (isSSH) {
+        if ( system(qPrintable(cmd)) == -1) {
+            perror("system");
+            _sageWidgetQueue.pop_back();
+            _sageWidgetPosQueue.pop_back();
+            sws->deleteLater();
+            return 0;
+        }
+        else {
+            return sws;
+        }
+    }
+    else {
+        QProcess *proc = new QProcess(this);
+        //proc->setWorkingDirectory("$SAGE_DIRECTORY");
+        //proc->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
+        sws->setSailAppProc(proc);
 
-	//proc->setWorkingDirectory(qApp->applicationDirPath());
-	//qDebug() << qApp->applicationDirPath();
+        //
+        // SAGE app will now connects to the fsManager (QTcpServer)
+        //
+        proc->start(cmd);
 
-	sws->setSailAppProc(proc);
+        if (!proc->waitForStarted(-1)) {
+            qCritical() << "SN_Launcher::launch() : Failed to start remote process !!" << proc->workingDirectory();
+            qDebug() << proc->readAllStandardError();
+            qDebug() << proc->readAllStandardOutput();
 
-    //
-    // SAGE app will now connects to the fsManager (QTcpServer)
-    //
-	proc->start(cmd);
+            _sageWidgetQueue.pop_back();
+            _sageWidgetPosQueue.pop_back();
 
-	if (!proc->waitForStarted(-1)) {
-		qCritical() << "SN_Launcher::launch() : Failed to start remote process !!" << proc->workingDirectory();
-		qDebug() << proc->readAllStandardError();
-		qDebug() << proc->readAllStandardOutput();
+            sws->deleteLater();
 
-		_sageWidgetQueue.pop_back();
-		_sageWidgetPosQueue.pop_back();
-
-		sws->deleteLater();
-
-		return 0;
-	}
-	else {
-	//
-	///
-	//// launch(w) will be called in launch(fsmMessageThread *)
-	//// Because of this, scenepos in savedSession has no effect !!! That's why _sageWidgetScenePosQueue has to be maintained
-	//
-		return sws;
-	}
+            return 0;
+        }
+        else {
+        //
+        ///
+        //// launch(w) will be called in launch(fsmMessageThread *)
+        //// Because of this, scenepos in savedSession has no effect !!! That's why _sageWidgetScenePosQueue has to be maintained
+        //
+            return sws;
+        }
+    }
 }
 
 

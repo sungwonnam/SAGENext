@@ -140,7 +140,7 @@ fsManagerMsgThread * fsManager::_createMsgThread(int sockfd) {
 
 	fsManagerMsgThread *thread = new fsManagerMsgThread(_sageAppId, sockfd, _settings);
 
-    if ( ! QObject::connect(thread, SIGNAL(sageAppConnectedToFSM(QString,fsManagerMsgThread*)), this, SIGNAL(sageAppConnectedToFSM(QString,fsManagerMsgThread*))) ) {
+    if ( ! QObject::connect(thread, SIGNAL(sageAppConnectedToFSM(QString,QString,fsManagerMsgThread*)), this, SIGNAL(sageAppConnectedToFSM(QString,QString,fsManagerMsgThread*))) ) {
         qDebug() << "fsManager::_createMsgThread() : failed to connect sageAppConnectedToFSM signals";
     }
 

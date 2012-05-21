@@ -767,7 +767,10 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 			case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
 
 				out << ai->srcAddr() << ai->executableName() << ai->cmdArgsString();
-				qDebug() << "SN_LayoutWidget::saveSession() : " << bw->globalAppId() << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->executableName() << ai->cmdArgsString();
+                if (ai->executableName() == "mplayer") {
+                    out << ai->mediaFilename();
+                }
+				qDebug() << "SN_LayoutWidget::saveSession() : " << bw->globalAppId() << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->executableName() << ai->cmdArgsString() << ai->mediaFilename();
 
 				break;
 			}
@@ -828,7 +831,13 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 		SN_BaseWidget *bw = _theScene->getUserWidget(gaid);
 
         if (bw) {
-            qDebug() << "SN_LayoutWidget::loadSession() : There exist a widget with gid" << gaid;
+            qDebug() << "SN_LayoutWidget::loadSession() : There exist a widget with GID" << gaid;
+
+            //
+            // delete the widget
+            //
+            bw->close();
+            ::usleep(100 * 1e+3); // 100 msec
         }
 
         switch ( (SAGENext::MEDIA_TYPE)mtype ) {
@@ -836,8 +845,10 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
         case SAGENext::MEDIA_TYPE_PDF :
         case SAGENext::MEDIA_TYPE_PLUGIN : {
             in >> file;
-            if (!bw)
+            if (!bw) {
+                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_PLUGIN" << gaid << file;
                 bw = launcher->launch(mtype, file, scenepos, gaid);
+            }
             break;
         }
         case SAGENext::MEDIA_TYPE_WEBURL : {
@@ -845,14 +856,17 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
         }
         case SAGENext::MEDIA_TYPE_VNC : {
             in >> srcaddr >> user >> pass;
-            if (!bw)
+            if (!bw) {
+                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_VNC" << gaid << srcaddr << user << pass;
                 bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos, gaid);
+            }
             break;
         }
         case SAGENext::MEDIA_TYPE_LOCAL_VIDEO : {
             in >> file;
             // command and its arguments will be overriden
             if (!bw) {
+                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_LOCAL_VIDEO" << gaid << file;
                 bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, file, scenepos, "127.0.0.1", "", "mplayer", gaid);
                 ::usleep(200 * 1e+3); // 200 msec
             }
@@ -860,7 +874,11 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
         }
         case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
             in >> srcaddr >> sageappname >> cmdargs;
+            if (sageappname == "mplayer") {
+                in >> file;
+            }
             if (!bw) {
+                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_SAGE_STREAM" << gaid << srcaddr << sageappname << cmdargs << file;
                 bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_SAGE_STREAM, file, scenepos, srcaddr, cmdargs, sageappname, gaid);
                 ::usleep(200 * 1e+3); // 200 msec
             }

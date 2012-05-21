@@ -141,8 +141,10 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
     /**
       1. close the fsManager message channel
     **/
-    _fsmMsgThread->sendSailShutdownMsg();
-    _fsmMsgThread->wait();
+    if (_fsmMsgThread) {
+        QMetaObject::invokeMethod(_fsmMsgThread, "sendSailShutdownMsg", Qt::DirectConnection);
+        _fsmMsgThread->wait();
+    }
 
 
     if (_receiverThread) {
@@ -800,6 +802,8 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     //
 	_readyForStreamer = true;
 
+//    qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : about to enter blocking waiting (accept()). GID" << _globalAppId;
+
     if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
             qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
             perror("accept");
@@ -911,12 +915,6 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 //		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : Execname(sageappname) :" << _appInfo->executableName();
 //		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : CmdArgs :" << _appInfo->cmdArgsString();
 	}
-
-    if ( appname == "mplayer") {
-//        QString arg = "-vo sage -nosound -loop 0 -sws 4 -framedrop -quiet";
-//		_appInfo->setCmdArgs(arg);
-//        _appInfo->setFileInfo();
-    }
 
     emit streamerInitialized();
 
