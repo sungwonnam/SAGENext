@@ -24,7 +24,7 @@ fsManager::fsManager(const QSettings *settings, SN_Launcher *l, QObject *parent)
 //	fsmParam.streamPortBase = fsmParam.fsPort + 3;
 
 	if ( ! isListening() ) {
-		if ( ! listen(_fsIP, settings->value("general/fsmport", 20002).toInt()) ) {
+		if ( ! listen(/*_fsIP*/ QHostAddress::Any, settings->value("general/fsmport", 20002).toInt()) ) {
 			qCritical("fsManager::%s() : listen failed", __FUNCTION__);
 		}
 	}

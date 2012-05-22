@@ -216,7 +216,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             // This will trigger the SN_Launcher::launch()
             //
             emit sageAppConnectedToFSM(_sageAppName, QString(filepath), this);
-//            qDebug() << "fsmThread signal emitted" << _sageAppName;
+            //qDebug() << "fsmThread signal emitted" << _sageAppName;
 
             //
             // wait until the receiver (SN_SageStreamWidget) is created
@@ -230,7 +230,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             //
             _mutex.lock();
             while(!_sageWidget) {
-//                qDebug("%s::%s() : fsm is waiting for SN_SageStreamWidget is created", metaObject()->className(), __FUNCTION__);
+                qDebug("%s::%s() : fsm is waiting for SN_SageStreamWidget is created", metaObject()->className(), __FUNCTION__);
                 _isSageWidgetCreated.wait(&_mutex);
             }
             // SN_SageStreamWidget created at this point
@@ -253,7 +253,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             //
             // Trigger the SN_SageStreamWidget to blocking wait (::accept()) for the streamer
             //
-            //	qDebug() << "fsmsgthread invoking doInitReceiver() for sage app" << sageAppId << "streamport" << streamPort << QTime::currentTime().toString("hh:mm:ss.zzz");
+            //qDebug() << "fsmsgthread invoking doInitReceiver() for sage app" << _sageAppId << "streamport" << streamPort << QTime::currentTime().toString("hh:mm:ss.zzz");
             QMetaObject::invokeMethod(_sageWidget, "doInitReceiver", Qt::QueuedConnection
                                       , Q_ARG(quint64, _sageAppId)
                                       , Q_ARG(QString, _sageAppName)

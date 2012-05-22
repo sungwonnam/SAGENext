@@ -773,7 +773,7 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
         // rescale
         //
         else {
-            qDebug() << _resizeRectangle->rect() << boundingRect() << size() << scale();
+            //qDebug() << _resizeRectangle->rect() << boundingRect() << size() << scale();
             qreal se = _resizeRectangle->rect().width() * scale() / boundingRect().width();
             setScale(se);
         }

@@ -802,7 +802,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     //
 	_readyForStreamer = true;
 
-//    qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : about to enter blocking waiting (accept()). GID" << _globalAppId;
+    //qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : about to enter blocking waiting (accept()). GID" << _globalAppId;
 
     if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
             qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
