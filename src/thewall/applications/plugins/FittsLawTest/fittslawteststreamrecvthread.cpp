@@ -31,7 +31,7 @@ FittsLawTestStreamReceiverThread::~FittsLawTestStreamReceiverThread() {
     _sema->release();
     wait();
 
-    qDebug() << "StreamReceiver::~StreamReceiver()";
+    qDebug() << "FittsLawTestStreamReceiverThread::~FittsLawTestStreamReceiverThread()";
 }
 
 void FittsLawTestStreamReceiverThread::run() {
@@ -126,7 +126,7 @@ void FittsLawTestStreamReceiverThread::run() {
         */
     }
 
-    qDebug() << "StreamReceiver::run() : thread finished";
+    qDebug() << "FittsLawTestStreamReceiverThread::run() : thread finished";
 }
 
 void FittsLawTestStreamReceiverThread::endThreadLoop() {
@@ -141,7 +141,7 @@ void FittsLawTestStreamReceiverThread::resumeThreadLoop() {
 bool FittsLawTestStreamReceiverThread::connectToStreamer() {
 
     if (_tcpPort <= 0) {
-        qCritical() << "StreamReceiver::acceptStreamerConnection() : Invalid port number" << _tcpPort;
+        qCritical() << "FittsLawTestStreamReceiverThread::acceptStreamerConnection() : Invalid port number" << _tcpPort;
         return false;
     }
 
@@ -162,12 +162,16 @@ bool FittsLawTestStreamReceiverThread::connectToStreamer() {
     struct sockaddr_in streamerAddr;
     memset(&streamerAddr, 0, sizeof(streamerAddr));
     streamerAddr.sin_family = AF_INET;
-    streamerAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    inet_pton(AF_INET, qPrintable(_streamerIpaddr), &streamerAddr.sin_addr.s_addr);
     streamerAddr.sin_port = htons(_tcpPort);
 
     if ( ::connect(_socket, (sockaddr *)&streamerAddr, sizeof(streamerAddr)) == -1 ) {
-        qCritical() << "StreamReceiver::connectToStreamer() : connect() failed";
+        qCritical() << "FittsLawTestStreamReceiverThread::connectToStreamer() : connect() failed";
+        perror("connect");
         return false;
+    }
+    else {
+
     }
 
     return true;
@@ -219,12 +223,10 @@ bool FittsLawTestStreamReceiverThread::connectToStreamer() {
 
 
 
+/**************************
 
-
-
-
-
-
+  QObject
+  ************************/
 
 
 FittsLawTestStreamReceiver::FittsLawTestStreamReceiver(const QSize &imgsize, const QString &streamerip, int tcpport, PerfMonitor *pmon, QObject *parent)

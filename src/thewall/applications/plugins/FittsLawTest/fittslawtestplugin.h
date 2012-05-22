@@ -89,6 +89,9 @@ public:
 
     int setQuality(qreal newQuality);
 
+
+    void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
 protected:
     void resizeEvent(QGraphicsSceneResizeEvent *event);
 

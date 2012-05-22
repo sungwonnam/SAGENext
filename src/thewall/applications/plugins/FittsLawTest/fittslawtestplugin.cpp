@@ -8,14 +8,23 @@
 #include <QtGui>
 
 int FittsLawTestData::_NUM_SUBJECTS = 1;
+int FittsLawTest::_NUM_TARGET_PER_ROUND = 2;
+
+// 131.193.78.176 (bigdaddy 100 Mbps)
+// 67.58.62.57 (bigdaddy 10 Gbps)
+// 67.58.62.45 (venom 10 Gbps)
+const QString FittsLawTest::_streamerIpAddr = QString("131.193.78.176");
+const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
+
+
+
+
+
+
+
 FittsLawTestData * FittsLawTest::_dataObject = new FittsLawTestData;
-
-
 int FittsLawTest::RoundID = -1;
 int FittsLawTest::_NUM_ROUND = pow(2, FittsLawTestData::_NUM_SUBJECTS - 1);
-int FittsLawTest::_NUM_TARGET_PER_ROUND = 2;
-const QString FittsLawTest::_streamerIpAddr = QString("127.0.0.1");
-const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
 const QPixmap FittsLawTest::_startPixmap = QPixmap(":/greenplay128.png");
 const QPixmap FittsLawTest::_stopPixmap = QPixmap(":/stopsign48.png").scaledToWidth(128);
 const QPixmap FittsLawTest::_cursorPixmap = QPixmap(":/blackarrow_upleft128.png");
@@ -806,6 +815,10 @@ void FittsLawTest::updateInfoTextItem() {
     _infoText->setText(QString(text));
 }
 
+void FittsLawTest::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
+    painter->setBrush(Qt::lightGray);
+    painter->drawRect(windowFrameRect());
+}
 
 
 
@@ -838,7 +851,6 @@ void FittsLawTest::updateInfoTextItem() {
 
 FittsLawTestData::FittsLawTestData(QObject *parent)
     : QObject(parent)
-    , _filenameBase(QString("/home/snam5/.sagenext/"))
     , _globalDataFile(0)
     , _globalOut(0)
     , _currentID(QChar())
@@ -846,6 +858,7 @@ FittsLawTestData::FittsLawTestData(QObject *parent)
     , _isDryRun(true)
 {
 //    qDebug() << "FittsLawTestData::FittsLawTestData()";
+    _filenameBase = QDir::homePath().append("/.sagenext/");
 }
 
 FittsLawTestData::~FittsLawTestData() {
