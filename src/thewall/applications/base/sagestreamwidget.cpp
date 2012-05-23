@@ -51,7 +51,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
 	, _readyForStreamer(false) // fsm thread polls on this
 
     , __firstFrame(true)
-    , __bufferMapped(false)
+//    , __bufferMapped(false)
 //    , _recvThreadEnd(false)
 
     , _pbomutex(0)
@@ -178,7 +178,7 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 			//
 			// without below two statements, _receiverThread->wait() will block forever
 			//
-			_receiverThread->flip(0); // very important !!!!!!!!!!!
+//			_receiverThread->flip(0); // very important !!!!!!!!!!!
 
 			pthread_cond_signal(_pbobufferready);
 		}
@@ -213,7 +213,7 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
 		if (_pbobufferready) {
-			__bufferMapped = true;
+//			__bufferMapped = true;
 			pthread_cond_signal(_pbobufferready);
 		}
 		if (_pbomutex) {
@@ -241,30 +241,40 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 int SN_SageStreamWidget::setQuality(qreal newQuality) {
     if (!_perfMon) return -1;
 
-    if (newQuality == 0) {
+    if (_quality == newQuality) {
+        return 0;
+    }
+
+    unsigned long delayneeded = 0;
+
+
+    if ( newQuality >= 1.0 ) {
+		_quality = 1.0;
+        delayneeded = 0;
+	}
+
+	else {
         //
-        // this can happen
-        // when this app's requiredBW is set to 0.
-        // or its priority is 0 (completely obscured by other widget)
+        // newQuality == 0 can happen when
+        // 1. this app's requiredBW is set to 0 by itself
+        // or
+        // 2. its priority is 0 (completely obscured by other widget for instance)
         //
         // And it means the streamer (SAGE app) isn't sending any pixel
         //
-    }
+        if ( newQuality <= 0.0 ) {
+            _quality = 0.1;
+        }
+        else {
+            _quality = newQuality;
+        }
 
-    if ( newQuality > 1.0 ) {
-		_quality = 1.0;
-	}
-	else if ( newQuality <= 0.0 ) {
-		_quality = 0.1;
-	}
-	else {
-		_quality = newQuality;
+        //    qreal BWallowed_Mbps = _perfMon->getRequiredBW_Mbps( _quality );
+        qreal newfps = _quality * _perfMon->getExpetctedFps();
+        delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps()));
 	}
 
 
-//    qreal BWallowed_Mbps = _perfMon->getRequiredBW_Mbps( _quality );
-    qreal newfps = _quality * _perfMon->getExpetctedFps();
-    unsigned long delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps()));
     if (_receiverThread) {
         if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(unsigned long, delayneeded)) ) {
             qDebug() << "SN_SageStreamWidget::setQuality() : failed to invoke setDelay_msec()";
@@ -275,55 +285,6 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
         qDebug() << "SN_SageStreamWidget::setQuality() : _receiverThread is null";
         return -1;
     }
-
-
-    /******
-
-    // there's change
-    if ( _perfMon->getAdjustedFps()  !=  (_perfMon->getExpetctedFps() * _quality)) {
-
-        _perfMon->setAdjustedFps(_perfMon->getExpetctedFps() * _quality);
-
-         int adjustedfps = _perfMon->getExpetctedFps() * _quality;
-
-
-
-
-
-        //
-        // How about send a message (SAIL_FRAME_RATE) to SAIL using _fsmMsgThread ??
-        //
-    //    _fsmMsgThread->sendSailMsg(OldSage::SAIL_FRAME_RATE, QString::number((int)adjustedFps));
-
-//        QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::SAIL_FRAME_RATE), Q_ARG(QString, QString::number(adjustedfps)));
-
-    //    QtConcurrent::run(_fsmMsgThread, &fsManagerMsgThread::sendSailMsg, OldSage::SAIL_FRAME_RATE, QString::number((int)adjustedFps));
-
-
-
-
-
-
-         ///
-         // Adjust speed of mplayer ??
-         // mplayer must be running with -slave option
-         ///
-//         if (_appInfo->executableName() == "mplayer" && _sailAppProc && _sailAppProc->state() == QProcess::Running) {
-//             QString speed = "speed_set ";
-//             speed.append(QString::number(_quality));
-//             speed.append("\n");
-//             _sailAppProc->write(qPrintable(speed));
-//         }
-
-        return adjustedfps;
-    }
-
-    // no change
-    else {
-        return 0;
-    }
-
-    *******/
 
     return 0;
 }
@@ -478,7 +439,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	GLenum error = glGetError();
 
 	//
-	// unmap previous buffer
+	// unmap the previous buffer
 	//
 	if (!__firstFrame) {
 //		qDebug() << "unmap buffer" << nextbufidx;
@@ -487,12 +448,16 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 			qDebug() << "SN_SageStreamWidget::schedulePboUpdate() : glUnmapBufferARB() failed";
 		}
 	}
+
+    //
+    // If it's the first time then nothing has been mapped
+    //
 	else {
 		__firstFrame = false;
 	}
 
 	//
-	// map buffer
+	// map the buffer
 	//
 //	qDebug() << "map" << _pboBufIdx;
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
@@ -510,11 +475,11 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	if (ptr) {
 		_pbobufarray[_pboBufIdx] = ptr;
 
-		// signal thread
+        //
+        // will wait until the recv thread is blocking waiting (pthread_cond_wait)
+        // to prevent the 'lost wakeup' situation
+        //
 		pthread_mutex_lock(_pbomutex);
-
-		__bufferMapped = true;
-		_receiverThread->flip(_pboBufIdx);
 
 //		qDebug() << "mapped buffer" << _pboBufIdx << ptr;
 

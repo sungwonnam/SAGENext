@@ -34,8 +34,11 @@ int SN_SageStreamMplayer::setQuality(qreal newQuality) {
         return 0;
     }
 
-    if ( newQuality > 1.0 ) {
+    unsigned long delayneeded = 0;
+
+    if ( newQuality >= 1.0 ) {
 		_quality = 1.0;
+        delayneeded = 0;
 	}
 
     //
@@ -54,6 +57,9 @@ int SN_SageStreamMplayer::setQuality(qreal newQuality) {
 
 	else {
 		_quality = newQuality;
+
+        qreal newfps = _quality * _perfMon->getExpetctedFps(); // based on the priori
+        delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps())); // in msec
 	}
 
 
@@ -62,9 +68,6 @@ int SN_SageStreamMplayer::setQuality(qreal newQuality) {
     }
 
 
-//    qreal BWallowed_Mbps = _perfMon->getRequiredBW_Mbps( _quality );
-    qreal newfps = _quality * _perfMon->getExpetctedFps();
-    unsigned long delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps()));
     if (_receiverThread) {
         if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(unsigned long, delayneeded)) ) {
             qDebug() << "SN_SageStreamMplayer::setQuality() : failed to invoke setDelay_msec()";
@@ -110,8 +113,6 @@ void SN_SageStreamMplayer::playMplayer() {
 	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("play")));
 	_playButton->hide();
 	_pauseButton->show();
-
-//    _perfMon->setRequiredBW_Mbps( _appInfo->frameSizeInByte() * 8.0f * _perfMon->getExpetctedFps() * 1e-6 );
 
     _isMplayerPaused = false;
 

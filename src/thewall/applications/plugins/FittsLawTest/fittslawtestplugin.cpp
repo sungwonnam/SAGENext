@@ -242,31 +242,69 @@ int FittsLawTest::setQuality(qreal newQuality) {
 
     if (!_perfMon) return -1;
 
+    if (_quality == newQuality) {
+        // No change, there's nothing to do
+        return 0;
+    }
+
+
+    unsigned long thedelay = 0;
+
+
+    //
+    // The scheduler will set 0 quality
+    // only if _perfMon->getRequiredBW_Mbps() <= 0
+    //
+    // Note that a widget w/o a priori starts with its requiredBW 0
+    //
     if (newQuality <= 0) {
         //
-        // this can hapeen when the requiredBW is 0
+        // ignore the quality the scheduler demands
+        // because the widget set its required BW 0
+        // meaning it's not consuming resource
         //
         return -1;
     }
+    else if ( newQuality >= 1.0 ) {
 
-    if ( newQuality > 1.0 ) {
 		_quality = 1.0;
+        thedelay = 0;
 	}
+
+    //
+    // 0 < newQuality < 1
+    //
 	else {
 		_quality = newQuality;
+
+        qreal bw_demanded = _perfMon->getRequiredBW_Mbps(_quality); // demanded by the scheduler
+
+        qreal fps_demanded =  1e+6 * bw_demanded / (_appInfo->frameSizeInByte() * 8.0f); // demanded by the scheduler
+
+        qreal delay_demanded = 1000 / fps_demanded; // in msec
+
+
+
+        qreal fps_current = 1e+6 * _perfMon->getCurrBW_Mbps() / (_appInfo->frameSizeInByte() * 8.0f); // curent effective fps
+
+        qreal delay_current = 1000 / fps_current; // in msec
+
+
+        thedelay = delay_demanded - delay_current;
 	}
 
-    if (_recvThread) {
 
-        qreal bwallowed = _perfMon->getRequiredBW_Mbps(_quality); // demanded by the scheduler
-
-//            qreal fpsallowed =  1e+6 * bwallowed / (_appInfo->frameSizeInByte() * 8.0f); // demanded by the scheduler
-
-//            _recvThread->setExtraDelay_Msec( );
-
+    if (_recvThread && thedelay >= 0) {
+        if ( ! QMetaObject::invokeMethod(_recvThread, "setExtraDelay_Msec", Qt::QueuedConnection, Q_ARG(unsigned long, thedelay)) ) {
+            qDebug() << "FittsLawTest::setQuality() : failed to invoke _recvThread->setExtraDelay_Msec()";
+            return -1;
+        }
+        return 0;
     }
-
-    return -1;
+    else {
+        qDebug() << "FittsLawTest::setQuality() : _recvThread is null";
+        return -1;
+    }
 }
 
 

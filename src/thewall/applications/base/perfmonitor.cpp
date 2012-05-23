@@ -87,7 +87,8 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
 
     ///
     // If app provided resource required (e.g. constant framerate streaming such as Sage app)
-    // then I know current BW is always less than or equal to required BW
+    // then I know current BW is always less than or equal to required BW and
+    // its requiredBW will never change
     //
     if (_priori) {
         if (bwtemp == 0) {
@@ -121,6 +122,8 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
         // The observedQ_Rq > 1
         // The required bw is set too low, so update required BW
         //
+        // Note that a non-periodic widget's required BW starts with 0
+        //
         else if (_currEffectiveBW_Mbps > _requiredBW_Mbps) {
             _requiredBW_Mbps = _currEffectiveBW_Mbps; // INCREASE Rq
         }
@@ -143,7 +146,9 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                 // because it may be able to consume more
                 //
                 if ( _widget->demandedQuality() >= 0.9) {
+
                     _requiredBW_Mbps = 1.2f * _requiredBW_Mbps; // INCREASE Rq
+
                 }
 
                 //
@@ -170,7 +175,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
 }
 
 //
-// Resource monitor calls this function
+// Resource monitor 's refresh() calls this function
 //
 void PerfMonitor::updateDataWithCumulativeByteReceived(qint64 timestamp) {
 

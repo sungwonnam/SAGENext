@@ -84,6 +84,7 @@ void FittsLawTestStreamReceiverThread::run() {
             // This assumes the recv() latency below is neglible
             // in calculating real FPS
             //
+            qDebug() << "FittsLawTestStreamReceiverThread::run() : delay demanded by the scheduler" << _extraDelay << "msec";
             QThread::msleep(_extraDelay);
         }
 

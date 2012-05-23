@@ -28,11 +28,11 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
     , _delay(0)
     , doubleBuffer(idb)
     , appInfo(ap)
-    , perf(pm)
+    , _perfMon(pm)
     , affInfo(ai)
 
     , _usePbo(usepbo)
-    , __bufferMapped(false)
+    , _pboBufIdx(0)
     , _pbobufarray(pbobufarray)
     , _pboMutex(pboMutex)
     , _pboCond(pboCond)
@@ -60,6 +60,8 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
 		else {
 		}
 	}
+
+
 }
 
 void SN_SagePixelReceiver::endReceiver() {
@@ -113,10 +115,6 @@ int SN_SagePixelReceiver::receiveUdpPortNumber() {
 }
 
 
-void SN_SagePixelReceiver::flip(int idx) {
-	__bufferMapped = true;
-	_pboBufIdx = idx;
-}
 
 
 void SN_SagePixelReceiver::run() {
@@ -138,7 +136,7 @@ void SN_SagePixelReceiver::run() {
     // CPU time elapsed
     struct timespec ts_start, ts_end;
 
-    if(perf && s->value("system/resourcemonitor",false).toBool()) {
+    if(_perfMon && s->value("system/resourcemonitor",false).toBool()) {
 //		perf->getRecvTimer().start(); //QTime::start()
 
         gettimeofday(&tvs, 0);
@@ -179,14 +177,25 @@ void SN_SagePixelReceiver::run() {
 
 
 		if (_usePbo) {
-			// wait for glMapBufferARB
-			pthread_mutex_lock(_pboMutex);
-			while(!__bufferMapped) {
+            //
+            // if the mutex is currently locked by any thread (includeing this thread), then
+            // it will return immediately
+            //
+			pthread_mutex_trylock(_pboMutex);
+
+//			while(!__bufferMapped) {
 //				qDebug() << "thread waiting ..";
+            //
+            // unlock the mutex and blocking wait for glMapBufferARB() in schedulePboUpdate()
+            //
 				pthread_cond_wait(_pboCond, _pboMutex);
-			}
+//			}
+                pthread_mutex_unlock(_pboMutex);
+
+                _pboBufIdx = (_pboBufIdx + 1) % 2;
+
 			bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
-//			qDebug() << "thread writing to" << _pboBufIdx << bufptr;
+//			qDebug() << "thread woken up" << _pboBufIdx << bufptr;
 		}
 
 
@@ -269,9 +278,13 @@ void SN_SagePixelReceiver::run() {
 
 
 		if (_usePbo) {
-			__bufferMapped = false;
+//			__bufferMapped = false;
+
+            // acquire the lock before the schedulePboUpdate()
+            // to prevent the lost wakeup situation
+            pthread_mutex_lock(_pboMutex);
+
 			emit frameReceived();
-			pthread_mutex_unlock(_pboMutex);
 		}
 		else {
 
@@ -322,7 +335,7 @@ void SN_SagePixelReceiver::run() {
 		/********************************************/
 
 
-		if (perf && s->value("system/resourcemonitor",false).toBool()) {
+		if (_perfMon && s->value("system/resourcemonitor",false).toBool()) {
 
             gettimeofday(&tve, 0);
 
@@ -340,7 +353,7 @@ void SN_SagePixelReceiver::run() {
             // perfMon->recvTimer will be restarted in this function.
             // So the delay calculated in this function includes blocking (which is forced by the pixel streamer) delay
             //
-			perf->addToCumulativeByteReceived(read, actualtime_second, cputime_second);
+			_perfMon->addToCumulativeByteReceived(read, actualtime_second, cputime_second);
 		}
 	} /*** end of receiving loop ***/
 
