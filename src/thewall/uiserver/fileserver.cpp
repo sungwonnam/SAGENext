@@ -8,6 +8,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 
 FileServerThread::FileServerThread(int sockfd, const quint32 uiclientid, QObject *parent)

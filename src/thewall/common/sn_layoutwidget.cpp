@@ -1,5 +1,7 @@
 #include "common/sn_layoutwidget.h"
 
+#include <unistd.h>
+
 #include "common/commonitem.h"
 #include "applications/base/basewidget.h"
 #include "applications/base/appinfo.h"

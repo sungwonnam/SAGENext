@@ -5,6 +5,7 @@
 #include "base/sn_priority.h"
 
 #include <sys/time.h>
+#include <unistd.h>
 
 #include <QtGui>
 #include <QGLPixelBuffer>

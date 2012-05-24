@@ -17,6 +17,7 @@
 #include <sys/resource.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <unistd.h>
 
 //#include <QProcess>
 
