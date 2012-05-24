@@ -177,11 +177,17 @@ void SN_SagePixelReceiver::run() {
 
 
 		if (_usePbo) {
+			qint64 ss,ee;
+			if (appInfo->GID()==1) {
+				ss = QDateTime::currentMSecsSinceEpoch();
+			}
             //
             // if the mutex is currently locked by any thread (includeing this thread), then
             // it will return immediately
             //
 			pthread_mutex_trylock(_pboMutex);
+
+			emit frameReceived();
 
 //			while(!__bufferMapped) {
 //				qDebug() << "thread waiting ..";
@@ -196,6 +202,11 @@ void SN_SagePixelReceiver::run() {
 
 			bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
 //			qDebug() << "thread woken up" << _pboBufIdx << bufptr;
+			
+			if (appInfo->GID()==1) {
+				ee = QDateTime::currentMSecsSinceEpoch();
+				qDebug() << "thread: condwait : " << ee-ss << "msec";
+			}
 		}
 
 
@@ -248,6 +259,11 @@ void SN_SagePixelReceiver::run() {
 		sscanf(header.constData(), "%d %d %d %d", &fnum, &pixelSize, &memWidth, &bufSize);
 		qDebug("PixelReceiver::%s() : received block header [%s]", __FUNCTION__, header.constData());
 		*/
+		qint64 ss,ee;
+		if (appInfo->GID()==1) {
+			ss = QDateTime::currentMSecsSinceEpoch();
+		}
+			
 
 		// PIXEL RECEIVING
 		while (totalread < byteCount ) {
@@ -275,6 +291,11 @@ void SN_SagePixelReceiver::run() {
 		}
 		if ( totalread < byteCount  ||  _end ) break;
 		read = totalread;
+		
+		if (appInfo->GID()==1) {
+			ee = QDateTime::currentMSecsSinceEpoch();
+			qDebug() << "thread recved " << ee-ss << "msec";
+		}
 
 
 		if (_usePbo) {
@@ -282,9 +303,9 @@ void SN_SagePixelReceiver::run() {
 
             // acquire the lock before the schedulePboUpdate()
             // to prevent the lost wakeup situation
-            pthread_mutex_lock(_pboMutex);
-
-			emit frameReceived();
+			
+            //pthread_mutex_lock(_pboMutex);
+			//emit frameReceived();
 		}
 		else {
 

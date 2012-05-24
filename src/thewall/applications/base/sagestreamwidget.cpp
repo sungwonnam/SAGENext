@@ -405,9 +405,9 @@ void SN_SageStreamWidget::startReceivingThread() {
 
 		///
 		// schedulePboUpdate() must be called once before the _receiverThread emits the frameReceived() signal
-		// And I forgot why...
+		// to wake up the thread
 		///
-		QObject::connect(_receiverThread, SIGNAL(started()), this, SLOT(schedulePboUpdate()));
+		//QObject::connect(_receiverThread, SIGNAL(started()), this, SLOT(schedulePboUpdate()));
 	}
 	else {
 		if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
@@ -427,6 +427,12 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	Q_ASSERT(_pbomutex);
 	Q_ASSERT(_pbobufferready);
 	Q_ASSERT(_appInfo);
+
+	qint64 ss,ee;
+	if (_globalAppId == 1) {
+		ss = QDateTime::currentMSecsSinceEpoch();
+	}
+
 
 //	_perfMon->getUpdtTimer().start();
 
@@ -479,13 +485,13 @@ void SN_SageStreamWidget::schedulePboUpdate() {
         // will wait until the recv thread is blocking waiting (pthread_cond_wait)
         // to prevent the 'lost wakeup' situation
         //
-		pthread_mutex_lock(_pbomutex);
+		//pthread_mutex_lock(_pbomutex);
 
 //		qDebug() << "mapped buffer" << _pboBufIdx << ptr;
 
 		pthread_cond_signal(_pbobufferready);
 	//	qDebug() << QDateTime::currentMSecsSinceEpoch() << "signaled";
-		pthread_mutex_unlock(_pbomutex);
+		//pthread_mutex_unlock(_pbomutex);
 	}
 	else {
 		qCritical() << "SN_SageStreamWidget::schedulePboUpdate() : glMapBUffer failed()";
@@ -511,6 +517,11 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
 //	_perfMon->updateUpdateDelay();
+	
+	if (_globalAppId==1) {
+		ee = QDateTime::currentMSecsSinceEpoch();
+		qDebug() << "schedulePboUpdate() : " << ee-ss << "msec";
+	}
 }
 
 
@@ -627,6 +638,9 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 //		_perfMon->getDrawTimer().start();
 //	}
 //	painter->setCompositionMode(QPainter::CompositionMode_Source);
+	qint64 ss,ee;
+	if (_globalAppId==1)
+		ss = QDateTime::currentMSecsSinceEpoch();
 
 	if (_useOpenGL && painter->paintEngine()->type() == QPaintEngine::OpenGL2
 	//|| painter->paintEngine()->type() == QPaintEngine::OpenGL
@@ -712,6 +726,11 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 
 //	if (_perfMon)
 //		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
+	
+	if (_globalAppId==1) {
+		ee = QDateTime::currentMSecsSinceEpoch();
+		qDebug() << "paint() : " << ee-ss << "msec";
+	}
 }
 
 
