@@ -88,9 +88,22 @@ void SN_PolygonArrowPointer::setErasing(bool b) {
 }
 
 void SN_PolygonArrowPointer::setPointerName(const QString &text) {
-//	_nameBg = new QGraphicsRectItem(this);
 
-	_textItem = new QGraphicsSimpleTextItem(text, this);
+    QColor bgcolor = QColor(Qt::darkGray);
+    QColor fgcolor = QColor(Qt::white);
+
+    if (text.compare("sungwon", Qt::CaseInsensitive) == 0) {
+        bgcolor = QColor(Qt::lightGray);
+        fgcolor = QColor(Qt::black);
+    }
+
+
+    QGraphicsRectItem *bg = new QGraphicsRectItem(this);
+    QBrush b(bgcolor, Qt::Dense3Pattern);
+    bg->setBrush(b);
+    bg->setPen(QPen(Qt::NoPen));
+
+	_textItem = new QGraphicsSimpleTextItem(text, bg);
 	_textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
 	_textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 
@@ -101,11 +114,13 @@ void SN_PolygonArrowPointer::setPointerName(const QString &text) {
 	f.setBold(true);
 	_textItem->setFont(f);
 
-	_textItem->setBrush(Qt::white);
-	_textItem->moveBy(60, boundingRect().height() - 30);
-//	_nameBg->moveBy(60, boundingRect().height() - 15);
+	_textItem->setBrush(fgcolor);
+//	_textItem->moveBy(60, boundingRect().height() - 30);
+//	_textItem->setPen(QColor(Qt::black));
 
-	_textItem->setPen(QColor(Qt::black));
+
+    bg->setRect( _textItem->boundingRect().adjusted(-2, -2, 2, 2) );
+    bg->moveBy(60, boundingRect().height() - 30);
 }
 
 
