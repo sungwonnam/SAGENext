@@ -30,6 +30,8 @@ private:
 
 	int _sockfd;
 
+//    int _udpSock;
+
 signals:
 	void msgReceived(const QByteArray msg);
 
