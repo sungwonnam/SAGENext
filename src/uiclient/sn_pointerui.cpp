@@ -175,7 +175,7 @@ void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
             macCapture = 0;
         }
 
-        on_actionNew_Connection_triggered();
+        QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection);
     }
 
     //
@@ -235,6 +235,8 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
     //
     if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
 		_tcpMsgSock.disconnectFromHost(); // will enter UnconnectedState after waiting all data has been written.
+        _tcpDataSock.disconnectFromHost();
+
         QApplication::sendPostedEvents(); // empties the event Q
 	}
 
