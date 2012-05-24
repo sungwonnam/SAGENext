@@ -122,6 +122,9 @@ private:
 	QTcpSocket _tcpDataSock;
 
 
+    QUdpSocket _udpSocket;
+
+
 	/**
        When I send my coord to the wall, I'll multiple this to map my local coord to the wall coord.
 	  */
