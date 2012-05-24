@@ -327,14 +327,14 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             /*
               The SAIL_CONNECT_TO_RCV contains the port number for the streaming channel, # of receivers, receiver IPs
               and is handled by the sail::parseMessage().
-              What it does is calling pixelStreamer->initNetworks() (sageStreamer::initNetworks()) followed by the sageStreamer::connectToRcv()
+              What it does is calling pixelStreamer->initNetworks() (sageStreamer::initNetworks()) followed by the sageStreamer::connectToRcv() followed by the streamLoop thread
               */
             initMsg.fill('\0');
             sprintf(initMsg.data(), "%d %d %s %d"
-                    , streamPort // streamer port
-                    , 1 // the number of SDM. There is only one in SAGENext
-                    //qobject_cast<QTcpServer *>(parent())->serverAddress().toString().toAscii().constData(),
+                    , streamPort // the port # for pixel receiving (SN_SageStreamWidget will listen on this port)
+                    , -1 // the number of SDM. There is only one in SAGENext
                     , qPrintable(_settings->value("general/fsmip").toString()) // ip addr of the receiver thread (which can be different from fsManager IP)
+                    /** , localPort // if sageStreamer::localPort is on then the localPort # should be placed here. SAIL_CONNECT_TO_RCV_PORT  **/
                     , 0 /* SDM id */
                     );
 
