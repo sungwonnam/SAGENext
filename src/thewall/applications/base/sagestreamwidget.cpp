@@ -50,7 +50,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
     , _streamProtocol(0)
 	, _readyForStreamer(false) // fsm thread polls on this
 
-    , __firstFrame(true)
+//    , __firstFrame(true)
 //    , __bufferMapped(false)
 //    , _recvThreadEnd(false)
 
@@ -428,10 +428,10 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	Q_ASSERT(_pbobufferready);
 	Q_ASSERT(_appInfo);
 
-	qint64 ss,ee;
-	if (_globalAppId == 1) {
-		ss = QDateTime::currentMSecsSinceEpoch();
-	}
+//	qint64 ss,ee;
+//	if (_globalAppId == 1) {
+//		ss = QDateTime::currentMSecsSinceEpoch();
+//	}
 
 
 //	_perfMon->getUpdtTimer().start();
@@ -444,10 +444,12 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 
 	GLenum error = glGetError();
 
+    static bool isFirstFrame = true;
+
 	//
 	// unmap the previous buffer
 	//
-	if (!__firstFrame) {
+	if (!isFirstFrame) {
 //		qDebug() << "unmap buffer" << nextbufidx;
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
 		if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
@@ -456,14 +458,38 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	}
 
     //
-    // If it's the first time then nothing has been mapped
+    // If it's the first time then nothing has been mapped yet
     //
 	else {
-		__firstFrame = false;
+        isFirstFrame = false;
 	}
 
+
+
+    //
+	// update the texture with the pbo buffer. use offset instead of pointer
 	//
-	// map the buffer
+//	qDebug() << "update texture" << nextbufidx;
+	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, _textureid);
+	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
+	glTexSubImage2D(/*GL_TEXTURE_2D */GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
+
+	//
+	// schedule paintEvent
+	//
+	update();
+
+
+//    if (_globalAppId == 1) {
+//		ee = QDateTime::currentMSecsSinceEpoch();
+//        qDebug() << "schedulePboUpdate : update() called " << ee-ss << "msec";
+//        ss = ee;
+//	}
+
+
+
+	//
+	// map the other buffer
 	//
 //	qDebug() << "map" << _pboBufIdx;
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
@@ -482,33 +508,18 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 		_pbobufarray[_pboBufIdx] = ptr;
 
         //
-        // will wait until the recv thread is blocking waiting (pthread_cond_wait)
-        // to prevent the 'lost wakeup' situation
+       // the receiving thread will emit frameReceived() right before it blocking waits for the condition
+        // to prevent lost wakeup situation
         //
-		//pthread_mutex_lock(_pbomutex);
 
 //		qDebug() << "mapped buffer" << _pboBufIdx << ptr;
 
 		pthread_cond_signal(_pbobufferready);
-	//	qDebug() << QDateTime::currentMSecsSinceEpoch() << "signaled";
-		//pthread_mutex_unlock(_pbomutex);
 	}
 	else {
 		qCritical() << "SN_SageStreamWidget::schedulePboUpdate() : glMapBUffer failed()";
 	}
 
-	//
-	// update texture with the pbo buffer
-	//
-//	qDebug() << "update texture" << nextbufidx;
-	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, _textureid);
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
-	glTexSubImage2D(/*GL_TEXTURE_2D */GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
-
-	//
-	// schedule paintEvent
-	//
-	update();
 
 	//
 	// reset GL state
@@ -518,10 +529,10 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 
 //	_perfMon->updateUpdateDelay();
 	
-	if (_globalAppId==1) {
-		ee = QDateTime::currentMSecsSinceEpoch();
-		qDebug() << "schedulePboUpdate() : " << ee-ss << "msec";
-	}
+//	if (_globalAppId==1) {
+//		ee = QDateTime::currentMSecsSinceEpoch();
+//		qDebug() << "schedulePboUpdate() : mapped, signaled" << ee-ss << "msec";
+//	}
 }
 
 
@@ -638,9 +649,6 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 //		_perfMon->getDrawTimer().start();
 //	}
 //	painter->setCompositionMode(QPainter::CompositionMode_Source);
-	qint64 ss,ee;
-	if (_globalAppId==1)
-		ss = QDateTime::currentMSecsSinceEpoch();
 
 	if (_useOpenGL && painter->paintEngine()->type() == QPaintEngine::OpenGL2
 	//|| painter->paintEngine()->type() == QPaintEngine::OpenGL
@@ -727,10 +735,6 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 //	if (_perfMon)
 //		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 	
-	if (_globalAppId==1) {
-		ee = QDateTime::currentMSecsSinceEpoch();
-		qDebug() << "paint() : " << ee-ss << "msec";
-	}
 }
 
 

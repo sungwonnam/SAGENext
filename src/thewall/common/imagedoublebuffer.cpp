@@ -167,6 +167,17 @@ void DoubleBuffer::swapBuffer() {
 }
 
 
+void VoidDoubleBuffer::initBuffer(int , int , QImage::Format ) {
+    _doubleBuffer = (void **)malloc(sizeof(int *) * _numbuff);
+    _doubleBuffer[0] = &_front;
+    _doubleBuffer[1] = &_back;
+}
+
+VoidDoubleBuffer::~VoidDoubleBuffer() {
+    delete _doubleBuffer;
+}
+
+
 
 void ImageDoubleBuffer::initBuffer(int width, int height, QImage::Format fmt) {
 	_width = width;

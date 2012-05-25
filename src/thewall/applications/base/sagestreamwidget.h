@@ -49,7 +49,6 @@ public:
 //	SageStreamWidget(const quint64 sageappid,QString appName, int protocol, int receiverPort, const QRect initRect, const quint64 globalAppId, const QSettings *s, ResourceMonitor *rm=0, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
 
 	SN_SageStreamWidget(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm = 0, QGraphicsItem *parent = 0, Qt::WindowFlags wFlags = 0);
-
 	~SN_SageStreamWidget();
 
 	/*!
@@ -77,10 +76,7 @@ public:
 
 	  Once this is set, remaining handshaking should be done followed by pixel streaming
 	  */
-	inline void setFsmMsgThread(fsManagerMsgThread *thread) {
-		_fsmMsgThread = thread;
-		_fsmMsgThread->start();
-	}
+	inline void setFsmMsgThread(fsManagerMsgThread *thread) {_fsmMsgThread = thread;}
 
 
     /*!
@@ -89,10 +85,9 @@ public:
     int setQuality(qreal newQuality);
 
 
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 protected:
-	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-
 	/*!
 	  Override virtual function temporarily to display priority related info.
 	  Please remove this !
@@ -216,7 +211,7 @@ protected:
 //	void __recvThread();
 //	ssize_t __recvFrame(int sock, int bytecount, void *ptr);
 
-	bool __firstFrame;
+//	bool __firstFrame;
 
 //	bool __bufferMapped;
 
@@ -289,6 +284,7 @@ public slots:
 	  texture update with previous buffer
 	  */
 	void schedulePboUpdate();
+
 };
 
 
