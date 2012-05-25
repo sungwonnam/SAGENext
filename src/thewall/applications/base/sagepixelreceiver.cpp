@@ -29,11 +29,11 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
     , _delay(0)
     , doubleBuffer(idb)
     , appInfo(ap)
-    , perf(pm)
+    , _perfMon(pm)
     , affInfo(ai)
 
     , _usePbo(usepbo)
-    , __bufferMapped(false)
+    , _pboBufIdx(0)
     , _pbobufarray(pbobufarray)
     , _pboMutex(pboMutex)
     , _pboCond(pboCond)
@@ -61,6 +61,8 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
 		else {
 		}
 	}
+
+
 }
 
 void SN_SagePixelReceiver::endReceiver() {
@@ -114,10 +116,6 @@ int SN_SagePixelReceiver::receiveUdpPortNumber() {
 }
 
 
-void SN_SagePixelReceiver::flip(int idx) {
-	__bufferMapped = true;
-	_pboBufIdx = idx;
-}
 
 
 void SN_SagePixelReceiver::run() {
@@ -139,7 +137,7 @@ void SN_SagePixelReceiver::run() {
     // CPU time elapsed
     struct timespec ts_start, ts_end;
 
-    if(perf && s->value("system/resourcemonitor",false).toBool()) {
+    if(_perfMon && s->value("system/resourcemonitor",false).toBool()) {
 //		perf->getRecvTimer().start(); //QTime::start()
 
         gettimeofday(&tvs, 0);
@@ -180,14 +178,36 @@ void SN_SagePixelReceiver::run() {
 
 
 		if (_usePbo) {
-			// wait for glMapBufferARB
-			pthread_mutex_lock(_pboMutex);
-			while(!__bufferMapped) {
-//				qDebug() << "thread waiting ..";
-				pthread_cond_wait(_pboCond, _pboMutex);
+			qint64 ss,ee;
+			if (appInfo->GID()==1) {
+				ss = QDateTime::currentMSecsSinceEpoch();
 			}
+            //
+            // if the mutex is currently locked by any thread (includeing this thread), then
+            // it will return immediately
+            //
+			pthread_mutex_trylock(_pboMutex);
+
+			emit frameReceived();
+
+//			while(!__bufferMapped) {
+//				qDebug() << "thread waiting ..";
+            //
+            // unlock the mutex and blocking wait for glMapBufferARB() in schedulePboUpdate()
+            //
+				pthread_cond_wait(_pboCond, _pboMutex);
+//			}
+                pthread_mutex_unlock(_pboMutex);
+
+                _pboBufIdx = (_pboBufIdx + 1) % 2;
+
 			bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
-//			qDebug() << "thread writing to" << _pboBufIdx << bufptr;
+//			qDebug() << "thread woken up" << _pboBufIdx << bufptr;
+			
+			if (appInfo->GID()==1) {
+				ee = QDateTime::currentMSecsSinceEpoch();
+				qDebug() << "thread: condwait : " << ee-ss << "msec";
+			}
 		}
 
 
@@ -240,6 +260,11 @@ void SN_SagePixelReceiver::run() {
 		sscanf(header.constData(), "%d %d %d %d", &fnum, &pixelSize, &memWidth, &bufSize);
 		qDebug("PixelReceiver::%s() : received block header [%s]", __FUNCTION__, header.constData());
 		*/
+		qint64 ss,ee;
+		if (appInfo->GID()==1) {
+			ss = QDateTime::currentMSecsSinceEpoch();
+		}
+			
 
 		// PIXEL RECEIVING
 		while (totalread < byteCount ) {
@@ -267,12 +292,21 @@ void SN_SagePixelReceiver::run() {
 		}
 		if ( totalread < byteCount  ||  _end ) break;
 		read = totalread;
+		
+		if (appInfo->GID()==1) {
+			ee = QDateTime::currentMSecsSinceEpoch();
+			qDebug() << "thread recved " << ee-ss << "msec";
+		}
 
 
 		if (_usePbo) {
-			__bufferMapped = false;
-			emit frameReceived();
-			pthread_mutex_unlock(_pboMutex);
+//			__bufferMapped = false;
+
+            // acquire the lock before the schedulePboUpdate()
+            // to prevent the lost wakeup situation
+			
+            //pthread_mutex_lock(_pboMutex);
+			//emit frameReceived();
 		}
 		else {
 
@@ -323,7 +357,7 @@ void SN_SagePixelReceiver::run() {
 		/********************************************/
 
 
-		if (perf && s->value("system/resourcemonitor",false).toBool()) {
+		if (_perfMon && s->value("system/resourcemonitor",false).toBool()) {
 
             gettimeofday(&tve, 0);
 
@@ -341,7 +375,7 @@ void SN_SagePixelReceiver::run() {
             // perfMon->recvTimer will be restarted in this function.
             // So the delay calculated in this function includes blocking (which is forced by the pixel streamer) delay
             //
-			perf->addToCumulativeByteReceived(read, actualtime_second, cputime_second);
+			_perfMon->addToCumulativeByteReceived(read, actualtime_second, cputime_second);
 		}
 	} /*** end of receiving loop ***/
 

@@ -18,13 +18,13 @@
 SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	: QGraphicsWidget(0, wflags)
     , _useOpenGL(true)
-	, _globalAppId(-1)
+	, _globalAppId(0)
 	, _settings(0)
 	, _windowState(SN_BaseWidget::W_NORMAL)
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
-	, _appInfo(new AppInfo())
+	, _appInfo(new AppInfo(0))
     , _showInfo(false)
     , _priorityData(0)
 	, _perfMon(new PerfMonitor(this))
@@ -69,7 +69,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
-	, _appInfo(new AppInfo())
+	, _appInfo(new AppInfo(globalappid))
     , _showInfo(false)
     , _priorityData(0)
 	, _perfMon(new PerfMonitor(this))
@@ -773,7 +773,7 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
         // rescale
         //
         else {
-            qDebug() << _resizeRectangle->rect() << boundingRect() << size() << scale();
+            //qDebug() << _resizeRectangle->rect() << boundingRect() << size() << scale();
             qreal se = _resizeRectangle->rect().width() * scale() / boundingRect().width();
             setScale(se);
         }

@@ -646,6 +646,11 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
         break;
     }
 
+    default: {
+        qDebug() << "SN_UiServer::handleMessage() : couldn't understand the message" << msg;
+        break;
+    }
+
     } /* end of switch */
 }
 

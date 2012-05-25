@@ -37,6 +37,8 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 {
 	ui->setupUi(this);
 
+//    setAttribute(Qt::WA_DeleteOnClose, true);
+
 #ifdef Q_OS_MAC
 	ui->hookMouseBtn->hide();
 #endif
@@ -102,17 +104,46 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	fdialog->setModal(false);
 	fdialog->setVisible(false);
 	QObject::connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readLocalFiles(QStringList)));
+
+
+
+
+
+
+    //
+    // now read the settings for _wallAddress and _wallPort
+    //
+    QString savedWallAddr = _settings->value("walladdr", "").toString();
+    quint16 savedWallPort = _settings->value("wallport", 0).toUInt();
+
+    if (!savedWallAddr.isEmpty()  &&  savedWallPort) {
+        //
+        // try connecting to the server
+        //
+        _wallAddress = savedWallAddr;
+        _wallPort = savedWallPort;
+        _tcpMsgSock.connectToHost(QHostAddress(_wallAddress), _wallPort);
+    }
+    else {
+        on_actionNew_Connection_triggered();
+    }
 }
 
 SN_PointerUI::~SN_PointerUI()
 {
+    _tcpMsgSock.disconnect(); // disconnect all signal/slot connections
+
 	delete ui;
 	if (fdialog) delete fdialog;
 
 	if (hasMouseTracking()) releaseMouse();
 
+    if (_tcpMsgSock.state() == QAbstractSocket::ConnectingState)
+        _tcpMsgSock.abort();
 	_tcpMsgSock.close();
 
+     if (_tcpDataSock.state() == QAbstractSocket::ConnectingState)
+         _tcpDataSock.abort();
 	_tcpDataSock.close();
 	
 	if (macCapture) {
@@ -120,7 +151,10 @@ SN_PointerUI::~SN_PointerUI()
 //		delete macCapture; // doesn't need because macCapture is a child Qt object
 		macCapture->waitForFinished(-1);
 	}
+
+    qDebug() << "Good Bye";
 }
+
 
 void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
     qDebug() << "SN_PointerUI::handleSocketError() :" << error;
@@ -131,13 +165,17 @@ void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
     //
     if (error == QAbstractSocket::RemoteHostClosedError) {
 
-        ui->isConnectedLabel->setText("Wall closed");
+        if (ui && ui->isConnectedLabel)
+            ui->isConnectedLabel->setText("The Wall closed");
 
         if (macCapture) {
             macCapture->kill();
             macCapture->waitForFinished(-1);
+            delete macCapture;
             macCapture = 0;
         }
+
+        QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection);
     }
 
     //
@@ -165,10 +203,11 @@ void SN_PointerUI::handleSocketStateChange(QAbstractSocket::SocketState newstate
         break;
     }
     case QAbstractSocket::ConnectingState : {
-        ui->isConnectedLabel->setText("Connecting ...");
+        ui->isConnectedLabel->setText("Connecting to...\n" + _wallAddress);
         break;
     }
     case QAbstractSocket::ConnectedState : {
+        // the server will send ACK_FROM_WALL upon a client connection
         ui->isConnectedLabel->setText("Connected to Wall\n" + _wallAddress);
         break;
     }
@@ -187,6 +226,20 @@ void SN_PointerUI::handleSocketStateChange(QAbstractSocket::SocketState newstate
 // triggered by CMD (CTRL) + n
 void SN_PointerUI::on_actionNew_Connection_triggered()
 {
+    if (_tcpMsgSock.state() == QAbstractSocket::ConnectingState) {
+        _tcpMsgSock.abort();
+    }
+
+    //
+    // disconnect first
+    //
+    if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
+		_tcpMsgSock.disconnectFromHost(); // will enter UnconnectedState after waiting all data has been written.
+        _tcpDataSock.disconnectFromHost();
+
+        QApplication::sendPostedEvents(); // empties the event Q
+	}
+
     //
 	// open modal dialog for a user to enter the IP address and port
     //
@@ -196,22 +249,17 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 
 
 	_wallAddress = cd.address();
+    _wallPort = cd.port();
+
 	_pointerName = cd.pointerName();
 	_pointerColor = cd.pointerColor();
 //	_myIpAddress = cd.myAddress();
 	_vncUsername = cd.vncUsername();
 	_vncPasswd = cd.vncPasswd();
 	_sharingEdge = cd.sharingEdge();
-    _wallPort = cd.port();
-
-	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
-		_tcpMsgSock.disconnectFromHost(); // will enter UnconnectedState after waiting all data has been written.
-	}
 
 	_tcpMsgSock.connectToHost(QHostAddress(_wallAddress), _wallPort);
 }
-
-
 
 void SN_PointerUI::on_actionOpen_Media_triggered()
 {
@@ -334,6 +382,20 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
 	//
 //	setMouseTracking(true); // the widget receives mouse move events even if no buttons are pressed
 #endif
+
+
+    //
+    //  connect to udp socket
+    //
+    /*
+    _udpSocket.connectToHost(QHostAddress(_wallAddress), _wallPort + 10 + _uiclientid);
+    if (! _udpSocket.waitForConnected(-1)) {
+        qDebug() << "SN_PointerUI::initialize() : udpSocket connectToHost() failed";
+    }
+    else {
+        qDebug() << "SN_PointerUI::initialize() : connected" << _udpSocket.state();
+    }
+    */
 }
 
 
@@ -423,6 +485,24 @@ void SN_PointerUI::sendMessage(const QByteArray &msg) {
 	else {
 		qDebug() << "The message channel isn't writable";
 	}
+
+    /*
+    if (!_udpSocket.isValid()) {
+        qDebug() << "udp socket invalid";
+        return;
+    }
+    if (!_udpSocket.isWritable()) {
+        qDebug() << "udp socket isn't writable";
+        return;
+    }
+    if ( _udpSocket.write(msg) == -1 ) {
+        qDebug() << "_udpSocket.write error";
+    }
+    else {
+        _udpSocket.flush();
+        qDebug() << "msg sent" << msg;
+    }
+    */
 }
 
 void SN_PointerUI::readMessage() {
@@ -1308,5 +1388,8 @@ void SN_PointerUI_StrDialog::setText() {
 	_text = _lineedit->text();
 	accept();
 }
+
+
+
 
 

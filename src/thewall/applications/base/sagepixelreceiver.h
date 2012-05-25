@@ -87,15 +87,11 @@ private:
 	int receiveUdpPortNumber();
 
 	AppInfo *appInfo;
-	PerfMonitor *perf;
+	PerfMonitor *_perfMon;
 	AffinityInfo *affInfo;
 
 	bool _usePbo;
 
-    /*!
-      This flag is set in SageStreamWidget after the buffer point is successfuly mapped to GPU memory
-      */
-	bool __bufferMapped;
 
     /*!
       Front or Back of _pbobufarray
@@ -134,14 +130,7 @@ signals:
 	void frameReceived();
 
 public slots:
-	/*!
-	  This slot is invoked in SageStreamWidget to flip the pbo buffer index
-	  */
-	void flip(int idx);
-
-
     inline void setDelay_msec(unsigned long delay) {_delay = delay;}
-
 };
 
 #endif // SAGEPIXELRECEIVER_H

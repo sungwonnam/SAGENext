@@ -13,14 +13,15 @@
 class AppInfo
 {
 public:
-	AppInfo();
+	AppInfo(quint64 gaid);
 
 	/**
 	  * assumes filename is absolute path
 	  */
-	AppInfo(int width, int height, int bpp = 24);
-	AppInfo(int width, int height, int bpp, const QString filename, const QString srcip);
+	AppInfo(quint64 gaid, int width, int height, int bpp = 24);
+	AppInfo(quint64 gaid, int width, int height, int bpp, const QString filename, const QString srcip);
 
+	inline quint64 GID() const {return _GID;}
 
 	inline void setMediaType(SAGENext::MEDIA_TYPE t) {_mtype = t;}
 	inline SAGENext::MEDIA_TYPE mediaType() const { return _mtype; }
@@ -100,6 +101,8 @@ public:
 	inline int networkUserBufferLength() const {return _networkUserBufferLength;}
 
 private:
+	quint64 _GID;
+	
 	SAGENext::MEDIA_TYPE _mtype;
 
 	/**

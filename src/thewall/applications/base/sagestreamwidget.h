@@ -218,7 +218,7 @@ protected:
 
 	bool __firstFrame;
 
-	bool __bufferMapped;
+//	bool __bufferMapped;
 
 //	bool _recvThreadEnd;
 

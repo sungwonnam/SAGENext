@@ -217,7 +217,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             // This will trigger the SN_Launcher::launch()
             //
             emit sageAppConnectedToFSM(_sageAppName, QString(filepath), this);
-//            qDebug() << "fsmThread signal emitted" << _sageAppName;
+            //qDebug() << "fsmThread signal emitted" << _sageAppName;
 
             //
             // wait until the receiver (SN_SageStreamWidget) is created
@@ -231,7 +231,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             //
             _mutex.lock();
             while(!_sageWidget) {
-//                qDebug("%s::%s() : fsm is waiting for SN_SageStreamWidget is created", metaObject()->className(), __FUNCTION__);
+                qDebug("%s::%s() : fsm is waiting for SN_SageStreamWidget is created", metaObject()->className(), __FUNCTION__);
                 _isSageWidgetCreated.wait(&_mutex);
             }
             // SN_SageStreamWidget created at this point
@@ -254,7 +254,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             //
             // Trigger the SN_SageStreamWidget to blocking wait (::accept()) for the streamer
             //
-            //	qDebug() << "fsmsgthread invoking doInitReceiver() for sage app" << sageAppId << "streamport" << streamPort << QTime::currentTime().toString("hh:mm:ss.zzz");
+            //qDebug() << "fsmsgthread invoking doInitReceiver() for sage app" << _sageAppId << "streamport" << streamPort << QTime::currentTime().toString("hh:mm:ss.zzz");
             QMetaObject::invokeMethod(_sageWidget, "doInitReceiver", Qt::QueuedConnection
                                       , Q_ARG(quint64, _sageAppId)
                                       , Q_ARG(QString, _sageAppName)
@@ -328,14 +328,14 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             /*
               The SAIL_CONNECT_TO_RCV contains the port number for the streaming channel, # of receivers, receiver IPs
               and is handled by the sail::parseMessage().
-              What it does is calling pixelStreamer->initNetworks() (sageStreamer::initNetworks()) followed by the sageStreamer::connectToRcv()
+              What it does is calling pixelStreamer->initNetworks() (sageStreamer::initNetworks()) followed by the sageStreamer::connectToRcv() followed by the streamLoop thread
               */
             initMsg.fill('\0');
             sprintf(initMsg.data(), "%d %d %s %d"
-                    , streamPort // streamer port
-                    , 1 // the number of SDM. There is only one in SAGENext
-                    //qobject_cast<QTcpServer *>(parent())->serverAddress().toString().toAscii().constData(),
+                    , streamPort // the port # for pixel receiving (SN_SageStreamWidget will listen on this port)
+                    , -1 // the number of SDM. There is only one in SAGENext
                     , qPrintable(_settings->value("general/fsmip").toString()) // ip addr of the receiver thread (which can be different from fsManager IP)
+                    /** , localPort // if sageStreamer::localPort is on then the localPort # should be placed here. SAIL_CONNECT_TO_RCV_PORT  **/
                     , 0 /* SDM id */
                     );
 
