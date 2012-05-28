@@ -13,7 +13,7 @@ int FittsLawTest::_NUM_TARGET_PER_ROUND = 2;
 // 131.193.78.176 (bigdaddy 100 Mbps)
 // 67.58.62.57 (bigdaddy 10 Gbps)
 // 67.58.62.45 (venom 10 Gbps)
-const QString FittsLawTest::_streamerIpAddr = QString("131.193.78.176");
+const QString FittsLawTest::_streamerIpAddr = QString("67.58.62.57");
 const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
 
 
@@ -184,7 +184,7 @@ void FittsLawTest::_init() {
 
     setLayout(mainlayout);
 
-    resize(640, 480);
+    resize(1600, 1200);
 
     _appInfo->setExecutableName("fittslawteststreamer");
     _appInfo->setSrcAddr(_streamerIpAddr);
@@ -233,7 +233,6 @@ FittsLawTest::~FittsLawTest() {
 }
 
 void FittsLawTest::scheduleUpdate() {
-//    qDebug() << "FittsLawTest::scheduleUpdate()";
     update();
 }
 
@@ -294,7 +293,7 @@ int FittsLawTest::setQuality(qreal newQuality) {
 	}
 
 
-    if (_recvThread && thedelay >= 0) {
+    if (_recvThread) {
         if ( ! QMetaObject::invokeMethod(_recvThread, "setExtraDelay_Msec", Qt::QueuedConnection, Q_ARG(unsigned long, thedelay)) ) {
             qDebug() << "FittsLawTest::setQuality() : failed to invoke _recvThread->setExtraDelay_Msec()";
             return -1;
@@ -622,10 +621,16 @@ void FittsLawTest::startRound() {
 
         QObject::connect(_recvThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
 
-        // connect to streamer
+		// connect to streamer
+		QMetaObject::invokeMethod(_recvThread, "connectToStreamer", Qt::QueuedConnection);
+		QApplication::sendPostedEvents();
+		QCoreApplication::processEvents();
+
+		/*
         if ( ! _recvThread->connectToStreamer() ) {
             qDebug() << "FittsLawTest::startRound() : failed to connect to the streamer" << _streamerIpAddr << _globalAppId + 60000;
         }
+*/
     }
 
     _targetHitCount = 0;
@@ -640,8 +645,13 @@ void FittsLawTest::startRound() {
         //
         // streaming resumes
         // will call QThread::start()
-        //
-        _recvThread->resumeThreadLoop();
+		//
+		///_recvThread->resumeThreadLoop();
+		QMetaObject::invokeMethod(_recvThread, "resumeThreadLoop", Qt::AutoConnection);
+		QApplication::sendPostedEvents();
+		QCoreApplication::processEvents();
+
+
 
 
         //
@@ -708,8 +718,13 @@ void FittsLawTest::finishRound() {
     _lbl_tgtcount->setText("tgt cnt");
     _lbl_hitlatency->setText("hit lat");
 
-    if (_recvThread)
-        _recvThread->endThreadLoop();
+
+    if (_recvThread) {
+        //_recvThread->endThreadLoop();
+	QMetaObject::invokeMethod(_recvThread, "endThreadLoop", Qt::AutoConnection);
+	QApplication::sendPostedEvents();
+	QCoreApplication::processEvents();
+	}
 
     _isRunning = false;
     _isReady = false;

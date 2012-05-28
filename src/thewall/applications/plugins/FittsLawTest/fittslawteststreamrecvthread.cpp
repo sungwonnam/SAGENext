@@ -35,6 +35,7 @@ FittsLawTestStreamReceiverThread::~FittsLawTestStreamReceiverThread() {
 }
 
 void FittsLawTestStreamReceiverThread::run() {
+qDebug() << "recvThred::run()";
 
     Q_ASSERT(_socket);
 
@@ -58,8 +59,6 @@ void FittsLawTestStreamReceiverThread::run() {
 	}
 */
 
-    ssize_t byterecv = 0;
-
     while (!_end) {
 
         /*
@@ -77,6 +76,7 @@ void FittsLawTestStreamReceiverThread::run() {
 
 
         _sema->acquire(1);
+//qDebug() << "recvThread sema acquired";
 
 
         if (_extraDelay > 0) {
@@ -88,20 +88,46 @@ void FittsLawTestStreamReceiverThread::run() {
             QThread::msleep(_extraDelay);
         }
 
+//		qDebug() << "will recv()"  << buffer.size() << "Byte";
+		//
+		// signal the streamer
+		//
+		int sent = ::send(_socket, buffer.data(), 1024, 0);
+		if (sent <= 0) {
+			qDebug() << "run() error while signal the streamer";
+			_end = true;
+			break;
+		}
 
+		ssize_t bytesRead = 0;
+	    int bytes = buffer.size();
+	    int actualRead = 0;
 
-        byterecv = ::recv(_socket, buffer.data(), buffer.size(), MSG_WAITALL);
-        if (byterecv == -1) {
-            break;
-        }
-        else if (byterecv == 0) {
-            break;
-        }
+	    while (bytesRead < buffer.size()) {
+			char *bufptr = buffer.data() + bytesRead;
+
+		   actualRead = ::recv(_socket, (void *)bufptr, bytes, MSG_WAITALL);
+
+		   if (actualRead < 0) {
+			  qCritical("recv() - error in recv() system call");
+			  qCritical("=== received data: %d bytes, remaining %d bytes", bytesRead, bytes);
+			  _end = true;
+			  break;
+		   }
+		   else if (actualRead == 0) {
+			  qCritical("recv() : connection shutdown");
+			  _end = true;
+			  break;
+		   }
+
+			  bytesRead += actualRead;
+			  bytes = buffer.size() - bytesRead;
+	    }
 
         emit frameReceived();
 
         if (_perfMon) {
-            _perfMon->addToCumulativeByteReceived(byterecv);
+            _perfMon->addToCumulativeByteReceived(bytesRead);
         }
 
         /*
@@ -172,7 +198,7 @@ bool FittsLawTestStreamReceiverThread::connectToStreamer() {
         return false;
     }
     else {
-
+		qDebug() << "recvThread connected to the streamer" << _streamerIpaddr << _tcpPort;
     }
 
     return true;
@@ -264,6 +290,7 @@ void FittsLawTestStreamReceiver::connectToStreamer() {
     }
 
     if (_tcpSock.waitForConnected(-1)) {
+        qDebug() << "FittsLawTestStreamReceiver::connectToStreamer() : Connected to streamer !";
 
     }
     else {
