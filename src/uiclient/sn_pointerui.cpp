@@ -14,6 +14,7 @@
 
 //#include <QNetworkInterface>
 #include <QHostAddress>
+#include <QSysInfo>
 
 
 SN_PointerUI::SN_PointerUI(QWidget *parent)
@@ -296,7 +297,14 @@ void SN_PointerUI::on_actionShare_desktop_triggered()
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %d %s %s %d", SAGENext::VNC_SHARING, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
+
+	sprintf(msg.data(), "%d %d %s %s %d"
+            , SAGENext::VNC_SHARING
+            , 0
+            , (_vncUsername.isEmpty()) ? "_" : qPrintable(_vncUsername)
+            , (_vncPasswd.isEmpty()) ? "_" : qPrintable(_vncPasswd)
+            , 10
+            );
 
 	sendMessage(msg);
 }
@@ -1288,10 +1296,31 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
 
 
 	ui->port->setText( _settings->value("wallport", 30003).toString() );
-	ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
+
+    //
+    // Mac OS X 10.7 (Lion) users need to use their real account name and password
+    // Mac OS X 10.6 (Snow Leopard) users need to put empty string on username field and can use VNC password (not the real account password)
+    //
+
+    ui->vncUsername->hide();
+    ui->vncpasswd->setPlaceholderText("Your VNC passwd here");
+
+#ifdef Q_OS_MAC
+    //
+    // If it's Lion (10.7) and higher then account's username/password should be used.
+    //
+    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
+        ui->vncUsername->setPlaceholderText("You account name here");
+        ui->vncpasswd->setPlaceholderText("Your account passwd here");
+    }
+#endif
+
+	ui->vncUsername->setText(_settings->value("vncusername", "").toString());
 	ui->vncpasswd->setEchoMode(QLineEdit::Password);
 	ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
-	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
+
+
+	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointerName").toString());
 
 	//		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
 	QColor pc(_settings->value("pointercolor", "#ff0000").toString());
@@ -1335,11 +1364,27 @@ void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
         qDebug() << "SN_PointerUI_ConnDialog::on_buttonBox_accepted() : hostname detected" << _hostname;
     }
 
+
+    vncusername.clear();
+#ifdef Q_OS_MAC
+    //
+    // Lion and higher
+    //
+    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
+        vncusername = ui->vncUsername->text();
+    }
+#endif
+
+
 	portnum = ui->port->text().toInt();
 //	myaddr = ui->myAddrCB->currentText();
 	pName = ui->pointerNameLineEdit->text();
-	vncusername = ui->vncUsername->text();
+
+    //
+    // Maybe I can use QCryptographicHash for this
+    //
 	vncpass = ui->vncpasswd->text();
+
 	psharingEdge = ui->sharingEdgeCB->currentText();
 	
 	_settings->setValue("wallport", portnum);
@@ -1348,10 +1393,6 @@ void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
 	_settings->setValue("vncusername", vncusername);
 	_settings->setValue("vncpasswd", vncpass);
 	_settings->setValue("sharingedge", psharingEdge);
-	
-	if (vncusername.isEmpty()) {
-		vncusername = "user";
-	}
 	
 	accept();
 	//	done(0);
