@@ -99,7 +99,7 @@ void SN_PolygonArrowPointer::setPointerName(const QString &text) {
 
 
     QGraphicsRectItem *bg = new QGraphicsRectItem(this);
-    QBrush b(bgcolor, Qt::Dense3Pattern);
+    QBrush b(bgcolor, Qt::Dense4Pattern);
     bg->setBrush(b);
     bg->setPen(QPen(Qt::NoPen));
 
