@@ -459,6 +459,7 @@ void SN_PointerUI::hookMouse() {
 			// do nothing
 			ui->isConnectedLabel->setText("Pointer is in SAGENext");
 #else
+            ui->hookMouseBtn->setText("Pointer is shared");
 			ui->isConnectedLabel->setText("[Shift + Ctrl + Alt + m]\nto relase mouse");
 			//
 			// in Linux and Windows 7, this will work even the mouse curson isn't on this application window.
@@ -489,6 +490,7 @@ void SN_PointerUI::unhookMouse() {
 #else
 	releaseMouse();
 //	qDebug() << "mouse released";
+    ui->hookMouseBtn->setText("share pointer");
 #endif
 	// remove cursor on the wall
 	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
