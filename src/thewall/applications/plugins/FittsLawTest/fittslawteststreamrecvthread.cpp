@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <time.h>
+#include <unistd.h>
 
 FittsLawTestStreamReceiverThread::FittsLawTestStreamReceiverThread(const QSize &imgsize, qreal frate,  const QString &streamerip, int tcpport, PerfMonitor *pmon, QSemaphore *sm, QObject *parent)
     : QThread(parent)

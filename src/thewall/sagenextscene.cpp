@@ -2,6 +2,8 @@
 
 #include <QtGui>
 
+#include <unistd.h>
+
 #include "sagenextlauncher.h"
 #include "common/commonitem.h"
 #include "common/sn_layoutwidget.h"

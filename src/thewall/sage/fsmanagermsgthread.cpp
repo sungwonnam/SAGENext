@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h> // IPROTO_TCP
 #include <netinet/tcp.h> // TCP_NODELY
+#include <unistd.h>
 
 
 fsManagerMsgThread::fsManagerMsgThread(const quint64 sageappId, int sockfd, const QSettings *settings, QObject *parent)
