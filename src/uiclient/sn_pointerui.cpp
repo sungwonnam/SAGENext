@@ -123,6 +123,13 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
         //
         _wallAddress = savedWallAddr;
         _wallPort = savedWallPort;
+
+        _pointerName = _settings->value("pointername", "pointerName").toString();
+        _pointerColor = _settings->value("pointercolor", "#ff0000").toString();
+        _vncUsername = _settings->value("vncusername", "").toString();
+        _vncPasswd = _settings->value("vncpasswd", "").toString();
+        _sharingEdge = _settings->value("sharingedge", "top").toString();
+
         _tcpMsgSock.connectToHost(_wallAddress, _wallPort);
     }
     else {
