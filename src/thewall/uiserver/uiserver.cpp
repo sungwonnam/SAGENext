@@ -389,13 +389,23 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
 
 //		qDebug() << "uiserver" << QString(username) << QString(vncpass);
 
+        QString vncusername = QString(username);
+        if (vncusername == "_") {
+            vncusername.clear();
+        }
+        QString vncpassword = QString(vncpass);
+        if (vncpassword == "_") {
+            vncpassword.clear();
+        }
+
         // This isn't elegant way of invoking vnc widget. :(
-        QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection,
-		                          Q_ARG(QString, QString(username)),
-                                  Q_ARG(QString, QString(vncpass)),
-                                  Q_ARG(int, display),
-                                  Q_ARG(QString, msgThread->peerAddress().toString()),
-                                  Q_ARG(int, framerate));
+        QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection
+                                  , Q_ARG(QString, vncusername)
+                                  , Q_ARG(QString, vncpassword)
+                                  , Q_ARG(int, display)
+                                  , Q_ARG(QString, msgThread->peerAddress().toString())
+                                  , Q_ARG(int, framerate)
+                                  );
         //		gviewMain->startApp(MEDIA_TYPE_VNC, QString(vncpass), display, QString(senderIP), "", framerate);
         break;
     }

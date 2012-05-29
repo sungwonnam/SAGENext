@@ -45,7 +45,7 @@ public:
 
 
 private:
-        rfbClient *vncclient;
+        rfbClient *_vncclient;
         QHostAddress serverAddr;
         quint16 serverPort;
 
