@@ -1302,6 +1302,7 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
     // Mac OS X 10.6 (Snow Leopard) users need to put empty string on username field and can use VNC password (not the real account password)
     //
 
+    ui->lbl_vncusername->hide();
     ui->vncUsername->hide();
     ui->vncpasswd->setPlaceholderText("Your VNC passwd here");
 
