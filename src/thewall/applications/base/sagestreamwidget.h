@@ -231,6 +231,16 @@ protected:
 	  */
 	GLhandleARB _shaderProgHandle;
 
+
+
+    /*!
+      BLAME_XINERAMA
+      */
+    bool _blameXinerama;
+
+
+    void m_initOpenGL();
+
 signals:
     /*!
       This singal is emiited after the sage streamer (SAGE application) connected to this widget.
@@ -284,6 +294,12 @@ public slots:
 	  texture update with previous buffer
 	  */
 	void schedulePboUpdate();
+
+
+    /*!
+      no opengl no pbo no paint
+      */
+    void scheduleDummyUpdate();
 
 };
 

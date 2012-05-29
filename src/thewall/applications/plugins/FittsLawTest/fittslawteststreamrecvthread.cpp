@@ -84,7 +84,7 @@ qDebug() << "recvThred::run()";
             // This assumes the recv() latency below is neglible
             // in calculating real FPS
             //
-            qDebug() << "FittsLawTestStreamReceiverThread::run() : delay demanded by the scheduler" << _extraDelay << "msec";
+            qDebug() << "FittsLawTestStreamReceiverThread::run() : The delay demanded by the scheduler" << _extraDelay << "msec";
             QThread::msleep(_extraDelay);
         }
 
@@ -94,7 +94,7 @@ qDebug() << "recvThred::run()";
 		//
 		int sent = ::send(_socket, buffer.data(), 1024, 0);
 		if (sent <= 0) {
-			qDebug() << "run() error while signal the streamer";
+			qDebug() << "FittsLawTestStreamReceiverThread::run() : send() error while signal the streamer !!";
 			_end = true;
 			break;
 		}
