@@ -184,7 +184,7 @@ void FittsLawTest::_init() {
 
     setLayout(mainlayout);
 
-    resize(1600, 1200);
+    resize(640, 480);
 
     _appInfo->setExecutableName("fittslawteststreamer");
     _appInfo->setSrcAddr(_streamerIpAddr);
@@ -526,8 +526,10 @@ void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
     if (_isRunning) {
         if (pointer == _myPointer) {
 
-            qint64 currTS = QDateTime::currentMSecsSinceEpoch();
-            _priorityData->setLastInteraction(SN_Priority::CONTENTS, currTS);
+			if (_priorityData) {
+				qint64 currTS = QDateTime::currentMSecsSinceEpoch();
+				_priorityData->setLastInteraction(SN_Priority::CONTENTS, currTS);
+			}
 
 
             //
@@ -856,12 +858,15 @@ void FittsLawTest::updateInfoTextItem() {
             , _roundCount, _targetHitCount
 
             , priority() /* qreal */
-            , _priorityData->evrToWin() /* unsigned short - quint16 */
-            , _priorityData->evrToWall()  /* unsigned short - quint16 */
-            , _priorityData->ipm() /* qreal */
+            , (_priorityData) ? _priorityData->evrToWin() : 0 /* unsigned short - quint16 */
+            , (_priorityData) ? _priorityData->evrToWall() : 0 /* unsigned short - quint16 */
+            , (_priorityData) ? _priorityData->ipm() : 0 /* qreal */
 
-            , observedQuality_Rq(), observedQuality_Dq(), _quality
-            , _perfMon->getCurrBW_Mbps(), _perfMon->getRequiredBW_Mbps()
+            , observedQuality_Rq()
+			, observedQuality_Dq()
+			, _quality
+            , _perfMon->getCurrBW_Mbps()
+			, _perfMon->getRequiredBW_Mbps()
             , _perfMon->getRequiredBW_Mbps(_quality)
             );
 

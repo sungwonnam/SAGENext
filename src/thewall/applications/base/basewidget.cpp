@@ -279,7 +279,7 @@ void SN_BaseWidget::setSettings(const QSettings *s) {
 
 	_useOpenGL = _settings->value("graphics/openglviewport").toBool();
 
-	if (_settings->value("system/scheduler").toBool()) {
+	if (_settings->value("system/resourcemonitor").toBool()) {
 		_priorityData = new SN_Priority(this);
 	}
 }
