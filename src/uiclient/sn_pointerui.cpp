@@ -50,7 +50,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	ui->mainToolBar->addAction(ui->actionSend_text);
 
 
-	_settings = new QSettings("sagenextpointer.ini", QSettings::IniFormat, this);
+	_settings = new QSettings("EVL", "SAGENextPointer", this);
 
     //
     // handle msg socket error
