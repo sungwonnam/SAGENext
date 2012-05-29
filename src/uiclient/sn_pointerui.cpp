@@ -1320,6 +1320,8 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
     if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
         ui->vncUsername->setPlaceholderText("You account name here");
         ui->vncpasswd->setPlaceholderText("Your account passwd here");
+        ui->vncUsername->show();
+        ui->vncpasswd->show();
     }
 #endif
 
