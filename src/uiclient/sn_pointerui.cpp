@@ -125,7 +125,9 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
         _tcpMsgSock.connectToHost(_wallAddress, _wallPort);
     }
     else {
-        on_actionNew_Connection_triggered();
+        if ( ! QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection) ) {
+            qDebug() << "invokeMethod() : on_actionNew_Connection_triggered failed";
+        }
     }
 }
 
