@@ -122,7 +122,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
         //
         _wallAddress = savedWallAddr;
         _wallPort = savedWallPort;
-        _tcpMsgSock.connectToHost(QHostAddress(_wallAddress), _wallPort);
+        _tcpMsgSock.connectToHost(_wallAddress, _wallPort);
     }
     else {
         on_actionNew_Connection_triggered();
@@ -248,7 +248,16 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 	if ( cd.result() == QDialog::Rejected) return;
 
 
-	_wallAddress = cd.address();
+    if (!cd.ipaddress().isNull()) {
+        _wallAddress = cd.ipaddress().toString();
+    }
+    else if (!cd.hostname().isEmpty()) {
+        _wallAddress = cd.hostname();
+    }
+    else {
+        QMessageBox::warning(this, "Error : Can't connect", "Both Hostname and IP address are empty");
+        return;
+    }
     _wallPort = cd.port();
 
 	_pointerName = cd.pointerName();
@@ -258,7 +267,7 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 	_vncPasswd = cd.vncPasswd();
 	_sharingEdge = cd.sharingEdge();
 
-	_tcpMsgSock.connectToHost(QHostAddress(_wallAddress), _wallPort);
+	_tcpMsgSock.connectToHost(_wallAddress, _wallPort);
 }
 
 void SN_PointerUI::on_actionOpen_Media_triggered()
@@ -531,7 +540,7 @@ void SN_PointerUI::readMessage() {
 
 		// Now I can connect to the file server
 		if (ftpport > 0) {
-			_tcpDataSock.connectToHost(QHostAddress(_wallAddress), ftpport);
+			_tcpDataSock.connectToHost(_wallAddress, ftpport);
 			if ( _tcpDataSock.waitForConnected() ) {
 				QByteArray msg(EXTUI_MSG_SIZE, 0);
 				::sprintf(msg.data(), "%u", _uiclientid);
@@ -1249,12 +1258,17 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
 {
 	ui->setupUi(this);
 
-	addr.clear();
+	_ipaddress.clear(); // 0.0.0.0  = isNull() true
+    _hostname.clear(); // isEmpty() true
 
-	ui->ipaddr->setInputMask("000.000.000.000;_");
-	//        ui->myaddrLineEdit->setInputMask("000.000.000.000;_");
+    ui->ipaddr->setPlaceholderText("hostname or IP address");
+
+//	ui->ipaddr->setInputMask("000.000.000.000;_");
 	ui->port->setInputMask("00000;_");
 
+    //
+    // retrieve the saved value
+    //
 	ui->ipaddr->setText( _settings->value("walladdr", "127.0.0.1").toString() );
 
 
@@ -1302,7 +1316,23 @@ SN_PointerUI_ConnDialog::~SN_PointerUI_ConnDialog() {
 
 void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
 {
-	addr = ui->ipaddr->text();
+    QString addrtemp = ui->ipaddr->text();
+
+    QRegExp regexp_ipaddr("^\\d+\\.\\d+\\.\\d+\\.\\d+$", Qt::CaseInsensitive);
+    if (regexp_ipaddr.exactMatch(addrtemp)) {
+
+        _ipaddress = QHostAddress(addrtemp);
+        _settings->setValue("walladdr", _ipaddress.toString());
+
+        qDebug() << "SN_PointerUI_ConnDialog::on_buttonBox_accepted() : IP address detected" << _ipaddress;
+    }
+    else {
+        _hostname = addrtemp;
+        _settings->setValue("walladdr", _hostname);
+
+        qDebug() << "SN_PointerUI_ConnDialog::on_buttonBox_accepted() : hostname detected" << _hostname;
+    }
+
 	portnum = ui->port->text().toInt();
 //	myaddr = ui->myAddrCB->currentText();
 	pName = ui->pointerNameLineEdit->text();
@@ -1310,9 +1340,7 @@ void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
 	vncpass = ui->vncpasswd->text();
 	psharingEdge = ui->sharingEdgeCB->currentText();
 	
-	_settings->setValue("walladdr", addr);
 	_settings->setValue("wallport", portnum);
-//	_settings->setValue("myaddr", myaddr);
 	_settings->setValue("pointername", pName);
 	_settings->setValue("pointercolor", pColor);
 	_settings->setValue("vncusername", vncusername);
