@@ -13,7 +13,7 @@ int FittsLawTest::_NUM_TARGET_PER_ROUND = 2;
 // 131.193.78.176 (bigdaddy 100 Mbps)
 // 67.58.62.57 (bigdaddy 10 Gbps)
 // 67.58.62.45 (venom 10 Gbps)
-const QString FittsLawTest::_streamerIpAddr = QString("67.58.62.57");
+const QString FittsLawTest::_streamerIpAddr = QString("127.0.0.1");
 const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
 
 
@@ -206,6 +206,11 @@ FittsLawTest::~FittsLawTest() {
     _myPointer = 0;
 
     disconnect(this);
+
+    if (_dataObject) {
+        delete _dataObject;
+        _dataObject = 0;
+    }
 
     if (_recvThread) {
         if (_recvThread->isRunning()) {
@@ -865,9 +870,9 @@ void FittsLawTest::updateInfoTextItem() {
             , observedQuality_Rq()
 			, observedQuality_Dq()
 			, _quality
-            , _perfMon->getCurrBW_Mbps()
-			, _perfMon->getRequiredBW_Mbps()
-            , _perfMon->getRequiredBW_Mbps(_quality)
+            , (_perfMon) ? _perfMon->getCurrBW_Mbps() : -1
+			, (_perfMon) ? _perfMon->getRequiredBW_Mbps() : -1
+            , (_perfMon) ? _perfMon->getRequiredBW_Mbps(_quality) : -1
             );
 
     _infoText->setText(QString(text));
