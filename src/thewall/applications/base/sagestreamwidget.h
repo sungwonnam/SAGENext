@@ -211,11 +211,8 @@ protected:
 //	void __recvThread();
 //	ssize_t __recvFrame(int sock, int bytecount, void *ptr);
 
-//	bool __firstFrame;
+	bool _isFirstFrame;
 
-//	bool __bufferMapped;
-
-//	bool _recvThreadEnd;
 
 	pthread_mutex_t *_pbomutex;
 	pthread_cond_t *_pbobufferready;

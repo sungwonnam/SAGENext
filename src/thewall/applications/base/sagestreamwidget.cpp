@@ -51,9 +51,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
     , _streamProtocol(0)
 	, _readyForStreamer(false) // fsm thread polls on this
 
-//    , __firstFrame(true)
-//    , __bufferMapped(false)
-//    , _recvThreadEnd(false)
+    , _isFirstFrame(true)
 
     , _pbomutex(0)
     , _pbobufferready(0)
@@ -419,12 +417,10 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 
 	GLenum error = glGetError();
 
-    static bool isFirstFrame = true;
-
 	//
 	// unmap the previous buffer
 	//
-	if (!isFirstFrame) {
+	if (!_isFirstFrame) {
 //		qDebug() << "unmap buffer" << nextbufidx;
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
 		if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
@@ -436,7 +432,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
     // If it's the first time then nothing has been mapped yet
     //
 	else {
-        isFirstFrame = false;
+        _isFirstFrame = false;
 	}
 
 

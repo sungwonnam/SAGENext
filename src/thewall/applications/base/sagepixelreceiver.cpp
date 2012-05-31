@@ -222,6 +222,7 @@ void SN_SagePixelReceiver::run() {
         }
         */
         if (_delay > 0) {
+//            qDebug() << "sagepixelreceiver::run() : _delay" << _delay << "msec";
             QThread::msleep(_delay);
         }
 
