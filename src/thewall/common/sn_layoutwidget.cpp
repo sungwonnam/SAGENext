@@ -111,8 +111,8 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 
 //	qDebug() << "Layout : addItem() " << pos;
 	/**
-	  If _bar exist, that means this layoutWidget is just a container for child layoutwidgets.
-	  So this layoutWidget can't have any baseWidget as a child.
+	  If _bar exist, that means this layoutWidget is just a container for its child layoutwidgets.
+	  So this layoutWidget can't have any SN_BaseWidget as a child.
 	  */
 	if (_bar) {
 
@@ -126,21 +126,32 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 			_secondChildLayout->addItem(bw, _secondChildLayout->mapFromParent(pos));
 		}
 	}
+
+
 	/**
-	  BaseWidgets can be added to me
+	  The bw will be added to me
 	  */
 	else {
 		/**
-		  if the item already has a parent it is first removed from the previous parent
-		  This implicitly adds this item to the scene of the parent.
+		  If the bw already has a parent then it is first removed from its parent.
+		  (This implicitly adds this item to the scene of the parent.)
 
 		  QGraphicsObject::parentChanged() will be emitted
 		  */
 		bw->setParentItem(this);
 
 		if ( _isTileOn ) {
-			// I need to return as soon as possible
-			QMetaObject::invokeMethod(this, "doTile", Qt::QueuedConnection);
+            //
+            // If doTile() is called too early like this (right after the widget is created..)
+            // then its size() might return very small value.
+            // Especially for SN_SageStreamWidget where its size() is determined after the streamer connected to the widget.
+            //
+//			QMetaObject::invokeMethod(this, "doTile", Qt::QueuedConnection);
+
+            //
+            // So give the widget some time to determine its native size then call doTile()
+            //
+            QTimer::singleShot(500, this, SLOT(doTile()));
 		}
 		else {
 //		qDebug() << "SN_LayoutWidget::addItem() : bw->setPos() " << pos;
@@ -579,33 +590,55 @@ void SN_LayoutWidget::deleteMyself() {
 }
 
 void SN_LayoutWidget::doTile() {
+    //
+    // If ther's bar then this layout widget doesn't have any SN_BaseWidget.
+    // So there's nothing to tile.
+    //
 	if (_bar) return;
 
 	int itemcount = 0;
 
 //	qreal layoutRatio = size().width() / size().height();
 
-	qreal sumWHratio = 0.0;
+//	qreal sumWHratio = 0.0;
 	foreach(QGraphicsItem *item, childItems()) {
 		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+
+        //
+        //
+        // I should skip ones that are minimized ..
+        //
+        //
+
 		itemcount++;
 
 		if (bw->size().isNull() || bw->size().isEmpty())
 			continue;
 
-		sumWHratio += (bw->size().width() / bw->size().height());
+//		sumWHratio += (bw->size().width() / bw->size().height());
 
 //		qDebug() << bw->size() << sumWHratio;
 	}
-	qreal avgWHratio = sumWHratio / itemcount;
-	qreal layoutWHratio = size().width() / size().height();
+//	qreal avgWHratio = sumWHratio / itemcount;
+
+
+    qreal layoutWidth = size().width();
+    qreal layoutHeight = size().height();
+
 
 	/**
+      FInd out how many widgets will be horizontally and vertically
+      based on SN_LayoutWidget's size.
+
 	  x(numH) : y(numV) = Width : Height
-	  y = x * H/W , x * y == numItem
+
+      y = x * Height/Width
+      x * y == numItem
+
 	  x = sqrt( numItem * W/H )
 	  **/
+    qreal layoutWHratio = layoutWidth / layoutHeight;
 	int numItemH = sqrt( itemcount * layoutWHratio );
 	if (numItemH < 1) numItemH = 1;
 	int numItemV = ::ceil( (qreal)itemcount / (qreal)numItemH );
@@ -635,18 +668,18 @@ void SN_LayoutWidget::doTile() {
 	***/
 
 
-	int itemSpacing = 32; // pixel
+	int itemSpacing = 32; // distance b/w widgets in pixel
 
-	qreal widthPerItem = size().width() - itemSpacing;
+	qreal widthPerItem = layoutWidth - itemSpacing;
 	if ( numItemH > 1) {
-		widthPerItem = (size().width() / numItemH) - itemSpacing;
+		widthPerItem = (layoutWidth / numItemH) - itemSpacing;
 	}
-	qreal heightPerItem = size().height() - itemSpacing;
+	qreal heightPerItem = layoutHeight - itemSpacing;
 	if (numItemV > 1) {
-		heightPerItem = (size().height() / numItemV) - itemSpacing;
+		heightPerItem = (layoutHeight / numItemV) - itemSpacing;
 	}
 
-	qDebug() << widthPerItem << heightPerItem;
+//    qDebug() << "SN_LayoutWidget::doTile() : size per widget is " << widthPerItem << "x" << heightPerItem;
 
 	int row = 0;
 	int col = 0;
@@ -671,6 +704,7 @@ void SN_LayoutWidget::doTile() {
 			scalewidth = widthPerItem / bw->size().width();
 			scaleheight = heightPerItem / bw->size().height();
 
+//            qDebug() << "SN_LayoutWidget::doTile() : scale of this widget" << qMin(scalewidth, scaleheight);
 			bw->setScale(qMin(scalewidth, scaleheight));
 		}
 		col++;
