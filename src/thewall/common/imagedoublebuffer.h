@@ -52,6 +52,18 @@ protected:
 	QImage::Format _format;
 };
 
+class VoidDoubleBuffer : public DoubleBuffer {
+public:
+    VoidDoubleBuffer() : DoubleBuffer(), _front(0), _back(1) {}
+    void initBuffer(int width, int height, QImage::Format fmt);
+    void rgbSwapped() {}
+    ~VoidDoubleBuffer();
+
+private:
+    int _front;
+    int _back;
+};
+
 class RawDoubleBuffer : public DoubleBuffer
 {
 public:

@@ -51,20 +51,26 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
     , _streamProtocol(0)
 	, _readyForStreamer(false) // fsm thread polls on this
 
-    , __firstFrame(true)
-//    , __bufferMapped(false)
-//    , _recvThreadEnd(false)
+    , _isFirstFrame(true)
 
     , _pbomutex(0)
     , _pbobufferready(0)
 
     , _useShader(false)
+    , _blameXinerama(false)
 
 {
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
-//	_appInfo->setFileInfo(filename);
-//	_appInfo->setSrcAddr(senderIP);
+    char *ret = getenv("BLAME_XINERAMA");
+    if (ret) {
+        _blameXinerama = true;
+//        setFlag(QGraphicsItem::ItemHasNoContents, true); // paint() has no effect
+        _usePbo = false;
+        _useOpenGL = false;
+        drawInfo();
+    }
+
 
 	if ( ! QObject::connect(&_initReceiverWatcher, SIGNAL(finished()), this, SLOT(startReceivingThread())) ) {
 		qCritical("SN_SageStreamWidget constructor : Failed to connect _initReceiverWatcher->finished() signal to this->startReceivingThread() slot");
@@ -316,111 +322,77 @@ void SN_SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appna
 void SN_SageStreamWidget::startReceivingThread() {
 	Q_ASSERT(streamsocket > 0);
 
+    //
+    // initialize OpenGL
+    //
 	if (_useOpenGL) {
-
-		glGenTextures(1, &_textureid);
-
-		if (_useShader) {
-			GLchar *FragmentShaderSource;
-			GLchar *VertexShaderSource;
-
-			char *sfn, *sd;
-			sfn = (char*)malloc(256);
-			memset(sfn, 0, 256);
-			sd = getenv("SAGE_DIRECTORY");
-			sprintf(sfn, "%s/bin/yuv", sd);
-
-			GLSLreadShaderSource(sfn, &VertexShaderSource, &FragmentShaderSource);
-			_shaderProgHandle = GLSLinstallShaders(VertexShaderSource, FragmentShaderSource);
-
-			/* Finally, use the program. */
-			glUseProgramObjectARB(_shaderProgHandle);
-			free(sfn);
-			glUseProgramObjectARB(0);
-		}
-
-		glDisable(GL_TEXTURE_2D);
-		glEnable(GL_TEXTURE_RECTANGLE_ARB);
-
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
-
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-		// internal format 2 -> the number of color components in the texture
-		glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0 /*static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits()*/);
-//		glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0);
-
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
-		glDisable(GL_TEXTURE_RECTANGLE_ARB);
-		glEnable(GL_TEXTURE_2D);
-
-		if ( _usePbo ) {
-			//
-			// init mutex
-			//
-			if ( ! _initPboMutex() ) {
-				qDebug() << "Failed to init mutex !";
-			}
-
-//			qDebug() << "SN_SageStreamWidget : OpenGL pbuffer extension is present. Using PBO doublebuffering";
-			glGenBuffersARB(2, _pboIds);
-
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
-			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
-			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-		}
+        m_initOpenGL();
 	}
 
-	qDebug() << "SN_SageStreamWidget (" << _globalAppId << _sageAppId << ") now starts its receiving thread.";
+    //
+    // create the recv thread
+    //
+	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, doubleBuffer, _usePbo, _pbobufarray, _pbomutex, _pbobufferready, _appInfo, _perfMon, _affInfo, _settings);
+    Q_ASSERT(_receiverThread);
+
+
+
+
+    //
+    // signal slot connections with the thread
+    //
+
+    QObject::connect(_receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
+
+    // don't do below.
+    // connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));
+
+
+    char *ret = getenv("BLAME_XINERAMA");
+    if (!ret)
+        if (_usePbo) {
+            if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(schedulePboUpdate())) ) {
+                qCritical("%s::%s() : Failed to connect frameReceived() signal and schedulePboUpdate() slot", metaObject()->className(), __FUNCTION__);
+                return;
+            }
+
+            ///
+            // schedulePboUpdate() must be called once before the _receiverThread emits the frameReceived() signal
+            // to wake up the thread.
+            // So either explicitly call the schedulePboUpdate here or make the recvThread emit the signal first.
+            ///
+            //QObject::connect(_receiverThread, SIGNAL(started()), this, SLOT(schedulePboUpdate()));
+        }
+        else {
+            if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
+                qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleUpdate() slot", metaObject()->className(), __FUNCTION__);
+                return;
+            }
+        }
+    else {
+        // I think Xinerama makes graphics performance bad..
+        // On venom, five 1080p videos can't sustain 24 fps..
+        qDebug() << "SN_SageStreamWidget::startReceivingThread() : BLAME_XINERAMA defined. no frameReceived/scheduleUpdate connection";
+        QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleDummyUpdate()));
+    }
+
+
+
+    qDebug() << "SN_SageStreamWidget (" << _globalAppId << _sageAppId << ") now starts its receiving thread.";
 	qDebug() << "\t" << "app name" << _appInfo->executableName() << ",media file" << _appInfo->fileInfo().fileName() << "from" << _appInfo->srcAddr();
 	qDebug() << "\t" << _appInfo->nativeSize().width() <<"x" << _appInfo->nativeSize().height() << _appInfo->bitPerPixel() << "bpp" << _appInfo->frameSizeInByte() << "Byte/frame at" << _perfMon->getExpetctedFps() << "fps";
 	qDebug() << "\t" << "network user buffer length (groupsize)" << _appInfo->networkUserBufferLength() << "Byte";
 	qDebug() << "\t" << "GL pixel format" << _pixelFormat << ",use SHADER (for YUV format)" << _useShader << ",use OpenGL PBO" << _usePbo;
 
 
-	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, doubleBuffer, _usePbo, _pbobufarray, _pbomutex, _pbobufferready, _appInfo, _perfMon, _affInfo, _settings);
-    Q_ASSERT(_receiverThread);
 
-    QObject::connect(_receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
-
-    // don't do below.
-//		connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));
-
-//		if (!scheduler) {
-            // This is queued connection because receiverThread reside outside of the main thread
-
-	if (_usePbo) {
-		if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(schedulePboUpdate())) ) {
-			qCritical("%s::%s() : Failed to connect frameReceived() signal and schedulePboUpdate() slot", metaObject()->className(), __FUNCTION__);
-			return;
-        }
-
-		///
-		// schedulePboUpdate() must be called once before the _receiverThread emits the frameReceived() signal
-		// to wake up the thread
-		///
-		//QObject::connect(_receiverThread, SIGNAL(started()), this, SLOT(schedulePboUpdate()));
-	}
-	else {
-		if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
-			qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleUpdate() slot", metaObject()->className(), __FUNCTION__);
-			return;
-		}
-	}
-//		}
     _receiverThread->start();
-
 }
 
+void SN_SageStreamWidget::scheduleDummyUpdate() {
+    if (doubleBuffer)
+        doubleBuffer->releaseBackBuffer();
+}
 
 
 void SN_SageStreamWidget::schedulePboUpdate() {
@@ -429,10 +401,10 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	Q_ASSERT(_pbobufferready);
 	Q_ASSERT(_appInfo);
 
-	qint64 ss,ee;
-	if (_globalAppId == 1) {
-		ss = QDateTime::currentMSecsSinceEpoch();
-	}
+//	qint64 ss,ee;
+//	if (_globalAppId == 1) {
+//		ss = QDateTime::currentMSecsSinceEpoch();
+//	}
 
 
 //	_perfMon->getUpdtTimer().start();
@@ -448,7 +420,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	//
 	// unmap the previous buffer
 	//
-	if (!__firstFrame) {
+	if (!_isFirstFrame) {
 //		qDebug() << "unmap buffer" << nextbufidx;
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
 		if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
@@ -457,14 +429,38 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	}
 
     //
-    // If it's the first time then nothing has been mapped
+    // If it's the first time then nothing has been mapped yet
     //
 	else {
-		__firstFrame = false;
+        _isFirstFrame = false;
 	}
 
+
+
+    //
+	// update the texture with the pbo buffer. use offset instead of pointer
 	//
-	// map the buffer
+//	qDebug() << "update texture" << nextbufidx;
+	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, _textureid);
+	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
+	glTexSubImage2D(/*GL_TEXTURE_2D */GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
+
+	//
+	// schedule paintEvent
+	//
+	update();
+
+
+//    if (_globalAppId == 1) {
+//		ee = QDateTime::currentMSecsSinceEpoch();
+//        qDebug() << "schedulePboUpdate : update() called " << ee-ss << "msec";
+//        ss = ee;
+//	}
+
+
+
+	//
+	// map the other buffer
 	//
 //	qDebug() << "map" << _pboBufIdx;
 	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
@@ -483,33 +479,18 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 		_pbobufarray[_pboBufIdx] = ptr;
 
         //
-        // will wait until the recv thread is blocking waiting (pthread_cond_wait)
-        // to prevent the 'lost wakeup' situation
+       // the receiving thread will emit frameReceived() right before it blocking waits for the condition
+        // to prevent lost wakeup situation
         //
-		//pthread_mutex_lock(_pbomutex);
 
 //		qDebug() << "mapped buffer" << _pboBufIdx << ptr;
 
 		pthread_cond_signal(_pbobufferready);
-	//	qDebug() << QDateTime::currentMSecsSinceEpoch() << "signaled";
-		//pthread_mutex_unlock(_pbomutex);
 	}
 	else {
 		qCritical() << "SN_SageStreamWidget::schedulePboUpdate() : glMapBUffer failed()";
 	}
 
-	//
-	// update texture with the pbo buffer
-	//
-//	qDebug() << "update texture" << nextbufidx;
-	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, _textureid);
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
-	glTexSubImage2D(/*GL_TEXTURE_2D */GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
-
-	//
-	// schedule paintEvent
-	//
-	update();
 
 	//
 	// reset GL state
@@ -519,10 +500,10 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 
 //	_perfMon->updateUpdateDelay();
 	
-	if (_globalAppId==1) {
-		ee = QDateTime::currentMSecsSinceEpoch();
-		qDebug() << "schedulePboUpdate() : " << ee-ss << "msec";
-	}
+//	if (_globalAppId==1) {
+//		ee = QDateTime::currentMSecsSinceEpoch();
+//		qDebug() << "schedulePboUpdate() : mapped, signaled" << ee-ss << "msec";
+//	}
 }
 
 
@@ -639,9 +620,11 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 //		_perfMon->getDrawTimer().start();
 //	}
 //	painter->setCompositionMode(QPainter::CompositionMode_Source);
-	qint64 ss,ee;
-	if (_globalAppId==1)
-		ss = QDateTime::currentMSecsSinceEpoch();
+
+    if (_blameXinerama) {
+        painter->fillRect(boundingRect(), Qt::darkGray);
+        return;
+    }
 
 	if (_useOpenGL && painter->paintEngine()->type() == QPaintEngine::OpenGL2
 	//|| painter->paintEngine()->type() == QPaintEngine::OpenGL
@@ -728,9 +711,58 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 //	if (_perfMon)
 //		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 	
-	if (_globalAppId==1) {
-		ee = QDateTime::currentMSecsSinceEpoch();
-		qDebug() << "paint() : " << ee-ss << "msec";
+}
+
+
+
+
+
+void SN_SageStreamWidget::updateInfoTextItem() {
+	if (!infoTextItem || !_showInfo) return;
+
+    QString text = "";
+
+	QByteArray priorityText(256, '\0');
+	if(_priorityData) {
+		sprintf(priorityText.data(), "%llu\n%.2f (Win %hu, Wal %hu, ipm %.3f)"
+		        , _globalAppId
+                , priority() /* qreal */
+                , _priorityData->evrToWin() /* unsigned short - quint16 */
+                , _priorityData->evrToWall()  /* unsigned short - quint16 */
+                , _priorityData->ipm() /* qreal */
+		        );
+	}
+
+    QByteArray qualityText(256, 0);
+    sprintf(qualityText.data(), "\nOQ_Rq %.2f / OQ_Dq %.2f / DQ %.2f"
+            , observedQuality_Rq()
+            , observedQuality_Dq()
+            , demandedQuality()
+            );
+
+    QByteArray perfText(256, 0);
+    qreal totaldelay = 1.0 / _perfMon->getCurrEffectiveFps(); // in second
+    qreal cputime = _perfMon->getCpuUsage() * totaldelay; // in second
+    cputime *= 1000; // millisecond
+
+    sprintf(perfText.data(), "\nC %.2f / A %.2f (E %.2f) \n CurBW %.3f ReqBW %.3f \n CPU %.3f"
+//            , _appInfo->frameSizeInByte()
+            , _perfMon->getCurrEffectiveFps()
+            , _perfMon->getAdjustedFps()
+            , _perfMon->getExpetctedFps()
+
+            , _perfMon->getCurrBW_Mbps()
+            , _perfMon->getRequiredBW_Mbps()
+
+            , _perfMon->getCpuTimeSpent_sec() * 1000.0
+            );
+
+	if (infoTextItem) {
+        text.append(priorityText);
+        text.append(qualityText);
+        text.append(perfText);
+
+		infoTextItem->setText(text);
 	}
 }
 
@@ -825,12 +857,12 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     QByteArray regMsg(OldSage::REG_MSG_SIZE, '\0');
     int read = recv(streamsocket, (void *)regMsg.data(), regMsg.size(), MSG_WAITALL);
     if ( read == -1 ) {
-            qCritical("SageStreamWidget::%s() : error while reading regMsg. %s",__FUNCTION__, "");
-            return -1;
+        qCritical("SageStreamWidget::%s() : error while reading regMsg. %s",__FUNCTION__, "");
+        return -1;
     }
     else if ( read == 0 ) {
-            qCritical("SageStreamWidget::%s() : sender disconnected, while reading regMsg",__FUNCTION__);
-            return -1;
+        qCritical("SageStreamWidget::%s() : sender disconnected, while reading regMsg",__FUNCTION__);
+        return -1;
     }
 
     QString regMsgStr(regMsg);
@@ -847,13 +879,10 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     Q_ASSERT(resX > 0 && resY > 0);
 
 
-	//	int fmargin = _settings->value("gui/framemargin",0).toInt();
-	//    resize(resX + fmargin*2, resY + fmargin*2); // BaseWidget::ResizeEvent will call setTransforOriginPoint
 	resize(resX, resY);
 	_appInfo->setFrameSize(resX, resY, getPixelSize((sagePixFmt)pixfmt) * 8);
 
-	if ( (sagePixFmt)pixfmt == PIXFMT_YUV ) {
-//		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : PIXFMT_YUV -> use Shader";
+	if ( (sagePixFmt)pixfmt == PIXFMT_YUV  && _useOpenGL) {
 		_useShader = true;
 	}
 
@@ -1023,7 +1052,68 @@ int SN_SageStreamWidget::getPixelSize(sagePixFmt type)
 	return bytesPerPixel;
 }
 
+void SN_SageStreamWidget::m_initOpenGL() {
+    glGenTextures(1, &_textureid);
 
+    if (_useShader) {
+        GLchar *FragmentShaderSource;
+        GLchar *VertexShaderSource;
+
+        char *sfn, *sd;
+        sfn = (char*)malloc(256);
+        memset(sfn, 0, 256);
+        sd = getenv("SAGE_DIRECTORY");
+        sprintf(sfn, "%s/bin/yuv", sd);
+
+        GLSLreadShaderSource(sfn, &VertexShaderSource, &FragmentShaderSource);
+        _shaderProgHandle = GLSLinstallShaders(VertexShaderSource, FragmentShaderSource);
+
+        /* Finally, use the program. */
+        glUseProgramObjectARB(_shaderProgHandle);
+        free(sfn);
+        glUseProgramObjectARB(0);
+    }
+
+    glDisable(GL_TEXTURE_2D);
+    glEnable(GL_TEXTURE_RECTANGLE_ARB);
+
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _textureid);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    // internal format 2 -> the number of color components in the texture
+    glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0 /*static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits()*/);
+//		glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0);
+
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+    glDisable(GL_TEXTURE_RECTANGLE_ARB);
+    glEnable(GL_TEXTURE_2D);
+
+    if ( _usePbo ) {
+        //
+        // init mutex
+        //
+        if ( ! _initPboMutex() ) {
+            qDebug() << "Failed to init PBO mutex !";
+        }
+
+//			qDebug() << "SN_SageStreamWidget : OpenGL pbuffer extension is present. Using PBO doublebuffering";
+        glGenBuffersARB(2, _pboIds);
+
+        glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
+        glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+        glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
+        glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
+
+        glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+    }
+}
 
 
 
@@ -1320,58 +1410,6 @@ GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment)
 
 
 
-
-
-void SN_SageStreamWidget::updateInfoTextItem() {
-	if (!infoTextItem || !_showInfo) return;
-
-    QString text = "";
-
-	QByteArray priorityText(256, '\0');
-	if(_priorityData) {
-		sprintf(priorityText.data(), "%llu\n%.2f (Win %hu, Wal %hu, ipm %.3f)"
-		        , _globalAppId
-                , priority() /* qreal */
-                , _priorityData->evrToWin() /* unsigned short - quint16 */
-                , _priorityData->evrToWall()  /* unsigned short - quint16 */
-                , _priorityData->ipm() /* qreal */
-		        );
-	}
-
-    QByteArray qualityText(256, 0);
-    sprintf(qualityText.data(), "\nOQ_Rq %.2f / OQ_Dq %.2f / DQ %.2f"
-            , observedQuality_Rq()
-            , observedQuality_Dq()
-            , demandedQuality()
-            );
-
-    QByteArray perfText(256, 0);
-    qreal totaldelay = 1.0 / _perfMon->getCurrEffectiveFps(); // in second
-    qreal cputime = _perfMon->getCpuUsage() * totaldelay; // in second
-    cputime *= 1000; // millisecond
-
-    sprintf(perfText.data(), "\nC %.2f / A %.2f (E %.2f) \n CurBW %.3f ReqBW %.3f \n CPU %.3f"
-//            , _appInfo->frameSizeInByte()
-            , _perfMon->getCurrEffectiveFps()
-            , _perfMon->getAdjustedFps()
-            , _perfMon->getExpetctedFps()
-
-            , _perfMon->getCurrBW_Mbps()
-            , _perfMon->getRequiredBW_Mbps()
-
-            , _perfMon->getCpuTimeSpent_sec() * 1000.0
-            );
-
-	if (infoTextItem) {
-        text.append(priorityText);
-        text.append(qualityText);
-        text.append(perfText);
-
-		infoTextItem->setText(text);
-		infoTextItem->update();
-//        infoTextItem->setScale(1.6);
-	}
-}
 
 
 

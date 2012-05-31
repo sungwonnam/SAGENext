@@ -13,7 +13,7 @@ int FittsLawTest::_NUM_TARGET_PER_ROUND = 2;
 // 131.193.78.176 (bigdaddy 100 Mbps)
 // 67.58.62.57 (bigdaddy 10 Gbps)
 // 67.58.62.45 (venom 10 Gbps)
-const QString FittsLawTest::_streamerIpAddr = QString("131.193.78.176");
+const QString FittsLawTest::_streamerIpAddr = QString("127.0.0.1");
 const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
 
 
@@ -207,6 +207,11 @@ FittsLawTest::~FittsLawTest() {
 
     disconnect(this);
 
+    if (_dataObject) {
+        delete _dataObject;
+        _dataObject = 0;
+    }
+
     if (_recvThread) {
         if (_recvThread->isRunning()) {
             _recvThread->endThreadLoop();
@@ -233,7 +238,6 @@ FittsLawTest::~FittsLawTest() {
 }
 
 void FittsLawTest::scheduleUpdate() {
-//    qDebug() << "FittsLawTest::scheduleUpdate()";
     update();
 }
 
@@ -294,7 +298,7 @@ int FittsLawTest::setQuality(qreal newQuality) {
 	}
 
 
-    if (_recvThread && thedelay >= 0) {
+    if (_recvThread) {
         if ( ! QMetaObject::invokeMethod(_recvThread, "setExtraDelay_Msec", Qt::QueuedConnection, Q_ARG(unsigned long, thedelay)) ) {
             qDebug() << "FittsLawTest::setQuality() : failed to invoke _recvThread->setExtraDelay_Msec()";
             return -1;
@@ -527,8 +531,10 @@ void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
     if (_isRunning) {
         if (pointer == _myPointer) {
 
-            qint64 currTS = QDateTime::currentMSecsSinceEpoch();
-            _priorityData->setLastInteraction(SN_Priority::CONTENTS, currTS);
+			if (_priorityData) {
+				qint64 currTS = QDateTime::currentMSecsSinceEpoch();
+				_priorityData->setLastInteraction(SN_Priority::CONTENTS, currTS);
+			}
 
 
             //
@@ -622,10 +628,16 @@ void FittsLawTest::startRound() {
 
         QObject::connect(_recvThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
 
-        // connect to streamer
+		// connect to streamer
+		QMetaObject::invokeMethod(_recvThread, "connectToStreamer", Qt::QueuedConnection);
+		QApplication::sendPostedEvents();
+		QCoreApplication::processEvents();
+
+		/*
         if ( ! _recvThread->connectToStreamer() ) {
             qDebug() << "FittsLawTest::startRound() : failed to connect to the streamer" << _streamerIpAddr << _globalAppId + 60000;
         }
+*/
     }
 
     _targetHitCount = 0;
@@ -640,8 +652,13 @@ void FittsLawTest::startRound() {
         //
         // streaming resumes
         // will call QThread::start()
-        //
-        _recvThread->resumeThreadLoop();
+		//
+		///_recvThread->resumeThreadLoop();
+		QMetaObject::invokeMethod(_recvThread, "resumeThreadLoop", Qt::AutoConnection);
+		QApplication::sendPostedEvents();
+		QCoreApplication::processEvents();
+
+
 
 
         //
@@ -708,8 +725,13 @@ void FittsLawTest::finishRound() {
     _lbl_tgtcount->setText("tgt cnt");
     _lbl_hitlatency->setText("hit lat");
 
-    if (_recvThread)
-        _recvThread->endThreadLoop();
+
+    if (_recvThread) {
+        //_recvThread->endThreadLoop();
+	QMetaObject::invokeMethod(_recvThread, "endThreadLoop", Qt::AutoConnection);
+	QApplication::sendPostedEvents();
+	QCoreApplication::processEvents();
+	}
 
     _isRunning = false;
     _isReady = false;
@@ -841,13 +863,16 @@ void FittsLawTest::updateInfoTextItem() {
             , _roundCount, _targetHitCount
 
             , priority() /* qreal */
-            , _priorityData->evrToWin() /* unsigned short - quint16 */
-            , _priorityData->evrToWall()  /* unsigned short - quint16 */
-            , _priorityData->ipm() /* qreal */
+            , (_priorityData) ? _priorityData->evrToWin() : 0 /* unsigned short - quint16 */
+            , (_priorityData) ? _priorityData->evrToWall() : 0 /* unsigned short - quint16 */
+            , (_priorityData) ? _priorityData->ipm() : 0 /* qreal */
 
-            , observedQuality_Rq(), observedQuality_Dq(), _quality
-            , _perfMon->getCurrBW_Mbps(), _perfMon->getRequiredBW_Mbps()
-            , _perfMon->getRequiredBW_Mbps(_quality)
+            , observedQuality_Rq()
+			, observedQuality_Dq()
+			, _quality
+            , (_perfMon) ? _perfMon->getCurrBW_Mbps() : -1
+			, (_perfMon) ? _perfMon->getRequiredBW_Mbps() : -1
+            , (_perfMon) ? _perfMon->getRequiredBW_Mbps(_quality) : -1
             );
 
     _infoText->setText(QString(text));

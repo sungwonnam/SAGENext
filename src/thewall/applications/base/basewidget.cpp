@@ -199,7 +199,6 @@ void SN_BaseWidget::init()
 	infoTextItem = new SN_SimpleTextItem(0, QColor(Qt::black), QColor(128, 128, 128, 164), this);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
-	infoTextItem->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 	//infoTextItem = new SwSimpleTextItem(settings->value("general/fontpointsize").toInt(), this);
 	infoTextItem->hide();
 
@@ -280,7 +279,7 @@ void SN_BaseWidget::setSettings(const QSettings *s) {
 
 	_useOpenGL = _settings->value("graphics/openglviewport").toBool();
 
-	if (_settings->value("system/scheduler").toBool()) {
+	if (_settings->value("system/resourcemonitor").toBool()) {
 		_priorityData = new SN_Priority(this);
 	}
 }
@@ -377,6 +376,7 @@ void SN_BaseWidget::drawInfo()
 		_showInfoAction->setDisabled(true);
 		_hideInfoAction->setEnabled(true);
 		//update();
+        infoTextItem->show();
 
 		/* starts timer */
 //		_timerID = startTimer(1000); // timerEvent every 1000 msec
@@ -393,6 +393,7 @@ void SN_BaseWidget::hideInfo()
 		_showInfo = false;
 		_hideInfoAction->setDisabled(true);
 		_showInfoAction->setEnabled(true);
+        infoTextItem->hide();
 //		update();
 	}
 }
@@ -883,12 +884,6 @@ void SN_BaseWidget::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget 
 #if defined(Q_OS_LINUX)
 		_appInfo->setDrawingThreadCpu(sched_getcpu());
 #endif
-		Q_ASSERT(infoTextItem);
-		infoTextItem->show();
-	}
-	else if (!_showInfo && infoTextItem->isVisible()){
-		Q_ASSERT(infoTextItem);
-		infoTextItem->hide();
 	}
 }
 
@@ -1023,7 +1018,7 @@ void SN_BaseWidget::updateInfoTextItem()
 
 	if (infoTextItem) {
 		infoTextItem->setText(text);
-		infoTextItem->update();
+//		infoTextItem->update();
 	}
 }
 

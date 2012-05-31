@@ -124,7 +124,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
       gwebview needs to be able to receive mouse events because users want to click links on web pages
       That's why webwidget filter childs' event instead of stacking children behind the parent
      */
-	gwebview = new QGraphicsWebView; // it is now the top most item unless ItemStacksBehindParent is true
+    gwebview = new QGraphicsWebView; // it is now the top most item unless ItemStacksBehindParent is true
 //	gwebview->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 //	gwebview->installSceneEventFilter(this);
 //	webPage = gwebview->page();
@@ -158,16 +158,16 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
 
 SN_WebWidget::~SN_WebWidget() {
-//	if ( gwebview ) delete gwebview;
-//	delete urlbox;
 
-	/** I shouldn't do below. Below objects are deleted by Qt **/
-//	if (linearLayout) delete linearLayout;
-//	if (gwebview) delete gwebview;
-//	if (urlboxproxy) delete urlboxproxy;
-//	if (urlbox) delete urlbox;
+    if (gwebview) {
+        gwebview->stop();
+        gwebview->close();
 
-//	qDebug("WebWidget::%s()", __FUNCTION__);
+        //
+        // without this, it will crash on exit
+        //
+        delete gwebview;
+    }
 }
 
 
@@ -357,7 +357,7 @@ void SN_WebWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
 	}
 }
 
-void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *, const QPointF &point, Qt::MouseButton btn) {
+void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *p, const QPointF &point, Qt::MouseButton btn) {
 
 //	if (gwebview && gwebview->geometry().contains(point)) {
     if (!_isMoving && !_isResizing) {
@@ -393,6 +393,10 @@ void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *, const QPointF 
 
 		gwebview->ungrabMouse();
 	}
+
+    else if (_isResizing) {
+        SN_BaseWidget::handlePointerRelease(p, point, btn);
+    }
 
     _isMoving = false;
     _isResizing = false;

@@ -14,6 +14,7 @@
 
 //#include <QNetworkInterface>
 #include <QHostAddress>
+#include <QSysInfo>
 
 
 SN_PointerUI::SN_PointerUI(QWidget *parent)
@@ -49,7 +50,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	ui->mainToolBar->addAction(ui->actionSend_text);
 
 
-	_settings = new QSettings("sagenextpointer.ini", QSettings::IniFormat, this);
+	_settings = new QSettings("EVL", "SAGENextPointer", this);
 
     //
     // handle msg socket error
@@ -122,10 +123,19 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
         //
         _wallAddress = savedWallAddr;
         _wallPort = savedWallPort;
-        _tcpMsgSock.connectToHost(QHostAddress(_wallAddress), _wallPort);
+
+        _pointerName = _settings->value("pointername", "pointerName").toString();
+        _pointerColor = _settings->value("pointercolor", "#ff0000").toString();
+        _vncUsername = _settings->value("vncusername", "").toString();
+        _vncPasswd = _settings->value("vncpasswd", "").toString();
+        _sharingEdge = _settings->value("sharingedge", "top").toString();
+
+        _tcpMsgSock.connectToHost(_wallAddress, _wallPort);
     }
     else {
-        on_actionNew_Connection_triggered();
+        if ( ! QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection) ) {
+            qDebug() << "invokeMethod() : on_actionNew_Connection_triggered failed";
+        }
     }
 }
 
@@ -248,7 +258,16 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 	if ( cd.result() == QDialog::Rejected) return;
 
 
-	_wallAddress = cd.address();
+    if (!cd.ipaddress().isNull()) {
+        _wallAddress = cd.ipaddress().toString();
+    }
+    else if (!cd.hostname().isEmpty()) {
+        _wallAddress = cd.hostname();
+    }
+    else {
+        QMessageBox::warning(this, "Error : Can't connect", "Both Hostname and IP address are empty");
+        return;
+    }
     _wallPort = cd.port();
 
 	_pointerName = cd.pointerName();
@@ -258,7 +277,7 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 	_vncPasswd = cd.vncPasswd();
 	_sharingEdge = cd.sharingEdge();
 
-	_tcpMsgSock.connectToHost(QHostAddress(_wallAddress), _wallPort);
+	_tcpMsgSock.connectToHost(_wallAddress, _wallPort);
 }
 
 void SN_PointerUI::on_actionOpen_Media_triggered()
@@ -285,7 +304,14 @@ void SN_PointerUI::on_actionShare_desktop_triggered()
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %d %s %s %d", SAGENext::VNC_SHARING, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
+
+	sprintf(msg.data(), "%d %d %s %s %d"
+            , SAGENext::VNC_SHARING
+            , 0
+            , (_vncUsername.isEmpty()) ? "_" : qPrintable(_vncUsername)
+            , (_vncPasswd.isEmpty()) ? "_" : qPrintable(_vncPasswd)
+            , 10
+            );
 
 	sendMessage(msg);
 }
@@ -433,6 +459,7 @@ void SN_PointerUI::hookMouse() {
 			// do nothing
 			ui->isConnectedLabel->setText("Pointer is in SAGENext");
 #else
+            ui->hookMouseBtn->setText("Pointer is shared");
 			ui->isConnectedLabel->setText("[Shift + Ctrl + Alt + m]\nto relase mouse");
 			//
 			// in Linux and Windows 7, this will work even the mouse curson isn't on this application window.
@@ -463,6 +490,7 @@ void SN_PointerUI::unhookMouse() {
 #else
 	releaseMouse();
 //	qDebug() << "mouse released";
+    ui->hookMouseBtn->setText("share pointer");
 #endif
 	// remove cursor on the wall
 	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
@@ -531,7 +559,7 @@ void SN_PointerUI::readMessage() {
 
 		// Now I can connect to the file server
 		if (ftpport > 0) {
-			_tcpDataSock.connectToHost(QHostAddress(_wallAddress), ftpport);
+			_tcpDataSock.connectToHost(_wallAddress, ftpport);
 			if ( _tcpDataSock.waitForConnected() ) {
 				QByteArray msg(EXTUI_MSG_SIZE, 0);
 				::sprintf(msg.data(), "%u", _uiclientid);
@@ -1249,12 +1277,17 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
 {
 	ui->setupUi(this);
 
-	addr.clear();
+	_ipaddress.clear(); // 0.0.0.0  = isNull() true
+    _hostname.clear(); // isEmpty() true
 
-	ui->ipaddr->setInputMask("000.000.000.000;_");
-	//        ui->myaddrLineEdit->setInputMask("000.000.000.000;_");
+    ui->ipaddr->setPlaceholderText("hostname or IP address");
+
+//	ui->ipaddr->setInputMask("000.000.000.000;_");
 	ui->port->setInputMask("00000;_");
 
+    //
+    // retrieve the saved value
+    //
 	ui->ipaddr->setText( _settings->value("walladdr", "127.0.0.1").toString() );
 
 
@@ -1272,10 +1305,34 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
 
 
 	ui->port->setText( _settings->value("wallport", 30003).toString() );
-	ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
+
+    //
+    // Mac OS X 10.7 (Lion) users need to use their real account name and password
+    // Mac OS X 10.6 (Snow Leopard) users need to put empty string on username field and can use VNC password (not the real account password)
+    //
+
+    ui->lbl_vncusername->hide();
+    ui->vncUsername->hide();
+    ui->vncpasswd->setPlaceholderText("Your VNC passwd here");
+
+#ifdef Q_OS_MAC
+    //
+    // If it's Lion (10.7) and higher then account's username/password should be used.
+    //
+    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
+        ui->vncUsername->setPlaceholderText("You account name here");
+        ui->vncpasswd->setPlaceholderText("Your account passwd here");
+        ui->vncUsername->show();
+        ui->vncpasswd->show();
+    }
+#endif
+
+	ui->vncUsername->setText(_settings->value("vncusername", "").toString());
 	ui->vncpasswd->setEchoMode(QLineEdit::Password);
 	ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
-	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
+
+
+	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointerName").toString());
 
 	//		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
 	QColor pc(_settings->value("pointercolor", "#ff0000").toString());
@@ -1302,26 +1359,52 @@ SN_PointerUI_ConnDialog::~SN_PointerUI_ConnDialog() {
 
 void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
 {
-	addr = ui->ipaddr->text();
+    QString addrtemp = ui->ipaddr->text();
+
+    QRegExp regexp_ipaddr("^\\d+\\.\\d+\\.\\d+\\.\\d+$", Qt::CaseInsensitive);
+    if (regexp_ipaddr.exactMatch(addrtemp)) {
+
+        _ipaddress = QHostAddress(addrtemp);
+        _settings->setValue("walladdr", _ipaddress.toString());
+
+        qDebug() << "SN_PointerUI_ConnDialog::on_buttonBox_accepted() : IP address detected" << _ipaddress;
+    }
+    else {
+        _hostname = addrtemp;
+        _settings->setValue("walladdr", _hostname);
+
+        qDebug() << "SN_PointerUI_ConnDialog::on_buttonBox_accepted() : hostname detected" << _hostname;
+    }
+
+
+    vncusername.clear();
+#ifdef Q_OS_MAC
+    //
+    // Lion and higher
+    //
+    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
+        vncusername = ui->vncUsername->text();
+    }
+#endif
+
+
 	portnum = ui->port->text().toInt();
 //	myaddr = ui->myAddrCB->currentText();
 	pName = ui->pointerNameLineEdit->text();
-	vncusername = ui->vncUsername->text();
+
+    //
+    // Maybe I can use QCryptographicHash for this
+    //
 	vncpass = ui->vncpasswd->text();
+
 	psharingEdge = ui->sharingEdgeCB->currentText();
 	
-	_settings->setValue("walladdr", addr);
 	_settings->setValue("wallport", portnum);
-//	_settings->setValue("myaddr", myaddr);
 	_settings->setValue("pointername", pName);
 	_settings->setValue("pointercolor", pColor);
 	_settings->setValue("vncusername", vncusername);
 	_settings->setValue("vncpasswd", vncpass);
 	_settings->setValue("sharingedge", psharingEdge);
-	
-	if (vncusername.isEmpty()) {
-		vncusername = "user";
-	}
 	
 	accept();
 	//	done(0);

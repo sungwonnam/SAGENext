@@ -18,10 +18,6 @@ class AffinityInfo;
 class QSettings;
 
 
-#include <QMutex>
-#include <QWaitCondition>
-
-
 /**
   * This QThread class is used to receive pixel stream from SAGE application (sail)
   */
@@ -30,14 +26,14 @@ class SN_SagePixelReceiver : public QThread
 	Q_OBJECT
 
 public:
-	SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffer *idb, bool usepbo, void **pbobufarray, pthread_mutex_t *pboMutex, pthread_cond_t *pboCond, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, const QSettings *s, QObject *parent = 0);
-//	SagePixelReceiver(int protocol, int sockfd, QImage *img,  AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw,*/ QMutex *m, QWaitCondition *wwcc, const QSettings *s, QObject *parent = 0);
+	SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffer *idb, bool usepbo, void **pbobufarray, pthread_mutex_t *pboMutex, pthread_cond_t *pboCond, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, const QSettings *_settings, QObject *parent = 0);
 	~SN_SagePixelReceiver();
 
-	void run();
+protected:
+    void run();
 
 private:
-	const QSettings *s;
+	const QSettings *_settings;
 
 	/*!
 	  * this breaks while(1) loop in run()
@@ -54,44 +50,29 @@ private:
 	/*!
 	  UDP streaming is not implemented yet
 	  */
-	QAbstractSocket *_udpsocket;
+	int _udpsocket;
 
+    int m_receiveUdpPortNumber();
+
+    /*!
+      based on the quality demanded by the scheduler
+      */
     unsigned long _delay;
 
-	/*!
-	  texture handle for the image frame
-	  */
-//	GLuint _textureid;
-
-//	GLuint *_pboIds;
-
-	/*!
-	  For the OpenGL context to which my _glbuffers will bind
-	  */
-//	QGLWidget *_myGlWidget;
-
-	/*!
-	  SageStreamWidget has to pass the pointer to the viewport widget (which is QGLWidget for the OpenGL Viewport)
-	  _myGLWidget is sharing with _shareWidget
-	  to share texture objects
-	  */
-//	QGLWidget *_shareWidget;
 
     /*!
       If OpenGL PBO isn't used, traditional double buffering with app buffer
       */
-	DoubleBuffer *doubleBuffer;
+	DoubleBuffer *_doubleBuffer;
 
 	enum sageNwProtocol {SAGE_TCP, SAGE_UDP};
 
-	int receiveUdpPortNumber();
 
-	AppInfo *appInfo;
+	AppInfo *_appInfo;
 	PerfMonitor *_perfMon;
-	AffinityInfo *affInfo;
+	AffinityInfo *_affInfo;
 
 	bool _usePbo;
-
 
     /*!
       Front or Back of _pbobufarray
@@ -99,7 +80,7 @@ private:
 	int _pboBufIdx;
 
     /*!
-      This pointer array contains pointers to the buffer (in GPU memory)
+      This pointer array containing pointers to the buffer (in GPU memory)
       */
 	void **_pbobufarray;
 
@@ -114,13 +95,7 @@ private:
 	pthread_cond_t * _pboCond;
 
 
-
-
-	QMutex _mutex;
-	QWaitCondition _waitCond;
-
 public:
-	void receivePixel();
 	void endReceiver();
 
 signals:

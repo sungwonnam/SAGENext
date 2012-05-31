@@ -22,15 +22,19 @@
 
 SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffer *idb, bool usepbo, void **pbobufarray, pthread_mutex_t *pboMutex, pthread_cond_t *pboCond, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */)
     : QThread(parent)
-    , s(s)
+    , _settings(s)
     , _end(false)
+
     , _tcpsocket(sockfd)
     , _udpsocket(0)
+
     , _delay(0)
-    , doubleBuffer(idb)
-    , appInfo(ap)
+
+    , _doubleBuffer(idb)
+
+    , _appInfo(ap)
     , _perfMon(pm)
-    , affInfo(ai)
+    , _affInfo(ai)
 
     , _usePbo(usepbo)
     , _pboBufIdx(0)
@@ -40,20 +44,12 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
 {
 	QThread::setTerminationEnabled(true);
 
-	if ( protocol == SAGE_TCP ) {
-		/*
-		 // if you do this, you MUST use _socket instead of directly using socket
-		_socket = new QTcpSocket(this);
-		if ( ! _socket->setSocketDescriptor(sockfd) ) {
-			qDebug("%s() : AH ssibal", __FUNCTION__);
-		}
-		*/
-	}
-	else {
+    if (protocol == SAGE_UDP) {
 		// to make this work, this thread has to have its own event loop.
 		// Use exec() instead of start()
-		_udpsocket = new QUdpSocket(this);
-		int udpPortNumber = receiveUdpPortNumber();
+        _udpsocket = socket(AF_INET, SOCK_DGRAM, 0);
+        Q_ASSERT(_udpsocket);
+		int udpPortNumber = m_receiveUdpPortNumber();
 		if ( udpPortNumber <= 0 ) {
 			qCritical("%s::%s() : failed to receive UDP port number for streaming", qPrintable(objectName()), __FUNCTION__);
 			_end = true;
@@ -61,8 +57,6 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
 		else {
 		}
 	}
-
-
 }
 
 void SN_SagePixelReceiver::endReceiver() {
@@ -80,12 +74,8 @@ SN_SagePixelReceiver::~SN_SagePixelReceiver() {
 }
 
 
-void SN_SagePixelReceiver::receivePixel() {
-	QMutexLocker locker(&_mutex);
-	_waitCond.wakeOne();
-}
 
-int SN_SagePixelReceiver::receiveUdpPortNumber() {
+int SN_SagePixelReceiver::m_receiveUdpPortNumber() {
 	QByteArray buffer(1024, 0);
 	buffer.clear();
 
@@ -125,9 +115,9 @@ void SN_SagePixelReceiver::run() {
 	/*
 	 * Initially store current affinity settings of this thread using NUMA API
 	 */
-	if (affInfo) {
-		affInfo->figureOutCurrentAffinity();
-		affInfo->setCpuOfMine( sched_getcpu() , s->value("system/sailaffinity", false).toBool());
+	if (_affInfo) {
+		_affInfo->figureOutCurrentAffinity();
+		_affInfo->setCpuOfMine( sched_getcpu() , _settings->value("system/sailaffinity", false).toBool());
 	}
 
 
@@ -137,7 +127,7 @@ void SN_SagePixelReceiver::run() {
     // CPU time elapsed
     struct timespec ts_start, ts_end;
 
-    if(_perfMon && s->value("system/resourcemonitor",false).toBool()) {
+    if(_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
 //		perf->getRecvTimer().start(); //QTime::start()
 
         gettimeofday(&tvs, 0);
@@ -147,23 +137,23 @@ void SN_SagePixelReceiver::run() {
         clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_start);
 	}
 
-	int byteCount = appInfo->frameSizeInByte();
+	int byteCount = _appInfo->frameSizeInByte();
 	unsigned char *bufptr = 0;
 
 	if (!_usePbo) {
-		bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits();
+		bufptr = static_cast<QImage *>(_doubleBuffer->getFrontBuffer())->bits();
 	}
 
 	while(! _end ) {
-		if ( affInfo && s->value("system/resourcemonitor",false).toBool()) {
-			if ( affInfo->isChanged() ) {
+		if ( _affInfo && _settings->value("system/resourcemonitor",false).toBool()) {
+			if ( _affInfo->isChanged() ) {
 				// apply new affinity;
 				//	qDebug("SagePixelReceiver::%s() : applying new affinity parameters", __FUNCTION__);
-				affInfo->applyNewParameters(); // use NUMA lib
+				_affInfo->applyNewParameters(); // use NUMA lib
 
 				// update info in affInfo
 				// this function must be called in this thread
-				affInfo->figureOutCurrentAffinity(); // use NUMA lib
+				_affInfo->figureOutCurrentAffinity(); // use NUMA lib
 			}
 			else {
 #if defined(Q_OS_LINUX)
@@ -171,45 +161,43 @@ void SN_SagePixelReceiver::run() {
 				// if cpu has changed, affinfo::cpuOfMineChanged() will be emitted
 				// which is connected to ResourceMonitor::updateAffInfo()
 
-				affInfo->setCpuOfMine( sched_getcpu() , s->value("system/sailaffinity", false).toBool());
+				_affInfo->setCpuOfMine( sched_getcpu() , _settings->value("system/sailaffinity", false).toBool());
 #endif
 			}
-		}
+        }
 
-
-		if (_usePbo) {
-			qint64 ss,ee;
-			if (appInfo->GID()==1) {
-				ss = QDateTime::currentMSecsSinceEpoch();
-			}
+        if (_usePbo) {
+            //	qint64 ss,ee;
+            //	if (appInfo->GID()==1) {
+            //		ss = QDateTime::currentMSecsSinceEpoch();
+            //	}
             //
             // if the mutex is currently locked by any thread (includeing this thread), then
             // it will return immediately
             //
-			pthread_mutex_trylock(_pboMutex);
+            pthread_mutex_lock(_pboMutex);
 
-			emit frameReceived();
+            //
+            // trigger schedulePboUpdate()
+            //
+            emit frameReceived();
 
-//			while(!__bufferMapped) {
-//				qDebug() << "thread waiting ..";
             //
             // unlock the mutex and blocking wait for glMapBufferARB() in schedulePboUpdate()
             //
-				pthread_cond_wait(_pboCond, _pboMutex);
-//			}
-                pthread_mutex_unlock(_pboMutex);
+            pthread_cond_wait(_pboCond, _pboMutex);
+            pthread_mutex_unlock(_pboMutex);
 
-                _pboBufIdx = (_pboBufIdx + 1) % 2;
+            _pboBufIdx = (_pboBufIdx + 1) % 2;
 
-			bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
-//			qDebug() << "thread woken up" << _pboBufIdx << bufptr;
-			
-			if (appInfo->GID()==1) {
-				ee = QDateTime::currentMSecsSinceEpoch();
-				qDebug() << "thread: condwait : " << ee-ss << "msec";
-			}
-		}
+            bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
+            //	qDebug() << "thread woken up" << _pboBufIdx << bufptr;
 
+            //	if (appInfo->GID()==1) {
+            //		ee = QDateTime::currentMSecsSinceEpoch();
+            //		qDebug() << "thread: condwait : " << ee-ss << "msec";
+            //	}
+        }
 
 
 
@@ -234,6 +222,7 @@ void SN_SagePixelReceiver::run() {
         }
         */
         if (_delay > 0) {
+//            qDebug() << "sagepixelreceiver::run() : _delay" << _delay << "msec";
             QThread::msleep(_delay);
         }
 
@@ -260,29 +249,25 @@ void SN_SagePixelReceiver::run() {
 		sscanf(header.constData(), "%d %d %d %d", &fnum, &pixelSize, &memWidth, &bufSize);
 		qDebug("PixelReceiver::%s() : received block header [%s]", __FUNCTION__, header.constData());
 		*/
-		qint64 ss,ee;
-		if (appInfo->GID()==1) {
-			ss = QDateTime::currentMSecsSinceEpoch();
-		}
 			
 
 		// PIXEL RECEIVING
 		while (totalread < byteCount ) {
 			// If remaining byte is smaller than user buffer length (which is groupSize)
-			if ( byteCount-totalread < appInfo->networkUserBufferLength() ) {
+			if ( byteCount-totalread < _appInfo->networkUserBufferLength() ) {
 				read = recv(_tcpsocket, bufptr, byteCount-totalread , MSG_WAITALL);
 			}
 			// otherwise, always read groupSize bytes
 			else {
-				read = recv(_tcpsocket, bufptr, appInfo->networkUserBufferLength(), MSG_WAITALL);
+				read = recv(_tcpsocket, bufptr, _appInfo->networkUserBufferLength(), MSG_WAITALL);
 			}
 			if ( read == -1 ) {
-//				qDebug("SagePixelReceiver::run() : error while reading.");
+				qDebug("SagePixelReceiver::run() : error while reading.");
 				_end = true;
 				break;
 			}
 			else if ( read == 0 ) {
-//				qDebug("SagePixelReceiver::run() : sender disconnected");
+				qDebug("SagePixelReceiver::run() : sender disconnected");
 				_end = true;
 				break;
 			}
@@ -293,29 +278,15 @@ void SN_SagePixelReceiver::run() {
 		if ( totalread < byteCount  ||  _end ) break;
 		read = totalread;
 		
-		if (appInfo->GID()==1) {
-			ee = QDateTime::currentMSecsSinceEpoch();
-			qDebug() << "thread recved " << ee-ss << "msec";
-		}
 
-
-		if (_usePbo) {
-//			__bufferMapped = false;
-
-            // acquire the lock before the schedulePboUpdate()
-            // to prevent the lost wakeup situation
-			
-            //pthread_mutex_lock(_pboMutex);
-			//emit frameReceived();
-		}
-		else {
+        if (!_usePbo) {
 
 			/********************************/   // double buffering
-			Q_ASSERT(doubleBuffer);
+			Q_ASSERT(_doubleBuffer);
 
 			// will wait until consumer (SageStreamWidget) consumes the data
 			// i.e. until consumer calls doubleBuffer->releaseBackBuffer();
-			doubleBuffer->swapBuffer();
+			_doubleBuffer->swapBuffer();
 			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "swapBuffer returned";
 
 			emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
@@ -323,12 +294,9 @@ void SN_SagePixelReceiver::run() {
 			//
 			// getFrontBuffer() will return immediately. There's no mutex waiting in this function
 			//
-			bufptr = static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
+			bufptr = static_cast<QImage *>(_doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
 			/***************************************/
 		}
-
-//		gettimeofday(&late, 0);
-
 
 		/**********************************************/ // scheduling with wait condition
         /*
@@ -357,7 +325,7 @@ void SN_SagePixelReceiver::run() {
 		/********************************************/
 
 
-		if (_perfMon && s->value("system/resourcemonitor",false).toBool()) {
+		if (_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
 
             gettimeofday(&tve, 0);
 

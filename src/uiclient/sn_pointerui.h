@@ -354,7 +354,8 @@ public:
 	SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent=0);
 	~SN_PointerUI_ConnDialog();
 
-	inline QString address() const {return addr;}
+	inline QHostAddress ipaddress() const {return _ipaddress;}
+    inline QString hostname() const {return _hostname;}
 	inline int port() const {return portnum;}
 	//inline QString myAddress() const {return myaddr;}
 	inline QString pointerName() const {return pName;}
@@ -370,7 +371,12 @@ private:
         /**
           wall address
           */
-	QString addr;
+	QHostAddress _ipaddress;
+
+    /*!
+      wall's hostname
+      */
+    QString _hostname;
 
         /**
           wall port

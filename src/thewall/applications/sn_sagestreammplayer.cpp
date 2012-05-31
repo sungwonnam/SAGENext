@@ -48,25 +48,30 @@ int SN_SageStreamMplayer::setQuality(qreal newQuality) {
     //
     // And it means the streamer (SAGE app) isn't sending any pixel
     //
+    /*
 	else if ( newQuality <= 0.0 ) {
 		_quality = 0.0;
         if (!_isMplayerPaused)
             pauseMplayer();
         return 0;
 	}
+    */
 
 	else {
-		_quality = newQuality;
+        if (newQuality <= 0.0)
+            _quality = 0.1;
+        else
+            _quality = newQuality;
 
         qreal newfps = _quality * _perfMon->getExpetctedFps(); // based on the priori
         delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps())); // in msec
 	}
 
-
+/*
     if (_isMplayerPaused) {
         playMplayer();
     }
-
+*/
 
     if (_receiverThread) {
         if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(unsigned long, delayneeded)) ) {
