@@ -43,6 +43,11 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
     , _pboCond(pboCond)
 {
 	QThread::setTerminationEnabled(true);
+    if (protocol == SAGE_TCP) {
+        int optVal = 512 * 1024; // 512 KB
+        int optLen = sizeof(optVal);
+        setsockopt(_tcpsocket, SOL_SOCKET, SO_RCVBUF, (void *)&optVal, (socklen_t)optLen);
+    }
 
     if (protocol == SAGE_UDP) {
 		// to make this work, this thread has to have its own event loop.
