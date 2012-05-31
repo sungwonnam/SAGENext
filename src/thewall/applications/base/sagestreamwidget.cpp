@@ -485,7 +485,17 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 
 //		qDebug() << "mapped buffer" << _pboBufIdx << ptr;
 
+        //
+        // wait until the receiver starts waiting for the condition (thus releases the lock)
+        //
+        pthread_mutex_lock(_pbomutex);
+
 		pthread_cond_signal(_pbobufferready);
+
+        //
+        // let the receiver re-acquire the lock after woken by
+        //
+        pthread_mutex_unlock(_pbomutex);
 	}
 	else {
 		qCritical() << "SN_SageStreamWidget::schedulePboUpdate() : glMapBUffer failed()";
