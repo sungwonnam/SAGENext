@@ -24,6 +24,8 @@ PerfMonitor::PerfMonitor(QObject *parent)
     , _maxBWachieved(0.0)
     , _requiredBW_Mbps(0.0)
     , _cumulativeByteRecved(0)
+, _prevByteReceived(0)
+, _prevTimestamp(0)
     , _isInteracting(false)
 
 	, drawCount(0)
@@ -179,6 +181,17 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
 //
 void PerfMonitor::updateDataWithCumulativeByteReceived(qint64 timestamp) {
 
+if (_prevByteReceived > 0 ) {
+	quint64 deltaByte = _cumulativeByteRecved - _prevByteReceived;
+	qint64 deltaMsec = timestamp - _prevTimestamp;
+
+        qreal bwtemp = (1e-6 * 8.0f * (qreal)deltaByte) / ((qreal)deltaMsec / 1000.0f); // Mbps
+        _updateBWdata( bwtemp );
+}
+_prevByteReceived = _cumulativeByteRecved;
+_prevTimestamp = timestamp;
+
+/*
     if (!_cumulativeByteRecvedList.isEmpty()) {
         const QPair<qint64, quint64> recentValue = _cumulativeByteRecvedList.front();
         quint64 deltaByte = _cumulativeByteRecved  -  recentValue.second;
@@ -199,6 +212,7 @@ void PerfMonitor::updateDataWithCumulativeByteReceived(qint64 timestamp) {
     if (_cumulativeByteRecvedList.size() > 10) {
         _cumulativeByteRecvedList.pop_back();
     }
+*/
 }
 
 //

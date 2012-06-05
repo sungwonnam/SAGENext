@@ -50,8 +50,6 @@ qDebug() << "recvThred::run()";
     struct timespec ts_start, ts_end;
 
     if(_perfMon) {
-//		perf->getRecvTimer().start(); //QTime::start()
-
         gettimeofday(&tvs, 0);
 
         // #include <time.h>
@@ -149,7 +147,7 @@ qDebug() << "recvThred::run()";
             // perfMon->recvTimer will be restarted in this function.
             // So the delay calculated in this function includes blocking (which is forced by the pixel streamer) delay
             //
-			_perfMon->updateDataWithLatencies(byterecv, actualtime_second, cputime_second);
+			_perfMon->updateDataWithLatencies(byterecv, actualtime_second, 0);
 		}
         */
     }

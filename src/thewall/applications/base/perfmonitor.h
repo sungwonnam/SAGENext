@@ -305,6 +305,9 @@ private:
       */
     quint64 _cumulativeByteRecved;
 
+quint64 _prevByteReceived;
+qint64 _prevTimestamp;
+
     /*!
       key timestamp
       value cumulative Byte

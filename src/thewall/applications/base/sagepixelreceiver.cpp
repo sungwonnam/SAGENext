@@ -44,11 +44,9 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
 {
 	QThread::setTerminationEnabled(true);
 
-    int optVal = 512 * 1024; // 512 KB
-    int optLen = sizeof(optVal);
-    if ( setsockopt(_tcpsocket, SOL_SOCKET, SO_RCVBUF, (void *)&optVal, (socklen_t)optLen) != 0 ) {
-        perror("setsockopt");
-    }
+        int optVal = 1048576;
+        int optLen = sizeof(optVal);
+        setsockopt(_tcpsocket, SOL_SOCKET, SO_RCVBUF, (void *)&optVal, (socklen_t)optLen);
 
     if (protocol == SAGE_UDP) {
 		// to make this work, this thread has to have its own event loop.
@@ -134,8 +132,6 @@ void SN_SagePixelReceiver::run() {
     struct timespec ts_start, ts_end;
 
     if(_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
-//		perf->getRecvTimer().start(); //QTime::start()
-
         gettimeofday(&tvs, 0);
 
         // #include <time.h>
@@ -148,6 +144,7 @@ void SN_SagePixelReceiver::run() {
 
 	if (!_usePbo) {
 		bufptr = static_cast<QImage *>(_doubleBuffer->getFrontBuffer())->bits();
+		//bufptr = (unsigned char *)malloc(byteCount);
 	}
 
 	while(! _end ) {
@@ -163,7 +160,7 @@ void SN_SagePixelReceiver::run() {
 			}
 			else {
 #if defined(Q_OS_LINUX)
-				/* this is called too many times */
+				// this is called too many times 
 				// if cpu has changed, affinfo::cpuOfMineChanged() will be emitted
 				// which is connected to ResourceMonitor::updateAffInfo()
 
@@ -232,12 +229,8 @@ void SN_SagePixelReceiver::run() {
             QThread::msleep(_delay);
         }
 
-
-
         ssize_t totalread = 0;
 		ssize_t read = 0;
-
-//		gettimeofday(&lats, 0);
 
         // recv header
 		/*
@@ -261,11 +254,11 @@ void SN_SagePixelReceiver::run() {
 		while (totalread < byteCount ) {
 			// If remaining byte is smaller than user buffer length (which is groupSize)
 			if ( byteCount-totalread < _appInfo->networkUserBufferLength() ) {
-				read = recv(_tcpsocket, bufptr, byteCount-totalread , MSG_WAITALL);
+				read = recv(_tcpsocket, bufptr, byteCount-totalread ,0 );
 			}
 			// otherwise, always read groupSize bytes
 			else {
-				read = recv(_tcpsocket, bufptr, _appInfo->networkUserBufferLength(), MSG_WAITALL);
+				read = recv(_tcpsocket, bufptr, _appInfo->networkUserBufferLength(), 0);
 			}
 			if ( read == -1 ) {
 				qDebug("SagePixelReceiver::run() : error while reading.");
@@ -283,11 +276,8 @@ void SN_SagePixelReceiver::run() {
 		}
 		if ( totalread < byteCount  ||  _end ) break;
 		read = totalread;
-		
 
         if (!_usePbo) {
-
-			/********************************/   // double buffering
 			Q_ASSERT(_doubleBuffer);
 
 			// will wait until consumer (SageStreamWidget) consumes the data
@@ -301,7 +291,6 @@ void SN_SagePixelReceiver::run() {
 			// getFrontBuffer() will return immediately. There's no mutex waiting in this function
 			//
 			bufptr = static_cast<QImage *>(_doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
-			/***************************************/
 		}
 
 		/**********************************************/ // scheduling with wait condition
@@ -330,26 +319,26 @@ void SN_SagePixelReceiver::run() {
         */
 		/********************************************/
 
-
 		if (_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
-
             gettimeofday(&tve, 0);
 
             qreal actualtime_second = ((double)tve.tv_sec + (double)tve.tv_usec * 1e-6) - ((double)tvs.tv_sec + (double)tvs.tv_usec * 1e-6);
             tvs = tve;
 
+/*
             clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_end);
 
 			qreal cputime_second = ((double)ts_end.tv_sec + (double)ts_end.tv_nsec * 1e-9) - ((double)ts_start.tv_sec + (double)ts_start.tv_nsec * 1e-9);
             ts_start = ts_end;
-
+*/
 
             //
 			// calculate delay, fps, cpu usage, everything...
             // perfMon->recvTimer will be restarted in this function.
             // So the delay calculated in this function includes blocking (which is forced by the pixel streamer) delay
             //
-			_perfMon->addToCumulativeByteReceived(read, actualtime_second, cputime_second);
+			//_perfMon->addToCumulativeByteReceived(read, actualtime_second, cputime_second);
+			_perfMon->addToCumulativeByteReceived(read, actualtime_second, 0);
 		}
 	} /*** end of receiving loop ***/
 

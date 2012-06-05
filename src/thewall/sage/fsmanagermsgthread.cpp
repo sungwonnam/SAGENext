@@ -282,9 +282,9 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             QByteArray initMsg(32, '\0');
             sprintf(initMsg.data(), "%d %d %d %d",
                     (int)_sageAppId,
-                    _settings->value("network/recvwindow", 16777216).toInt(),
+                    _settings->value("network/recvwindow", 4*1048576).toInt(),
                     _settings->value("network/sendwindow", 1048576).toInt(),
-                    _settings->value("network/mtu", 1450).toInt()); // snd/rcv network socket size followed by MTU
+                    _settings->value("network/mtu", 8800).toInt()); // snd/rcv network socket size followed by MTU
 
             if (sageMsg.init(_sageAppId, OldSage::SAIL_INIT_MSG, 0, initMsg.size(), initMsg.data()) < 0) {
                 qCritical("fsManagerMsgThread::%s() : failed to init sageMessage", __FUNCTION__);

@@ -929,7 +929,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 
 	if ( appname == "checker" ) {
 		QString arg = "";
-		arg.append(QString::number(0)); arg.append(" ");
+		//arg.append(QString::number(0)); arg.append(" ");
 		arg.append(QString::number(resX)); arg.append(" ");
 		arg.append(QString::number(resY)); arg.append(" ");
 		arg.append(QString::number(framerate));
