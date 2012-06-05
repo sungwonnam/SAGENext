@@ -348,8 +348,7 @@ void SN_SageStreamWidget::startReceivingThread() {
     // connect(receiverThread, SIGNAL(finished()), receiverThread, SLOT(deleteLater()));
 
 
-    char *ret = getenv("BLAME_XINERAMA");
-    if (!ret)
+    if (!_blameXinerama) {
         if (_usePbo) {
             if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(schedulePboUpdate())) ) {
                 qCritical("%s::%s() : Failed to connect frameReceived() signal and schedulePboUpdate() slot", metaObject()->className(), __FUNCTION__);
@@ -369,6 +368,7 @@ void SN_SageStreamWidget::startReceivingThread() {
                 return;
             }
         }
+    }
     else {
         // I think Xinerama makes graphics performance bad..
         // On venom, five 1080p videos can't sustain 24 fps..
