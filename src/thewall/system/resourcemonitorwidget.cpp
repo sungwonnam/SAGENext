@@ -71,6 +71,7 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Priority
 	QStringList headers;
     headers << "Id" << "Priority" << "CurBW" << "ReqBW" << "O.Q._Rq" << "D.Q." << "CurFPS";
 	ui->perAppPerfTable->setHorizontalHeaderLabels(headers);
+    ui->tablePlotVLayoutOnTheRight->setStretchFactor(ui->perAppPerfTable, 3);
 
 	/**
 	  per widget priority data table
@@ -109,6 +110,7 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Priority
     hlayout->addWidget(_priorityHistogramPlot);
     hlayout->addWidget(_qualityCurvePlot);
     ui->tablePlotVLayoutOnTheRight->addLayout(hlayout);
+    ui->tablePlotVLayoutOnTheRight->setStretchFactor(hlayout, 1);
 
     // tablePlotVLayoutOnTheRight has
 
@@ -360,8 +362,50 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
     ctse = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
 #endif
 	ui->perAppPerfTable->clearContents(); // because I want to see real time perf info. Data for removed app will be gone.
-	ui->perAppPerfTable->setRowCount(_rMonitor->getWidgetList().size());
+	ui->perAppPerfTable->setRowCount(_rMonitor->getWidgetList().size() + 1);
 	int currentRow = 0;
+
+    // fill data for each column on current row
+    for (int i=0; i<ui->perAppPerfTable->columnCount(); ++i) {
+        QTableWidgetItem *item = ui->perAppPerfTable->item(currentRow, i);
+        if (!item) {
+            item = new QTableWidgetItem;
+            // Sets the current row with tableWidgetItem
+            // tablewidget takes ownership of an item
+            ui->perAppPerfTable->setItem(currentRow, i, item);
+        }
+        switch(i) {
+        case 0:
+            item->setData(Qt::DisplayRole, "noop");
+            break;
+        case 1:
+            item->setData(Qt::DisplayRole, "");
+            break;
+        case 2:
+            item->setData(Qt::DisplayRole, _rMonitor->totalBandwidthMbps());
+            break;
+        case 3:
+            item->setData(Qt::DisplayRole, "");
+//                item->setData(Qt::DisplayRole, rw->perfMon()->getAvgRecvFps());
+
+            break;
+        case 4:
+            item->setData(Qt::DisplayRole, "");
+            break;
+        case 5:
+            item->setData(Qt::DisplayRole, "");
+            break;
+        case 6:
+            item->setData(Qt::DisplayRole, "");
+            break;
+//			case 7:
+//				item->setData(Qt::DisplayRole, rw->failToSchedule);
+//				break;
+        default:
+            break;
+        }
+    }
+    ++currentRow;
 
 	// An widget per row
 	foreach(SN_BaseWidget *rw, _rMonitor->getWidgetList()) {
@@ -395,6 +439,9 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 				break;
 			case 4:
 				item->setData(Qt::DisplayRole, rw->observedQuality_Rq());
+                if ( rw->observedQuality_Rq() > rw->demandedQuality() ) {
+                    item->setBackground(Qt::red);
+                }
 				break;
 			case 5:
 				item->setData(Qt::DisplayRole, rw->demandedQuality());
