@@ -280,6 +280,10 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
             */
             OldSage::sageMessage sageMsg;
             QByteArray initMsg(32, '\0');
+
+            //
+            // these parameters are set in the SettingStackedDialog::on_buttonBox_accepted()
+            //
             sprintf(initMsg.data(), "%d %d %d %d",
                     (int)_sageAppId,
                     _settings->value("network/recvwindow", 4*1048576).toInt(),

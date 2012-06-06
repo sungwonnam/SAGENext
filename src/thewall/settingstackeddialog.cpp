@@ -542,9 +542,9 @@ void SettingStackedDialog::on_buttonBox_accepted()
 	/* network parameters used by fsManagerMsgThread
 	  let's put these here for now
 	  */
-	_settings->setValue("network/recvwindow", 16777216);
-	_settings->setValue("network/sendwindow", 65535);
-	_settings->setValue("network/mtu", 1450);
+	_settings->setValue("network/recvwindow", 4 * 1048576);
+	_settings->setValue("network/sendwindow", 1048576);
+	_settings->setValue("network/mtu", 8800);
 
 
 //	_settings->setValue("misc/printperfdataattheend", false);
