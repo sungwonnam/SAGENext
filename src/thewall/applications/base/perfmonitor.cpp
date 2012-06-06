@@ -181,15 +181,15 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
 //
 void PerfMonitor::updateDataWithCumulativeByteReceived(qint64 timestamp) {
 
-if (_prevByteReceived > 0 ) {
-	quint64 deltaByte = _cumulativeByteRecved - _prevByteReceived;
-	qint64 deltaMsec = timestamp - _prevTimestamp;
+    if (_prevByteReceived > 0 ) {
+        quint64 deltaByte = _cumulativeByteRecved - _prevByteReceived;
+        qint64 deltaMsec = timestamp - _prevTimestamp;
 
         qreal bwtemp = (1e-6 * 8.0f * (qreal)deltaByte) / ((qreal)deltaMsec / 1000.0f); // Mbps
         _updateBWdata( bwtemp );
-}
-_prevByteReceived = _cumulativeByteRecved;
-_prevTimestamp = timestamp;
+    }
+    _prevByteReceived = _cumulativeByteRecved;
+    _prevTimestamp = timestamp;
 
 /*
     if (!_cumulativeByteRecvedList.isEmpty()) {

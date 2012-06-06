@@ -43,7 +43,11 @@ SN_RailawareWidget::SN_RailawareWidget(quint64 globalappid, const QSettings *s, 
 	if (_rMonitor) {
 		_rMonitor->addSchedulableWidget(this);
 
-		createAffInstances();
+        //
+        // for now, don't create railaware stuff (6/5/2012)
+        //
+//		createAffInstances();
+
 		/*
 		if ( ! QObject::connect(_affInfo, SIGNAL(cpuOfMineChanged(SN_RailawareWidget *,int,int)), _rMonitor, SLOT(updateAffInfo(SN_RailawareWidget *,int,int))) ) {
 			qDebug() << "SN_RailawareWidget() : connection _affInfo::cpuOfMineChanged() -> _rMonitor::updateAffInfo() failed";
