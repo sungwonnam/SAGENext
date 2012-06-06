@@ -26,7 +26,7 @@ SN_SageStreamMplayer::SN_SageStreamMplayer(const quint64 globalappid, const QSet
 	connect(_playButton, SIGNAL(clicked(int)), this, SLOT(playMplayer()));
 	connect(_fforwardButton, SIGNAL(clicked(int)), this, SLOT(fforwardMplayer()));
 }
-
+/*
 int SN_SageStreamMplayer::setQuality(qreal newQuality) {
     if (!_perfMon) return -1;
 
@@ -80,6 +80,7 @@ int SN_SageStreamMplayer::setQuality(qreal newQuality) {
 
     return 0;
 }
+*/
 
 void SN_SageStreamMplayer::setButtonPosition() {
     _rewindButton->setPos(0, boundingRect().bottom() - _rewindButton->size().height());
@@ -89,14 +90,15 @@ void SN_SageStreamMplayer::setButtonPosition() {
 }
 
 void SN_SageStreamMplayer::rewindMplayer() {
-	Q_ASSERT(_fsmMsgThread);
+	if (!_fsmMsgThread) return;
 	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("rewind")));
 	_playButton->hide();
 	_pauseButton->show();
 }
 
 void SN_SageStreamMplayer::pauseMplayer() {
-	Q_ASSERT(_fsmMsgThread);
+    if (!_fsmMsgThread) return;
+
 	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("pause")));
 	_pauseButton->hide();
 	_playButton->show();
@@ -107,7 +109,7 @@ void SN_SageStreamMplayer::pauseMplayer() {
 }
 
 void SN_SageStreamMplayer::playMplayer() {
-	Q_ASSERT(_fsmMsgThread);
+	if (!_fsmMsgThread) return;
 //	_fsmMsgThread->sendSailMsg(OldSage::EVT_KEY, "play");
 	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("play")));
 	_playButton->hide();
@@ -119,7 +121,7 @@ void SN_SageStreamMplayer::playMplayer() {
 }
 
 void SN_SageStreamMplayer::fforwardMplayer() {
-	Q_ASSERT(_fsmMsgThread);
+	if (!_fsmMsgThread) return;
 	QMetaObject::invokeMethod(_fsmMsgThread, "sendSailMsg", Qt::QueuedConnection, Q_ARG(int, OldSage::EVT_KEY), Q_ARG(QString, QString("forward")));
 	_playButton->hide();
 	_pauseButton->show();

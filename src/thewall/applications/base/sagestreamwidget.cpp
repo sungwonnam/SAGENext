@@ -268,16 +268,14 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
         //
         // And it means the streamer (SAGE app) isn't sending any pixel
         //
-        if ( newQuality <= 0.0 ) {
-            _quality = 0.1;
-        }
-        else {
-            _quality = newQuality;
-        }
+        _quality = newQuality;
 
         // qreal BWallowed_Mbps = _perfMon->getRequiredBW_Mbps( _quality );
         qreal newfps = _quality * _perfMon->getExpetctedFps();
 //        delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps()));
+        if (newfps == 0) {
+            newfps = 1; // 1 frame/sec at least
+        }
         delayneeded = 1000 / newfps;
 	}
 

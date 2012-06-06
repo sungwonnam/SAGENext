@@ -13,7 +13,7 @@ class SN_SageStreamMplayer : public SN_SageStreamWidget
 public:
 	SN_SageStreamMplayer(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm = 0, QGraphicsItem *parent = 0, Qt::WindowFlags wFlags = 0);
 
-    int setQuality(qreal newQuality);
+//    int setQuality(qreal newQuality);
 
 private:
 	SN_PixmapButton *_pauseButton;

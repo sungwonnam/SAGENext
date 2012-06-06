@@ -3,7 +3,7 @@
 
 SN_Priority::SN_Priority(SN_BaseWidget *w, QObject *parent)
     : QObject(parent)
-    , _priority(0.5)
+    , _priority(-1)
     , _priorityQuantized(0)
     , _timeLastIntr(0)
     , _timeFirstIntr(QDateTime::currentMSecsSinceEpoch())
