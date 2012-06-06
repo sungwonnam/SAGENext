@@ -252,8 +252,7 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
         return 0;
     }
 
-    unsigned long delayneeded = 0;
-
+    qint64 delayneeded = 0;
 
     if ( newQuality >= 1.0 ) {
 		_quality = 1.0;
@@ -276,20 +275,19 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
             _quality = newQuality;
         }
 
-        //    qreal BWallowed_Mbps = _perfMon->getRequiredBW_Mbps( _quality );
+        // qreal BWallowed_Mbps = _perfMon->getRequiredBW_Mbps( _quality );
         qreal newfps = _quality * _perfMon->getExpetctedFps();
-        delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps()));
+//        delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps()));
+        delayneeded = 1000 / newfps;
 	}
 
-
     if (_receiverThread) {
-        if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(unsigned long, delayneeded)) ) {
+        if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(qint64, delayneeded)) ) {
             qDebug() << "SN_SageStreamWidget::setQuality() : failed to invoke setDelay_msec()";
             return -1;
         }
     }
     else {
-        qDebug() << "SN_SageStreamWidget::setQuality() : _receiverThread is null";
         return -1;
     }
 
@@ -332,7 +330,7 @@ void SN_SageStreamWidget::startReceivingThread() {
     //
     // create the recv thread
     //
-	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, doubleBuffer, _usePbo, _pbobufarray, _pbomutex, _pbobufferready, _appInfo, _perfMon, _affInfo, _settings);
+	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, doubleBuffer, _usePbo, _pbobufarray, _pbomutex, _pbobufferready, this, _settings);
     Q_ASSERT(_receiverThread);
 
 
@@ -354,13 +352,6 @@ void SN_SageStreamWidget::startReceivingThread() {
                 qCritical("%s::%s() : Failed to connect frameReceived() signal and schedulePboUpdate() slot", metaObject()->className(), __FUNCTION__);
                 return;
             }
-
-            ///
-            // schedulePboUpdate() must be called once before the _receiverThread emits the frameReceived() signal
-            // to wake up the thread.
-            // So either explicitly call the schedulePboUpdate here or make the recvThread emit the signal first.
-            ///
-            //QObject::connect(_receiverThread, SIGNAL(started()), this, SLOT(schedulePboUpdate()));
         }
         else {
             if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
@@ -375,8 +366,6 @@ void SN_SageStreamWidget::startReceivingThread() {
         qDebug() << "SN_SageStreamWidget::startReceivingThread() : BLAME_XINERAMA defined. no frameReceived/scheduleUpdate connection";
         QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleDummyUpdate()));
     }
-
-
 
     qDebug() << "SN_SageStreamWidget (" << _globalAppId << _sageAppId << ") now starts its receiving thread.";
 	qDebug() << "\t" << "app name" << _appInfo->executableName() << ",media file" << _appInfo->fileInfo().fileName() << "from" << _appInfo->srcAddr();
@@ -790,14 +779,19 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 	/* accept connection from sageStreamer */
     serversocket = ::socket(AF_INET, SOCK_STREAM, 0);
     if ( serversocket == -1 ) {
-            qCritical("SageStreamWidget::%s() : couldn't create socket", __FUNCTION__);
-            return -1;
+        qCritical("SageStreamWidget::%s() : couldn't create socket", __FUNCTION__);
+        return -1;
     }
 
     // setsockopt
     int optval = 1;
     if ( setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
-            qWarning("SageStreamWidget::%s() : setsockopt SO_REUSEADDR failed",  __FUNCTION__);
+        qWarning("SageStreamWidget::%s() : setsockopt SO_REUSEADDR failed",  __FUNCTION__);
+    }
+
+    optval = _settings->value("network/recvwindow", 4 * 1048576).toInt();
+    if ( setsockopt(serversocket, SOL_SOCKET, SO_RCVBUF, (void *)&optval, (socklen_t)sizeof(optval)) != 0) {
+        qWarning("SageStreamWidget::%s() : setsockopt SO_RCVBUF failed",  __FUNCTION__);
     }
 
     // bind to port
@@ -809,8 +803,8 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 
     // bind
     if( bind(serversocket, (struct sockaddr *)&localAddr, sizeof(struct sockaddr_in)) != 0) {
-            qCritical("SageStreamWidget::%s() : bind error",  __FUNCTION__);
-            return -1;
+        qCritical("SageStreamWidget::%s() : bind error",  __FUNCTION__);
+        return -1;
     }
 
     // put in listen mode
@@ -832,9 +826,9 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     //qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : about to enter blocking waiting (accept()). GID" << _globalAppId;
 
     if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
-            qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
-            perror("accept");
-            return -1;
+        qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
+        perror("accept");
+        return -1;
     }
 
 //	struct hostent *he = gethostbyaddr( (void *)&clientAddr, addrLen, AF_INET);

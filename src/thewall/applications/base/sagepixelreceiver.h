@@ -26,7 +26,7 @@ class SN_SagePixelReceiver : public QThread
 	Q_OBJECT
 
 public:
-	SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffer *idb, bool usepbo, void **pbobufarray, pthread_mutex_t *pboMutex, pthread_cond_t *pboCond, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, const QSettings *_settings, QObject *parent = 0);
+	SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffer *idb, bool usepbo, void **pbobufarray, pthread_mutex_t *pboMutex, pthread_cond_t *pboCond, SN_SageStreamWidget *sagewidget, const QSettings *_settings, QObject *parent = 0);
 	~SN_SagePixelReceiver();
 
 protected:
@@ -34,6 +34,8 @@ protected:
 
 private:
 	const QSettings *_settings;
+
+    SN_SageStreamWidget *_sageWidget;
 
 	/*!
 	  * this breaks while(1) loop in run()
@@ -57,7 +59,7 @@ private:
     /*!
       based on the quality demanded by the scheduler
       */
-    unsigned long _delay;
+    qint64 _delay;
 
 
     /*!
@@ -95,6 +97,9 @@ private:
 	pthread_cond_t * _pboCond;
 
 
+    bool _isRMonitor;
+    bool _isScheduler;
+
 public:
 	void endReceiver();
 
@@ -105,7 +110,7 @@ signals:
 	void frameReceived();
 
 public slots:
-    inline void setDelay_msec(unsigned long delay) {_delay = delay;}
+    inline void setDelay_msec(qint64 delay) {_delay = delay;}
 };
 
 #endif // SAGEPIXELRECEIVER_H

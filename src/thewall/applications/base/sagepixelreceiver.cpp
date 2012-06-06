@@ -1,5 +1,6 @@
 #include "sagepixelreceiver.h"
 
+#include "sagestreamwidget.h"
 #include "railawarewidget.h"
 #include "appinfo.h"
 #include "perfmonitor.h"
@@ -20,9 +21,10 @@
 #include <unistd.h>
 
 
-SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffer *idb, bool usepbo, void **pbobufarray, pthread_mutex_t *pboMutex, pthread_cond_t *pboCond, AppInfo *ap, PerfMonitor *pm, AffinityInfo *ai, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */)
+SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffer *idb, bool usepbo, void **pbobufarray, pthread_mutex_t *pboMutex, pthread_cond_t *pboCond, SN_SageStreamWidget *sw, /*RailawareWidget *rw, QMutex *mmm, QWaitCondition *wwcc,*/ const QSettings *s, QObject *parent /* 0 */)
     : QThread(parent)
     , _settings(s)
+    , _sageWidget(sw)
     , _end(false)
 
     , _tcpsocket(sockfd)
@@ -32,21 +34,23 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
 
     , _doubleBuffer(idb)
 
-    , _appInfo(ap)
-    , _perfMon(pm)
-    , _affInfo(ai)
+    , _appInfo(sw->appInfo())
+    , _perfMon(sw->perfMon())
+    , _affInfo(sw->affInfo())
 
     , _usePbo(usepbo)
     , _pboBufIdx(0)
     , _pbobufarray(pbobufarray)
     , _pboMutex(pboMutex)
     , _pboCond(pboCond)
+    , _isRMonitor(false)
+    , _isScheduler(false)
 {
 	QThread::setTerminationEnabled(true);
 
-        int optVal = 1048576;
-        int optLen = sizeof(optVal);
-        setsockopt(_tcpsocket, SOL_SOCKET, SO_RCVBUF, (void *)&optVal, (socklen_t)optLen);
+    int optVal = _settings->value("network/recvwindow", 4 * 1048576).toInt();
+    int optLen = sizeof(optVal);
+    setsockopt(_tcpsocket, SOL_SOCKET, SO_RCVBUF, (void *)&optVal, (socklen_t)optLen);
 
     if (protocol == SAGE_UDP) {
 		// to make this work, this thread has to have its own event loop.
@@ -61,6 +65,9 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
 		else {
 		}
 	}
+
+    _isRMonitor = _settings->value("system/resourcemonitor", false).toBool();
+    _isScheduler = _settings->value("system/scheduler", false).toBool();
 }
 
 void SN_SagePixelReceiver::endReceiver() {
@@ -125,18 +132,21 @@ void SN_SagePixelReceiver::run() {
 	}
 
 
+    //
 	// Actual time elapsed
+    // This includes the extra delay the scheduler demands
+    //
 	struct timeval tvs, tve;
 
     // CPU time elapsed
-    struct timespec ts_start, ts_end;
+//    struct timespec ts_start, ts_end;
 
-    if(_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
+    if(_perfMon && _isRMonitor) {
         gettimeofday(&tvs, 0);
 
         // #include <time.h>
         // Link with -lrt
-        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_start);
+//        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_start);
 	}
 
 	int byteCount = _appInfo->frameSizeInByte();
@@ -147,8 +157,19 @@ void SN_SagePixelReceiver::run() {
 		//bufptr = (unsigned char *)malloc(byteCount);
 	}
 
+    //
+    // recvDelay is the time took to iterate the while(!_end) loop once.
+    // This is used to calculate how much more delay is needed to obey the scheduler's demand.
+    //
+    qint64 recvDelay = 0;
+    qint64 start;
+
 	while(! _end ) {
-		if ( _affInfo && _settings->value("system/resourcemonitor",false).toBool()) {
+
+        if (_isScheduler)
+            start = QDateTime::currentMSecsSinceEpoch();
+
+		if ( _affInfo && _isRMonitor) {
 			if ( _affInfo->isChanged() ) {
 				// apply new affinity;
 				//	qDebug("SagePixelReceiver::%s() : applying new affinity parameters", __FUNCTION__);
@@ -170,23 +191,15 @@ void SN_SagePixelReceiver::run() {
         }
 
         if (_usePbo) {
-            //	qint64 ss,ee;
-            //	if (appInfo->GID()==1) {
-            //		ss = QDateTime::currentMSecsSinceEpoch();
-            //	}
-            //
-            // if the mutex is currently locked by any thread (includeing this thread), then
-            // it will return immediately
-            //
             pthread_mutex_lock(_pboMutex);
 
             //
-            // trigger schedulePboUpdate()
+            // This signal invokes the schedulePboUpdate()
             //
             emit frameReceived();
 
             //
-            // unlock the mutex and blocking wait for glMapBufferARB() in schedulePboUpdate()
+            // unlock the mutex and blocking wait for glMapBufferARB() is done in schedulePboUpdate()
             //
             pthread_cond_wait(_pboCond, _pboMutex);
             pthread_mutex_unlock(_pboMutex);
@@ -194,43 +207,25 @@ void SN_SagePixelReceiver::run() {
             _pboBufIdx = (_pboBufIdx + 1) % 2;
 
             bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
-            //	qDebug() << "thread woken up" << _pboBufIdx << bufptr;
-
-            //	if (appInfo->GID()==1) {
-            //		ee = QDateTime::currentMSecsSinceEpoch();
-            //		qDebug() << "thread: condwait : " << ee-ss << "msec";
-            //	}
         }
+        else {
+            Q_ASSERT(_doubleBuffer);
 
+            //
+			// This will wait until consumer (SageStreamWidget) consumes the data if the queueLength > 0
+			// (i.e. until consumer calls doubleBuffer->releaseBackBuffer())
+            // Otherwise, it will increase the queueLength and do pthread_cond_signal(notEmpty)
+            //
+			_doubleBuffer->swapBuffer();
+			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "swapBuffer returned";
 
+            emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
 
-        /*
-        if (s->value("system/scheduler",false).toBool()) {
-//            qreal adjustment = (1.0 / perf->getAdjustedFps()) - (1.0 / perf->getExpetctedFps()); // in second
-            qreal adjustment_msec = 1000.0 * (1.0/perf->getAdjustedFps());
-
-            if ( adjustment_msec > 0 ) {
-                // adding delay to respect the adjusted quality
-                QThread::msleep( (unsigned long)adjustment_msec );
-
-//                //
-//                struct timespec request;
-//                request.tv_sec = 0;
-//                request.tv_nsec = (long)adjustment * 1e+9;
-//                if ( clock_nanosleep(CLOCK_PROCESS_CPUTIME_ID, 0, &request, 0) != 0) {
-////                        perror("\n\nclock_nanosleep");
-//                }
-//                //
-            }
+			//
+			// getFrontBuffer() will return immediately. There's no mutex waiting in this function
+			//
+			bufptr = static_cast<QImage *>(_doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
         }
-        */
-        if (_delay > 0) {
-//            qDebug() << "sagepixelreceiver::run() : _delay" << _delay << "msec";
-            QThread::msleep(_delay);
-        }
-
-        ssize_t totalread = 0;
-		ssize_t read = 0;
 
         // recv header
 		/*
@@ -248,81 +243,46 @@ void SN_SagePixelReceiver::run() {
 		sscanf(header.constData(), "%d %d %d %d", &fnum, &pixelSize, &memWidth, &bufSize);
 		qDebug("PixelReceiver::%s() : received block header [%s]", __FUNCTION__, header.constData());
 		*/
-			
 
+        //
 		// PIXEL RECEIVING
-		while (totalread < byteCount ) {
-			// If remaining byte is smaller than user buffer length (which is groupSize)
-			if ( byteCount-totalread < _appInfo->networkUserBufferLength() ) {
-				read = recv(_tcpsocket, bufptr, byteCount-totalread ,0 );
-			}
-			// otherwise, always read groupSize bytes
-			else {
-				read = recv(_tcpsocket, bufptr, _appInfo->networkUserBufferLength(), 0);
-			}
-			if ( read == -1 ) {
-				qDebug("SagePixelReceiver::run() : error while reading.");
-				_end = true;
-				break;
-			}
-			else if ( read == 0 ) {
-				qDebug("SagePixelReceiver::run() : sender disconnected");
-				_end = true;
-				break;
-			}
-			// advance pointer
-			bufptr += read;
-			totalread += read;
-		}
-		if ( totalread < byteCount  ||  _end ) break;
-		read = totalread;
+        //
+        ssize_t totalread = 0;
+        ssize_t read = 0;
+        while (totalread < byteCount ) {
+            // If remaining byte is smaller than user buffer length (which is groupSize)
+            if ( byteCount-totalread < _appInfo->networkUserBufferLength() ) {
+                read = recv(_tcpsocket, bufptr, byteCount-totalread ,0 );
+            }
+            // otherwise, always read groupSize bytes
+            else {
+                read = recv(_tcpsocket, bufptr, _appInfo->networkUserBufferLength(), 0);
+            }
+            if ( read == -1 ) {
+                qDebug("SagePixelReceiver::run() : error while reading.");
+                _end = true;
+                break;
+            }
+            else if ( read == 0 ) {
+                qDebug("SagePixelReceiver::run() : sender disconnected");
+                _end = true;
+                break;
+            }
+            // advance pointer
+            bufptr += read;
+            totalread += read;
+        }
+        if ( totalread < byteCount  ||  _end ) break;
 
-        if (!_usePbo) {
-			Q_ASSERT(_doubleBuffer);
 
-			// will wait until consumer (SageStreamWidget) consumes the data
-			// i.e. until consumer calls doubleBuffer->releaseBackBuffer();
-			_doubleBuffer->swapBuffer();
-			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "swapBuffer returned";
-
-			emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
-
-			//
-			// getFrontBuffer() will return immediately. There's no mutex waiting in this function
-			//
-			bufptr = static_cast<QImage *>(_doubleBuffer->getFrontBuffer())->bits(); // bits() will detach
-		}
-
-		/**********************************************/ // scheduling with wait condition
-        /*
-		if (s->value("system/scheduler").toBool()) {
-			if ( QString::compare(s->value("system/scheduler_type").toString(), "SMART", Qt::CaseInsensitive) == 0) {
-				_mutex.lock();
-				_waitCond.wait(&_mutex);
-				_mutex.unlock();
-			}
-			else {
-				qreal adjustment = (1.0 / perf->getAdjustedFps()) - (1.0 / perf->getExpetctedFps()); // second
-				adjustment *= 1000.0; // milli-second
-
-				if ( adjustment > 0 ) {
-					// adding delay to respect the adjusted quality
-					QThread::msleep( (unsigned long)adjustment );
-
-//                    struct timespec delay;
-//                    delay.tv_sec = 0;
-//                    delay.tv_nsec = adjustment * 1000000; // nano sec
-//                    nanosleep(&delay, 0);
-				}
-			}
-		}
-        */
-		/********************************************/
-
-		if (_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
+		if (_perfMon && _isRMonitor) {
             gettimeofday(&tve, 0);
 
-            qreal actualtime_second = ((double)tve.tv_sec + (double)tve.tv_usec * 1e-6) - ((double)tvs.tv_sec + (double)tvs.tv_usec * 1e-6);
+            //
+            // This includes the extra delay the scheduler demands
+            // So it's effective per frame delay (effective B/W and FPS)
+            //
+            qreal effectiveDelay_second = ((double)tve.tv_sec + (double)tve.tv_usec * 1e-6) - ((double)tvs.tv_sec + (double)tvs.tv_usec * 1e-6);
             tvs = tve;
 
 /*
@@ -333,18 +293,25 @@ void SN_SagePixelReceiver::run() {
 */
 
             //
-			// calculate delay, fps, cpu usage, everything...
-            // perfMon->recvTimer will be restarted in this function.
-            // So the delay calculated in this function includes blocking (which is forced by the pixel streamer) delay
+			// calculate the effective delay, fps, cpu usage, everything...
+            // So the delay calculated in this function includes all the delays
             //
 			//_perfMon->addToCumulativeByteReceived(read, actualtime_second, cputime_second);
-			_perfMon->addToCumulativeByteReceived(read, actualtime_second, 0);
+			_perfMon->addToCumulativeByteReceived(totalread, effectiveDelay_second, 0);
 		}
+
+        if (_isScheduler) {
+            recvDelay = QDateTime::currentMSecsSinceEpoch() - start;
+
+            if (_delay > 0  &&  _delay > recvDelay) {
+//                qDebug() << "run() : widget" << _sageWidget->globalAppId() << "demanded delay" << _delay << ". so delaying" << _delay-recvDelay << "msec more";
+                QThread::msleep( _delay - recvDelay );
+            }
+        }
+
 	} /*** end of receiving loop ***/
 
 	/* pixel receiving thread exit */
 //	qDebug("SagePixelReceiver : thread exit");
 }
-
-
 

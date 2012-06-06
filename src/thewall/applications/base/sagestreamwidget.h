@@ -229,7 +229,6 @@ protected:
 	GLhandleARB _shaderProgHandle;
 
 
-
     /*!
       BLAME_XINERAMA
       */

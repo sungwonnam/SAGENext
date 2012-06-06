@@ -34,7 +34,9 @@ int SN_SageStreamMplayer::setQuality(qreal newQuality) {
         return 0;
     }
 
-    unsigned long delayneeded = 0;
+    qDebug() << "widget" << _globalAppId <<  "MPlayer quality" << newQuality;
+
+    qint64 delayneeded = 0;
 
     if ( newQuality >= 1.0 ) {
 		_quality = 1.0;
@@ -48,33 +50,27 @@ int SN_SageStreamMplayer::setQuality(qreal newQuality) {
     //
     // And it means the streamer (SAGE app) isn't sending any pixel
     //
-    /*
 	else if ( newQuality <= 0.0 ) {
 		_quality = 0.0;
         if (!_isMplayerPaused)
             pauseMplayer();
         return 0;
 	}
-    */
 
 	else {
-        if (newQuality <= 0.0)
-            _quality = 0.1;
-        else
-            _quality = newQuality;
+        _quality = newQuality;
 
         qreal newfps = _quality * _perfMon->getExpetctedFps(); // based on the priori
-        delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps())); // in msec
+//        delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps())); // in msec
+        delayneeded = 1000 / newfps;
 	}
 
-/*
     if (_isMplayerPaused) {
         playMplayer();
     }
-*/
 
     if (_receiverThread) {
-        if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(unsigned long, delayneeded)) ) {
+        if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(qint64, delayneeded)) ) {
             qDebug() << "SN_SageStreamMplayer::setQuality() : failed to invoke setDelay_msec()";
             return -1;
         }
