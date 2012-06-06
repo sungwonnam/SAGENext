@@ -533,6 +533,12 @@ void SN_ProportionalShareScheduler::doSchedule() {
             //
             widgetMapByPriority.insertMulti(rw->priority(), rw);
         }
+        else if (rw->priority() == 0) {
+            rw->setQuality(0);
+        }
+        else {
+            rw->setQuality(1);
+        }
 	}
 
 
@@ -556,6 +562,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
     // loop's terminate condition
     QBitArray bitarray(widgetMapByPriority.size());
 
+    quint64 itercount = 0;
 
     //
     // start iteration
@@ -574,6 +581,9 @@ void SN_ProportionalShareScheduler::doSchedule() {
 
         qreal AdjustedSumPriority = SumPriority; // reset the sum for next iteration
 
+        itercount++;
+//        qDebug() << "\nIteration start" << itercount << "TotalR" << TotalResource << "# done" << bitarray.count(true) << "/" << widgetMapByPriority.size();
+
 
         //
         // For each app
@@ -585,6 +595,10 @@ void SN_ProportionalShareScheduler::doSchedule() {
             Q_ASSERT(rw->priorityData());
             Q_ASSERT(rw->perfMon());
 
+//            quint64 gaid = rw->globalAppId();
+
+            qreal priority = rw->priority();
+
             //
             // This is the amount I need to ensure 100% performance (quality 1.0)
             //
@@ -594,97 +608,102 @@ void SN_ProportionalShareScheduler::doSchedule() {
             // I'm over allocated
             //
             if ( resources[index] > rwDesired ) {
-                resources[index] = rwDesired;
                 TotalResource += (resources[index] - rwDesired); // return the extra
 
-                bitarray.setBit(index, true); // I don't need further actions
+                resources[index] = rwDesired; // I'll be allocated the amount I wanted
 
-                AdjustedSumPriority -= rw->priority();
+                bitarray.setBit(index, true); // I'm done. I don't need further actions
+
+                AdjustedSumPriority -= priority;
 
 //                qDebug() << "Overallocated" << resources[index] << rwDesired;
             }
 
             //
-            // Everything is perfect for me
+            // Everything is perfect for me. So  I'm done
             //
             else if (resources[index] == rwDesired) {
                 bitarray.setBit(index, true); // I don't need further actions
 
-                AdjustedSumPriority -= rw->priority();
+                AdjustedSumPriority -= priority;
 
-//                qDebug() << "Perfect allocation" << rwDesired;
+//                qDebug() << "\tPerfect allocation for GID" << gaid;
             }
 
 
             else {
-//                qDebug() << "need allocation" << rwDesired;
-
                 //
-                // This tells how much this app is important compared to others.
+                // e.g. When the app window is compeletly obscured by other window
                 //
-                qreal priorityProportion = 0;
-                if ( AdjustedSumPriority <= 0) {
-//                    qDebug() << "SN_ProportionalShareScheduler::doSchedule() : AdjustedSumPriority <= 0";
-                }
-                else {
-                    priorityProportion = rw->priority() / AdjustedSumPriority; // priority proportion
-                }
-
-                //
-                // The amount of resource for THIS app to show X % of quality.
-                // !!! This assumes that an app provides its resource requirement !!!
-                //
-                qreal amount_needed_for_quality_X = rw->perfMon()->getRequiredBW_Mbps( TheSizeOfBucket );
-
-                //
-                // During a single iteration, this app should receive this amount.
-                // This is to ensure fairness based on priority and visual quality
-                //
-                qreal size_of_single_scoop = priorityProportion * amount_needed_for_quality_X;
-
-                qreal remainingroom = rwDesired - resources[index];
-
-
-                //
-                // I don't need any resource !!
-                // because either
-                // my priority is 0
-                // or
-                // my Rq is 0
-                //
-                if (size_of_single_scoop == 0) {
-                    TotalResource += resources[index]; // return resources
+                if (priority == 0) {
                     resources[index] = 0; // cause I don't need it
-
                     bitarray.setBit(index, true); // I don't need further actions. Ensure the terminate condition
                 }
-
                 //
-                // I just need a little bit more
-                // I will be running at 100%
+                // e.g. Interactive app is not being interacted
                 //
-                else if ( size_of_single_scoop > remainingroom ) {
-
-                    TotalResource -= remainingroom; // take resources
-                    resources[index] += remainingroom;
-
-                    bitarray.setBit(index, true); // I don't need further actions because I'm getting the amount == Rq
-
-                    AdjustedSumPriority -= rw->priority();
+                else if (rwDesired == 0) {
+                    resources[index] = 0; // cause I don't need it
+                    bitarray.setBit(index, true); // I don't need further actions. Ensure the terminate condition
+                    AdjustedSumPriority -= priority;
                 }
-
-                //
-                // I might not be able to run at 100%
-                //
                 else {
-                    TotalResource -= size_of_single_scoop; // take resources
-                    resources[index] += size_of_single_scoop;
+                    //
+                    // This tells how much this app is important compared to others.
+                    //
+                    qreal priorityProportion = 0;
+                    if ( AdjustedSumPriority <= 0) {
+                        qDebug() << "SN_ProportionalShareScheduler::doSchedule() : ERROR ! AdjustedSumPriority" << AdjustedSumPriority;
+                        break; // break the 'for each app' loop
+                    }
+                    else {
+                        priorityProportion = priority / AdjustedSumPriority; // priority proportion
+                    }
 
-                    bitarray.setBit(index, false); // There might be resources that I can get more. So, I'm not done yet.
+                    //
+                    // The amount of resource for THIS app to show X % of quality.
+                    // !!! This assumes that an app provides its resource requirement !!!
+                    //
+                    qreal amount_needed_for_quality_X = rw->perfMon()->getRequiredBW_Mbps( TheSizeOfBucket );
+
+                    //
+                    // During a single iteration, this app should receive this amount.
+                    // This is to ensure fairness based on priority and visual quality
+                    //
+                    qreal size_of_single_scoop = priorityProportion * amount_needed_for_quality_X;
+
+                    qreal remainingroom = rwDesired - resources[index];
+
+                    //
+                    // I need the amount less than single scoop
+                    // So, I will be running at 100%
+                    //
+                    if ( size_of_single_scoop >= remainingroom ) {
+
+                        TotalResource -= remainingroom; // take resources
+                        resources[index] += remainingroom;
+
+                        bitarray.setBit(index, true); // I don't need further actions because I'm getting the amount == Rq
+
+                        AdjustedSumPriority -= priority;
+                    }
+
+                    //
+                    // I might not be able to run at 100%
+                    //
+                    else {
+                        TotalResource -= size_of_single_scoop; // take resources
+                        resources[index] += size_of_single_scoop;
+
+                        bitarray.setBit(index, false); // There might be resources that I can get more. So, I'm not done yet.
+                    }
                 }
             }
 
-        } // ENd of for each app
+        } // end of for each app
+
+
+//        qDebug() << "Iteration end" << itercount << "TotalR" << TotalResource << "# done" << bitarray.count(true) << "/" << widgetMapByPriority.size();
 
     } // end of while( TotalResource > 0   &&   bitarray.count(true) < # apps )
 
@@ -697,9 +716,9 @@ void SN_ProportionalShareScheduler::doSchedule() {
     for (wmap_it = widgetMapByPriority.constBegin(); wmap_it != widgetMapByPriority.constEnd(); wmap_it++) {
         SN_BaseWidget *rw = wmap_it.value();
 
-        if (!rw || !rw->priorityData()) continue;
+        if (!rw) continue;
 
-//        qDebug() << "\t" << rw->globalAppId() << ":" << rw->priority() << ":" << 100 * (resources[index]/rw->perfMon()->getReqBandwidthMbps()) << "%";
+//        qDebug() << "\t" << rw->globalAppId() << ":" << rw->priority() << ":" << resources[index];
 
         if ( rw->perfMon()->getRequiredBW_Mbps() > 0 ) {
             rw->setQuality( resources[index] / rw->perfMon()->getRequiredBW_Mbps() );

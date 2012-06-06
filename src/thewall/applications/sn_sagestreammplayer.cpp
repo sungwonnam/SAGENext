@@ -34,8 +34,6 @@ int SN_SageStreamMplayer::setQuality(qreal newQuality) {
         return 0;
     }
 
-    qDebug() << "widget" << _globalAppId <<  "MPlayer quality" << newQuality;
-
     qint64 delayneeded = 0;
 
     if ( newQuality >= 1.0 ) {
