@@ -252,11 +252,11 @@ void SN_SagePixelReceiver::run() {
         while (totalread < byteCount ) {
             // If remaining byte is smaller than user buffer length (which is groupSize)
             if ( byteCount-totalread < _appInfo->networkUserBufferLength() ) {
-                read = recv(_tcpsocket, bufptr, byteCount-totalread ,0 );
+                read = recv(_tcpsocket, bufptr, byteCount-totalread , MSG_WAITALL);
             }
             // otherwise, always read groupSize bytes
             else {
-                read = recv(_tcpsocket, bufptr, _appInfo->networkUserBufferLength(), 0);
+                read = recv(_tcpsocket, bufptr, _appInfo->networkUserBufferLength(), MSG_WAITALL);
             }
             if ( read == -1 ) {
                 qDebug("SagePixelReceiver::run() : error while reading.");

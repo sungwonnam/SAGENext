@@ -99,17 +99,23 @@ qDebug() << "recvThred::run()";
 		}
 
 		ssize_t bytesRead = 0;
-	    int bytes = buffer.size();
 	    int actualRead = 0;
+        int buflen = 65536;
+        char *bufptr = buffer.data();
 
 	    while (bytesRead < buffer.size()) {
-			char *bufptr = buffer.data() + bytesRead;
 
-		   actualRead = ::recv(_socket, (void *)bufptr, bytes, MSG_WAITALL);
+            if ( buffer.size() - bytesRead < buflen ) {
+                actualRead = ::recv(_socket, (void *)bufptr, buffer.size()-bytesRead, MSG_WAITALL);
+            }
+            else {
+                actualRead = ::recv(_socket, (void *)bufptr, buflen, MSG_WAITALL);
+            }
+
 
 		   if (actualRead < 0) {
 			  qCritical("recv() - error in recv() system call");
-			  qCritical("=== received data: %d bytes, remaining %d bytes", bytesRead, bytes);
+//			  qCritical("=== received data: %d bytes, remaining %d bytes", bytesRead, bytes);
 			  _end = true;
 			  break;
 		   }
@@ -119,8 +125,8 @@ qDebug() << "recvThred::run()";
 			  break;
 		   }
 
-			  bytesRead += actualRead;
-			  bytes = buffer.size() - bytesRead;
+           bufptr += actualRead;
+           bytesRead += actualRead;
 	    }
 
         emit frameReceived();

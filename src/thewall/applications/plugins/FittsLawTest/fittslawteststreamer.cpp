@@ -16,6 +16,9 @@ int sendFrame(int socket, char *buf, int buflen);
 
 // width, height, framerate, listening port
 
+#define BUF_LEN 65536
+#define MAX_FPS 60
+
 int main(int argc, char **argv) {
 
 	if (argc < 5) {
@@ -37,20 +40,32 @@ int main(int argc, char **argv) {
 	char *buffer = (char *)malloc(sizeof(char) * bufsize);
 	printf("buffer size %d x %d x 3 = %d Byte\n", width, height, bufsize);
 
+    double frameDelay = 1.0f / MAX_FPS;
+    double elapsed = 0;
+
+    struct timeval tvs,tve;
 
 	while(1) {
+        gettimeofday(&tvs, 0);
+
 		//  wait for signal from the receiver
 		// this is to synchronize send/recv operations
 		// for some reason, in venom,
 		recv(streamsock, buffer, 1024, MSG_WAITALL);
 
-
-		int sent = 0;
 		//
 		// recv() must be called BEFORE the sender calls send()
 		//
-		sent = sendFrame(streamsock, buffer, bufsize);
+		int sent = sendFrame(streamsock, buffer, bufsize);
 		//printf("sent %d byte\n", sent);
+
+        gettimeofday(&tve, 0);
+
+        elapsed = ((double)tve.tv_sec + (double)tve.tv_usec * 1e-6) - ((double)tvs.tv_sec + (double)tvs.tv_usec * 1e-6);
+        if ( elapsed > 0 && frameDelay > elapsed ) {
+            usleep(1e+6 * (frameDelay-elapsed));
+            elapsed = 0;
+        }
 	}
 
 	printf("Streaming loop finished. Goodbye\n");
@@ -118,13 +133,16 @@ int waitForConnection(int port) {
 int sendFrame(int streamsock, char *buffer, int bufsize) {
 	int byteSentSofar = 0;
 	int actualSent = 0;
-	int bytesRemained = bufsize;
+    char *bufptr = buffer;
 
 	while(byteSentSofar < bufsize)
 	{
-		char *bufptr = buffer + byteSentSofar;
-
-		actualSent = send(streamsock, bufptr, bytesRemained, 0);
+        if (bufsize - byteSentSofar < BUF_LEN) {
+            actualSent = send(streamsock, bufptr, bufsize-byteSentSofar);
+        }
+        else {
+            actualSent = send(streamsock, bufptr, BUF_LEN);
+        }
 
 		if (actualSent == -1) {
 			perror("send");
@@ -135,8 +153,8 @@ int sendFrame(int streamsock, char *buffer, int bufsize) {
 			return 0;
 		}
 
+        bufptr += actualSent;
 		byteSentSofar += actualSent;
-		bytesRemained = bufsize - byteSentSofar;
 	}
 	return byteSentSofar;
 }
