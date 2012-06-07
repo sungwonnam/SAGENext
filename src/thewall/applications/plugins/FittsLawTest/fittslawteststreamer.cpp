@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -138,10 +139,10 @@ int sendFrame(int streamsock, char *buffer, int bufsize) {
 	while(byteSentSofar < bufsize)
 	{
         if (bufsize - byteSentSofar < BUF_LEN) {
-            actualSent = send(streamsock, bufptr, bufsize-byteSentSofar);
+            actualSent = send(streamsock, bufptr, bufsize-byteSentSofar, 0);
         }
         else {
-            actualSent = send(streamsock, bufptr, BUF_LEN);
+            actualSent = send(streamsock, bufptr, BUF_LEN, 0);
         }
 
 		if (actualSent == -1) {
