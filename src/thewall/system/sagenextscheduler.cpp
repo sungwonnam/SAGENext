@@ -21,14 +21,13 @@ SN_SchedulerControl::SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent
     , _granularity(1000)
     , _scheduler(0)
 //    , _isRunning(false)
-    , controlPanel(0)
+    , _controlPanel(0)
+    , _lbl_schedStatus(0)
     , _sched_thread(new QThread)
 {
 //	qDebug("%s::%s() : %d scheduler have started", metaObject()->className(), __FUNCTION__, schedList.size());
 //	connect(resourceMonitor, SIGNAL(appRemoved(int)), this, SLOT(loadBalance()));
 
-     QObject::connect(_sched_thread, SIGNAL(started()), this, SIGNAL(schedulerStarted()));
-     QObject::connect(_sched_thread, SIGNAL(finished()), this, SIGNAL(schedulerFinished()));
 }
 
 SN_SchedulerControl::~SN_SchedulerControl() {
@@ -68,7 +67,12 @@ void SN_SchedulerControl::startScheduler() {
     qDebug() << "SN_SchedulerControl::startScheduler() : starting schedule thread";
 
     _sched_thread->start();
+
+    if (_lbl_schedStatus) {
+        _lbl_schedStatus->setText("Scheduling !");
+    }
 }
+
 
 void SN_SchedulerControl::stopScheduler() {
     /*
@@ -92,19 +96,32 @@ void SN_SchedulerControl::stopScheduler() {
         }
 
         _scheduler->reset();
+
+        if (_lbl_schedStatus) {
+            _lbl_schedStatus->setText("No Scheduling");
+        }
     }
 }
 
-void SN_SchedulerControl::killScheduler() {
-    stopScheduler();
 
-	if (controlPanel) {
-		controlPanel->close();
-		delete controlPanel;
-        controlPanel = 0;
+void SN_SchedulerControl::killScheduler() {
+	if (_controlPanel) {
+		_controlPanel->close();
+		delete _controlPanel;
+        _controlPanel = 0;
 	}
 
     if (_sched_thread) {
+        if ( ! QObject::disconnect(_scheduler, SLOT(doSchedule())) ) {
+            qDebug() << "SN_SchedulerControl::killScheduler() : failed to disconnect doSchedule()";
+        }
+
+        if (_sched_thread->isRunning()) {
+            _sched_thread->quit();
+            _sched_thread->wait();
+            qDebug() << "SN_SchedulerControl::killScheduler() : Scheduling thread finished";
+        }
+
         delete _sched_thread;
         _sched_thread = 0;
     }
@@ -150,16 +167,19 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
     case SN_SchedulerControl::ProportionalShare : {
         _scheduler = new SN_ProportionalShareScheduler(_rMonitor, msec);
 
-        QVBoxLayout *hl = new QVBoxLayout;
+        QVBoxLayout *vl = new QVBoxLayout;
+
+        _lbl_schedStatus = new QLabel;
 
         QPushButton *toggle = new QPushButton("toggle scheduler");
         QObject::connect(toggle, SIGNAL(clicked()), this, SLOT(toggleSchedulerStatus()));
 
-        hl->addWidget(toggle);
+        vl->addWidget(_lbl_schedStatus); // first item is the label
+        vl->addWidget(toggle);
 
-        if (!controlPanel)
-            controlPanel = new QFrame;
-        controlPanel->setLayout(hl);
+        if (!_controlPanel)
+            _controlPanel = new QFrame;
+        _controlPanel->setLayout(vl);
 
         break;
     }
@@ -225,17 +245,19 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 		hl->addLayout(vld);
 		hl->addLayout(vli);
 
+        _lbl_schedStatus = new QLabel;
 
         QPushButton *button  = new QPushButton("Toggle Scheduler");
         QObject::connect(button, SIGNAL(clicked()), this, SLOT(toggleSchedulerStatus()));
 
         QVBoxLayout *vlayout = new QVBoxLayout;
+        vlayout->addWidget(_lbl_schedStatus); // first item is the label
         vlayout->addLayout(hl);
         vlayout->addWidget(button);
 
 
-		if (!controlPanel) controlPanel = new QFrame;
-		controlPanel->setLayout(vlayout);
+		if (!_controlPanel) _controlPanel = new QFrame;
+		_controlPanel->setLayout(vlayout);
 
 		break;
 	}
@@ -256,21 +278,21 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 
         startScheduler();
 
-        if (controlPanel) {
+        if (_controlPanel) {
 
             if (_rMonitor->rMonWidget()) {
                 // show inside rmonitor widget
-                _rMonitor->rMonWidget()->setSchedCtrlFrame(controlPanel);
+                _rMonitor->rMonWidget()->setSchedCtrlFrame(_controlPanel);
 
                 // rMonWidget will take ownership of the controlPanel
                 // so make sure the schedControl doesn't touch the controlPanel
-                controlPanel = 0;
+                _controlPanel = 0;
             }
             else {
                 // show top-level widget
-                controlPanel->setWindowTitle("Scheduler Control");
-                controlPanel->adjustSize();
-                controlPanel->show();
+                _controlPanel->setWindowTitle("Scheduler Control");
+                _controlPanel->adjustSize();
+                _controlPanel->show();
             }
         }
     }

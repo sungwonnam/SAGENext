@@ -558,7 +558,8 @@ void SN_ResourceMonitor::refresh() {
 	_widgetListRWlock.unlock();
 
     //
-    // let the scheculer::doSchedule() invoked
+    // This will invoke RMonitorWidget::refresh()
+    // This will also invoke SchedulerControl::readyToSchedule() signal which is connected to the scheculer::doSchedule() slot
     //
     emit dataRefreshed();
 }

@@ -118,6 +118,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
         //
         if ( _currEffectiveBW_Mbps == 0 ) {
             _requiredBW_Mbps = 0;
+            _currEffectiveFps = 0;
         }
 
         //
@@ -150,6 +151,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                 if ( _widget->demandedQuality() >= 0.9) {
 
                     _requiredBW_Mbps = 1.2f * _requiredBW_Mbps; // INCREASE Rq
+                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "INCREASE Rq" << _requiredBW_Mbps;
 
                 }
 

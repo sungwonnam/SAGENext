@@ -58,6 +58,8 @@ qDebug() << "recvThred::run()";
 
     qint64 timestamp = 0;
 
+    int coin = 1;
+
     while (!_end) {
 
         timestamp = QDateTime::currentMSecsSinceEpoch();
@@ -77,7 +79,7 @@ qDebug() << "recvThred::run()";
         //
         // recv() only when mouse moved
         //
-        _sema->acquire(2);
+        _sema->acquire(1);
 
 //		qDebug() << "will recv()"  << buffer.size() << "Byte";
 		//
@@ -121,7 +123,13 @@ qDebug() << "recvThred::run()";
            bytesRead += actualRead;
 	    }
 
-        emit frameReceived();
+        //
+        // invoke scheduleUpdate() which will call update()
+        //
+        if (coin) {
+            emit frameReceived();
+        }
+//        coin = (coin + 1) % 2;
 
         if (_perfMon) {
             gettimeofday(&tve, 0);
@@ -145,7 +153,7 @@ qDebug() << "recvThred::run()";
 
         qint64 delay = QDateTime::currentMSecsSinceEpoch() - timestamp;
         if (_demandedDelay > 0  &&  _demandedDelay - delay > 0) {
-            qDebug() << "run() : " << _demandedDelay << delay << _demandedDelay - delay;
+            qDebug() << "FittsLawTestStreamReceiverThread::run() : Quality Control !" << _demandedDelay << delay << _demandedDelay - delay;
             QThread::msleep(_demandedDelay - delay);
         }
 

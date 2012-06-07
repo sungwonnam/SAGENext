@@ -87,16 +87,17 @@ private:
 	/*!
 	  control panel GUI for SelfAdjusting
 	  */
-	QFrame *controlPanel;
+	QFrame *_controlPanel;
+
+    QLabel *_lbl_schedStatus;
 
     QThread *_sched_thread;
 
 signals:
+    /*!
+      This signal is invoked (not emitted) by rMonitor::dataRefreshed() signal emitted in the rMonitor::refresh() function
+      */
     void readyToSchedule();
-
-    void schedulerStarted();
-
-    void schedulerFinished();
 
 public slots:
     void startScheduler();

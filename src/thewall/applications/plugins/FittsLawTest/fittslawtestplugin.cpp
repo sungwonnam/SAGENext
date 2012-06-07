@@ -11,8 +11,10 @@ int FittsLawTestData::_NUM_SUBJECTS = 1;
 int FittsLawTest::_NUM_TARGET_PER_ROUND = 5;
 
 // 131.193.78.176 (bigdaddy 100 Mbps)
+// 131.193.78.142 (venom 100 Mbps)
 // 67.58.62.57 (bigdaddy 10 Gbps)
 // 67.58.62.45 (venom 10 Gbps)
+//const QString FittsLawTest::_streamerIpAddr = QString("131.193.78.142");
 const QString FittsLawTest::_streamerIpAddr = QString("67.58.62.45");
 const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
 
@@ -75,6 +77,7 @@ FittsLawTest::FittsLawTest()
 SN_BaseWidget * FittsLawTest::createInstance() {
     FittsLawTest *newwidget = new FittsLawTest;
 
+    if (!_dataObject) _dataObject = new FittsLawTestData;
     _dataObject->addWidget(newwidget);
 
     newwidget->_init();
@@ -184,7 +187,7 @@ void FittsLawTest::_init() {
 
     setLayout(mainlayout);
 
-    //resize(640, 480);
+//    resize(640, 480);
     resize(1920, 1080);
 
     _appInfo->setExecutableName("fittslawteststreamer");
@@ -392,6 +395,10 @@ void FittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, Q
 //        painter->drawPixmap(_cursorPoint, _cursorPixmap);
 
         _cursor->setPos( mapToItem(_contentWidget, _cursorPoint) );
+
+        if (_isDryRun) {
+            painter->drawText( _contentWidget->geometry(), Qt::AlignCenter, "PRACTICE RUN");
+        }
     }
 
     SN_BaseWidget::paint(painter, o, w);
@@ -539,7 +546,7 @@ void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
                 // upon receiving a frame, the receiver thread will emit frameReceived()
                 // which is connected up scheduleUpdate()
                 //
-				if (_sema.available() <= 1)
+				if (_sema.available() == 0)
                 	_sema.release(1);
             }
             else {
@@ -914,12 +921,13 @@ FittsLawTestData::FittsLawTestData(QObject *parent)
     , _frame(0)
     , _isDryRun(true)
 {
-//    qDebug() << "FittsLawTestData::FittsLawTestData()";
+
     _filenameBase = QDir::homePath().append("/.sagenext/");
+    qDebug() << "FittsLawTestData::FittsLawTestData()";
 }
 
 FittsLawTestData::~FittsLawTestData() {
-    qDebug() << "FittsLawTestData::~FittsLawTestData()";
+
 
     if (_frame) {
         delete _frame;
@@ -929,6 +937,8 @@ FittsLawTestData::~FittsLawTestData() {
     _widgetMap.clear();
     _perAppDataFiles.clear();
     _perAppOuts.clear();
+
+    qDebug() << "FittsLawTestData::~FittsLawTestData()";
 }
 
 void FittsLawTestData::m_createGUI() {
@@ -955,6 +965,7 @@ void FittsLawTestData::m_createGUI() {
     }
 
     _frame->show();
+    _frame->move(QPoint(10,10));
 }
 
 void FittsLawTestData::closeAll() {
