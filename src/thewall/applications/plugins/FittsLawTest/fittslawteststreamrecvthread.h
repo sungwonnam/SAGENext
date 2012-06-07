@@ -37,7 +37,7 @@ private:
     /*!
       set by the scheduler
       */
-    unsigned long _extraDelay;
+    unsigned long _demandedDelay;
 
     QSemaphore *_sema;
 
@@ -74,7 +74,7 @@ public slots:
     /*!
       This is to adjust quality
       */
-    inline void setExtraDelay_Msec(unsigned long delay) {_extraDelay = delay;}
+    inline void setDelay_Msec(unsigned long delay) {_demandedDelay = delay;}
 };
 
 

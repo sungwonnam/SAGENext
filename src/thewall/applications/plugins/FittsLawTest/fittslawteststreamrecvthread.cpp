@@ -18,7 +18,7 @@ FittsLawTestStreamReceiverThread::FittsLawTestStreamReceiverThread(const QSize &
     , _socket(0)
     , _end(false)
     , _perfMon(pmon)
-    , _extraDelay(0)
+    , _demandedDelay(0)
     , _sema(sm)
 {
     _socket = ::socket(AF_INET, SOCK_STREAM, 0);
@@ -42,23 +42,25 @@ qDebug() << "recvThred::run()";
 
     QByteArray buffer(_imgSize.width() * _imgSize.height() * 3, 0); // 3 byte per pixel
 
-    /*
     // Actual time elapsed
 	struct timeval tvs, tve;
 
     // CPU time elapsed
-    struct timespec ts_start, ts_end;
+//    struct timespec ts_start, ts_end;
 
     if(_perfMon) {
         gettimeofday(&tvs, 0);
 
         // #include <time.h>
         // Link with -lrt
-        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_start);
+//        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_start);
 	}
-*/
+
+    qint64 timestamp = 0;
 
     while (!_end) {
+
+        timestamp = QDateTime::currentMSecsSinceEpoch();
 
         /*
         if (s->value("system/scheduler",false).toBool()) {
@@ -72,20 +74,10 @@ qDebug() << "recvThred::run()";
         }
         */
 
-
-
+        //
+        // recv() only when mouse moved
+        //
         _sema->acquire(1);
-//qDebug() << "recvThread sema acquired";
-
-
-        if (_extraDelay > 0) {
-            //
-            // This assumes the recv() latency below is neglible
-            // in calculating real FPS
-            //
-            qDebug() << "FittsLawTestStreamReceiverThread::run() : The delay demanded by the scheduler" << _extraDelay << "msec";
-            QThread::msleep(_extraDelay);
-        }
 
 //		qDebug() << "will recv()"  << buffer.size() << "Byte";
 		//
@@ -132,20 +124,15 @@ qDebug() << "recvThred::run()";
         emit frameReceived();
 
         if (_perfMon) {
-            _perfMon->addToCumulativeByteReceived(bytesRead);
-        }
-
-        /*
-        if (_perfMon) {
             gettimeofday(&tve, 0);
 
             qreal actualtime_second = ((double)tve.tv_sec + (double)tve.tv_usec * 1e-6) - ((double)tvs.tv_sec + (double)tvs.tv_usec * 1e-6);
             tvs = tve;
 
-            clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_end);
+//            clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts_end);
 
-			qreal cputime_second = ((double)ts_end.tv_sec + (double)ts_end.tv_nsec * 1e-9) - ((double)ts_start.tv_sec + (double)ts_start.tv_nsec * 1e-9);
-            ts_start = ts_end;
+//			qreal cputime_second = ((double)ts_end.tv_sec + (double)ts_end.tv_nsec * 1e-9) - ((double)ts_start.tv_sec + (double)ts_start.tv_nsec * 1e-9);
+//            ts_start = ts_end;
 
 
             //
@@ -153,9 +140,15 @@ qDebug() << "recvThred::run()";
             // perfMon->recvTimer will be restarted in this function.
             // So the delay calculated in this function includes blocking (which is forced by the pixel streamer) delay
             //
-			_perfMon->updateDataWithLatencies(byterecv, actualtime_second, 0);
+			_perfMon->addToCumulativeByteReceived(bytesRead, actualtime_second, 0);
 		}
-        */
+
+        qint64 delay = QDateTime::currentMSecsSinceEpoch() - timestamp;
+        if (_demandedDelay > 0  &&  _demandedDelay - delay > 0) {
+            qDebug() << "run() : " << _demandedDelay << delay << _demandedDelay - delay;
+            QThread::msleep(_demandedDelay - delay);
+        }
+
     }
 
     qDebug() << "FittsLawTestStreamReceiverThread::run() : thread finished";

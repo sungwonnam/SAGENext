@@ -89,6 +89,7 @@ void SN_Priority::setLastInteraction(SN_Priority::IntrType t /* = NOINTR */, qin
 		_timeLastIntr = QDateTime::currentMSecsSinceEpoch();
 	}
 
+    /*
 	SN_Priority::IntrType type;
 	if ( t == SN_Priority::NOINTR) {
 		type = _typeLastIntr;
@@ -98,6 +99,7 @@ void SN_Priority::setLastInteraction(SN_Priority::IntrType t /* = NOINTR */, qin
 	}
 
 	_intrHistory.insert(_timeLastIntr, type);
+    */
 
 //	_ipm = qreal(_counter)/ (qreal(_timeLast - _timeFirst) / (60.0 * 60.0)); // per minute
 

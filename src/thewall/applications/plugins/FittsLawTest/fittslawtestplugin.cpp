@@ -7,14 +7,14 @@
 
 #include <QtGui>
 
-int FittsLawTestData::_NUM_SUBJECTS = 2;
-int FittsLawTest::_NUM_TARGET_PER_ROUND = 2;
+int FittsLawTestData::_NUM_SUBJECTS = 1;
+int FittsLawTest::_NUM_TARGET_PER_ROUND = 5;
 
 // 131.193.78.176 (bigdaddy 100 Mbps)
 // 67.58.62.57 (bigdaddy 10 Gbps)
 // 67.58.62.45 (venom 10 Gbps)
-const QString FittsLawTest::_streamerIpAddr = QString("131.193.78.142");
-const QSize FittsLawTest::_streamImageSize = QSize(640, 480);
+const QString FittsLawTest::_streamerIpAddr = QString("127.0.0.1");
+const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
 
 
 
@@ -184,8 +184,8 @@ void FittsLawTest::_init() {
 
     setLayout(mainlayout);
 
-    //resize(640, 480);
-    resize(1920, 1080);
+    resize(640, 480);
+//    resize(1920, 1080);
 
     _appInfo->setExecutableName("fittslawteststreamer");
     _appInfo->setSrcAddr(_streamerIpAddr);
@@ -286,21 +286,13 @@ int FittsLawTest::setQuality(qreal newQuality) {
 
         qreal fps_demanded =  1e+6 * bw_demanded / (_appInfo->frameSizeInByte() * 8.0f); // demanded by the scheduler
 
-        qreal delay_demanded = 1000 / fps_demanded; // in msec
-
-
-
-        qreal fps_current = 1e+6 * _perfMon->getCurrBW_Mbps() / (_appInfo->frameSizeInByte() * 8.0f); // curent effective fps
-
-        qreal delay_current = 1000 / fps_current; // in msec
-
-
-        thedelay = delay_demanded - delay_current;
+        qreal delay_demanded = 1000.0f / fps_demanded; // in msec
+        thedelay = delay_demanded;
 	}
 
 
     if (_recvThread) {
-        if ( ! QMetaObject::invokeMethod(_recvThread, "setExtraDelay_Msec", Qt::QueuedConnection, Q_ARG(unsigned long, thedelay)) ) {
+        if ( ! QMetaObject::invokeMethod(_recvThread, "setDelay_Msec", Qt::QueuedConnection, Q_ARG(unsigned long, thedelay)) ) {
             qDebug() << "FittsLawTest::setQuality() : failed to invoke _recvThread->setExtraDelay_Msec()";
             return -1;
         }

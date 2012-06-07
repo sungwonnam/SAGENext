@@ -551,8 +551,9 @@ void SN_ResourceMonitor::refresh() {
     // now another remote streaming came in showing 90Mbps while forcing the first one to 10 Mbps (link capacity is 100Mbps)
     // BW of the 2nd app is added to total which is now 190 Mbps !!
     //
-//    _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
-    _totalBWAchieved_Mbps = currentTotalBandwidth;
+    _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
+//    _totalBWAchieved_Mbps = currentTotalBandwidth;
+
 
 	_widgetListRWlock.unlock();
 
