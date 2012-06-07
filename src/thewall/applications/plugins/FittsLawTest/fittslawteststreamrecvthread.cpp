@@ -77,7 +77,7 @@ qDebug() << "recvThred::run()";
         //
         // recv() only when mouse moved
         //
-        _sema->acquire(1);
+        _sema->acquire(2);
 
 //		qDebug() << "will recv()"  << buffer.size() << "Byte";
 		//

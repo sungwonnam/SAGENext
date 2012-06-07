@@ -13,7 +13,7 @@ int FittsLawTest::_NUM_TARGET_PER_ROUND = 5;
 // 131.193.78.176 (bigdaddy 100 Mbps)
 // 67.58.62.57 (bigdaddy 10 Gbps)
 // 67.58.62.45 (venom 10 Gbps)
-const QString FittsLawTest::_streamerIpAddr = QString("127.0.0.1");
+const QString FittsLawTest::_streamerIpAddr = QString("67.58.62.45");
 const QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
 
 
@@ -184,8 +184,8 @@ void FittsLawTest::_init() {
 
     setLayout(mainlayout);
 
-    resize(640, 480);
-//    resize(1920, 1080);
+    //resize(640, 480);
+    resize(1920, 1080);
 
     _appInfo->setExecutableName("fittslawteststreamer");
     _appInfo->setSrcAddr(_streamerIpAddr);
@@ -539,7 +539,7 @@ void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
                 // upon receiving a frame, the receiver thread will emit frameReceived()
                 // which is connected up scheduleUpdate()
                 //
-				if (_sema.available() == 0)
+				if (_sema.available() <= 1)
                 	_sema.release(1);
             }
             else {
