@@ -150,7 +150,7 @@ void SN_SchedulerControl::toggleSchedulerStatus() {
     }
 }
 
-int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec, bool start) {
+int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec/*1000*/, bool start /*false*/) {
 	Q_ASSERT(_rMonitor);
 
 	_granularity = msec;
@@ -271,36 +271,36 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 		break;
 	}
 
+    if (_controlPanel) {
 
+        if (_rMonitor->rMonWidget()) {
+            // show inside rmonitor widget
+            _rMonitor->rMonWidget()->setSchedCtrlFrame(_controlPanel);
+
+            // rMonWidget will take ownership of the controlPanel
+            // so make sure the schedControl doesn't touch the controlPanel
+            _controlPanel = 0;
+        }
+        else {
+            // show top-level widget
+            _controlPanel->setWindowTitle("Scheduler Control");
+            _controlPanel->adjustSize();
+            _controlPanel->show();
+        }
+    }
 
 
     if (start) {
-
         startScheduler();
-
-        if (_controlPanel) {
-
-            if (_rMonitor->rMonWidget()) {
-                // show inside rmonitor widget
-                _rMonitor->rMonWidget()->setSchedCtrlFrame(_controlPanel);
-
-                // rMonWidget will take ownership of the controlPanel
-                // so make sure the schedControl doesn't touch the controlPanel
-                _controlPanel = 0;
-            }
-            else {
-                // show top-level widget
-                _controlPanel->setWindowTitle("Scheduler Control");
-                _controlPanel->adjustSize();
-                _controlPanel->show();
-            }
-        }
+    }
+    else {
+        stopScheduler();
     }
 
 	return 0;
 }
 
-int SN_SchedulerControl::launchScheduler(const QString &str, int msec, bool start) {
+int SN_SchedulerControl::launchScheduler(const QString &str, int msec/*1000*/, bool start/*false*/) {
 	Scheduler_Type st = SN_SchedulerControl::SelfAdjusting;
 	if (QString::compare(str, "DividerWidget", Qt::CaseInsensitive) == 0) {
 		st = SN_SchedulerControl::DividerWidget;
@@ -318,7 +318,7 @@ int SN_SchedulerControl::launchScheduler(const QString &str, int msec, bool star
 	return launchScheduler(st, msec, start);
 }
 
-int SN_SchedulerControl::launchScheduler(bool start) {
+int SN_SchedulerControl::launchScheduler(bool start/*false*/) {
 	return launchScheduler(schedType, _granularity, start);
 }
 

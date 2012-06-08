@@ -54,9 +54,9 @@ public:
 	inline void setSchedulerType(SN_SchedulerControl::Scheduler_Type st) {schedType = st;}
     inline SN_SchedulerControl::Scheduler_Type schedulerType() const {return schedType;}
 
-	int launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec=1000, bool start = true);
-	int launchScheduler(const QString &str, int msec=1000, bool start = true);
-	int launchScheduler(bool start = true);
+	int launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec=1000, bool start = false);
+	int launchScheduler(const QString &str, int msec=1000, bool start = false);
+	int launchScheduler(bool start = false);
 
     bool isRunning();
 

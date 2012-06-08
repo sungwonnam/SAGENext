@@ -198,12 +198,14 @@ bool FittsLawTestStreamReceiverThread::connectToStreamer() {
     streamerAddr.sin_port = htons(_tcpPort);
 
     if ( ::connect(_socket, (sockaddr *)&streamerAddr, sizeof(streamerAddr)) == -1 ) {
-        qCritical() << "FittsLawTestStreamReceiverThread::connectToStreamer() : connect() failed";
+        qDebug() << "FittsLawTestStreamReceiverThread::connectToStreamer() ========================================================";
+        qCritical() << "\tFittsLawTestStreamReceiverThread::connectToStreamer() : connect() failed";
         perror("connect");
         return false;
     }
     else {
-		qDebug() << "recvThread connected to the streamer" << _streamerIpaddr << _tcpPort;
+        qDebug() << "FittsLawTestStreamReceiverThread::connectToStreamer() ========================================================";
+		qDebug() << "\tconnected to the streamer" << _streamerIpaddr << _tcpPort;
     }
 
     return true;

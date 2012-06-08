@@ -606,7 +606,7 @@ void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
             //
             // variable frame rate based on mouse interaction
             //
-            if (_recvThread && _recvThread->isRunning()) {
+            if (_recvThread && _recvThread->isRunning() && !_isDryRun) {
                 //
                 // create one resource for the stream receiver
                 // upon receiving a frame, the receiver thread will emit frameReceived()
@@ -682,7 +682,7 @@ void FittsLawTest::setReady(bool isDryrun /* false */) {
         if ( ! _recvThread->connectToStreamer() ) {
             qDebug() << "FittsLawTest::setReady() : failed to connect to the streamer" << _streamerIpAddr << _port;
         }
-	_recvThread->start();
+        _recvThread->start();
     }
 
     _isDryRun = isDryrun;
