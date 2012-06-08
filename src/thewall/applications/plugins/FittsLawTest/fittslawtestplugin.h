@@ -9,14 +9,6 @@
 
 class FittsLawTestData;
 
-
-
-
-
-
-
-
-
 typedef struct {
     QList<int> misscount;
     QList<qint64> hitlatency; // msec
@@ -44,13 +36,13 @@ public:
     static int _NUM_TARGET_PER_ROUND;
 
 
-    static const QString _streamerIpAddr;
+    static QString _streamerIpAddr;
 
     /*!
       This is streaming overhead.
       So, the buffer size is width * height * 3
       */
-    static const QSize _streamImageSize;
+    static QSize _streamImageSize;
 
 
     inline QString userID() const {return _userID;}
@@ -114,9 +106,15 @@ private:
 
 	static int _myPortNum;
 
-int _port;
+    /*!
+      streamer port number
+      */
+    int _port;
 
-    void _init();
+    /*!
+      window size as the arguments
+      */
+    void _init(int w, int h);
 
     /*!
       Whether the test is running.
@@ -166,6 +164,12 @@ int _port;
       */
     QGraphicsRectItem *_target;
 
+    /*!
+      This is to measure the distance
+      The point is on the _contentWidget's coordinate
+      */
+    QPointF _prevTargetPosition;
+
 
     /*!
       user's mouse movement will update this value
@@ -188,10 +192,12 @@ int _port;
     QLabel *_lbl_roundid;
     QLabel *_lbl_tgtcount;
     QLabel *_lbl_hitlatency;
+    QLabel *_lbl_distance;
     QGraphicsProxyWidget *_lblproxy_userid;
     QGraphicsProxyWidget *_lblproxy_roundid;
     QGraphicsProxyWidget *_lblproxy_tgtcount;
     QGraphicsProxyWidget *_lblproxy_hitlatency;
+    QGraphicsProxyWidget *_lblproxy_distance;
 
 
     /*!
@@ -387,7 +393,7 @@ public:
 
     inline QFrame * getFrame() {return _frame;}
 
-    void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, const QString &data = QString());
+    void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, const QString &data = QString(), const QString &distance = QString());
 
 //    void writeData(const QString &id, const QString &actionType, int targetcount = -1, const QByteArray &bytearry = QByteArray());
 

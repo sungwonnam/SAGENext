@@ -520,7 +520,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 		if (dpi) {
 			w = dpi->createInstance();
 
-			qDebug() << "SN_Launcher launching a plugin" << w;
+//			qDebug() << "SN_Launcher launching a plugin" << w;
 			w->setSettings(_settings); // SN_Priority will be created in here if system/scheduler is set
 			w->setGlobalAppId(GID);
 			w->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_PLUGIN);

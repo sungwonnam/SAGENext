@@ -145,6 +145,7 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Priority
 	}
 
 
+    ui->dataFileName_lineedit->setText(QDir::homePath() + "/.sagenext/");
 
 	/* plot */
 	/*

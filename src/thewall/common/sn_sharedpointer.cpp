@@ -147,16 +147,29 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 
 
 
+    //
+    // If _trapWidget then the widget wants to trap the pointer
+    // within its window
+    //
+    // FittsLawTest plugin for example
+    //
     if (_trapWidget) {
         QPointF localPoint = _trapWidget->mapFromScene(_scenePos);
-        if (_trapWidget->contains(localPoint)) {
 
-            setPos(_scenePos);
+        // If the pointer is on the widget's window
+        // then move the pointer normally
+        // otherwise don't move the pointer
+        if (_trapWidget->contains(localPoint)) {
+//            setPos(_scenePos);
+            setOpacity(0);
             _trapWidget->handlePointerDrag(this, localPoint, deltax, deltay, Qt::NoButton);
+        }
+        else {
+            setOpacity(1.0);
         }
 
         // return w/o moving pointer and further actions
-        return;
+//        return;
     }
 
 
