@@ -36,7 +36,6 @@ FittsLawTestStreamReceiverThread::~FittsLawTestStreamReceiverThread() {
 }
 
 void FittsLawTestStreamReceiverThread::run() {
-qDebug() << "recvThred::run()";
 
     Q_ASSERT(_socket);
 

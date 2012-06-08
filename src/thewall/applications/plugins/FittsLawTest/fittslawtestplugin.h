@@ -112,6 +112,10 @@ protected:
 private:
     static FittsLawTestData *_dataObject;
 
+	static int _myPortNum;
+
+int _port;
+
     void _init();
 
     /*!
@@ -342,7 +346,7 @@ public slots:
       launches external program using ssh command.
       The external program will wait for connection from StreamRecvThread
       */
-    void launchExternalStreamer(const QString &ipaddr);
+    void launchExternalStreamer(const QString &ipaddr, int port);
 
     /*!
       This slot will just call update()

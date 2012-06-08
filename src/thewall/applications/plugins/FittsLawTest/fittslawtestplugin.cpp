@@ -7,8 +7,8 @@
 
 #include <QtGui>
 
-int FittsLawTestData::_NUM_SUBJECTS = 1;
-int FittsLawTest::_NUM_TARGET_PER_ROUND = 5;
+int FittsLawTestData::_NUM_SUBJECTS = 3;
+int FittsLawTest::_NUM_TARGET_PER_ROUND = 10;
 
 // 131.193.78.176 (bigdaddy 100 Mbps)
 // 131.193.78.142 (venom 100 Mbps)
@@ -31,12 +31,15 @@ const QPixmap FittsLawTest::_startPixmap = QPixmap(":/greenplay128.png");
 const QPixmap FittsLawTest::_stopPixmap = QPixmap(":/stopsign48.png").scaledToWidth(128);
 const QPixmap FittsLawTest::_cursorPixmap = QPixmap(":/blackarrow_upleft128.png");
 
+int FittsLawTest::_myPortNum = 60301;
+
 
 
 FittsLawTest::FittsLawTest()
 
     : SN_BaseWidget(Qt::Window)
 
+, _port(0)
     , _isRunning(false)
     , _isDryRun(false)
     , _isReady(false)
@@ -199,6 +202,17 @@ void FittsLawTest::_init() {
     QObject::connect(this, SIGNAL(initClicked()), this, SLOT(startRound()));
 
     QObject::connect(this, SIGNAL(destroyed(QObject *)), _dataObject, SLOT(closeApp(QObject *)));
+
+    //
+    // Run the external streamer process
+    //
+    if (!_extProgram) {
+	_port = FittsLawTest::_myPortNum;
+	FittsLawTest::_myPortNum += 10;
+        launchExternalStreamer(_appInfo->srcAddr(), _port);
+    }
+
+
 }
 
 FittsLawTest::~FittsLawTest() {
@@ -312,7 +326,7 @@ int FittsLawTest::setQuality(qreal newQuality) {
   setReady() will call this
   if _extProgram doesn't exist
   */
-void FittsLawTest::launchExternalStreamer(const QString &ipaddr) {
+void FittsLawTest::launchExternalStreamer(const QString &ipaddr, int port) {
 
     if (!_extProgram) {
         _extProgram = new QProcess(this);
@@ -334,10 +348,7 @@ void FittsLawTest::launchExternalStreamer(const QString &ipaddr) {
     //
     // _globalAppId is valid after the constructor returns
     //
-    cmd.append(QString::number(_globalAppId + 60000));
-
-
-    qDebug() << "FittsLawTest::launchExternalStreamer() : starting the streamer for user ID" << _userID << "[" << cmd << "]";
+    cmd.append(QString::number(port));
 
     _extProgram->start(cmd);
 
@@ -346,6 +357,7 @@ void FittsLawTest::launchExternalStreamer(const QString &ipaddr) {
 //        deleteLater();
         close();
     }
+    qDebug() << "\nFittsLawTest::launchExternalStreamer() : started the streamer for user ID" << _userID << "[" << cmd << "]";
 }
 
 /*
@@ -598,11 +610,25 @@ void FittsLawTest::handlePointerPress(SN_PolygonArrowPointer *, const QPointF &p
   invoked by the test controller (not a user)
   */
 void FittsLawTest::setReady(bool isDryrun /* false */) {
-    //
-    // Run the external streamer process
-    //
-    if (!_extProgram) {
-        launchExternalStreamer(_appInfo->srcAddr());
+
+    if (!_recvThread) {
+        _recvThread = new FittsLawTestStreamReceiverThread(_streamImageSize, 30, _streamerIpAddr, _port, _perfMon, &_sema);
+
+        QObject::connect(_recvThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
+
+		// connect to streamer
+/*
+		if (! QMetaObject::invokeMethod(_recvThread, "connectToStreamer", Qt::QueuedConnection) ) {
+			qDebug() << "FittsLawTest::startRound() : Failed to invoke connectToStreamer()";
+		}
+		QApplication::sendPostedEvents();
+		QCoreApplication::processEvents();
+*/
+
+        if ( ! _recvThread->connectToStreamer() ) {
+            qDebug() << "FittsLawTest::setReady() : failed to connect to the streamer" << _streamerIpAddr << _port;
+        }
+	_recvThread->start();
     }
 
     _isDryRun = isDryrun;
@@ -624,22 +650,6 @@ void FittsLawTest::setReady(bool isDryrun /* false */) {
   */
 void FittsLawTest::startRound() {
 
-    if (!_recvThread) {
-        _recvThread = new FittsLawTestStreamReceiverThread(_streamImageSize, 30, _streamerIpAddr, _globalAppId + 60000, _perfMon, &_sema);
-
-        QObject::connect(_recvThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
-
-		// connect to streamer
-		QMetaObject::invokeMethod(_recvThread, "connectToStreamer", Qt::QueuedConnection);
-		QApplication::sendPostedEvents();
-		QCoreApplication::processEvents();
-
-		/*
-        if ( ! _recvThread->connectToStreamer() ) {
-            qDebug() << "FittsLawTest::startRound() : failed to connect to the streamer" << _streamerIpAddr << _globalAppId + 60000;
-        }
-*/
-    }
 
     _targetHitCount = 0;
     _isRunning = true;
