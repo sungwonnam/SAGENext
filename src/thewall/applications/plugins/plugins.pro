@@ -3,7 +3,6 @@ SUBDIRS += \
 SimpleGUIExample \
 MouseHoverExample \
     MouseDragExample \
-    MandelbrotThreadExample \
-    FittsLawTest
+    MandelbrotThreadExample
 
 

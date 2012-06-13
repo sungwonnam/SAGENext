@@ -205,7 +205,8 @@ applications/base/sagepixelreceiver.cpp \
     common/sn_sharedpointer.cpp \
     applications/base/sn_priority.cpp \
     system/prioritygrid.cpp \
-    applications/sn_sagestreammplayer.cpp
+    applications/sn_sagestreammplayer.cpp \
+    applications/sn_fittslawtest.cpp
 #    common/sn_drawingwidget.cpp
 #    applications/sn_pboexample.cpp
 
@@ -248,7 +249,8 @@ applications/base/sn_priority.h \
         sagenextlauncher.h \
         mediastorage.h \
     settingstackeddialog.h \
-    applications/sn_sagestreammplayer.h
+    applications/sn_sagestreammplayer.h \
+    applications/sn_fittslawtest.h
 
 
 

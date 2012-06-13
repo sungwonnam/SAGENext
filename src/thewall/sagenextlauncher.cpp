@@ -16,6 +16,7 @@
 #include "applications/base/affinityinfo.h"
 #include "applications/base/sagestreamwidget.h"
 
+#include "applications/sn_fittslawtest.h"
 #include "applications/sn_sagestreammplayer.h"
 #include "applications/pdfviewerwidget.h"
 #include "applications/pixmapwidget.h"
@@ -162,6 +163,10 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &m
             sw = new SN_SageStreamMplayer(GID, _settings, _rMonitor);
             sw->appInfo()->setCmdArgs("-vo sage -nosound -loop 0 -sws 4 -quiet -framedrop");
         }
+        else if (sageappname == "fittslawtest") {
+            qDebug() << "SN_Launcher::launch() : SN_FittsLawTest";
+            sw = new SN_SageFittsLawTest(GID, _settings, _rMonitor, 0, Qt::Window);
+        }
         else {
             sw = new SN_SageStreamWidget(GID, _settings, _rMonitor); // 127.0.0.1 ??????????
         }
@@ -277,9 +282,15 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 			return 0;
 		}
 
+        isSSH = true;
+
         if (sageappname == "mplayer") {
             sws = new SN_SageStreamMplayer(GID, _settings, _rMonitor);
             sws->appInfo()->setFileInfo(filename);
+        }
+        else if (sageappname == "fittslawtest") {
+            sws = new SN_SageFittsLawTest(GID, _settings, _rMonitor, 0, Qt::Window);
+            isSSH = false;
         }
         else {
             sws = new SN_SageStreamWidget(GID, _settings, _rMonitor);
@@ -287,7 +298,7 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 
 		sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_SAGE_STREAM);
 
-        isSSH = true;
+
 
         cmd = "ssh -fx";
         cmd.append(" "); cmd.append(senderIP);

@@ -11,6 +11,7 @@
 
 #include <QTcpSocket>
 #include <QUdpSocket>
+#include <QSemaphore>
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -243,6 +244,10 @@ void SN_SagePixelReceiver::run() {
 		sscanf(header.constData(), "%d %d %d %d", &fnum, &pixelSize, &memWidth, &bufSize);
 		qDebug("PixelReceiver::%s() : received block header [%s]", __FUNCTION__, header.constData());
 		*/
+
+        if (_sageWidget->__sema) {
+            _sageWidget->__sema->acquire(1);
+        }
 
         //
 		// PIXEL RECEIVING

@@ -101,7 +101,12 @@ private:
     bool _isScheduler;
 
 public:
+    /*!
+      This will close sockets
+      */
 	void endReceiver();
+
+    inline void setEnd(bool b=true) {_end = b;}
 
 signals:
 	/*!
@@ -111,6 +116,8 @@ signals:
 
 public slots:
     inline void setDelay_msec(qint64 delay) {_delay = delay;}
+
+    inline void resumeThreadLoop() {_end = false; start();}
 };
 
 #endif // SAGEPIXELRECEIVER_H

@@ -1,41 +1,31 @@
-#include "fittslawtestplugin.h"
-#include "common/sn_sharedpointer.h"
+#include "sn_fittslawtest.h"
 #include "system/resourcemonitor.h"
-#include "applications/base/appinfo.h"
-#include "applications/base/perfmonitor.h"
+#include "common/sn_sharedpointer.h"
 #include "applications/base/sn_priority.h"
+#include "applications/base/perfmonitor.h"
+#include "applications/base/appinfo.h"
+#include "common/imagedoublebuffer.h"
 
-#include <QtGui>
-
-int FittsLawTestData::_NUM_SUBJECTS = 3;
-int FittsLawTest::_NUM_TARGET_PER_ROUND = 20;
+int SN_FittsLawTestData::_NUM_SUBJECTS = 3;
+int SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND = 20;
 
 // 131.193.78.176 (bigdaddy 100 Mbps)
 // 131.193.78.142 (venom 100 Mbps)
 // 67.58.62.57 (bigdaddy 10 Gbps)
 // 67.58.62.45 (venom 10 Gbps)
 //const QString FittsLawTest::_streamerIpAddr = QString("131.193.78.142");
-QString FittsLawTest::_streamerIpAddr = QString("67.58.62.45");
-QSize FittsLawTest::_streamImageSize = QSize(1920, 1080);
+//QString SN_FittsLawTest::_streamerIpAddr = QString("67.58.62.45");
+QSize SN_SageFittsLawTest::_streamImageSize = QSize(1920, 1080);
 
 
-FittsLawTestData * FittsLawTest::_dataObject = 0;
+SN_FittsLawTestData * SN_SageFittsLawTest::_dataObject = 0;
 
-int FittsLawTest::RoundID = -1;
-int FittsLawTest::_NUM_ROUND = pow(2, FittsLawTestData::_NUM_SUBJECTS - 1);
-const QPixmap FittsLawTest::_startPixmap = QPixmap(":/greenplay128.png");
-const QPixmap FittsLawTest::_stopPixmap = QPixmap(":/stopsign48.png").scaledToWidth(128);
-const QPixmap FittsLawTest::_cursorPixmap = QPixmap(":/blackarrow_upleft128.png");
-
-int FittsLawTest::_myPortNum = 60301;
+int SN_SageFittsLawTest::RoundID = -1;
+int SN_SageFittsLawTest::_NUM_ROUND = pow(2, SN_FittsLawTestData::_NUM_SUBJECTS - 1);
 
 
-
-FittsLawTest::FittsLawTest()
-
-    : SN_BaseWidget(Qt::Window)
-
-    , _port(0)
+SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
+    : SN_SageStreamWidget(globalappid, s, rm, parent, wFlags)
     , _isRunning(false)
     , _isDryRun(false)
     , _isReady(false)
@@ -55,34 +45,41 @@ FittsLawTest::FittsLawTest()
 
     , _myPointer(0)
 
-    , _recvThread(0)
-    , _extProgram(0)
-
     , _missCountPerTarget(0)
     , _missCountTotal(0)
     , _targetAppearTime(0.0)
     , _targetHitTime(0.0)
 {
+    __sema = new QSemaphore;
+
     //
     // set Schedulable widget
     // SN_Launcher will be able to add this widget to rMonitor's widget list
     // upon launching this widget.
     //
-    setSchedulable();
+//    setSchedulable(); // This is done in SN_RailawareWidget
 
     setContentsMargins(16, 40, 16, 16);
 
+    _startPixmap = QPixmap(":/greenplay128.png");
+    _stopPixmap = QPixmap(":/stopsign48.png").scaledToWidth(128);
+    _cursorPixmap = QPixmap(":/blackarrow_upleft128.png");
 
-
+    _init();
 }
 
-SN_BaseWidget * FittsLawTest::createInstance() {
+void SN_SageFittsLawTest::_init() {
+    clearTargetPosList();
+    clearData();
+
+
+
     int winwidth = 1920;
     int winheight = 1080;
     QFile f(QDir::homePath() + "/.sagenext/FittsLawTest.conf");
     if (f.exists()) {
         if (!f.open(QIODevice::ReadOnly))  {
-            qDebug() << "FittsLawTest::createInstance() : failed to open a config file";
+            qDebug() << "SN_FittsLawTest::_init() : failed to open a config file";
         }
         else {
             QByteArray line = f.readLine();
@@ -91,42 +88,35 @@ SN_BaseWidget * FittsLawTest::createInstance() {
 
             sscanf(line.data(), "%d %d %d %d %d %d %s", &num_subject, &num_targets_per_round, &overheadwidth, &overheadheight, &winwidth, &winheight, streamerip.data());
 
-            FittsLawTestData::_NUM_SUBJECTS = num_subject;
-            FittsLawTest::_NUM_TARGET_PER_ROUND = num_targets_per_round;
+            SN_FittsLawTestData::_NUM_SUBJECTS = num_subject;
+            SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND = num_targets_per_round;
 
-            FittsLawTest::_streamerIpAddr = QString(streamerip);
-            FittsLawTest::_streamImageSize = QSize(overheadwidth, overheadheight);
+//            SN_FittsLawTest::_streamerIpAddr = QString(streamerip);
+            SN_SageFittsLawTest::_streamImageSize = QSize(overheadwidth, overheadheight);
 
             f.close();
         }
     }
     else {
-        qDebug() << "FittsLawTest::createInstance() : config file doesn't exist. Using default values";
+        qDebug() << "SN_FittsLawTest::createInstance() : config file doesn't exist. Using default values";
     }
 
-    qDebug("%s::%s() : %d Subjects, %d Tgts/Rnd, Overhead %dx%d, Window %dx%d, StreamerIP %s\n"
+    qDebug("%s::%s() : %d Subjects, %d Tgts/Rnd, Overhead %dx%d, Window %dx%d\n"
            , metaObject()->className()
            , __FUNCTION__
-           , FittsLawTestData::_NUM_SUBJECTS
-           , FittsLawTest::_NUM_TARGET_PER_ROUND
-           , FittsLawTest::_streamImageSize.width()
-           , FittsLawTest::_streamImageSize.height()
+           , SN_FittsLawTestData::_NUM_SUBJECTS
+           , SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+           , SN_SageFittsLawTest::_streamImageSize.width()
+           , SN_SageFittsLawTest::_streamImageSize.height()
            , winwidth, winheight
-           , qPrintable(FittsLawTest::_streamerIpAddr));
+           );
 
-    FittsLawTest *newwidget = new FittsLawTest;
 
-    if (!_dataObject) _dataObject = new FittsLawTestData;
-    _dataObject->addWidget(newwidget);
+    if (!_dataObject) _dataObject = new SN_FittsLawTestData;
+    _dataObject->addWidget(this);
 
-    newwidget->_init(winwidth, winheight);
 
-    return newwidget;
-}
 
-void FittsLawTest::_init(int w, int h) {
-    clearTargetPosList();
-    clearData();
 
     //
     // content area wher targets will appear
@@ -213,9 +203,9 @@ void FittsLawTest::_init(int w, int h) {
     _infoText = new QGraphicsSimpleTextItem(_contentWidget);
     _infoText->setAcceptedMouseButtons(0);
     _infoText->setFlag(QGraphicsItem::ItemStacksBehindParent);
-    QFont f;
-    f.setPointSize(24);
-    _infoText->setFont(f);
+    QFont fnt;
+    fnt.setPointSize(24);
+    _infoText->setFont(fnt);
     _showInfo = false;
 
 
@@ -231,10 +221,7 @@ void FittsLawTest::_init(int w, int h) {
 
     setLayout(mainlayout);
 
-    resize(w, h);
-
-    _appInfo->setExecutableName("fittslawteststreamer");
-    _appInfo->setSrcAddr(_streamerIpAddr);
+    resize(winwidth, winheight);
 
     //
     // signal slot connection for start/stop round
@@ -242,65 +229,36 @@ void FittsLawTest::_init(int w, int h) {
     QObject::connect(this, SIGNAL(initClicked()), this, SLOT(startRound()));
 
     QObject::connect(this, SIGNAL(destroyed(QObject *)), _dataObject, SLOT(closeApp(QObject *)));
-
-    //
-    // Run the external streamer process
-    //
-    if (!_extProgram) {
-	_port = FittsLawTest::_myPortNum;
-	FittsLawTest::_myPortNum += 10;
-        launchExternalStreamer(_appInfo->srcAddr(), _port);
-    }
-
-
 }
 
-FittsLawTest::~FittsLawTest() {
-    if (isSchedulable() && _rMonitor) {
-        qDebug() << "~FittsLawTest() : remove from rMonitor";
-        _rMonitor->removeSchedulableWidget(this);
+SN_SageFittsLawTest::~SN_SageFittsLawTest() {
+    if (__sema) {
+        __sema->release(10);
+    }
+
+    if (_receiverThread) {
+        _receiverThread->setEnd();
     }
 
     _myPointer = 0;
-
-    disconnect(this);
 
     if (_dataObject) {
         delete _dataObject;
         _dataObject = 0;
     }
 
-    if (_recvThread) {
-        if (_recvThread->isRunning()) {
-            _recvThread->endThreadLoop();
-            _sema.release();
-        }
-        delete _recvThread;
-    }
-
-    /*
-    if (_recvObject) {
-        if (_thread.isRunning()) {
-            _thread.quit();
-        }
-        delete _recvObject;
-    }
-    */
-
-    if (_extProgram) {
-        if (_extProgram->state() == QProcess::Running) {
-            _extProgram->kill();
-        }
-//        delete _extProgram; // this is automatic since _extProgram is child of this widget
-    }
+    if (__sema) delete __sema;
 }
 
-void FittsLawTest::scheduleUpdate() {
+
+void SN_SageFittsLawTest::scheduleDummyUpdate() {
+    if (doubleBuffer)
+        doubleBuffer->releaseBackBuffer();
     update();
 }
 
-
-int FittsLawTest::setQuality(qreal newQuality) {
+/*
+int SN_FittsLawTest::setQuality(qreal newQuality) {
 
     if (!_perfMon) return -1;
 
@@ -360,86 +318,20 @@ int FittsLawTest::setQuality(qreal newQuality) {
         return -1;
     }
 }
-
-
-/*!
-  setReady() will call this
-  if _extProgram doesn't exist
-  */
-void FittsLawTest::launchExternalStreamer(const QString &ipaddr, int port) {
-
-    if (!_extProgram) {
-        _extProgram = new QProcess(this);
-    }
-
-    QString cmd = "ssh -fx ";
-    cmd.append(ipaddr);
-    cmd.append(" ");
-    cmd.append(_appInfo->executableName());
-    cmd.append(" ");
-
-    cmd.append(QString::number(_streamImageSize.width()));
-    cmd.append(" ");
-    cmd.append(QString::number(_streamImageSize.height()));
-    cmd.append(" ");
-
-    cmd.append("30 "); // max frate of the sender
-
-    //
-    // _globalAppId is valid after the constructor returns
-    //
-    cmd.append(QString::number(port));
-
-    _extProgram->start(cmd);
-
-    if ( ! _extProgram->waitForStarted(-1)) {
-        qCritical() << "FittsLawTest::launchExternalStreamer() : failed to start external streamer";
-//        deleteLater();
-        close();
-    }
-    qDebug() << "\nFittsLawTest::launchExternalStreamer() : started the streamer for user ID" << _userID << "[" << cmd << "]";
-}
-
-/*
-bool FittsLawTest::setOverheadSize(int w, int h) {
-    return setOverheadSize(QSize(w,h));
-}
-
-bool FittsLawTest::setOverheadSize(const QSize &size) {
-    if (_extProgram && _extProgram->state() == QProcess::Running) {
-        qDebug() << "FittsLawTest::setOverheadSize() : set this before running the streamer";
-        return false;
-    }
-
-    _streamImageSize = size;
-    _appInfo->setFrameSize(size.width(), size.height(), 24); // 3 Byte per pixel
-    return true;
-}
-
-bool FittsLawTest::setStreamerIP(const QString &str) {
-    if (_extProgram && _extProgram->state() == QProcess::Running) {
-        qDebug() << "FittsLawTest::setStreamerIP() : set this before running the streamer";
-        return false;
-    }
-
-    _streamerIpAddr = str;
-    _appInfo->setSrcAddr(str);
-
-    return true;
-}
 */
 
-void FittsLawTest::resizeEvent(QGraphicsSceneResizeEvent *event) {
+
+void SN_SageFittsLawTest::resizeEvent(QGraphicsSceneResizeEvent *event) {
     Q_UNUSED(event);
 //    qDebug() << boundingRect() << _contentWidget->size();
     _startstop->setPos( _contentWidget->size().width() / 2 - 64 , _contentWidget->size().height() / 2 - 64);
 }
 
-void FittsLawTest::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *) {
+void SN_SageFittsLawTest::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *) {
     // do nothing
 }
 
-void FittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
+void SN_SageFittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 
     if (_isRunning) {
 //        qDebug() << "FittsLawTest::paint()";
@@ -456,7 +348,7 @@ void FittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, Q
     SN_BaseWidget::paint(painter, o, w);
 }
 
-bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
+bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
     Q_UNUSED(btn);
 
     if (_isRunning) {
@@ -496,7 +388,7 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
             _missCountPerTarget = 0;
 
             if (!_isDryRun) {
-                _dataObject->writeData(_userID, "HIT", FittsLawTest::RoundID, _targetHitCount, QString::number(hitlatency), QString::number(distance));
+                _dataObject->writeData(_userID, "HIT", SN_SageFittsLawTest::RoundID, _targetHitCount, QString::number(hitlatency), QString::number(distance));
             }
 
             _targetHitCount++; // increment for next target
@@ -510,7 +402,7 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
             //
             // if current round is compeleted
             //
-            if (_targetHitCount == FittsLawTest::_NUM_TARGET_PER_ROUND) {
+            if (_targetHitCount == SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND) {
 //                qDebug() << "FittsLawTest::handlePointerClick() : round #" << _roundCount << "finished";
                 pointer->setOpacity(1);
                 finishRound();
@@ -532,7 +424,7 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
             if (!_isDryRun) {
                 _missCountPerTarget++;
 
-                _dataObject->writeData(_userID, "MISS", FittsLawTest::RoundID, _targetHitCount, QString());
+                _dataObject->writeData(_userID, "MISS", SN_SageFittsLawTest::RoundID, _targetHitCount, QString());
 
                 _missCountPerRound += _missCountPerTarget;
                 _missCountTotal += _missCountPerTarget;
@@ -593,7 +485,7 @@ bool FittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPo
     return true;
 }
 
-void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal dx, qreal dy, Qt::MouseButton btn, Qt::KeyboardModifier mod) {
+void SN_SageFittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal dx, qreal dy, Qt::MouseButton btn, Qt::KeyboardModifier mod) {
     if (_isRunning) {
         if (pointer == _myPointer) {
 
@@ -606,14 +498,14 @@ void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
             //
             // variable frame rate based on mouse interaction
             //
-            if (_recvThread && _recvThread->isRunning() && !_isDryRun) {
+            if (_receiverThread && _receiverThread->isRunning() && !_isDryRun) {
                 //
                 // create one resource for the stream receiver
                 // upon receiving a frame, the receiver thread will emit frameReceived()
                 // which is connected up scheduleUpdate()
                 //
-				if (_sema.available() < 2)
-                	_sema.release(1);
+				if (__sema && __sema->available() < 1)
+                	__sema->release(1);
             }
             else {
                 update();
@@ -637,7 +529,7 @@ void FittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
     }
 }
 
-void FittsLawTest::handlePointerPress(SN_PolygonArrowPointer *, const QPointF &point, Qt::MouseButton btn) {
+void SN_SageFittsLawTest::handlePointerPress(SN_PolygonArrowPointer *, const QPointF &point, Qt::MouseButton btn) {
 
     setTopmost();
 
@@ -661,29 +553,10 @@ void FittsLawTest::handlePointerPress(SN_PolygonArrowPointer *, const QPointF &p
 }
 
 /*!
-  invoked by the test controller (not a user)
+  This is invoked by the test controller (not a user).
+  User will see the green play icon
   */
-void FittsLawTest::setReady(bool isDryrun /* false */) {
-
-    if (!_recvThread) {
-        _recvThread = new FittsLawTestStreamReceiverThread(_streamImageSize, 30, _streamerIpAddr, _port, _perfMon, &_sema);
-
-        QObject::connect(_recvThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()));
-
-		// connect to streamer
-/*
-		if (! QMetaObject::invokeMethod(_recvThread, "connectToStreamer", Qt::QueuedConnection) ) {
-			qDebug() << "FittsLawTest::startRound() : Failed to invoke connectToStreamer()";
-		}
-		QApplication::sendPostedEvents();
-		QCoreApplication::processEvents();
-*/
-
-        if ( ! _recvThread->connectToStreamer() ) {
-            qDebug() << "FittsLawTest::setReady() : failed to connect to the streamer" << _streamerIpAddr << _port;
-        }
-//        _recvThread->start();
-    }
+void SN_SageFittsLawTest::setReady(bool isDryrun /* false */) {
 
     _isDryRun = isDryrun;
 
@@ -702,7 +575,7 @@ void FittsLawTest::setReady(bool isDryrun /* false */) {
   A user clicked the green play icon.
   (Upon receiving initClicked() signal)
   */
-void FittsLawTest::startRound() {
+void SN_SageFittsLawTest::startRound() {
 
 
     _targetHitCount = 0;
@@ -712,14 +585,14 @@ void FittsLawTest::startRound() {
 
 
     if (!_isDryRun) {
-        _dataObject->writeData(_userID, QString("START_RND"), FittsLawTest::RoundID);
+        _dataObject->writeData(_userID, QString("START_RND"), SN_SageFittsLawTest::RoundID);
 
         //
         // streaming resumes
         // will call QThread::start()
 		//
 		///_recvThread->resumeThreadLoop();
-		QMetaObject::invokeMethod(_recvThread, "resumeThreadLoop", Qt::AutoConnection);
+		QMetaObject::invokeMethod(_receiverThread, "resumeThreadLoop", Qt::AutoConnection);
 		QApplication::sendPostedEvents();
 		QCoreApplication::processEvents();
 
@@ -759,7 +632,7 @@ void FittsLawTest::startRound() {
 //
 // This is called after user successfully clicked 10 targets
 //
-void FittsLawTest::finishRound() {
+void SN_SageFittsLawTest::finishRound() {
     /*
     if (_perfMon) {
         //
@@ -791,11 +664,12 @@ void FittsLawTest::finishRound() {
     _lbl_hitlatency->setText("hit lat");
 
 
-    if (_recvThread) {
+    if (_receiverThread) {
         //_recvThread->endThreadLoop();
-	QMetaObject::invokeMethod(_recvThread, "endThreadLoop", Qt::AutoConnection);
-	QApplication::sendPostedEvents();
-	QCoreApplication::processEvents();
+//        QMetaObject::invokeMethod(_receiverThread, "setEnd", Qt::AutoConnection);
+//        QApplication::sendPostedEvents();
+//        QCoreApplication::processEvents();
+        _receiverThread->setEnd();
 	}
 
     _isRunning = false;
@@ -821,7 +695,7 @@ void FittsLawTest::finishRound() {
     if (!_isDryRun) {
         _roundCount++;
 
-        _dataObject->writeData(_userID, "FINISH_RND", FittsLawTest::RoundID);
+        _dataObject->writeData(_userID, "FINISH_RND", SN_SageFittsLawTest::RoundID);
 
         if (_roundCount >= _NUM_ROUND) {
             qDebug() << "FittsLawTest::finishRound() : A test has completed for user" << _userID;
@@ -842,9 +716,9 @@ void FittsLawTest::finishRound() {
     }
 }
 
-void FittsLawTest::determineNextTargetPosition() {
+void SN_SageFittsLawTest::determineNextTargetPosition() {
 
-    QPointF nextPos = _targetPosList.value(_roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount);
+    QPointF nextPos = _targetPosList.value(_roundCount * SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount);
 
     //
     // there's saved value
@@ -863,7 +737,7 @@ void FittsLawTest::determineNextTargetPosition() {
         // Assumes the list is already filled with null data (call clearTargetPosList() !!)
         //
         if (!_isDryRun)
-            _targetPosList[ _roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount ] = nextPos;
+            _targetPosList[ _roundCount * SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount ] = nextPos;
 
 //        qDebug() << _roundCount << _targetHitCount << "choose random pos" << nextPos;
     }
@@ -880,12 +754,12 @@ void FittsLawTest::determineNextTargetPosition() {
 }
 
 
-void FittsLawTest::resetTest() {
+void SN_SageFittsLawTest::resetTest() {
     finishRound();
     _roundCount = 0;
 }
 
-void FittsLawTest::clearTargetPosList() {
+void SN_SageFittsLawTest::clearTargetPosList() {
     _roundCount = 0;
     _targetPosList.clear();
 
@@ -894,15 +768,15 @@ void FittsLawTest::clearTargetPosList() {
     }
 }
 
-void FittsLawTest::clearData() {
+void SN_SageFittsLawTest::clearData() {
     for (int i=0; i< _NUM_ROUND * _NUM_TARGET_PER_ROUND; i++) {
 
-        _data.misscount.append(0);
-        _data.hitlatency.append(0.0);
+//        _data.misscount.append(0);
+//        _data.hitlatency.append(0.0);
     }
 }
 
-QPointF FittsLawTest::m_getRandomPos() {
+QPointF SN_SageFittsLawTest::m_getRandomPos() {
     Q_ASSERT(_contentWidget);
     Q_ASSERT(_target);
 
@@ -918,7 +792,7 @@ QPointF FittsLawTest::m_getRandomPos() {
     return QPointF(rand_x, rand_y);
 }
 
-void FittsLawTest::updateInfoTextItem() {
+void SN_SageFittsLawTest::updateInfoTextItem() {
     if (! _infoText  ||  ! _showInfo) return;
 
     QByteArray text(2048, '\0');
@@ -943,9 +817,63 @@ void FittsLawTest::updateInfoTextItem() {
     _infoText->setText(QString(text));
 }
 
-void FittsLawTest::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
+void SN_SageFittsLawTest::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
     painter->setBrush(Qt::lightGray);
     painter->drawRect(windowFrameRect());
+}
+
+void SN_SageFittsLawTest::startReceivingThread() {
+    Q_ASSERT(streamsocket > 0);
+
+    //
+    // initialize OpenGL
+    //
+	if (_useOpenGL) {
+        m_initOpenGL();
+	}
+
+    //
+    // create the recv thread
+    //
+	_receiverThread = new SN_SagePixelReceiver(_streamProtocol, streamsocket, doubleBuffer, _usePbo, _pbobufarray, _pbomutex, _pbobufferready, this, _settings);
+    Q_ASSERT(_receiverThread);
+
+
+    //
+    // signal slot connections with the thread
+    //
+
+//    QObject::connect(_receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
+
+    if (!_blameXinerama) {
+        if (_usePbo) {
+            if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(schedulePboUpdate())) ) {
+                qCritical("%s::%s() : Failed to connect frameReceived() signal and schedulePboUpdate() slot", metaObject()->className(), __FUNCTION__);
+                return;
+            }
+        }
+        else {
+            if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate())) ) {
+                qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleUpdate() slot", metaObject()->className(), __FUNCTION__);
+                return;
+            }
+        }
+    }
+    else {
+        // I think Xinerama makes graphics performance bad..
+        // On venom, five 1080p videos can't sustain 24 fps..
+        qDebug() << "SN_SageFittsLawTest::startReceivingThread() : BLAME_XINERAMA defined. no frameReceived/scheduleUpdate connection";
+        QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleDummyUpdate()));
+    }
+
+    qDebug() << "SN_SageFittsLawTest (" << _globalAppId << _sageAppId << ") ready for streaming.";
+	qDebug() << "\t" << "app name" << _appInfo->executableName() << ",media file" << _appInfo->fileInfo().fileName() << "from" << _appInfo->srcAddr();
+	qDebug() << "\t" << _appInfo->nativeSize().width() <<"x" << _appInfo->nativeSize().height() << _appInfo->bitPerPixel() << "bpp" << _appInfo->frameSizeInByte() << "Byte/frame at" << _perfMon->getExpetctedFps() << "fps";
+	qDebug() << "\t" << "network user buffer length (groupsize)" << _appInfo->networkUserBufferLength() << "Byte";
+	qDebug() << "\t" << "GL pixel format" << _pixelFormat << ",use SHADER (for YUV format)" << _useShader << ",use OpenGL PBO" << _usePbo;
+
+
+//    _receiverThread->start();
 }
 
 
@@ -976,8 +904,7 @@ void FittsLawTest::paintWindowFrame(QPainter *painter, const QStyleOptionGraphic
 
 
 
-
-FittsLawTestData::FittsLawTestData(QObject *parent)
+SN_FittsLawTestData::SN_FittsLawTestData(QObject *parent)
     : QObject(parent)
     , _globalDataFile(0)
     , _globalOut(0)
@@ -987,10 +914,10 @@ FittsLawTestData::FittsLawTestData(QObject *parent)
 {
 
     _filenameBase = QDir::homePath().append("/.sagenext/FLTdata_");
-    qDebug() << "FittsLawTestData::FittsLawTestData()";
+    qDebug() << "SN_FittsLawTestData::SN_FittsLawTestData()";
 }
 
-FittsLawTestData::~FittsLawTestData() {
+SN_FittsLawTestData::~SN_FittsLawTestData() {
 
 
     if (_frame) {
@@ -1002,10 +929,10 @@ FittsLawTestData::~FittsLawTestData() {
     _perAppDataFiles.clear();
     _perAppOuts.clear();
 
-    qDebug() << "FittsLawTestData::~FittsLawTestData()";
+    qDebug() << "SN_FittsLawTestData::~SN_FittsLawTestData()";
 }
 
-void FittsLawTestData::m_createGUI() {
+void SN_FittsLawTestData::m_createGUI() {
 
     if (!_frame) {
         _frame = new QFrame;
@@ -1032,10 +959,10 @@ void FittsLawTestData::m_createGUI() {
     _frame->move(QPoint(10,10));
 }
 
-void FittsLawTestData::closeAll() {
-    QMap<QChar, FittsLawTest *>::iterator it;
+void SN_FittsLawTestData::closeAll() {
+    QMap<QChar, SN_SageFittsLawTest *>::iterator it;
     for (it=_widgetMap.begin(); it!=_widgetMap.end(); it++) {
-        FittsLawTest *widget = it.value();
+        SN_SageFittsLawTest *widget = it.value();
         if (widget) {
             widget->close();
             widget->deleteLater();
@@ -1044,8 +971,8 @@ void FittsLawTestData::closeAll() {
     deleteLater();
 }
 
-void FittsLawTestData::closeApp(QObject *obj) {
-    FittsLawTest *widget = dynamic_cast<FittsLawTest *>(obj);
+void SN_FittsLawTestData::closeApp(QObject *obj) {
+    SN_SageFittsLawTest *widget = dynamic_cast<SN_SageFittsLawTest *>(obj);
     if (widget) {
         QChar uid = _widgetMap.key(widget, QChar());
         if (!uid.isNull()) {
@@ -1068,31 +995,31 @@ void FittsLawTestData::closeApp(QObject *obj) {
     }
 }
 
-void FittsLawTestData::advanceRound() {
+void SN_FittsLawTestData::advanceRound() {
     //
     // increment the RoundID
     //
-    FittsLawTest::RoundID += 1;
-    if ( FittsLawTest::RoundID >= pow(2, FittsLawTestData::_NUM_SUBJECTS) ) {
-        FittsLawTest::RoundID = 0;
+    SN_SageFittsLawTest::RoundID += 1;
+    if ( SN_SageFittsLawTest::RoundID >= pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) ) {
+        SN_SageFittsLawTest::RoundID = 0;
     }
 
-    qDebug() << "\nFittsLawTestData::advanceRound() : Round ID" << FittsLawTest::RoundID;
+    qDebug() << "\nSN_FittsLawTestData::advanceRound() : Round ID" << SN_SageFittsLawTest::RoundID;
 
-    Q_ASSERT(_widgetMap.size() == FittsLawTestData::_NUM_SUBJECTS);
+    Q_ASSERT(_widgetMap.size() == SN_FittsLawTestData::_NUM_SUBJECTS);
 
     if (_globalOut) _globalOut->flush();
 
-    switch (FittsLawTest::RoundID) {
+    switch (SN_SageFittsLawTest::RoundID) {
     case 0: {
         if (_isDryRun) {
 
             //
             // setReady all
             //
-            QMap<QChar, FittsLawTest *>::iterator it;
+            QMap<QChar, SN_SageFittsLawTest *>::iterator it;
             for (it=_widgetMap.begin(); it!=_widgetMap.end(); it++) {
-                FittsLawTest *widget = it.value();
+                SN_SageFittsLawTest *widget = it.value();
                 widget->setReady(true); // DRY run
             }
 
@@ -1155,10 +1082,10 @@ void FittsLawTestData::advanceRound() {
 
 }
 
-bool FittsLawTestData::_openGlobalDataFile() {
+bool SN_FittsLawTestData::_openGlobalDataFile() {
     QString fname = _filenameBase;
     _globalDataFile = new QFile(fname.append("global.csv"));
-    if ( ! _globalDataFile->open(QIODevice::ReadWrite) ) {
+    if ( ! _globalDataFile->open(QIODevice::WriteOnly | QIODevice::Truncate) ) {
         qDebug() << "FittsLawTestData::openFile() failed to open" << _globalDataFile->fileName();
         return false;
     }
@@ -1170,13 +1097,13 @@ bool FittsLawTestData::_openGlobalDataFile() {
     return true;
 }
 
-bool FittsLawTestData::_openPerAppDataFile(const QChar id) {
+bool SN_FittsLawTestData::_openPerAppDataFile(const QChar id) {
     QString fname = _filenameBase;
 
     QFile *f = new QFile(fname.append(QString(id)));
     QTextStream *out = new QTextStream(f);
 
-    if ( ! f->open(QIODevice::ReadWrite) ) {
+    if ( ! f->open(QIODevice::WriteOnly | QIODevice::Truncate) ) {
         qDebug() << "FittsLawTestData::openPerAppDataFile() : failed to open a file" << f->fileName();
         return false;
     }
@@ -1187,7 +1114,7 @@ bool FittsLawTestData::_openPerAppDataFile(const QChar id) {
     return true;
 }
 
-void FittsLawTestData::addWidget(FittsLawTest *widget, const QChar id) {
+void SN_FittsLawTestData::addWidget(SN_SageFittsLawTest *widget, const QChar id) {
     Q_ASSERT(widget);
 
     if (id.isNull()) {
@@ -1216,7 +1143,7 @@ void FittsLawTestData::addWidget(FittsLawTest *widget, const QChar id) {
         qDebug() << "FittsLawTestData::addWidget() : a user data file created for id" << _currentID;
     }
 
-    if (_widgetMap.size() == FittsLawTestData::_NUM_SUBJECTS) {
+    if (_widgetMap.size() == SN_FittsLawTestData::_NUM_SUBJECTS) {
         if ( ! _openGlobalDataFile() ) {
             qDebug() << "FittsLawTestData::addWidget() : failed to create the globalDataFile ! " << _globalDataFile->fileName();
         }
@@ -1233,7 +1160,7 @@ void FittsLawTestData::addWidget(FittsLawTest *widget, const QChar id) {
 //    writeData(id, actionType, targetcount, QString(bytearry));
 //}
 
-void FittsLawTestData::writeData(const QString &id, const QString &actionType, int roundid, int targetcount, const QString &data, const QString &distance) {
+void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType, int roundid, int targetcount, const QString &data, const QString &distance) {
 
     qint64 ts = QDateTime::currentMSecsSinceEpoch();
 
@@ -1283,7 +1210,7 @@ void FittsLawTestData::writeData(const QString &id, const QString &actionType, i
     }
 }
 
-void FittsLawTestData::recreateAllDataFiles() {
+void SN_FittsLawTestData::recreateAllDataFiles() {
 
     _deleteFileAndStreamObjects();
 
@@ -1291,13 +1218,13 @@ void FittsLawTestData::recreateAllDataFiles() {
 
     _filenameBase.append("second_");
 
-    QMap<QChar, FittsLawTest *>::const_iterator it;
+    QMap<QChar, SN_SageFittsLawTest *>::const_iterator it;
     for (it=_widgetMap.constBegin(); it!=_widgetMap.constEnd(); it++) {
         addWidget(it.value(), it.key());
     }
 }
 
-void FittsLawTestData::_deleteFileAndStreamObjects() {
+void SN_FittsLawTestData::_deleteFileAndStreamObjects() {
     if (_globalOut) {
         _globalOut->flush();
         delete _globalOut;
@@ -1329,12 +1256,12 @@ void FittsLawTestData::_deleteFileAndStreamObjects() {
 /*!
   this is called whenever a round finished
   */
-void FittsLawTestData::flushCloseAll() {
+void SN_FittsLawTestData::flushCloseAll() {
     static int count = 0;
 
     count += 1;
 
-    if (count == FittsLawTestData::_NUM_SUBJECTS) {
+    if (count == SN_FittsLawTestData::_NUM_SUBJECTS) {
         count = 0; // reset
 
         qDebug() << "FittsLawTestData::flushCloseAll() : The tests finished for all subjects ! \n";
@@ -1355,18 +1282,3 @@ void FittsLawTestData::flushCloseAll() {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-// TARGET name, Class name
-Q_EXPORT_PLUGIN2(FittsLawTestPlugin, FittsLawTest)
-
-
-

@@ -34,6 +34,7 @@
 
 SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
     : SN_RailawareWidget(globalappid, s, rm, parent, wFlags)
+    , __sema(0)
     , _fsmMsgThread(0)
     , _sailAppProc(0) // QProcess *
     , _sageAppId(0)
@@ -889,7 +890,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 	}
 
 //	qDebug() << "SN_SageStreamWidget : streamer connected. groupSize" << _appInfo->networkUserBufferLength() << "Byte. Framerate" << framerate << "fps";
-    if (framerate > 0 && _perfMon) {
+    if (framerate > 0 && _perfMon && appname != "fittslawtest") {
         _perfMon->setPriori(true);
         _perfMon->setExpectedFps( (qreal)framerate );
         _perfMon->setAdjustedFps( (qreal)framerate );
@@ -919,7 +920,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 
     _appInfo->setExecutableName( appname );
 
-	if ( appname == "checker" ) {
+    if ( appname == "checker" || appname == "fittslawtest") {
 		QString arg = "";
 		//arg.append(QString::number(0)); arg.append(" ");
 		arg.append(QString::number(resX)); arg.append(" ");

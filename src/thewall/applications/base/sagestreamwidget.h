@@ -87,6 +87,12 @@ public:
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
+
+    /*!
+      This is for SN_SageFittsLawTest
+      */
+    QSemaphore *__sema;
+
 protected:
 	/*!
 	  Override virtual function temporarily to display priority related info.
@@ -237,6 +243,7 @@ protected:
 
     void m_initOpenGL();
 
+
 signals:
     /*!
       This singal is emiited after the sage streamer (SAGE application) connected to this widget.
@@ -261,7 +268,7 @@ public slots:
 	/**
 	  This slot starts pixel receiving thread and is called after waitForPixelStreamerConnection() finished
 	  */
-	void startReceivingThread();
+	virtual void startReceivingThread();
 
 
 	/**
@@ -277,7 +284,7 @@ public slots:
       In this slot, the back buffer is released (consumes data) after QImage is converted to QPixmap. (This delay is conversion latency)
 	  It calls then QGraphicsWidget::update()
 	  */
-	void scheduleUpdate();
+	virtual void scheduleUpdate();
 
 
 	/*!
@@ -289,13 +296,13 @@ public slots:
 	  signal thread for next frame
 	  texture update with previous buffer
 	  */
-	void schedulePboUpdate();
+	virtual void schedulePboUpdate();
 
 
     /*!
       no opengl no pbo no paint
       */
-    void scheduleDummyUpdate();
+    virtual void scheduleDummyUpdate();
 
 };
 
