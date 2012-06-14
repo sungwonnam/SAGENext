@@ -61,9 +61,9 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
 
     setContentsMargins(16, 40, 16, 16);
 
-    _startPixmap = QPixmap(":/greenplay128.png");
-    _stopPixmap = QPixmap(":/stopsign48.png").scaledToWidth(128);
-    _cursorPixmap = QPixmap(":/blackarrow_upleft128.png");
+    _startPixmap = QPixmap(":/resources/greenplay128.png");
+    _stopPixmap = QPixmap(":/resources/stopsign48.png").scaledToWidth(128);
+    _cursorPixmap = QPixmap(":/resources/blackarrow_upleft128.png");
 
     _init();
 }
@@ -240,7 +240,11 @@ SN_SageFittsLawTest::~SN_SageFittsLawTest() {
         _receiverThread->setEnd();
     }
 
-    _myPointer = 0;
+    if (_myPointer) {
+        _myPointer->setTrapWidget(0);
+        _myPointer->setOpacity(1.0);
+        _myPointer = 0;
+    }
 
     if (_dataObject) {
         delete _dataObject;
@@ -257,8 +261,8 @@ void SN_SageFittsLawTest::scheduleDummyUpdate() {
     update();
 }
 
-/*
-int SN_FittsLawTest::setQuality(qreal newQuality) {
+
+int SN_SageFittsLawTest::setQuality(qreal newQuality) {
 
     if (!_perfMon) return -1;
 
@@ -306,19 +310,20 @@ int SN_FittsLawTest::setQuality(qreal newQuality) {
 	}
 
 
-    if (_recvThread) {
-        if ( ! QMetaObject::invokeMethod(_recvThread, "setDelay_Msec", Qt::QueuedConnection, Q_ARG(unsigned long, thedelay)) ) {
-            qDebug() << "FittsLawTest::setQuality() : failed to invoke _recvThread->setExtraDelay_Msec()";
+    if (_receiverThread) {
+        if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(qint64, thedelay)) ) {
+            qDebug() << "SN_SageFittsLawTest::setQuality() : failed to invoke _receiverThread->setDelay_msec(qint64)";
             return -1;
         }
+//        qDebug() << "SN_SageFittsLawTest::setQuality() : Dq" << _quality << "Delay" << thedelay;
         return 0;
     }
     else {
-        qDebug() << "FittsLawTest::setQuality() : _recvThread is null";
+        qDebug() << "SN_SageFittsLawTest::setQuality() : _recvThread is null";
         return -1;
     }
 }
-*/
+
 
 
 void SN_SageFittsLawTest::resizeEvent(QGraphicsSceneResizeEvent *event) {
@@ -504,8 +509,8 @@ void SN_SageFittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, con
                 // upon receiving a frame, the receiver thread will emit frameReceived()
                 // which is connected up scheduleUpdate()
                 //
-				if (__sema && __sema->available() < 1)
-                	__sema->release(1);
+				if (__sema && __sema->available() < 2)
+                	__sema->release(2);
             }
             else {
                 update();
@@ -557,6 +562,9 @@ void SN_SageFittsLawTest::handlePointerPress(SN_PolygonArrowPointer *, const QPo
   User will see the green play icon
   */
 void SN_SageFittsLawTest::setReady(bool isDryrun /* false */) {
+    if (_isRunning) {
+        finishRound();
+    }
 
     _isDryRun = isDryrun;
 

@@ -66,7 +66,7 @@ public:
     void updateInfoTextItem();
 
 
-//    int setQuality(qreal newQuality);
+    int setQuality(qreal newQuality);
 
 
     void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
