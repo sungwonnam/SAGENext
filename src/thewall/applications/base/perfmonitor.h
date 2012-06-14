@@ -191,6 +191,7 @@ public:
       */
     inline void setRequiredBW_Mbps(qreal b) {_requiredBW_Mbps = b;}
 
+    inline void setMaxAchievedBW_Mbps(qreal b) {_maxBWachieved = b;}
 
 
     inline bool isInteracting() const {return _isInteracting;}
@@ -298,6 +299,10 @@ private:
       */
     qreal _requiredBW_Mbps;
 
+    /*!
+      If Rq is increased, then we need to give the app some time to use the resources...
+      */
+    qint64 _isRqIncreased;
 
 
     /*!
@@ -305,8 +310,8 @@ private:
       */
     quint64 _cumulativeByteRecved;
 
-quint64 _prevByteReceived;
-qint64 _prevTimestamp;
+    quint64 _prevByteReceived;
+    qint64 _prevTimestamp;
 
     /*!
       key timestamp
