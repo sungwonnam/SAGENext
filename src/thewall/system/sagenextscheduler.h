@@ -150,6 +150,8 @@ public:
       */
     virtual void reset() {}
 
+    static bool IsHittingResourceLimit;
+
 protected:
     bool _end;
 

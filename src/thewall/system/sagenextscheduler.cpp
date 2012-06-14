@@ -366,7 +366,7 @@ bool SN_SchedulerControl::eventFilter(QObject *, QEvent *) {
 
 
 
-
+bool SN_AbstractScheduler::IsHittingResourceLimit = false;
 
 
 
@@ -729,6 +729,12 @@ void SN_ProportionalShareScheduler::doSchedule() {
 
     } // end of while( TotalResource > 0   &&   bitarray.count(true) < # apps )
 
+    if (TotalResource <= 0) {
+        SN_AbstractScheduler::IsHittingResourceLimit = true;
+    }
+    else {
+        SN_AbstractScheduler::IsHittingResourceLimit = false;
+    }
 
     //
     // Now the calculation is done
