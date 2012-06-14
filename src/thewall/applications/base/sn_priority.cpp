@@ -8,10 +8,12 @@ SN_Priority::SN_Priority(SN_BaseWidget *w, QObject *parent)
     , _timeLastIntr(0)
     , _timeFirstIntr(QDateTime::currentMSecsSinceEpoch())
     , _intrCounter(0)
+    , _intrCounterPrev(0)
     , _widget(w)
 
     , _evr_to_win(0)
     , _evr_to_wall(0)
+    , _ipm(0)
 {
 }
 
@@ -59,6 +61,10 @@ qreal SN_Priority::computePriority(qint64 currTimeEpoch) {
 
 	computeEvrInfo();
 
+    //
+    // if app is not revealing itself much
+    // then its priority will lowered much
+    //
     qreal weight_evrwin = 1.0;
     if (_evr_to_win < 40) {
         weight_evrwin = (qreal)_evr_to_win / 100;
@@ -66,9 +72,11 @@ qreal SN_Priority::computePriority(qint64 currTimeEpoch) {
 
 	qreal visualfactor =  (qreal)_evr_to_win  +  (qreal)_evr_to_wall;
 
-	_priority = weight_evrwin * visualfactor + ipm();
+    _priority = weight_evrwin * visualfactor + 100.0f * (_intrCounter - _intrCounterPrev);
 
 //    qDebug() << "computePriority()" << weight_evrwin << visualfactor << ipm();
+
+    _intrCounterPrev = _intrCounter;
 
 	return _priority;
 }
@@ -82,6 +90,7 @@ qreal SN_Priority::ipm() const {
 void SN_Priority::setLastInteraction(SN_Priority::IntrType t /* = NOINTR */, qint64 time /* = 0 */) {
 	++_intrCounter;
 
+    /*
 	if (time > 0) {
 		_timeLastIntr = time;
 	}
@@ -89,7 +98,6 @@ void SN_Priority::setLastInteraction(SN_Priority::IntrType t /* = NOINTR */, qin
 		_timeLastIntr = QDateTime::currentMSecsSinceEpoch();
 	}
 
-    /*
 	SN_Priority::IntrType type;
 	if ( t == SN_Priority::NOINTR) {
 		type = _typeLastIntr;
@@ -99,9 +107,9 @@ void SN_Priority::setLastInteraction(SN_Priority::IntrType t /* = NOINTR */, qin
 	}
 
 	_intrHistory.insert(_timeLastIntr, type);
-    */
 
-//	_ipm = qreal(_counter)/ (qreal(_timeLast - _timeFirst) / (60.0 * 60.0)); // per minute
+	_ipm = qreal(_intrCounter)/ (qreal(_timeLastIntr - _timeFirstIntr) / (60.0 * 60.0)); // per minute
+    */
 
 //	qDebug() << "type" << type << "occurred at" << _timeLast << "freq: " << _frequency << "per minute";
 }

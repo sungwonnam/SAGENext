@@ -77,6 +77,8 @@ protected:
 	  */
 	quint64 _intrCounter;
 
+    quint64 _intrCounterPrev;
+
 	/*!
 	  A list of (msec since epoch, the type of interaction) tuple
 	  */
@@ -100,6 +102,8 @@ private:
 	  This tells how much the application window covering the wall
 	  */
 	int _evr_to_wall;
+
+    qreal _ipm;
 
 	/*!
 	  _evr_to_win and _evr_to_wall are computed here
