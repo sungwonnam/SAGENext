@@ -235,9 +235,13 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
 
         //
         // The observedQ_Rq > 1
-        // The required bw is set too low, so update required BW
+        // The required bw is set too low (incorrect value), so update Rq
         //
         // Note that a non-periodic widget's required BW starts with 0
+        //
+        // Also, this can easily happen when Dq is set to 1
+        // in that case the app will run best-effort w/o extra delay
+        // so, Rq can be updated with correct value which is currentBW
         //
         else if (_currEffectiveBW_Mbps > _requiredBW_Mbps) {
 
@@ -271,6 +275,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
         else if (_currEffectiveBW_Mbps <= _requiredBW_Mbps) {
             //
             // it's quite consuming what the scheduler demanded.
+            // Oq ~= Dq
             //
             if ( observedQuality_Dq() >= 0.9 ) {
 

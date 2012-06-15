@@ -882,7 +882,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     Q_ASSERT(resX > 0 && resY > 0);
 
 
-	resize(resX, resY);
+	if (appname != "fittslawtest" ) resize(resX, resY);
 	_appInfo->setFrameSize(resX, resY, getPixelSize((sagePixFmt)pixfmt) * 8);
 
 	if ( (sagePixFmt)pixfmt == PIXFMT_YUV  && _useOpenGL) {
@@ -900,7 +900,6 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
          */
         _perfMon->setRequiredBW_Mbps( (_appInfo->frameSizeInByte() * 8 * (qreal)framerate) / 1e+6 );
     }
-
 
     /* create double buffer if PBO is disabled */
 	if (!_usePbo) {

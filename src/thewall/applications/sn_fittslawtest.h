@@ -18,7 +18,7 @@ public:
     /*!
       How many round per user
       */
-    static int _NUM_ROUND;
+    static int _NUM_ROUND_PER_USER;
 
     /*!
       How may targets will appear in a round
@@ -117,11 +117,10 @@ private:
     int _targetHitCount;
 
     /*!
-      How many rounds completed so far
+      How many rounds completed so far.
+      This is a counter for a user. Not the real roundID
       */
     int _roundCount;
-
-    int _roudnId;
 
 
     /*!
@@ -170,13 +169,13 @@ private:
       */
     QLabel *_lbl_userid;
     QLabel *_lbl_roundid;
+    QLabel *_lbl_rndcount;
     QLabel *_lbl_tgtcount;
-    QLabel *_lbl_hitlatency;
     QLabel *_lbl_distance;
     QGraphicsProxyWidget *_lblproxy_userid;
     QGraphicsProxyWidget *_lblproxy_roundid;
+    QGraphicsProxyWidget *_lblproxy_rndcount;
     QGraphicsProxyWidget *_lblproxy_tgtcount;
-    QGraphicsProxyWidget *_lblproxy_hitlatency;
     QGraphicsProxyWidget *_lblproxy_distance;
 
 
