@@ -218,8 +218,10 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
     else {
         qint64 now = QDateTime::currentMSecsSinceEpoch();
 
-
         _currEffectiveBW_Mbps = bwtemp; // have to believe current measurement
+
+//        _requiredBW_Mbps = bwtemp;
+//        return;
 
         //
         // the widget isn't consuming resource, so update requiredBW so that scheduler won't count this widget
@@ -294,13 +296,15 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                 //
                 if ( _widget->demandedQuality() >= 1.0) {
 
-                   // nothing I could do
+                   // nothing I could do. just update Rq
                     // because it's extra delay is already 0
                     // no one's stealing from this app !
+//                    _requiredBW_Mbps = _currEffectiveBW_Mbps;
+
                 }
 
                 //
-                // This GUARANTEES the TotalResource is not enough
+                // This GUARANTEES the TotalResource is not enough -> SYSTEM OVERLOADED
                 // Why would scheduler demand lower quality if there's enough resource ?
                 //
                 else {

@@ -32,7 +32,7 @@ public:
       This is streaming overhead.
       So, the buffer size is width * height * 3
       */
-    static QSize _streamImageSize;
+//    static QSize _streamImageSize;
 
     inline QString userID() const {return _userID;}
 

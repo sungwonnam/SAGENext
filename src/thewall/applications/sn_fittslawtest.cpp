@@ -15,7 +15,7 @@ int SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND = 20;
 // 67.58.62.45 (venom 10 Gbps)
 //const QString FittsLawTest::_streamerIpAddr = QString("131.193.78.142");
 //QString SN_FittsLawTest::_streamerIpAddr = QString("67.58.62.45");
-QSize SN_SageFittsLawTest::_streamImageSize = QSize(1920, 1080);
+//QSize SN_SageFittsLawTest::_streamImageSize = QSize(1920, 1080);
 
 
 SN_FittsLawTestData * SN_SageFittsLawTest::_dataObject = 0;
@@ -88,17 +88,17 @@ void SN_SageFittsLawTest::_init() {
         }
         else {
             QByteArray line = f.readLine();
-            int num_subject, num_targets_per_round, overheadwidth, overheadheight;
-            QByteArray streamerip(64, '\0');
+            int num_subject, num_targets_per_round;
+//            QByteArray streamerip(64, '\0');
 
-            sscanf(line.data(), "%d %d %d %d %d %d %s", &num_subject, &num_targets_per_round, &overheadwidth, &overheadheight, &winwidth, &winheight, streamerip.data());
+            sscanf(line.data(), "%d %d %d %d", &num_subject, &num_targets_per_round, &winwidth, &winheight);
 
             SN_FittsLawTestData::_NUM_SUBJECTS = num_subject;
             SN_SageFittsLawTest::_NUM_ROUND_PER_USER = pow(2, num_subject - 1);
             SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND = num_targets_per_round;
 
 //            SN_FittsLawTest::_streamerIpAddr = QString(streamerip);
-            SN_SageFittsLawTest::_streamImageSize = QSize(overheadwidth, overheadheight);
+//            SN_SageFittsLawTest::_streamImageSize = QSize(overheadwidth, overheadheight);
 
             f.close();
         }
@@ -110,14 +110,14 @@ void SN_SageFittsLawTest::_init() {
     clearTargetPosList();
     clearData();
 
-    qDebug("%s::%s() : %d Subjects, %d Tgts/Rnd, %d Rnds/User, Overhead %dx%d, Window %dx%d\n"
+    qDebug("%s::%s() : %d Subjects, %d Tgts/Rnd, %d Rnds/User, Window %dx%d\n"
            , metaObject()->className()
            , __FUNCTION__
            , SN_FittsLawTestData::_NUM_SUBJECTS
            , SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
            , SN_SageFittsLawTest::_NUM_ROUND_PER_USER
-           , SN_SageFittsLawTest::_streamImageSize.width()
-           , SN_SageFittsLawTest::_streamImageSize.height()
+//           , SN_SageFittsLawTest::_streamImageSize.width()
+//           , SN_SageFittsLawTest::_streamImageSize.height()
            , winwidth, winheight
            );
 
