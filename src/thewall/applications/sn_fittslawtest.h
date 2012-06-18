@@ -6,6 +6,8 @@
 
 class SN_FittsLawTestData;
 
+
+
 class SN_SageFittsLawTest : public SN_SageStreamWidget
 {
     Q_OBJECT
@@ -229,6 +231,11 @@ private:
     int _missCountPerRound;
     int _missCountTotal;
 
+    /*!
+      sum of normalized latency of a round
+      */
+    qreal _sum_norm_latency;
+
     qint64 _targetAppearTime;
     qint64 _targetHitTime;
 
@@ -333,9 +340,6 @@ public slots:
 
 
 
-
-
-
 class SN_FittsLawTestData : public QObject
 {
     Q_OBJECT
@@ -354,11 +358,11 @@ public:
 
     inline QFrame * getFrame() {return _frame;}
 
-    void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, const QString &data = QString(), const QString &distance = QString());
+    void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, qint64 latency = -1, qreal distance = -1, int missfortarget = -1, int misscountround = -1, qreal avg_norm_latency = -1);
 
 //    void writeData(const QString &id, const QString &actionType, int targetcount = -1, const QByteArray &bytearry = QByteArray());
 
-    void flushCloseAll();
+    void flushCloseAll(const QString &id);
 
 private:
     QString _filenameBase;
