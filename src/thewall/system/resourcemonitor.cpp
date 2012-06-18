@@ -997,7 +997,7 @@ void SN_ResourceMonitor::printData(QTextStream *out, bool widgetIDasColCount /* 
 	static qint64 timestamp = 0;
     if (timestamp == 0) {
         timestamp = QDateTime::currentMSecsSinceEpoch();
-        (*out) << "Data from the rMonitor. Timestamp " << timestamp << " msec, rMon & Sched Freq " << settings->value("system/scheduler_freq").toInt() << "msec \n";
+        (*out) << "#Data from the rMonitor. Timestamp " << timestamp << " msec, rMon & Sched Freq " << settings->value("system/scheduler_freq").toInt() << "msec \n";
     }
 
 
