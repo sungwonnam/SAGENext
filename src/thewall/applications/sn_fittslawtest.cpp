@@ -53,7 +53,12 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
     , _myPointer(0)
 
     , _missCountPerTarget(0)
+    , _missCountPerRound(0)
     , _missCountTotal(0)
+
+    , _sum_norm_latency(0)
+    , _sum_latency(0)
+
     , _targetAppearTime(0.0)
     , _targetHitTime(0.0)
 {
@@ -122,7 +127,10 @@ void SN_SageFittsLawTest::_init() {
            );
 
 
-    if (!_dataObject) _dataObject = new SN_FittsLawTestData;
+    if (!_dataObject) {
+        SN_SageFittsLawTest::RoundID = -1;
+        _dataObject = new SN_FittsLawTestData;
+    }
     _dataObject->addWidget(this);
 
 
@@ -388,6 +396,7 @@ bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, co
 //            (_data.hitlatency)[_roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount] = _targetHitTime - _targetAppearTime;
 
             qint64 hitlatency = _targetHitTime - _targetAppearTime;
+            _sum_latency += hitlatency;
 
 
             //
@@ -573,7 +582,7 @@ void SN_SageFittsLawTest::handlePointerPress(SN_PolygonArrowPointer *, const QPo
   User will see the green play icon
   */
 void SN_SageFittsLawTest::setReady(bool isDryrun /* false */) {
-    qDebug() << "setReady() : " << SN_SageFittsLawTest::_NUM_ROUND_PER_USER << SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND;
+//    qDebug() << "setReady() : " << SN_SageFittsLawTest::_NUM_ROUND_PER_USER << SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND;
     Q_ASSERT(_targetPosList.size() == SN_SageFittsLawTest::_NUM_ROUND_PER_USER * SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND);
 
     if (isDryrun)
@@ -721,7 +730,11 @@ void SN_SageFittsLawTest::finishRound() {
     if (!_isDryRun) {
         _roundCount++;
 
-        _dataObject->writeData(_userID, "FINISH_RND", SN_SageFittsLawTest::RoundID, -1, -1, -1, -1, _missCountPerRound, _sum_norm_latency / SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND);
+        _dataObject->writeData(_userID, "FINISH_RND", SN_SageFittsLawTest::RoundID, -1, -1, -1, -1
+                               , _sum_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+                               , _sum_norm_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+                               , _missCountPerRound
+                               );
 
         if (_roundCount >= SN_SageFittsLawTest::_NUM_ROUND_PER_USER) {
             qDebug() << "FittsLawTest::finishRound() : A test has completed for user" << _userID;
@@ -743,6 +756,7 @@ void SN_SageFittsLawTest::finishRound() {
 
     _missCountPerTarget = 0;
     _missCountPerRound = 0;
+    _sum_latency = 0;
     _sum_norm_latency = 0;
 }
 
@@ -756,7 +770,7 @@ void SN_SageFittsLawTest::determineNextTargetPosition() {
     // there's saved value
     //
     if (! nextPos.isNull() ) {
-//        qDebug() << "determineNextTargetPosition()" << _roundCount << _targetHitCount << "has point data" << nextPos;
+        qDebug() << "determineNextTargetPosition()" << _roundCount << _targetHitCount << "has point data" << nextPos;
     }
 
     //
@@ -943,7 +957,7 @@ SN_FittsLawTestData::SN_FittsLawTestData(QObject *parent)
 {
 
     _filenameBase = QDir::homePath().append("/.sagenext/FLTdata_");
-    qDebug() << "SN_FittsLawTestData::SN_FittsLawTestData()";
+    qDebug() << "SN_FittsLawTestData::SN_FittsLawTestData() : # subjects" << SN_FittsLawTestData::_NUM_SUBJECTS;
 }
 
 SN_FittsLawTestData::~SN_FittsLawTestData() {
@@ -995,6 +1009,7 @@ void SN_FittsLawTestData::closeAll() {
             widget->deleteLater();
         }
     }
+    SN_SageFittsLawTest::RoundID = -1;
     deleteLater();
 }
 
@@ -1023,14 +1038,24 @@ void SN_FittsLawTestData::closeApp(QObject *obj) {
 }
 
 void SN_FittsLawTestData::advanceRound() {
-    qDebug() << "\nSN_FittsLawTestData::advanceRound() : Ready for Round ID" << SN_SageFittsLawTest::RoundID;
 
     Q_ASSERT(_widgetMap.size() == SN_FittsLawTestData::_NUM_SUBJECTS);
 
     if (_globalOut) _globalOut->flush();
 
+    //
+    // increment the RoundID, it's initialized with -1
+    //
+    SN_SageFittsLawTest::RoundID += 1;
+
+    if ( SN_SageFittsLawTest::RoundID > (pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1) ) {
+        qDebug() << "advanceRound() : reset RoundID";
+        SN_SageFittsLawTest::RoundID = 1; // no more dry run is needed.
+    }
+    qDebug() << "\nSN_FittsLawTestData::advanceRound() : Ready for Round ID" << SN_SageFittsLawTest::RoundID;
+
     switch (SN_SageFittsLawTest::RoundID) {
-    case -1: {
+    case 0: {
         if (_isDryRun) {
 
             //
@@ -1050,53 +1075,44 @@ void SN_FittsLawTestData::advanceRound() {
         }
         break;
     }
-    case 0: {
+    case 1: {
         Q_ASSERT(_widgetMap.value('A', 0));
         (_widgetMap['A'])->setReady();
         break;
     }
-    case 1: {
+    case 2: {
         Q_ASSERT(_widgetMap.value('B', 0));
 
         (_widgetMap['B'])->setReady();
         break;
     }
-    case 2: {
+    case 3: {
         (_widgetMap['B'])->setReady();
         (_widgetMap['A'])->setReady();
         break;
     }
-    case 3: {
+    case 4: {
         Q_ASSERT(_widgetMap.value('C', 0));
         (_widgetMap['C'])->setReady();
         break;
     }
-    case 4: {
-        (_widgetMap['C'])->setReady();
-        (_widgetMap['A'])->setReady();
-        break;
-    }
     case 5: {
         (_widgetMap['C'])->setReady();
-        (_widgetMap['B'])->setReady();
+        (_widgetMap['A'])->setReady();
         break;
     }
     case 6: {
         (_widgetMap['C'])->setReady();
         (_widgetMap['B'])->setReady();
+        break;
+    }
+    case 7: {
+        (_widgetMap['C'])->setReady();
+        (_widgetMap['B'])->setReady();
         (_widgetMap['A'])->setReady();
         break;
     }
     }
-
-    //
-    // increment the RoundID
-    //
-    SN_SageFittsLawTest::RoundID += 1;
-    if ( SN_SageFittsLawTest::RoundID > pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1 ) {
-        SN_SageFittsLawTest::RoundID = 0; // no more dry run is needed.
-    }
-
 }
 
 bool SN_FittsLawTestData::_openGlobalDataFile() {
@@ -1177,7 +1193,7 @@ void SN_FittsLawTestData::addWidget(SN_SageFittsLawTest *widget, const QChar id)
 //    writeData(id, actionType, targetcount, QString(bytearry));
 //}
 
-void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType, int roundid, int targetcount/*-1*/, qint64 latency /* -1 */, qreal distance /* -1 */, int missfortarget/*-1*/, int misscountround /*-1*/, qreal avg_norm_latency/*-1*/) {
+void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType, int roundid, int targetcount/*-1*/, qint64 latency /* -1 */, qreal distance /* -1 */, int missfortarget/*-1*/, qreal avg_latency/*-1*/, qreal avg_norm_latency/*-1*/, int misscountround /*-1*/) {
 
     qint64 ts = QDateTime::currentMSecsSinceEpoch();
 
@@ -1202,14 +1218,17 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
             (*_globalOut) << "," << distance;
             (*_globalOut) << "," << latency/distance;
         }
-        if (missfortarget >0) {
+        if (missfortarget >= 0) {
             (*_globalOut) << "," << missfortarget;
         }
 
-        if (avg_norm_latency > 0) {
-            (*_globalOut) << ",,,," << avg_norm_latency;
+        if (avg_latency > 0) {
+            (*_globalOut) << ",,," << avg_latency;
         }
-        if (misscountround > 0) {
+        if (avg_norm_latency > 0) {
+            (*_globalOut) << "," << avg_norm_latency;
+        }
+        if (misscountround >= 0) {
             (*_globalOut) << "," << misscountround;
         }
 
@@ -1230,32 +1249,35 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
     if (appOut) {
         if (actionType == "MISS") {
         }
-        else if (actionType == "HIT"){
-            (*appOut) << ts << "," << actionType << "," << id << "," << roundid;
-            if (targetcount >= 0) {
-                (*appOut) << "," << targetcount;
-            }
-            if (latency > 0) {
-                (*appOut) << "," << latency;
-            }
-            if (distance > 0) {
-                (*appOut) << "," << distance;
-
-                (*appOut) << "," << latency/distance;
-            }
-            if (missfortarget > 0) {
-                (*appOut) << "," << missfortarget;
-            }
-            (*appOut) << "\n";
-        }
         else {
             (*appOut) << ts << "," << actionType << "," << id << "," << roundid;
 
-            if (avg_norm_latency > 0) {
-                (*appOut) << ",,,," << avg_norm_latency;
+            if (actionType == "HIT"){
+
+                if (targetcount >= 0) {
+                    (*appOut) << "," << targetcount;
+                }
+                if (latency > 0) {
+                    (*appOut) << "," << latency;
+                }
+                if (distance > 0) {
+                    (*appOut) << "," << distance;
+
+                    (*appOut) << "," << latency/distance;
+                }
+                if (missfortarget >= 0) {
+                    (*appOut) << "," << missfortarget;
+                }
             }
-            if (misscountround > 0) {
-                (*appOut) << "," << misscountround;
+            else if (actionType == "FINISH_RND") {
+
+                (*appOut) << ",,," << avg_latency;
+    //            if (avg_norm_latency > 0) {
+                    (*appOut) << "," << avg_norm_latency;
+    //            }
+    //            if (misscountround > 0) {
+                    (*appOut) << "," << misscountround;
+    //            }
             }
             (*appOut) << "\n";
         }
