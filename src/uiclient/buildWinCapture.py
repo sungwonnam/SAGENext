@@ -144,7 +144,6 @@ elif sys.platform == 'win32':
     from distutils.core import setup, Distribution
     opts = dict(dist_dir="winCapture")
     setup(windows=[{"script":"winCapture.py",
-                    "icon_resources":[(1, "sagePointerIcon.ico")],
                     "other_resources": [(24,1,manifest)],
                     "dll_excludes":[ "mswsock.dll", "powrprof.dll" ],
                     }],
@@ -152,7 +151,7 @@ elif sys.platform == 'win32':
 	  version = str(VERSION),
 	  description = DESCRIPTION,
 	  options=dict(py2exe=opts),
-          data_files = [(".", ["splash_small.png", "gdiplus.dll", "msvcp90.dll", "msvcr90.dll"])]
+          data_files = [(".", ["gdiplus.dll", "msvcp90.dll", "msvcr90.dll"])]
 	  )
 	  
 

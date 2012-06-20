@@ -6,6 +6,7 @@
 //#include <QAbstractSocket>
 #include <QSettings>
 #include <QTcpSocket>
+#include <QTcpServer>
 
 #include "sn_pointerui_msgthread.h"
 #include "sn_pointerui_sendthread.h"
@@ -35,6 +36,25 @@ signals:
 	void mediaDropped(QList<QUrl> mediaurls);
 };
 
+/*!
+  Win Capture pipe
+  */
+class SN_WinCaptureTcpServer : public QTcpServer
+{
+	Q_OBJECT
+public:
+	SN_WinCaptureTcpServer(QTcpSocket *s, QObject *parent=0) : QTcpServer(parent), _socket(s) {}
+
+private:
+	QTcpSocket *_socket;
+
+protected:
+	void incomingConnection(int handle) {
+//		qDebug() << "incoming connection";
+		Q_ASSERT(_socket);
+		_socket->setSocketDescriptor(handle);
+	}
+};
 
 
 /**
@@ -196,6 +216,29 @@ private:
 		  DOUBLE_CLICK(5) int
 		  **/
 	QProcess *macCapture;
+
+	/*!
+	  winCapture.exe (from winCapture.py)
+	  built by py2exe
+	  */
+	QProcess *_winCapture;
+
+	/*!
+	  winCapture.exe will connect to localhost:44556 upon starting
+	  */
+	SN_WinCaptureTcpServer *_winCaptureServer;
+
+	/*!
+	  winCapture.exe and this program will communicate through socket.
+	  It's because py2exe disables STDOUT channel !!!!
+	  */
+	QTcpSocket _winCapturePipe;
+
+	/*!
+	  if Q_OS_MAC then it's macCapture (which is QProcess)
+	  if Q_OS_WIN then it's _winCapturePipe( which is QTcpSocket)
+	  */
+	QIODevice *_iodeviceForMouseHook;
 		
 		/**
 		  This is for macCapture
@@ -323,8 +366,10 @@ private slots:
 		  respond to macCapture (read from stdout, translate msg, send to the wall)
 		  This slot is connected to QProcess::readyReadStandardOutput() signal
 		  */
-	void sendMouseEventsToWall();
+	void readFromMouseHook();
 		
+
+	void readFromWinCapture();
 
 	/*!
 	  VNC sharing.

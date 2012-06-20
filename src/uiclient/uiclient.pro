@@ -47,6 +47,13 @@ QMAKE_POST_LINK = cp macCapture ../../sagenextpointer.app/Contents/MacOS/
 }
 
 
+win32 {
+	message("Building winCapture with py2exe")
+	system(python buildWinCapture.py py2exe -b 1)
+}
+
+
+
 SOURCES += \
 	main.cpp\
     sn_pointerui.cpp

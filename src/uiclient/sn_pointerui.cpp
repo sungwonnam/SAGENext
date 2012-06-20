@@ -32,6 +32,11 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
     , mediaDropFrame(0)
     , _sharingEdge(QString("top"))
 	, macCapture(0)
+	, _winCapture(0)
+	, _winCaptureServer(0)
+
+	, _iodeviceForMouseHook(0)
+
 	, mouseBtnPressed(0)
     , _wasDblClick(false)
 
@@ -40,7 +45,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 
 //    setAttribute(Qt::WA_DeleteOnClose, true);
 
-#ifdef Q_OS_MAC
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN32)
 	ui->hookMouseBtn->hide();
 #endif
 
@@ -162,6 +167,19 @@ SN_PointerUI::~SN_PointerUI()
 		macCapture->waitForFinished(-1);
 	}
 
+	if (_winCapture) {
+		_winCapture->kill();
+		_winCapture->waitForFinished(-1);
+	}
+
+	if (_winCaptureServer) {
+		_winCaptureServer->close();
+	}
+
+	if (_winCapturePipe.isOpen()) {
+		_winCapturePipe.close();
+	}
+
     qDebug() << "Good Bye";
 }
 
@@ -184,6 +202,17 @@ void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
             delete macCapture;
             macCapture = 0;
         }
+
+		if (_winCapture) {
+			_winCapturePipe.close();
+
+			_winCapture->kill();
+			_winCapture->waitForFinished(-1);
+			delete _winCapture;
+			_winCapture = 0;
+		}
+
+		_iodeviceForMouseHook = 0;
 
         QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection);
     }
@@ -375,12 +404,12 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
 	//
 	// maccapture
 	//
-#ifdef Q_OS_MAC
+#if defined(Q_OS_MAC)
 	if (!macCapture) {
 		macCapture = new QProcess(this);
 		macCapture->setWorkingDirectory(QCoreApplication::applicationDirPath());
 
-		if ( ! QObject::connect(macCapture, SIGNAL(readyReadStandardOutput()), this, SLOT(sendMouseEventsToWall())) ) {
+		if ( ! QObject::connect(macCapture, SIGNAL(readyReadStandardOutput()), this, SLOT(readFromMouseHook())) ) {
 			qDebug() << "Can't connect macCapture signal to my slot. macCapture won't be started.";
 		}
 		else {
@@ -391,6 +420,8 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
 				QMessageBox::critical(this, "macCapture Error", "Failed to start macCapture");
 			}
 			else {
+				_iodeviceForMouseHook = macCapture;
+
 				QByteArray captureEdge(10, '\0');
 				int edge = 3;// left 1, right, top, bottom (in macCapture)
 				if ( _sharingEdge == "top" ) edge = 3;
@@ -400,6 +431,29 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
 				sprintf(captureEdge.data(), "%d %d\n", 14, edge);
 				macCapture->write(captureEdge);
 			}
+		}
+	}
+#elif defined(Q_OS_WIN32)
+	if (!_winCaptureServer) {
+		_winCaptureServer = new SN_WinCaptureTcpServer(&_winCapturePipe, this);
+	}
+
+	if (!_winCaptureServer->isListening()) {
+		_winCaptureServer->listen(QHostAddress::LocalHost, 44556);
+	}
+
+	while(!_winCaptureServer->isListening()) {} // busy waiting
+
+	QObject::connect(&_winCapturePipe, SIGNAL(readyRead()), this, SLOT(readFromMouseHook()));
+	if (!_winCapture) {
+		_winCapture = new QProcess(this);
+		_winCapture->setWorkingDirectory(QCoreApplication::applicationDirPath());
+		_winCapture->start("winCapture" + QString(QDir::separator()) + "winCapture " + QString::number(d->screenGeometry().width()) + " " + QString::number(d->screenGeometry().height()));
+		if (! _winCapture->waitForStarted(-1) ) {
+			QMessageBox::critical(this, "winCapture Error", "Failed to start winCapture");
+		}
+		else {
+			_iodeviceForMouseHook = &_winCapturePipe;
 		}
 	}
 #else
@@ -424,7 +478,15 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
     */
 }
 
+void SN_PointerUI::readFromWinCapture() {
+	Q_ASSERT(_winCapturePipe.isOpen());
+	Q_ASSERT(_winCapturePipe.isReadable());
 
+	QByteArray msg(64, 0);
+	while (_winCapturePipe.readLine(msg.data(), msg.size()) > 0) {
+		qDebug() << "readFromWinCapture() : " << msg;
+	}
+}
 
 
 
@@ -455,7 +517,7 @@ void SN_PointerUI::hookMouse() {
 			setCursor(Qt::BlankCursor);
 
 
-#ifdef Q_OS_MAC
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN32)
 			// do nothing
 			ui->isConnectedLabel->setText("Pointer is in SAGENext");
 #else
@@ -485,7 +547,7 @@ void SN_PointerUI::unhookMouse() {
 	isMouseCapturing = false;
 	unsetCursor();
 
-#ifdef Q_OS_MAC
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN32)
 		// do nothing
 #else
 	releaseMouse();
@@ -808,10 +870,8 @@ void SN_PointerUI::readLocalFiles(QStringList filenames) {
 /**
   This function is used by Mac OS X and invoked by QProcess::readyReadStandardOutput() signal
   */
-void SN_PointerUI::sendMouseEventsToWall() {
-	Q_ASSERT(macCapture);
-
-//	QTextStream textin(macCapture);
+void SN_PointerUI::readFromMouseHook() {
+	if (!_iodeviceForMouseHook) return;
 	
 	int msgcode = 0; // capture, release, move, click, wheel,..
 	int x = 0.0, y = 0.0; // MOVE (x, y) is event globalPos
@@ -821,20 +881,23 @@ void SN_PointerUI::sendMouseEventsToWall() {
 	
 	QByteArray msg(64, 0);
 	QTextStream in(&msg, QIODevice::ReadOnly);
-	while ( macCapture->readLine(msg.data(), msg.size()) > 0 ) {
+	while ( _iodeviceForMouseHook->readLine(msg.data(), msg.size()) > 0 ) {
+
+//		qDebug() << msg;
+
 		in >> msgcode;
 		switch(msgcode) {
 		
 		// CAPTURED
 		case 11: {
-			qDebug() << "Start capturing Mac mouse events";
+			qDebug() << "Start capturing mouse events";
 			hookMouse();
 			break;
 		}
 			
 		// RELEASED
 		case 12: {
-			qDebug() << "Stop capturing Mac mouse events";
+			qDebug() << "Stop capturing mouse events";
 			unhookMouse();
 			break;
 		}
