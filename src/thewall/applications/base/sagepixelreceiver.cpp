@@ -46,6 +46,7 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
     , _pboCond(pboCond)
     , _isRMonitor(false)
     , _isScheduler(false)
+    , _fittsLawTestUpdate(true)
 {
 	QThread::setTerminationEnabled(true);
 
@@ -220,7 +221,10 @@ void SN_SagePixelReceiver::run() {
 			_doubleBuffer->swapBuffer();
 			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "swapBuffer returned";
 
-            emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
+            if (_fittsLawTestUpdate)
+                emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
+            else
+                _doubleBuffer->releaseBackBuffer();
 
 			//
 			// getFrontBuffer() will return immediately. There's no mutex waiting in this function
@@ -247,6 +251,14 @@ void SN_SagePixelReceiver::run() {
 
         if (_sageWidget->__sema) {
             _sageWidget->__sema->acquire(1);
+
+            // keep fliping the coin
+            if (_fittsLawTestUpdate) {
+                _fittsLawTestUpdate = false;
+            }
+            else {
+                _fittsLawTestUpdate = true;
+            }
         }
 
         //
