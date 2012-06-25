@@ -133,7 +133,6 @@ void SN_SagePixelReceiver::run() {
 		_affInfo->setCpuOfMine( sched_getcpu() , _settings->value("system/sailaffinity", false).toBool());
 	}
 
-
     //
 	// Actual time elapsed
     // This includes the extra delay the scheduler demands
@@ -317,12 +316,21 @@ void SN_SagePixelReceiver::run() {
 			_perfMon->addToCumulativeByteReceived(totalread, effectiveDelay_second, 0);
 		}
 
+        //
+        // If the scheduelr demands specific quality
+        //
         if (_isScheduler) {
             recvDelay = QDateTime::currentMSecsSinceEpoch() - start;
 
             if (_delay > 0  &&  _delay > recvDelay) {
 //                qDebug() << "run() : widget" << _sageWidget->globalAppId() << "demanded delay" << _delay << ". so delaying" << _delay-recvDelay << "msec more";
                 QThread::msleep( _delay - recvDelay );
+            }
+            else if (_delay < 0) {
+
+                while (_delay < 0) {
+                    QThread::msleep(500);
+                }
             }
         }
 

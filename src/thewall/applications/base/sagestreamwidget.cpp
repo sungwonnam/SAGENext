@@ -255,30 +255,32 @@ int SN_SageStreamWidget::setQuality(qreal newQuality) {
 
     qint64 delayneeded = 0;
 
-    if ( newQuality >= 1.0 ) {
-		_quality = 1.0;
-        delayneeded = 0;
-	}
-
-	else {
-        //
-        // newQuality == 0 can happen when
-        // 1. this app's requiredBW is set to 0 by itself
-        // or
-        // 2. its priority is 0 (completely obscured by other widget for instance)
-        //
-        // And it means the streamer (SAGE app) isn't sending any pixel
-        //
-        _quality = newQuality;
-
-        // qreal BWallowed_Mbps = _perfMon->getRequiredBW_Mbps( _quality );
-        qreal newfps = _quality * _perfMon->getExpetctedFps();
-//        delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps()));
-        if (newfps == 0) {
-            newfps = 1; // 1 frame/sec at least
+    //
+    // newQuality == 0 could happen when
+    // 1. this app's requiredBW is set to 0 by itself (SN_FittsLawTest)
+    // or
+    // 2. its priority is 0 (completely obscured by other widget for instance)
+    //
+    // And it means the streamer (SAGE app) isn't sending any pixel
+    //
+    if (newQuality == 0) {
+        delayneeded = -1; // pause()
+    }
+    else {
+        if ( newQuality >= 1.0 ) {
+//            _quality = 1.0;
+            delayneeded = 0;
         }
-        delayneeded = 1000 / newfps;
-	}
+        else {
+            qreal newfps = newQuality * _perfMon->getExpetctedFps();
+            delayneeded = 1000 / newfps; // total delay (in msec) between frame to achieve new FPS
+        }
+    }
+
+
+    // update demanded Quality
+    _quality = newQuality;
+
 
     if (_receiverThread) {
         if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(qint64, delayneeded)) ) {

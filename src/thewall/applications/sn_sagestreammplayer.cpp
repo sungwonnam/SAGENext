@@ -26,61 +26,7 @@ SN_SageStreamMplayer::SN_SageStreamMplayer(const quint64 globalappid, const QSet
 	connect(_playButton, SIGNAL(clicked(int)), this, SLOT(playMplayer()));
 	connect(_fforwardButton, SIGNAL(clicked(int)), this, SLOT(fforwardMplayer()));
 }
-/*
-int SN_SageStreamMplayer::setQuality(qreal newQuality) {
-    if (!_perfMon) return -1;
 
-    if (_quality == newQuality) {
-        return 0;
-    }
-
-    qint64 delayneeded = 0;
-
-    if ( newQuality >= 1.0 ) {
-		_quality = 1.0;
-        delayneeded = 0;
-	}
-
-    //
-    // this can happen
-    // when this app's requiredBW is set to 0.
-    // or its priority is 0 (completely obscured by other widget)
-    //
-    // And it means the streamer (SAGE app) isn't sending any pixel
-    //
-	else if ( newQuality <= 0.0 ) {
-		_quality = 0.0;
-        if (!_isMplayerPaused)
-            pauseMplayer();
-        return 0;
-	}
-
-	else {
-        _quality = newQuality;
-
-        qreal newfps = _quality * _perfMon->getExpetctedFps(); // based on the priori
-//        delayneeded = 1000 * ((1.0/newfps) - (1.0/_perfMon->getExpetctedFps())); // in msec
-        delayneeded = 1000 / newfps;
-	}
-
-    if (_isMplayerPaused) {
-        playMplayer();
-    }
-
-    if (_receiverThread) {
-        if ( ! QMetaObject::invokeMethod(_receiverThread, "setDelay_msec", Qt::QueuedConnection, Q_ARG(qint64, delayneeded)) ) {
-            qDebug() << "SN_SageStreamMplayer::setQuality() : failed to invoke setDelay_msec()";
-            return -1;
-        }
-    }
-    else {
-        qDebug() << "SN_SageStreamMplayer::setQuality() : _receiverThread is null";
-        return -1;
-    }
-
-    return 0;
-}
-*/
 
 void SN_SageStreamMplayer::setButtonPosition() {
     _rewindButton->setPos(0, boundingRect().bottom() - _rewindButton->size().height());
