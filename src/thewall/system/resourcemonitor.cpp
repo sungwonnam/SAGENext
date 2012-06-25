@@ -500,6 +500,8 @@ void SN_ResourceMonitor::refresh() {
 
     qint64 currentMsec = QDateTime::currentMSecsSinceEpoch();
 
+    bool isSystemOverloaded = false; // reset overload status
+
 	QMap<quint64, SN_BaseWidget *>::const_iterator it;
 	for (it=_widgetMap.constBegin(); it!=_widgetMap.constEnd(); it++) {
 		SN_BaseWidget *bw = it.value();
@@ -520,6 +522,13 @@ void SN_ResourceMonitor::refresh() {
         bw->updateInfoTextItem();
 
 
+        //
+        // Check if the system is currently overloaded
+        // Dq 0 doesn't mean system overloaded !!
+        //
+        if (0 < bw->demandedQuality() && bw->demandedQuality() < 1.0) {
+            isSystemOverloaded = true;
+        }
 
         //
         // Aggregate the bandwidth the application is actually achieving at this moment.
@@ -551,8 +560,12 @@ void SN_ResourceMonitor::refresh() {
     // now another remote streaming came in showing 90Mbps while forcing the first one to 10 Mbps (link capacity is 100Mbps)
     // BW of the 2nd app is added to total which is now 190 Mbps !!
     //
-    _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
-//    _totalBWAchieved_Mbps = currentTotalBandwidth;
+    if (isSystemOverloaded) {
+        _totalBWAchieved_Mbps = currentTotalBandwidth;
+    }
+    else {
+        _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
+    }
 
 
 	_widgetListRWlock.unlock();
