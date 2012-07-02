@@ -530,7 +530,7 @@ void SN_SageFittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, con
                 // which is connected up scheduleUpdate()
                 //
 				if (__sema && __sema->available() < 1)
-                	__sema->release(1);
+                	__sema->release(2);
             }
             else {
                 update();
@@ -770,7 +770,7 @@ void SN_SageFittsLawTest::determineNextTargetPosition() {
     // there's saved value
     //
     if (! nextPos.isNull() ) {
-        qDebug() << "determineNextTargetPosition()" << _roundCount << _targetHitCount << "has point data" << nextPos;
+//        qDebug() << "determineNextTargetPosition()" << _roundCount << _targetHitCount << "has point data" << nextPos;
     }
 
     //
@@ -1133,7 +1133,7 @@ bool SN_FittsLawTestData::_openGlobalDataFile() {
 bool SN_FittsLawTestData::_openPerAppDataFile(const QChar id) {
     QString fname = _filenameBase;
 
-    QFile *f = new QFile(fname.append(QString(id)));
+    QFile *f = new QFile(fname.append(QString(id)).append(".csv"));
     QTextStream *out = new QTextStream(f);
 
     if ( ! f->open(QIODevice::WriteOnly | QIODevice::Truncate) ) {

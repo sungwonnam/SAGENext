@@ -548,7 +548,7 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 	}
 
 	//
-	// mouse left click event will be generated and sent to the viewport no matter what
+	// mouse left click
 	//
 	else if (btn == Qt::LeftButton) {
 		if (_basewidget) {
@@ -571,10 +571,19 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
                 // if an application returns true in that function
                 //
                 setBrush(_color);
+
+                //
+                // if the function returns true then
+                // return without generating system's mouse event
+                //
                 return;
             }
 		}
-
+        else if (_specialItem) {
+            // SN_PartitionBar doesn't need real mouse click event
+            setBrush(_color);
+            return;
+        }
 
         //
         //
@@ -589,8 +598,6 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 		}
 		QPointF clickedViewPos = view->mapFromScene( scenePos );
 
-//		qDebug() << "pointerClick() : LeftButton" << scenePos;
-
 		QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
 		QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
 
@@ -600,12 +607,12 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 //			qDebug() << "\tcurrent mouse grabber:" << _scene->mouseGrabberItem();
 		}
 		else {
-			//qDebug() << "press delievered";
+//			qDebug() << "press delievered";
 			if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
 //				qDebug("SN_PolygonArrowPointer::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
 			}
 			else {
-				//qDebug() << "release delievered";
+//				qDebug() << "release delievered";
 				// who should ungrabmouse() ??
 				QGraphicsItem *mouseGrabberItem = _scene->mouseGrabberItem();
 				if (mouseGrabberItem) mouseGrabberItem->ungrabMouse();
@@ -645,8 +652,16 @@ void SN_PolygonArrowPointer::pointerDoubleClick(const QPointF &scenePos, Qt::Mou
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
     if (gview) {
-        QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), btn, btn | Qt::NoButton, modifier);
-		QMouseEvent release(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btn | Qt::NoButton, modifier);
+        QPoint posInViewport = gview->mapFromScene(scenePos);
+
+        QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, posInViewport, btn, btn | Qt::NoButton, modifier);
+		QMouseEvent release(QEvent::MouseButtonRelease, posInViewport, btn, btn | Qt::NoButton, modifier);
+
+        //
+        // Below is needed when SN_BaseWidget doesn't reimplement QGraphicsItem::mousePressEvent()
+        // Thus it can't become the mouse grabber upon receiving pressEvent
+        //
+//        _basewidget->grabMouse();
 
         // sendEvent doesn't delete event object, so event should be created in stack space
         if ( ! QApplication::sendEvent(gview->viewport(), &dblClickEvent) ) {
@@ -698,13 +713,20 @@ void SN_PolygonArrowPointer::pointerWheel(const QPointF &scenePos, int delta, Qt
 		if ( delta > 0 )  _delta = 120;
 		else if (delta <0) _delta = -120;
 
-		QWheelEvent we(gview->mapFromScene(scenePos), /*gview->mapToGlobal(scenePos.toPoint()),*/ _delta, Qt::NoButton, Qt::NoModifier);
+        QPoint posInViewport = gview->mapFromScene(scenePos);
+
+		QWheelEvent we(posInViewport, /*gview->mapToGlobal(scenePos.toPoint()),*/ _delta, Qt::NoButton, Qt::NoModifier);
+
+        //
+        // system mouse should be on the widget !!
+        //
+//        QCursor::setPos(gview->mapToGlobal(posInViewport));
 
         if ( ! QApplication::sendEvent(gview->viewport(), &we) ) {
             qDebug("PolygonArrow::%s() : send wheelEvent failed", __FUNCTION__);
         }
         else {
-            //qDebug() << "PolygonArrow wheel" << gview->mapFromScene(scenePos);
+            //qDebug() << "PolygonArrow wheel event sent" << gview->mapFromScene(scenePos);
         }
     }
 }
@@ -756,7 +778,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 		}
 		else {
 			// regualar graphics items or items that inherit QGraphicsItem/Widget
-
+            _guiItem = item->topLevelWidget();
 
 			if(object) {
 				if ( ::strcmp(object->metaObject()->className(), "SN_LineEdit") == 0 ) {

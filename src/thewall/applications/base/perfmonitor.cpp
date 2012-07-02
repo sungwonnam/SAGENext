@@ -336,7 +336,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                     //
                     //////////////////// DECREASE Rq /////////////////////////////
                     //
-                    _requiredBW_Mbps = _currEffectiveBW_Mbps;
+                    _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
 
                     qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "!! DECREASE Rq for under-performing" << _requiredBW_Mbps;
 
