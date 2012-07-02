@@ -342,7 +342,7 @@ class WinCapture:
     def startHooks(self):
         self.hm = pyHook.HookManager()
         self.hm.SubscribeMouseAll(self.onMouseEvent)
-        self.hm.SubscribeKeyAll(self.onKeyboardEvent)
+        #self.hm.SubscribeKeyAll(self.onKeyboardEvent)
         self.hm.HookMouse()
         self.hm.HookKeyboard()
 
@@ -375,10 +375,11 @@ def main():
     # get display height and width
     width = sys.argv[1]
     height = sys.argv[2]
+    shareEdge = int(sys.argv[3])
 
     # shared variable for closing the winCapture
     SHARED_DO_RUN = multiprocessing.Value("i", 1)
-    SHARED_CAPTURE_EDGE = multiprocessing.Value("i", TOP_EDGE)
+    SHARED_CAPTURE_EDGE = multiprocessing.Value("i", shareEdge)
     SHARED_DISABLE_CORNERS = multiprocessing.Value("i", 1)
 
 	# connect to QTcpServer

@@ -30,7 +30,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	, isMouseCapturing(false)
     , _wallPort(0)
     , mediaDropFrame(0)
-    , _sharingEdge(QString("top"))
+    , _sharingEdge(QString("right"))
 	, macCapture(0)
 	, _winCapture(0)
 	, _winCaptureServer(0)
@@ -133,7 +133,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
         _pointerColor = _settings->value("pointercolor", "#ff0000").toString();
         _vncUsername = _settings->value("vncusername", "").toString();
         _vncPasswd = _settings->value("vncpasswd", "").toString();
-        _sharingEdge = _settings->value("sharingedge", "top").toString();
+        _sharingEdge = _settings->value("sharingedge", "right").toString();
 
         _tcpMsgSock.connectToHost(_wallAddress, _wallPort);
     }
@@ -444,11 +444,17 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
 
 	while(!_winCaptureServer->isListening()) {} // busy waiting
 
+	int sedge  = 1;
+	if (QString::compare("left", _sharingEdge, Qt::CaseInsensitive) == 0) sedge = 1;
+	else if (QString::compare("right", _sharingEdge, Qt::CaseInsensitive) == 0) sedge = 2;
+	else if (QString::compare("top", _sharingEdge, Qt::CaseInsensitive) == 0) sedge = 3;
+	else if (QString::compare("bottom", _sharingEdge, Qt::CaseInsensitive) == 0) sedge = 4;
+
 	QObject::connect(&_winCapturePipe, SIGNAL(readyRead()), this, SLOT(readFromMouseHook()));
 	if (!_winCapture) {
 		_winCapture = new QProcess(this);
 		_winCapture->setWorkingDirectory(QCoreApplication::applicationDirPath());
-		_winCapture->start("winCapture" + QString(QDir::separator()) + "winCapture " + QString::number(d->screenGeometry().width()) + " " + QString::number(d->screenGeometry().height()));
+		_winCapture->start("winCapture" + QString(QDir::separator()) + "winCapture " + QString::number(d->screenGeometry().width()) + " " + QString::number(d->screenGeometry().height()) + " " + QString::number(sedge));
 		if (! _winCapture->waitForStarted(-1) ) {
 			QMessageBox::critical(this, "winCapture Error", "Failed to start winCapture");
 		}
@@ -890,14 +896,16 @@ void SN_PointerUI::readFromMouseHook() {
 		
 		// CAPTURED
 		case 11: {
-			qDebug() << "Start capturing mouse events";
+//			qDebug() << "Start capturing mouse events";
+			ui->isConnectedLabel->setText("Pointer is in the SAGENext !");
 			hookMouse();
 			break;
 		}
 			
 		// RELEASED
 		case 12: {
-			qDebug() << "Stop capturing mouse events";
+//			qDebug() << "Stop capturing mouse events";
+			ui->isConnectedLabel->setText("Move your cursor to the " + _sharingEdge +" edge\nto share your pointer");
 			unhookMouse();
 			break;
 		}
@@ -1404,11 +1412,11 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
 	pixmap.fill(pc);
 	ui->pointerColorLabel->setPixmap(pixmap);
 
-	int idx = ui->sharingEdgeCB->findText(_settings->value("sharingedge", "top").toString());
+	int idx = ui->sharingEdgeCB->findText(_settings->value("sharingedge", "right").toString());
 	if (idx != -1)
 		ui->sharingEdgeCB->setCurrentIndex(idx);
 	else
-		ui->sharingEdgeCB->setCurrentIndex(0);
+		ui->sharingEdgeCB->setCurrentIndex(2); // 0 top, 1 left, 2 right, 3 bottom
 
 	adjustSize();
 
