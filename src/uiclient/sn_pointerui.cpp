@@ -1385,26 +1385,29 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
     ui->lbl_vncusername->hide();
     ui->vncUsername->hide();
     ui->vncpasswd->setPlaceholderText("Your VNC passwd here");
+//    ui->vncUsername->setText(_settings->value("vncusername", QString()).toString());
+	ui->vncpasswd->setEchoMode(QLineEdit::Password);
+    ui->vncpasswd->setText(_settings->value("vncpasswd", QString()).toString());
+
+	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointerName").toString());
 
 #ifdef Q_OS_MAC
     //
     // If it's Lion (10.7) and higher then account's username/password should be used.
     //
     if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
-        ui->vncUsername->setPlaceholderText("You account name here");
+        ui->vncUsername->clear();
+        ui->vncpasswd->clear();
+        
+        ui->vncUsername->setPlaceholderText("Your account name here");
         ui->vncpasswd->setPlaceholderText("Your account passwd here");
+        ui->lbl_vncusername->show();
         ui->vncUsername->show();
         ui->vncpasswd->show();
     }
 #endif
-
-	ui->vncUsername->setText(_settings->value("vncusername", "").toString());
-	ui->vncpasswd->setEchoMode(QLineEdit::Password);
-	ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
-
-
-	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointerName").toString());
-
+    
+    
 	//		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
 	QColor pc(_settings->value("pointercolor", "#ff0000").toString());
 	pColor = pc.name();
@@ -1447,18 +1450,6 @@ void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
         qDebug() << "SN_PointerUI_ConnDialog::on_buttonBox_accepted() : hostname detected" << _hostname;
     }
 
-
-    vncusername.clear();
-#ifdef Q_OS_MAC
-    //
-    // Lion and higher
-    //
-    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
-        vncusername = ui->vncUsername->text();
-    }
-#endif
-
-
 	portnum = ui->port->text().toInt();
 //	myaddr = ui->myAddrCB->currentText();
 	pName = ui->pointerNameLineEdit->text();
@@ -1473,9 +1464,21 @@ void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
 	_settings->setValue("wallport", portnum);
 	_settings->setValue("pointername", pName);
 	_settings->setValue("pointercolor", pColor);
-	_settings->setValue("vncusername", vncusername);
+//	_settings->setValue("vncusername", vncusername);
 	_settings->setValue("vncpasswd", vncpass);
 	_settings->setValue("sharingedge", psharingEdge);
+    
+    
+    vncusername.clear();
+#ifdef Q_OS_MAC
+    //
+    // Lion and higher
+    //
+    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
+        vncusername = ui->vncUsername->text();
+        _settings->setValue("vncpasswd", QString());
+    }
+#endif
 	
 	accept();
 	//	done(0);

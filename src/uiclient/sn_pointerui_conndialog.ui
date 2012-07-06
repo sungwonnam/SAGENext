@@ -69,7 +69,7 @@
    <item row="2" column="0">
     <widget class="QLabel" name="lbl_vncusername">
      <property name="text">
-      <string>VNC username</string>
+      <string>Username</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
