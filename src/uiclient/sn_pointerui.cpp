@@ -1,7 +1,9 @@
 #include "sn_pointerui.h"
 
 #include "ui_sn_pointerui.h"
-#include "ui_sn_pointerui_conndialog.h"
+
+#include "sn_pointerui_conndialog.h"
+#include "sn_pointerui_vncdialog.h"
 
 /*
 #include <sys/types.h>
@@ -28,8 +30,8 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
     , scaleToWallY(0.0)
 //    , sendThread(0)
 	, isMouseCapturing(false)
-    , _wallPort(0)
     , mediaDropFrame(0)
+	, _wallPort(0)
     , _sharingEdge(QString("right"))
 	, macCapture(0)
 	, _winCapture(0)
@@ -131,8 +133,6 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 
         _pointerName = _settings->value("pointername", "pointerName").toString();
         _pointerColor = _settings->value("pointercolor", "#ff0000").toString();
-        _vncUsername = _settings->value("vncusername", "").toString();
-        _vncPasswd = _settings->value("vncpasswd", "").toString();
         _sharingEdge = _settings->value("sharingedge", "right").toString();
 
         _tcpMsgSock.connectToHost(_wallAddress, _wallPort);
@@ -183,6 +183,26 @@ SN_PointerUI::~SN_PointerUI()
     qDebug() << "Good Bye";
 }
 
+void SN_PointerUI::m_deleteMouseHookProcess() {
+	if (macCapture) {
+        macCapture->kill();
+        macCapture->waitForFinished(-1);
+        delete macCapture;
+        macCapture = 0;
+    }
+
+	if (_winCapture) {
+		_winCapturePipe.close();
+
+		_winCapture->kill();
+		_winCapture->waitForFinished(-1);
+		delete _winCapture;
+		_winCapture = 0;
+	}
+
+	_iodeviceForMouseHook = 0;
+}
+
 
 void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
     qDebug() << "SN_PointerUI::handleSocketError() :" << error;
@@ -196,23 +216,7 @@ void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
         if (ui && ui->isConnectedLabel)
             ui->isConnectedLabel->setText("The Wall closed");
 
-        if (macCapture) {
-            macCapture->kill();
-            macCapture->waitForFinished(-1);
-            delete macCapture;
-            macCapture = 0;
-        }
-
-		if (_winCapture) {
-			_winCapturePipe.close();
-
-			_winCapture->kill();
-			_winCapture->waitForFinished(-1);
-			delete _winCapture;
-			_winCapture = 0;
-		}
-
-		_iodeviceForMouseHook = 0;
+       m_deleteMouseHookProcess();
 
         QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection);
     }
@@ -224,6 +228,10 @@ void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
 
         ui->isConnectedLabel->setText("Failed to connect\nIs wall running?");
     }
+
+	else {
+		qDebug() << "SN_PointerUI::handleSocketError()" << error;
+	}
 }
 
 void SN_PointerUI::handleSocketStateChange(QAbstractSocket::SocketState newstate) {
@@ -234,6 +242,9 @@ void SN_PointerUI::handleSocketStateChange(QAbstractSocket::SocketState newstate
         //
         // Maybe schedule connection in 1 sec here ?
         //
+		qDebug() << "SN_PointerUI::handleSocketStateChange() : UnConnectedState";
+
+		m_deleteMouseHookProcess();
 
         break;
     }
@@ -254,6 +265,7 @@ void SN_PointerUI::handleSocketStateChange(QAbstractSocket::SocketState newstate
         break;
     }
     case QAbstractSocket::ClosingState : {
+		qDebug() << "SN_PointerUI::handleSocketStateChange() : ClosingState";
         break;
     }
     case QAbstractSocket::ListeningState : {
@@ -302,8 +314,6 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
 	_pointerName = cd.pointerName();
 	_pointerColor = cd.pointerColor();
 //	_myIpAddress = cd.myAddress();
-	_vncUsername = cd.vncUsername();
-	_vncPasswd = cd.vncPasswd();
 	_sharingEdge = cd.sharingEdge();
 
 	_tcpMsgSock.connectToHost(_wallAddress, _wallPort);
@@ -329,6 +339,29 @@ void SN_PointerUI::on_actionShare_desktop_triggered()
 		return;
 	}
 
+	//
+	// Open a dialog for username/password
+	//
+	SN_PointerUI_VncDialog vncDialog;
+	int ret = vncDialog.exec(); // modal dialog
+
+	if (ret == QDialog::Rejected) return;
+	
+	QString vncUsername = "";
+	QString vncPasswd = "";
+
+#ifdef Q_OS_MAC
+    //
+    // Lion and higher
+    //
+    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
+        vncUsername = vncDialog.username();
+    }
+#endif
+
+	vncPasswd = vncDialog.password();
+
+
 	// send msg to UiServer so that local sageapp (vncviewer) can be started
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
@@ -337,8 +370,8 @@ void SN_PointerUI::on_actionShare_desktop_triggered()
 	sprintf(msg.data(), "%d %d %s %s %d"
             , SAGENext::VNC_SHARING
             , 0
-            , (_vncUsername.isEmpty()) ? "_" : qPrintable(_vncUsername)
-            , (_vncPasswd.isEmpty()) ? "_" : qPrintable(_vncPasswd)
+            , (vncUsername.isEmpty()) ? "_" : qPrintable(vncUsername)
+            , (vncPasswd.isEmpty()) ? "_" : qPrintable(vncPasswd)
             , 10
             );
 
@@ -1150,12 +1183,6 @@ void SN_PointerUI::sendMouseWheel(const QPoint globalPos, int delta) {
 
 
 
-
-
-
-
-
-
 void SN_PointerUI::mouseMoveEvent(QMouseEvent *e) {
 //	qDebug() << "moveEvent" << e->globalPos();
 	// setMouseTracking(true) to generate this event even when button isn't pressed
@@ -1316,191 +1343,6 @@ void SN_PointerUI_DropFrame::dropEvent(QDropEvent *e) {
 
 		e->acceptProposedAction();
 	}
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
-    : QDialog(parent)
-    , ui(new Ui::SN_PointerUI_ConnDialog)
-    , _settings(s)
-    , portnum(0)
-{
-	ui->setupUi(this);
-
-	_ipaddress.clear(); // 0.0.0.0  = isNull() true
-    _hostname.clear(); // isEmpty() true
-
-    ui->ipaddr->setPlaceholderText("hostname or IP address");
-
-//	ui->ipaddr->setInputMask("000.000.000.000;_");
-	ui->port->setInputMask("00000;_");
-
-    //
-    // retrieve the saved value
-    //
-	ui->ipaddr->setText( _settings->value("walladdr", "127.0.0.1").toString() );
-
-
-	/**
-		QList<QHostAddress> myiplist = QNetworkInterface::allAddresses();
-		for (int i=0; i<myiplist.size(); ++i) {
-			if (myiplist.at(i).toIPv4Address()) {
-				ui->myAddrCB->addItem(myiplist.at(i).toString(), myiplist.at(i).toIPv4Address()); // QString, quint32
-			}
-		}
-		int currentIdx = ui->myAddrCB->findText( _settings->value("myaddr", "127.0.0.1").toString() );
-		ui->myAddrCB->setCurrentIndex(currentIdx);
-		**/
-
-
-
-	ui->port->setText( _settings->value("wallport", 30003).toString() );
-
-    //
-    // Mac OS X 10.7 (Lion) users need to use their real account name and password
-    // Mac OS X 10.6 (Snow Leopard) users need to put empty string on username field and can use VNC password (not the real account password)
-    //
-
-    ui->lbl_vncusername->hide();
-    ui->vncUsername->hide();
-    ui->vncpasswd->setPlaceholderText("Your VNC passwd here");
-//    ui->vncUsername->setText(_settings->value("vncusername", QString()).toString());
-	ui->vncpasswd->setEchoMode(QLineEdit::Password);
-    ui->vncpasswd->setText(_settings->value("vncpasswd", QString()).toString());
-
-	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointerName").toString());
-
-#ifdef Q_OS_MAC
-    //
-    // If it's Lion (10.7) and higher then account's username/password should be used.
-    //
-    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
-        ui->vncUsername->clear();
-        ui->vncpasswd->clear();
-        
-        ui->vncUsername->setPlaceholderText("Your account name here");
-        ui->vncpasswd->setPlaceholderText("Your account passwd here");
-        ui->lbl_vncusername->show();
-        ui->vncUsername->show();
-        ui->vncpasswd->show();
-    }
-#endif
-    
-    
-	//		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
-	QColor pc(_settings->value("pointercolor", "#ff0000").toString());
-	pColor = pc.name();
-	QPixmap pixmap(ui->pointerColorLabel->size());
-	pixmap.fill(pc);
-	ui->pointerColorLabel->setPixmap(pixmap);
-
-	int idx = ui->sharingEdgeCB->findText(_settings->value("sharingedge", "right").toString());
-	if (idx != -1)
-		ui->sharingEdgeCB->setCurrentIndex(idx);
-	else
-		ui->sharingEdgeCB->setCurrentIndex(2); // 0 top, 1 left, 2 right, 3 bottom
-
-	adjustSize();
-
-//	ui->ipaddr->setText("127.0.0.1");
-//	ui->port->setText("30003");
-}
-
-SN_PointerUI_ConnDialog::~SN_PointerUI_ConnDialog() {
-	delete ui;
-}
-
-void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
-{
-    QString addrtemp = ui->ipaddr->text();
-
-    QRegExp regexp_ipaddr("^\\d+\\.\\d+\\.\\d+\\.\\d+$", Qt::CaseInsensitive);
-    if (regexp_ipaddr.exactMatch(addrtemp)) {
-
-        _ipaddress = QHostAddress(addrtemp);
-        _settings->setValue("walladdr", _ipaddress.toString());
-
-        qDebug() << "SN_PointerUI_ConnDialog::on_buttonBox_accepted() : IP address detected" << _ipaddress;
-    }
-    else {
-        _hostname = addrtemp;
-        _settings->setValue("walladdr", _hostname);
-
-        qDebug() << "SN_PointerUI_ConnDialog::on_buttonBox_accepted() : hostname detected" << _hostname;
-    }
-
-	portnum = ui->port->text().toInt();
-//	myaddr = ui->myAddrCB->currentText();
-	pName = ui->pointerNameLineEdit->text();
-
-    //
-    // Maybe I can use QCryptographicHash for this
-    //
-	vncpass = ui->vncpasswd->text();
-
-	psharingEdge = ui->sharingEdgeCB->currentText();
-	
-	_settings->setValue("wallport", portnum);
-	_settings->setValue("pointername", pName);
-	_settings->setValue("pointercolor", pColor);
-//	_settings->setValue("vncusername", vncusername);
-	_settings->setValue("vncpasswd", vncpass);
-	_settings->setValue("sharingedge", psharingEdge);
-    
-    
-    vncusername.clear();
-#ifdef Q_OS_MAC
-    //
-    // Lion and higher
-    //
-    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
-        vncusername = ui->vncUsername->text();
-        _settings->setValue("vncpasswd", QString());
-    }
-#endif
-	
-	accept();
-	//	done(0);
-}
-
-void SN_PointerUI_ConnDialog::on_buttonBox_rejected()
-{
-	reject();
-}
-
-void SN_PointerUI_ConnDialog::on_pointerColorButton_clicked()
-{
-	QColor prevColor;
-	prevColor.setNamedColor(_settings->value("pointercolor", "#FF0000").toString());
-	QColor newColor = QColorDialog::getColor(prevColor, this, "Pointer Color"); // pops up modal dialog
-
-	QPixmap pixmap(ui->pointerColorLabel->size());
-	pixmap.fill(newColor);
-//	ui->pointerColorLabel->setText(newColor.name());
-	ui->pointerColorLabel->setPixmap(pixmap);
-
-	pColor = newColor.name();
 }
 
 

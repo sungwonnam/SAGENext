@@ -56,16 +56,21 @@ win32 {
 
 SOURCES += \
 	main.cpp\
-    sn_pointerui.cpp
+    sn_pointerui.cpp \
+    sn_pointerui_vncdialog.cpp \
+    sn_pointerui_conndialog.cpp
 #	sn_pointerui_sendthread.cpp
 
 HEADERS  += \
-    sn_pointerui.h
+    sn_pointerui.h \
+    sn_pointerui_vncdialog.h \
+    sn_pointerui_conndialog.h
 #	sn_pointerui_sendthread.h
 
 FORMS    += \
 	sn_pointerui.ui \
-	sn_pointerui_conndialog.ui
+	sn_pointerui_conndialog.ui \
+    sn_pointerui_vncdialog.ui
 
 RESOURCES += \
     resources.qrc

@@ -14,9 +14,10 @@
 
 #include "../thewall/common/commondefinitions.h"
 
+
+
 namespace Ui {
-class SN_PointerUI;
-class SN_PointerUI_ConnDialog;
+	class SN_PointerUI;
 }
 
 
@@ -35,6 +36,11 @@ protected:
 signals:
 	void mediaDropped(QList<QUrl> mediaurls);
 };
+
+
+
+
+
 
 /*!
   Win Capture pipe
@@ -55,6 +61,32 @@ protected:
 		_socket->setSocketDescriptor(handle);
 	}
 };
+
+
+
+
+
+class SN_PointerUI_StrDialog : public QDialog
+{
+	Q_OBJECT
+public:
+	SN_PointerUI_StrDialog(QWidget *parent=0);
+
+	inline QString text() {return _text;}
+
+private:
+	QLineEdit *_lineedit;
+	QPushButton *_okbutton;
+	QPushButton *_cancelbutton;
+
+	QString _text;
+
+public slots:
+	void setText();
+};
+
+
+
 
 
 /**
@@ -197,9 +229,9 @@ private:
 
 	QString _pointerColor;
 
-	QString _vncUsername;
+//	QString _vncUsername;
 
-	QString _vncPasswd;
+//	QString _vncPasswd;
 
 	QString _sharingEdge;
 		
@@ -291,6 +323,9 @@ private:
 	  The filepath is the absoulte path name of the file reside at the wall.
 	  */
 	void recvFileFromWall(const QString &filepath, qint64 filesize);
+	
+	
+	void m_deleteMouseHookProcess();
 
 public slots:
 	/*!
@@ -392,94 +427,5 @@ private slots:
 
 
 
-
-class SN_PointerUI_ConnDialog : public QDialog {
-	Q_OBJECT
-public:
-	SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent=0);
-	~SN_PointerUI_ConnDialog();
-
-	inline QHostAddress ipaddress() const {return _ipaddress;}
-    inline QString hostname() const {return _hostname;}
-	inline int port() const {return portnum;}
-	//inline QString myAddress() const {return myaddr;}
-	inline QString pointerName() const {return pName;}
-	inline QString pointerColor() const {return pColor;}
-	inline QString vncUsername() const {return vncusername;}
-	inline QString vncPasswd() const {return vncpass;}
-	inline QString sharingEdge() const {return psharingEdge;}
-
-private:
-	Ui::SN_PointerUI_ConnDialog *ui;
-	QSettings *_settings;
-
-        /**
-          wall address
-          */
-	QHostAddress _ipaddress;
-
-    /*!
-      wall's hostname
-      */
-    QString _hostname;
-
-        /**
-          wall port
-          */
-	quint16 portnum;
-
-	QString vncusername;
-
-	QString vncpass;
-
-        /**
-          pointer name
-          */
-	QString pName;
-
-	QString pColor;
-
-	QString psharingEdge;
-
-private slots:
-	void on_buttonBox_rejected();
-	void on_buttonBox_accepted();
-	void on_pointerColorButton_clicked();
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class SN_PointerUI_StrDialog : public QDialog
-{
-	Q_OBJECT
-public:
-	SN_PointerUI_StrDialog(QWidget *parent=0);
-
-	inline QString text() {return _text;}
-
-private:
-	QLineEdit *_lineedit;
-	QPushButton *_okbutton;
-	QPushButton *_cancelbutton;
-
-	QString _text;
-
-public slots:
-	void setText();
-};
 
 #endif // EXTERNALGUIMAIN_H

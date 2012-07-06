@@ -336,7 +336,7 @@ class WinCapture:
     def stopHooks(self):
         if self.hm:
             self.hm.UnhookMouse()
-            self.hm.UnhookKeyboard()
+            #self.hm.UnhookKeyboard()
 
 
     def startHooks(self):
@@ -344,7 +344,7 @@ class WinCapture:
         self.hm.SubscribeMouseAll(self.onMouseEvent)
         #self.hm.SubscribeKeyAll(self.onKeyboardEvent)
         self.hm.HookMouse()
-        self.hm.HookKeyboard()
+        #self.hm.HookKeyboard()
 
 
     def restart(self):
