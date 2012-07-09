@@ -46,10 +46,12 @@ public:
 
         /*!
           Only a user application will have the value >= UserType + BASEWIDGET_USER.
-		  So, please use a number greater than 12 for your own custom application if you're to reimplement this.
+		  So, set QGraphicsItem::UserType + BASEWIDGET_USER for your own custom application.
+          This is default.
 
-		  Note that SAGENext-generic graphics items will use the value between UserType and UserType + 12
-		  e.g. SN_PartitionBar
+
+          A widget which isn't a user application (doesn't inherit SN_BaseWidget) but needs to be interactible with shared pointers is
+          QGraphicsItem::UserType + INTERACTIVE_ITEM // such as SN_PartitionBar
          */
         enum { Type = QGraphicsItem::UserType + BASEWIDGET_USER };
         virtual int type() const { return Type;}
@@ -66,7 +68,7 @@ public:
 
 
 
-        inline void setSettings(const QSettings *s) {_settings = s;}
+        void setSettings(const QSettings *s);
 
         inline void setRMonitor(SN_ResourceMonitor *rm) {_rMonitor = rm;}
 
@@ -83,7 +85,13 @@ public:
 
         inline PerfMonitor * perfMon() const {return _perfMon;}
 
+        inline AffinityInfo * affInfo() {return _affInfo;}
+
 		inline SN_Priority * priorityData() {return _priorityData;}
+
+
+        inline bool isSchedulable() const {return _isSchedulable;}
+        inline void setSchedulable() {_isSchedulable = true;}
 
 
 		/**
@@ -178,25 +186,43 @@ public:
 
         /*!
           This is a placeholder.
-          A schedulable widget must reimplement this function !
+          A schedulable widget must reimplement this function to make the application thread do necessary operations that can reflect the quality set by this function.
+          @param newQuality is an absolute value.
           */
         virtual int setQuality(qreal newQuality) {_quality = newQuality; return 0;}
 
 		/*!
-		  This function is called by a scheduler to adjust resource consumption of the widget
+		  This function is called by a scheduler to adjust resource consumption of the widget.
+          Note that @param adjust is the amount of adjustment, not the absolute quality value.
 		  */
 		int adjustQuality(qreal adjust) {return setQuality(_quality + adjust);}
 
-        inline qreal desiredQuality() const {return _quality;}
+        /*!
+          Returns the quality enforeced by the scheduler
+          */
+        inline qreal demandedQuality() const {return _quality;}
 
         /*!
-          This is dummy function. A schedulable widget should reimplement this
+          This is dummy function. A schedulable widget should reimplement this properly.
+          The function should return the ratio of the current performance to the performance the application is expecting.
           */
-        virtual qreal observedQuality() {return _quality;}
+        virtual qreal observedQuality_Rq() const;
+
+        /*!
+          This is dummy function. A schedulable widget should reimplement this properly.
+          The function should return the ratio of the current performance to the performance the scheduler sets for this application.
+          So, The return value indicates how much this application is obeying the scheduler's demand.
+          */
+        virtual qreal observedQuality_Dq() const;
 
 
 
 
+        /*!
+          is called every 1 second by timerEvent. Reimplement this to update infoTextItem to display real-time information.
+          draw/hideInfo() sets/kills the timer
+          */
+        virtual void updateInfoTextItem();
 
 
 
@@ -228,10 +254,11 @@ public:
 
 
 		/**
-		  If SN_BaseWidget is registered for hover listener widget, (by settings setRegisterForMouseHover()), the SN_PolygonArrowPointer will call this function whenever it moves.
+		  If SN_BaseWidget is registered for hover listener widget, (by settings setRegisterForMouseHover()),
+          then the SN_PolygonArrowPointer will call this function whenever a shared pointer hovers on this widget.
 
-		  'isHovering' is true only when the 'pointer' is hovering on this widget.
-		  'point' denotes the 'pointer's current xy coordinate in this item's local coordinate.
+		  @param 'isHovering' is true only when the 'pointer' is hovering on this widget.
+		  @param 'point' denotes the 'pointer's current xy coordinate in this item's local coordinate.
 		  */
 		virtual void handlePointerHover(SN_PolygonArrowPointer */*pointer*/, const QPointF & /*point*/, bool /* isHovering */) {}
 
@@ -239,19 +266,40 @@ public:
 		  SN_PolygonArrowPointer::pointerPress() calls this function upon receiving mousePressEvent from uiclient/sn_pointerui (sagenextPointer.app)
 		  Default implementation calls setTopmost() that sets this widget's z value the highest among all other application windows.
 
-		  Note that your widget shouldn't reimplement this function to receive the system's mouse event.
-		  The system's mouse event (pressEvent immediately followed by releaseEvent) will be generated (and passed to the viewport widget) by
+          If press is occurred on the resizing rectangle, the _isResizing is set to true.
+          Otherwise, _isMoving is set to true.
+
+		  Note that you don't have to reimplement this function to receive the system's mouse click event.
+		  The system's mouse click event (pressEvent immediately followed by releaseEvent) will be generated (and passed to the viewport widget) by
           SN_PolygonArrowPointer::pointerClick() upon receiving mouseClick event from the uiclient.
 
-		  @param pointer is the shared pointer who's pressing this widget
+		  @param pointer is the shared pointer who has mouse pressed this widget
 		  @param point is the position of the point being pressed in this widget's local coordinate
 		  */
 		virtual void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn = Qt::LeftButton);
 
 		/*!
-		  Base implementation does nothing
+          This function is called by the SN_PolygonArrowPointer.
+		  If _isResizing was set in the handlePointerPress() then the widget/windown will be rescaled/resized in this function.
 		  */
 		virtual void handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn = Qt::LeftButton);
+
+
+        /*!
+          SN_SharedPointer generates the real system mouse events (press followed by release) upon receiving POINTER_CLICK from UiServer.
+          So, this function usually doesn't need to be reimplemented as long as a GUI component of your widget needs to respond system's mouse click event.
+          Default implementation does nothing but returning false.
+
+          Return TRUE in this function if you don't want the system mouse events being generated by users' mouse click on this widget.
+
+          @return return TRUE to prevent SN_PolygonArrowPointer from generating mouse events
+          */
+        virtual bool handlePointerClick(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
+            Q_UNUSED(pointer);
+            Q_UNUSED(point);
+            Q_UNUSED(btn);
+            return false;
+        }
 
 		/*!
           Actual system mouse event can't be used when it comes to mouse dragging because if multiple users do this simultaneously, system will be confused and leads to unexpected behavior.
@@ -301,11 +349,7 @@ protected:
         AppInfo *_appInfo; /**< app name, frame dimension, rect */
 
 
-		/*!
-          is called every 1 second by timerEvent. Reimplement this to update infoTextItem to display real-time information.
-          draw/hideInfo() sets/kills the timer
-          */
-        virtual void updateInfoTextItem();
+        bool _showInfo; /**< flag to toggle show/hide info item */
 
 
 
@@ -367,6 +411,29 @@ protected:
 		  */
 		QMap<SN_PolygonArrowPointer *, QPair<QPointF, bool> > _pointerMap;
 
+
+
+        /*!
+          If a pointer left button is pressed on the resizehandle, this flag is set
+          and mouse dragging will move the window.
+
+          Reimplment handlePointerPress() if you want to provide custom interaction. (See WebWidget & MandelbrotExample)
+          */
+        bool _isMoving;
+
+        /*!
+          If a pointer left button is pressed on the resizehandle, this flag is set
+          and mouse dragging will resize/rescale window
+          */
+        bool _isResizing;
+
+
+        /*!
+          If pointer is draggin while _isResizing is set
+          then this rectangle will be shown.
+          Upon pointer releasing, window will be resized/rescaled based on the size of this rectangle
+          */
+        QGraphicsRectItem *_resizeRectangle;
 
 
 
@@ -447,7 +514,7 @@ private:
         /*!
           * startTimer() returns unique timerID.
           */
-        int _timerID;
+//        int _timerID;
 
 
 		/*!
@@ -463,7 +530,11 @@ private:
 		int _bordersize;
 
 
-		bool _showInfo; /**< flag to toggle show/hide info item */
+
+        /*!
+          is schedulable widget ?
+          */
+        bool _isSchedulable;
 
 
 		/*!
@@ -485,6 +556,8 @@ private:
 
 
         void createActions();
+
+signals:
 
 public slots:
         virtual void drawInfo(); /**< It sets the showInfo boolean, starts timer */

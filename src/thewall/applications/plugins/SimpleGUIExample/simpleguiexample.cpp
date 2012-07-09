@@ -7,6 +7,22 @@
 
 SimpleGUIExample::SimpleGUIExample()
     : SN_BaseWidget(Qt::Window)
+    , _label(0)
+    , _labelProxy(0)
+
+    , btn_R(0)
+    , btn_M(0)
+    , btn_Y(0)
+    , proxy_btn_R(0)
+    , proxy_btn_M(0)
+    , proxy_btn_Y(0)
+
+    , _invert(0)
+    , _proxy_invert(0)
+
+    , _btnLayout(0)
+    , _mainLayout(0)
+
     , _isInvertOn(false)
 {
 	//
@@ -14,18 +30,32 @@ SimpleGUIExample::SimpleGUIExample()
 	//
 	setWindowFlags(Qt::Window);
 
+    //
+	// window frame is not interactable by shared pointers
+	// so use contentsMargins for window frame
+	//
+	setWindowFrameMargins(0, 0, 0, 0);
 
-	// create label
-	label = new QLabel();
-	label->setFrameStyle(QFrame::Box);
-	label->setLineWidth(8);
+	//getContentsMargins(&l, &r, &t, &b);
+	//qDebug() << "ImageWidgetPlugin content margins l, r, t, b" << l << r << t << b;
+
+	// Qt::Window might want to define mouse dragging. For that case, give more room to top margin so that window can be moved with shared pointers
+	setContentsMargins(8,28,8,8);
+}
+
+void SimpleGUIExample::_createGUIs() {
+
+    // create label
+	_label = new QLabel();
+	_label->setFrameStyle(QFrame::Box);
+	_label->setLineWidth(8);
 
 		//
         // create proxywidget for label
 		//
-	labelProxy = new QGraphicsProxyWidget(this, Qt::Widget);
-	labelProxy->setWidget(label);
-	labelProxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Label);
+	_labelProxy = new QGraphicsProxyWidget(this, Qt::Widget);
+	_labelProxy->setWidget(_label);
+	_labelProxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Label);
 
 
 	/*
@@ -37,10 +67,8 @@ SimpleGUIExample::SimpleGUIExample()
 
 
 	QGraphicsLinearLayout *toplayout = new QGraphicsLinearLayout(Qt::Horizontal);
-	toplayout->addItem(labelProxy);
+	toplayout->addItem(_labelProxy);
 //	toplayout->addItem(_proxy_invert);
-
-
 
 
 	// create buttons and connect to corresponding callback functions
@@ -61,51 +89,31 @@ SimpleGUIExample::SimpleGUIExample()
 	proxy_btn_Y->setWidget(btn_Y);
 
 	// create layout for buttons (proxywidgets for buttons more precisely)
-	btnLayout = new QGraphicsLinearLayout(Qt::Horizontal);
-	btnLayout->addItem(proxy_btn_R);
-	btnLayout->addItem(proxy_btn_M);
-	btnLayout->addItem(proxy_btn_Y);
-	btnLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::PushButton);
-
-
-
+	_btnLayout = new QGraphicsLinearLayout(Qt::Horizontal);
+	_btnLayout->addItem(proxy_btn_R);
+	_btnLayout->addItem(proxy_btn_M);
+	_btnLayout->addItem(proxy_btn_Y);
+	_btnLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::PushButton);
 
 
 	// create main layout
-	mainLayout = new QGraphicsLinearLayout(Qt::Vertical);
+	_mainLayout = new QGraphicsLinearLayout(Qt::Vertical);
 //	mainLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::DefaultType);
-	mainLayout->setContentsMargins(0,0,0,0);
+	_mainLayout->setContentsMargins(0,0,0,0);
 
 	// add GUI components in it
-	mainLayout->addItem(toplayout);
-	mainLayout->addItem(btnLayout);
+	_mainLayout->addItem(toplayout);
+	_mainLayout->addItem(_btnLayout);
 //	mainLayout->setItemSpacing(0, 2);
 
 	// set the main layout to be this application's root layout
 	// previous layout will be deleted by this
-	setLayout(mainLayout);
+	setLayout(_mainLayout);
 
 	/*!
       Once you figure out your widget resolution, call this function. This is important.
       */
 	resize(800, 400);
-
-
-//		qreal l, r, t, b;
-//		getWindowFrameMargins(&l, &t, &r, &b);
-//		qDebug() << "ImageWidgetPlugin frame margins l, r, t, b" << l << r << t << b;
-
-	//
-	// window frame is not interactable by shared pointers
-	// so use contentsMargins for window frame
-	//
-	setWindowFrameMargins(0, 0, 0, 0);
-
-	//getContentsMargins(&l, &r, &t, &b);
-	//qDebug() << "ImageWidgetPlugin content margins l, r, t, b" << l << r << t << b;
-
-	// Qt::Window might want to define mouse dragging. For that case, give more room to top margin so that window can be moved with shared pointers
-	setContentsMargins(8,28,8,8);
 }
 
 
@@ -133,26 +141,30 @@ SimpleGUIExample::~SimpleGUIExample() {
 }
 
 SN_BaseWidget * SimpleGUIExample::createInstance() {
-	return new SimpleGUIExample;
+    SimpleGUIExample *instance = new SimpleGUIExample;
+
+    instance->_createGUIs();
+
+	return instance;
 }
 
 void SimpleGUIExample::buttonR() {
 	btn_M->setDown(false);
 	btn_Y->setDown(false);
 	btn_R->setDown(true);
-	updateLabel(QColor(Qt::red));
+	_updateLabel(QColor(Qt::red));
 }
 void SimpleGUIExample::buttonM() {
 	btn_M->setDown(true);
 	btn_Y->setDown(false);
 	btn_R->setDown(false);
-	updateLabel(QColor(Qt::magenta));
+	_updateLabel(QColor(Qt::magenta));
 }
 void SimpleGUIExample::buttonY() {
 	btn_M->setDown(false);
 	btn_Y->setDown(true);
 	btn_R->setDown(false);
-	updateLabel(QColor(Qt::yellow));
+	_updateLabel(QColor(Qt::yellow));
 }
 
 void SimpleGUIExample::toggleInvert(int) {
@@ -161,10 +173,10 @@ void SimpleGUIExample::toggleInvert(int) {
 	else
 		_isInvertOn = true;
 
-	updateLabel(_currentColor);
+	_updateLabel(_currentColor);
 }
 
-void SimpleGUIExample::updateLabel(const QColor &c) {
+void SimpleGUIExample::_updateLabel(const QColor &c) {
 	QPixmap p(size().toSize());
 
 	if (_isInvertOn) {
@@ -180,7 +192,7 @@ void SimpleGUIExample::updateLabel(const QColor &c) {
 	}
 	_currentColor = c;
 
-	label->setPixmap(p);
+	_label->setPixmap(p);
 }
 
 

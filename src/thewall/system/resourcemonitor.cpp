@@ -12,6 +12,7 @@
 #include "../applications/base/affinityinfo.h"
 #include "../applications/base/perfmonitor.h"
 #include "../applications/base/railawarewidget.h"
+#include "../applications/base/sn_priority.h"
 
 #include <QSettings>
 
@@ -45,7 +46,7 @@ void SN_ProcessorNode::addApp(SN_RailawareWidget *app) {
 
 		_appList->push_back(app);
 		cpuUsage += app->perfMon()->getCpuUsage();
-		bandwidth += app->perfMon()->getCurrBandwidthMbps();
+		bandwidth += app->perfMon()->getCurrBW_Mbps();
 	}
 	_rwlock.unlock();
 }
@@ -120,7 +121,7 @@ void SN_ProcessorNode::refresh() {
             Q_ASSERT(perf);
 			qDebug() << "[" << QTime::currentTime().toString("hh:mm:ss.zzz") << "] SN_ProcessorNode::refresh() : widget id" << rw->globalAppId();
             cpuUsage += perf->getCpuUsage(); // Ratio
-            bandwidth += perf->getCurrBandwidthMbps(); // Mbps
+            bandwidth += perf->getCurrBW_Mbps(); // Mbps
         }
     }
 
@@ -171,9 +172,9 @@ void SN_ProcessorNode::printOverhead()  {
 			qDebug("ProcessorNode::%s() : Processor %d, app %llu [%.2f fps, %.2f Mbps, %.2f ms, %.2f ms, %.2f fps]", __FUNCTION__
 			       , id
 			       , widget->globalAppId()
-			       , perf->getCurrRecvFps()
-			       , perf->getCurrBandwidthMbps()
-			       , perf->getCurrConvDelay() * 1000.0
+			       , perf->getCurrEffectiveFps()
+			       , perf->getCurrBW_Mbps()
+			       , perf->getCurrUpdateDelay() * 1000.0
 			       , perf->getCurrDrawLatency() * 1000.0
 			       , perf->getCurrDispFps()
 			       );
@@ -242,9 +243,10 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
     , procVec(0)
     , settings(s)
     , _theScene(scene)
-    , schedcontrol(0)
+    , _schedcontrol(0)
     , _pGrid(0)
     , numaInfo(0)
+    , _totalBWAchieved_Mbps(0.0)
     , _rMonWidget(0)
     , _printDataFlag(false)
 {
@@ -269,12 +271,10 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 		}
 	}
 
-
-
-
 	//
 	// write some data to a file
 	//
+    /*
 	char *val = getenv("EXP_DATA_FILE");
 	if ( val ) {
 		QString filename(val);
@@ -298,19 +298,29 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 			qDebug() << "SN_ResourceMonitor() : wrong file name" << val;
 		}
 	}
+    */
+
+	//
+	// temporarily attach writeData button
+	//
+//	SN_PixmapButton *databutton = new SN_PixmapButton(QPixmap(":/resources/group_data_128.png"), settings->value("gui/iconwidth").toDouble());
+//	databutton->setPos(150, 10);
+//	_theScene->addItem(databutton);
 }
 
 SN_ResourceMonitor::~SN_ResourceMonitor() {
+
+    QObject::disconnect(this, 0, 0, 0); // disconnect everything connected to this
+
 	//	if (procTree) delete procTree;
 	if (_rMonWidget) {
 		_rMonWidget->close();
-//		_rMonWidget->deleteLater();
-//		delete _rMonWidget;
+        delete _rMonWidget;
 	}
 
-	if (schedcontrol) {
-		schedcontrol->killScheduler();
-		delete schedcontrol;
+	if (_schedcontrol) {
+		_schedcontrol->killScheduler();
+		delete _schedcontrol;
 	}
 
 	if (procVec) {
@@ -336,8 +346,19 @@ SN_ResourceMonitor::~SN_ResourceMonitor() {
 	qDebug("ResourceMonitor::%s()", __FUNCTION__);
 }
 
+void SN_ResourceMonitor::setRMonWidget(ResourceMonitorWidget *rmw) {
+    _rMonWidget = rmw;
+    if (_rMonWidget ) {
+        QObject::connect(this, SIGNAL(dataRefreshed()), _rMonWidget, SLOT(refresh()));
+    }
+}
+
 void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 	//	qDebug() << "timerEvent at resourceMonitor";
+
+    //
+    // The priority is computed in here
+    //
 	refresh(); // update all data
 
 	//
@@ -350,43 +371,54 @@ void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
 	//
 	// update widget
 	//
-	if (_rMonWidget && _rMonWidget->isVisible()) {
-		_rMonWidget->refresh();
-	}
+//	if (_rMonWidget && _rMonWidget->isVisible()) {
+//		_rMonWidget->refresh();
+//	}
 
 	//
 	// save data to a file
 	//
 	if (_printDataFlag) {
 //		printPrelimData();
-		printData();
+		printData(&_dataTextOut, true);
 	}
 }
 
-void SN_ResourceMonitor::addSchedulableWidget(SN_RailawareWidget *rw) {
+void SN_ResourceMonitor::addSchedulableWidget(SN_BaseWidget *bw) {
 	_widgetListRWlock.lockForWrite();
 
-	if (rw) {
+	if (bw) {
 		// shouldn't allow duplicate item
-		if (!widgetList.contains(rw)) {
-			widgetList.push_front(rw);
+		if (!widgetList.contains(bw)) {
+			widgetList.push_front(bw);
 		}
+        else {
+            qDebug() << "\nSN_ResourceMonitor::addSchedulableWidget() : !! duplicate item in the widget list !!" << bw->globalAppId();
+        }
 
-		_widgetMap.insert(rw->globalAppId(), rw);
+        if (_widgetMap.key(bw, 0) == 0) {
+            //qDebug() << "adding " << bw->globalAppId();
+            _widgetMap.insert(bw->globalAppId(), bw);
+        }
+        else {
+            qDebug() << "\nSN_ResourceMonitor::addSchedulableWidget() : !! duplicate item in the widget map !!" << bw->globalAppId();
+        }
 	}
 
 	_widgetListRWlock.unlock();
 }
 
-void SN_ResourceMonitor::removeSchedulableWidget(SN_RailawareWidget *rw) {
+void SN_ResourceMonitor::removeSchedulableWidget(SN_BaseWidget *bw) {
 	_widgetListRWlock.lockForWrite();
-	if(rw) {
+	if(bw) {
 		int numremoved = 0;
 
-		removeApp(rw); // remove rw from SN_ProcessorNode's appList
-		numremoved = widgetList.removeAll(rw);
+//		removeApp(bw); // remove rw from SN_ProcessorNode's appList
+		numremoved = widgetList.removeAll(bw);
 
-		numremoved = _widgetMap.remove(rw->globalAppId());
+        // all bw that shares the globalAppId will be deleted
+//        qDebug() << "removing " << bw->globalAppId();
+		numremoved = _widgetMap.remove(bw->globalAppId());
 	}
 	_widgetListRWlock.unlock();
 }
@@ -425,6 +457,11 @@ void SN_ResourceMonitor::buildSimpleProcList() {
 //	rwlock.unlock();
 //}
 
+void SN_ResourceMonitor::setScheduler(SN_SchedulerControl *sc) {
+    Q_ASSERT(sc);
+    _schedcontrol = sc;
+    QObject::connect(this, SIGNAL(dataRefreshed()), _schedcontrol, SIGNAL(readyToSchedule()));
+}
 
 void SN_ResourceMonitor::refresh() {
 /*
@@ -459,34 +496,91 @@ void SN_ResourceMonitor::refresh() {
 
 	_widgetListRWlock.lockForRead();
 
-	QMap<quint64, SN_RailawareWidget *>::const_iterator it;
-	for (it=_widgetMap.constBegin(); it!=_widgetMap.constEnd(); it++) {
-		SN_RailawareWidget *rw = it.value();
-		Q_ASSERT(rw);
+    qreal currentTotalBandwidth = 0.0;
 
-		PerfMonitor *pm = rw->perfMon();
-		Q_ASSERT(pm);
+    qint64 currentMsec = QDateTime::currentMSecsSinceEpoch();
+
+    bool isSystemOverloaded = false; // reset overload status
+
+	QMap<quint64, SN_BaseWidget *>::const_iterator it;
+	for (it=_widgetMap.constBegin(); it!=_widgetMap.constEnd(); it++) {
+		SN_BaseWidget *bw = it.value();
+		Q_ASSERT(bw);
+
+		PerfMonitor *pm = bw->perfMon();
+//		Q_ASSERT(pm);
+        if (!pm) continue;
+
+
+        //
+        // Each app updates its own cumulativeByteReceived in its receiving thread.
+        // rMonitor triggers them to update performance data based only on the cumulativeByteReceived
+        //
+        pm->updateDataWithCumulativeByteReceived(currentMsec);
+
+
+        bw->updateInfoTextItem();
+
+
+        //
+        // Check if the system is currently overloaded
+        // Dq 0 doesn't mean system overloaded !!
+        //
+        if (0 < bw->demandedQuality() && bw->demandedQuality() < 1.0) {
+            isSystemOverloaded = true;
+        }
+
+        //
+        // Aggregate the bandwidth the application is actually achieving at this moment.
+        //
+        currentTotalBandwidth += pm->getCurrBW_Mbps();
+
 
 		//
 		// Assumes the _cpuOfMine is continusouly updated by worker thread (affInfo->setCpuOfMine())
 		//
-		AffinityInfo *ai = rw->affInfo();
-		Q_ASSERT(ai);
+		AffinityInfo *ai = bw->affInfo();
+//		Q_ASSERT(ai);
 
-		if (ai->cpuOfMine() < 0) continue;
+        if (ai && ai->cpuOfMine() >= 0 ) {
 
-		SN_SimpleProcNode *spn = _simpleProcList.at(ai->cpuOfMine());
-		Q_ASSERT(spn);
+            SN_SimpleProcNode *spn = _simpleProcList.at(ai->cpuOfMine());
+            Q_ASSERT(spn);
 
-		spn->addCpuUsage(pm->getCpuUsage());
-		spn->addNetBWUsage(pm->getCurrBandwidthMbps()); // Mbps
-		spn->addNumWidgets(1);
+            spn->addCpuUsage(pm->getCpuUsage());
+            spn->addNetBWUsage(pm->getCurrBW_Mbps()); // Mbps
+            spn->addNumWidgets(1);
+        }
 	}
 
+    //
+    // this is problematic.
+    // let's say there is a remote streaming app shwoing 100 Mbps
+    // then the total is now 100
+    // now another remote streaming came in showing 90Mbps while forcing the first one to 10 Mbps (link capacity is 100Mbps)
+    // BW of the 2nd app is added to total which is now 190 Mbps !!
+    //
+/*
+    if (isSystemOverloaded) {
+        _totalBWAchieved_Mbps = currentTotalBandwidth;
+    }
+    else {
+        _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
+    }
+*/
+       _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
+
+
 	_widgetListRWlock.unlock();
+
+    //
+    // This will invoke RMonitorWidget::refresh()
+    // This will also invoke SchedulerControl::readyToSchedule() signal which is connected to the scheculer::doSchedule() slot
+    //
+    emit dataRefreshed();
 }
 
-
+/*
 void SN_ResourceMonitor::buildProcVector() {
 	int totalCpu = settings->value("system/numcpus").toInt();
 
@@ -499,9 +593,7 @@ void SN_ResourceMonitor::buildProcVector() {
 		if ( settings->value("system/threadpercpu").toInt() > 1 ) {
 			pn->setNodeType(SN_ProcessorNode::SMT_CORE);
 
-			/******
-			  only works in venom (two intel quad core smt cpus)
-			  *****/
+			  //only works in venom (two intel quad core smt cpus)
 			if ( i < 8 ) {
 				pn->setSMTSiblingID( i + 8 );
 			}
@@ -513,8 +605,10 @@ void SN_ResourceMonitor::buildProcVector() {
 		procVec->push_back(pn);
 	}
 }
+*/
 
-void SN_ResourceMonitor::removeApp(SN_RailawareWidget *rw) {
+/*
+void SN_ResourceMonitor::removeApp(SN_BaseWidget *rw) {
     //	AffinityInfo *aff = static_cast<AffinityInfo *>(obj);
     SN_ProcessorNode *pn = 0;
 	if (!procVec) return;
@@ -528,6 +622,8 @@ void SN_ResourceMonitor::removeApp(SN_RailawareWidget *rw) {
         }
     }
 }
+*/
+
 
 /*!
   This slot connected to AffinityInfo::cpuOfMineChanged signal in SN_RailawareWidget
@@ -589,7 +685,7 @@ void SN_ResourceMonitor::updateAffInfo(SN_RailawareWidget *rw, int oldproc, int 
 
 
 
-
+/*
 SN_RailawareWidget * SN_ResourceMonitor::getEarliestDeadlineWidget() {
 	_widgetListRWlock.lockForRead();
 
@@ -610,7 +706,11 @@ SN_RailawareWidget * SN_ResourceMonitor::getEarliestDeadlineWidget() {
 	_widgetListRWlock.unlock();
 	return result;
 }
+*/
 
+
+
+/***
 SN_ProcessorNode * SN_ResourceMonitor::getMostUnderloadedProcessor() {
 	SN_ProcessorNode *pn = 0;
 	SN_ProcessorNode *result = 0;
@@ -637,24 +737,22 @@ int SN_ResourceMonitor::assignProcessor(SN_RailawareWidget *rw, SN_ProcessorNode
 
         //        updateAffInfo(rw, -1, pn->getID());
 
-        /* Add widget to the processor */
+        // Add widget to the processor
         pn->addApp(rw);
 
-        /* this will trigger AffinityInfo::applyNewParameters() from SagePixelReceiver */
-        /* which will trigger ResourceMonitor::updateAffInfo() from AffinityInfo */
+        // this will trigger AffinityInfo::applyNewParameters() from SagePixelReceiver
+        // which will trigger ResourceMonitor::updateAffInfo() from AffinityInfo
         rw->affInfo()->setReadyBit(AffinityInfo::CPU_MASK, pn->getID());
 
         return pn->getID();
 
-        /* set thread affinity for SageBlockStreamer */
-        /*
-        QByteArray ba(AffinityInfo::Num_Cpus, '0');
-        ba[pn->getID()] = '1';
-        rw->affInfo()->setSageStreamerAffinity(ba.constData());
-        */
+        // set thread affinity for SageBlockStreamer
+        //QByteArray ba(AffinityInfo::Num_Cpus, '0');
+        //ba[pn->getID()] = '1';
+        //rw->affInfo()->setSageStreamerAffinity(ba.constData());
 }
 
-int SN_ResourceMonitor::assignProcessor(SN_RailawareWidget *rw) {
+int SN_ResourceMonitor::assignProcessor(SN_BaseWidget *rw) {
 	if (!rw || !rw->affInfo()) return -1;
 
 	SN_ProcessorNode *pn = getMostUnderloadedProcessor();
@@ -663,23 +761,24 @@ int SN_ResourceMonitor::assignProcessor(SN_RailawareWidget *rw) {
 	return assignProcessor(rw, pn);
 }
 
-/*!
-  Re assign rail for all processes
-  */
+//  Re assign rail for all processes
 int SN_ResourceMonitor::assignProcessor() {
 
-	/* pause scheduler */
-	if(schedcontrol) {
-		schedcontrol->killScheduler();
+	// pause scheduler
+	if(_schedcontrol) {
+		_schedcontrol->killScheduler();
 	}
 
-	foreach (SN_RailawareWidget *w, widgetList) {
-		/* disconnect signal/slot connection for now */
+	foreach (SN_BaseWidget *w, widgetList) {
+
+        if (!w->affInfo()) continue;
+
+		// disconnect signal/slot connection for now
 		if (!disconnect(w->affInfo(), SIGNAL(cpuOfMineChanged(SN_RailawareWidget*,int,int)), this, SLOT(updateAffInfo(SN_RailawareWidget*,int,int))) ) {
 			qDebug() << "disconnect() failed";
 		}
 
-		/* remove all widget from pn _appList */
+		// remove all widget from pn _appList
 		removeApp(w); // what about loadBalance() connection?
 	}
 
@@ -693,8 +792,8 @@ int SN_ResourceMonitor::assignProcessor() {
 
 	//sleep(1);
 
-	QList<SN_RailawareWidget *>::iterator it;
-	SN_RailawareWidget *rw = 0;
+	QList<SN_BaseWidget *>::iterator it;
+	SN_BaseWidget *rw = 0;
 	int count = 0;
 
 	for(it=widgetList.begin(); it!=widgetList.end();  it++) {
@@ -717,9 +816,9 @@ int SN_ResourceMonitor::assignProcessor() {
 	}
 
 
-	/* resume scheduler */
-	if(schedcontrol) {
-		schedcontrol->launchScheduler(settings->value("system/scheduler_type").toString());
+	// resume scheduler
+	if(_schedcontrol) {
+		_schedcontrol->launchScheduler(settings->value("system/scheduler_type").toString());
 	}
 
 	if (count != widgetList.size()) {
@@ -728,15 +827,16 @@ int SN_ResourceMonitor::assignProcessor() {
 	}
 	return count;
 }
+*/
 
-void SN_ResourceMonitor::resetProcessorAllocation(SN_RailawareWidget *rw) {
+void SN_ResourceMonitor::resetProcessorAllocation(SN_BaseWidget *rw) {
 	if (rw && rw->affInfo())
 		rw->affInfo()->setAllReadyBit();
 }
 
 void SN_ResourceMonitor::resetProcessorAllocation() {
-	QList<SN_RailawareWidget *>::iterator it;
-	SN_RailawareWidget *rw = 0;
+	QList<SN_BaseWidget *>::iterator it;
+	SN_BaseWidget *rw = 0;
 
 	_widgetListRWlock.lockForRead();
 
@@ -750,7 +850,7 @@ void SN_ResourceMonitor::resetProcessorAllocation() {
 	_widgetListRWlock.unlock();
 }
 
-
+/****
 SN_ProcessorNode * SN_ResourceMonitor::processor(int pid) {
 	if (!procVec) {
 		qCritical("%s::%s() : procVec is null", metaObject()->className(), __FUNCTION__);
@@ -791,9 +891,9 @@ void SN_ResourceMonitor::loadBalance() {
 
 	if (pn_high == pn_low) return;
 
-        /*************************************
-          Which processor to migrate ?????????
-          *************************************/
+        //
+        // Which processor to migrate ?????????
+        //
 
 	// for now, find the lowest priority widget from heavily loaded processor
 	int priority = INT_MAX;
@@ -811,56 +911,134 @@ void SN_ResourceMonitor::loadBalance() {
 	if (rw) assignProcessor(rw, pn_low);
 }
 
+****/
 
 
 
 
 
+bool SN_ResourceMonitor::setPrintFile(const QString &filepath) {
+    if (!filepath.isNull() && !filepath.isEmpty()) {
+
+//        QString now = QDateTime::currentDateTime().toString("_MM.dd_hh.mm.ss.zzz.CSV");
+//        filename = filename.append(now);
+
+        if (_dataFile.isOpen()) {
+            closeDataFile();
+        }
+
+        QString fname = filepath;
+        if (_schedcontrol && _schedcontrol->isRunning()) {
+            fname.append("_Sched.csv");
+        }
+        else {
+            fname.append("_Nosched.csv");
+        }
+
+        _dataFile.setFileName(fname);
+
+        if (!_dataFile.open(QIODevice::WriteOnly)) {
+            qDebug() << "SN_ResourceMonitor::setPrintFile() : failed to open a file" << _dataFile.fileName();
+            _printDataFlag = false;
+        }
+        else {
+            _dataTextOut.setDevice(&_dataFile);
+            _printDataFlag = true;
+
+            qWarning() << "\n=====================================================================================================";
+            qWarning() << "SN_ResourceMonitor::setPrintFile() :" << fname;
+            qWarning() << "=====================================================================================================\n";
+
+            return true;
+        }
+    }
+    else {
+        qDebug() << "SN_ResourceMonitor::setPrintFile() : wrong file name" << filepath;
+    }
+    return false;
+}
 
 
+void SN_ResourceMonitor::stopPrintData() {
+    _printDataFlag = false;
+    _dataTextOut.flush();
+    _dataTextOut.setDevice(0);
 
-
+    closeDataFile();
+}
 
 void SN_ResourceMonitor::closeDataFile() {
 	if (_dataFile.isOpen()) {
+        qDebug() << "SN_ResourceMonitor::closeDataFile() : closing the data file" << _dataFile.fileName();
 		_dataFile.close();
 	}
 }
 
 
-void SN_ResourceMonitor::printData() {
+void SN_ResourceMonitor::printData(QTextStream *out, bool widgetIDasColCount /* = false */) {
 	if (!_dataFile.exists()) {
-		qDebug() << "printData() : _dataFile doesn't exist" << _dataFile.fileName();
+		qDebug() << "SN_ResourceMonitor::printData() : _dataFile doesn't exist" << _dataFile.fileName();
 		return;
 	}
 	if (!_dataFile.isOpen()) {
 		if (!_dataFile.open(QIODevice::WriteOnly)) {
-			qDebug() << "printData() : failed to open a _dataFile" << _dataFile.fileName();
+			qDebug() << "SN_ResourceMonitor::printData() : failed to open a _dataFile" << _dataFile.fileName();
 			return;
 		}
 	}
 	if (!_dataFile.isWritable()) {
-		qDebug() << "printData() : _dataFile is not writable" << _dataFile.fileName();
+		qDebug() << "SN_ResourceMonitor::printData() : _dataFile is not writable" << _dataFile.fileName();
 		return;
 	}
-	if (_widgetMap.size() == 0) return;
+
+    if (!out) {
+        qDebug() << "SN_ResourceMonitor::printData() : null QTextStream";
+        return;
+    }
+
+    if (! out->device()) {
+        qDebug() << "SN_ResourceMonitor::printData() : QTextStream has null device";
+        return;
+    }
+
+    if (! out->device()->isWritable()) {
+        qDebug() << "SN_ResourceMonitor::printData() : QTextStream's device isn't writable";
+        return;
+    }
 
 
-	QTextStream textout(&_dataFile);
+    //
+    // The header
+    //
+	static qint64 timestamp = 0;
+    if (timestamp == 0) {
+        timestamp = QDateTime::currentMSecsSinceEpoch();
+        (*out) << "#Data from the rMonitor. Timestamp " << timestamp << " msec, rMon & Sched Freq " << settings->value("system/scheduler_freq").toInt() << "msec \n";
+    }
 
 
-	static quint64 counter;
-	textout << counter << ",";
+    if (_widgetMap.size() == 0) {
+        qDebug() << "SN_ResourceMonitor::printData() : there's no widget";
+        return;
+    }
 
-	// wall layout factor
-	textout << _widgetMap.size() << ","
-	        << _theScene->getRatioEmptySpace() << ","
-	        << _theScene->getRatioOverlapped() << ",";
+    //
+    // ex)  < # widgets , ratio overlapped , [globalAppId | priority | curBW | reqBW | Dq [|Intr]] , ... >
+    //
 
+    //
+	// the wall layout factors
+    //
+	(*out) << _widgetMap.size()
+//	        << "," << _theScene->getRatioEmptySpace()
+	        << "," << _theScene->getRatioOverlapped();
+
+    /*
 	QSize avgqwinsize = _theScene->getAvgWinSize().toSize();
 	int avgwinsize = avgqwinsize.width() * avgqwinsize.height();
 
-	textout << avgwinsize << ",";
+	(*out) << avgwinsize << ",";
+    */
 
 
 	//
@@ -869,37 +1047,58 @@ void SN_ResourceMonitor::printData() {
 	_widgetListRWlock.lockForRead();
 
 	int colcount = 1; // globalAppId begins with 1 not 0
-	QMap<quint64, SN_RailawareWidget *>::const_iterator it;
+	QMap<quint64, SN_BaseWidget *>::const_iterator it;
 	for (it = _widgetMap.constBegin(); it != _widgetMap.constEnd(); it++) {
 
-		//
-		// I need to write the data in the right column
-		// it.key() is the globalAppId
-		// So each column represents unique app
-		//
-		int offset = it.key() - colcount; // difference b/w actual globalAppId and the expected value
+        if (widgetIDasColCount) {
+            //
+            // I need to write the data in the right column
+            // it.key() is the globalAppId
+            // So each column represents unique app
+            //
+            int offset = it.key() - colcount; // difference b/w actual globalAppId and the expected value
 
-		for (int i=0; i<offset; i++) {
-			textout << ",";
-			colcount++;
-		}
+            for (int i=0; i<offset; i++) {
+                (*out) << ",";
+                colcount++; // advance column count to synchronize with the next widget's gid in the map
+            }
+        }
 
-		SN_RailawareWidget *rw = it.value();
+		SN_BaseWidget *rw = it.value();
 		Q_ASSERT(rw);
-		Q_ASSERT(rw->priorityData());
+        Q_ASSERT(rw->perfMon());
 
+        /*
 		QSize qwinsize = (rw->scale() * rw->boundingRect().size().toSize());
 		int winsize = qwinsize.width() * qwinsize.height();
 
-		textout << rw->priority();
-		textout << "|";
-		textout << winsize;
+        //
+        // data item is going to be
+        // priority|windowsize
+        //
+		(*out) << rw->priority();
+		(*out) << "|";
+		(*out) << winsize;
+        */
+
+        //
+        // , priority | curBW | reqBW | D.Q. | isInteracting ,
+        //
+
+        (*out) << "," << rw->globalAppId();
+        (*out) << "|" << rw->priority();
+//        (*out) << "|" << rw->observedQuality_Rq(); // currentBW / requiredBW
+        (*out) << "|" << rw->perfMon()->getCurrBW_Mbps();
+        (*out) << "|" << rw->perfMon()->getRequiredBW_Mbps();
+        (*out) << "|" << rw->demandedQuality();
+//        (*out) << rw->perfMon()->getCpuTimeSpent_sec();
+        if (rw->perfMon()->isInteracting()) {
+            (*out) << "|Intr";
+        }
+
 
 		if (it + 1 == _widgetMap.constEnd()) {
-			textout << "\n"; // this the last app of the line
-		}
-		else {
-			textout << ","; // there's more to come
+			(*out) << "\n"; // this the last app of the line
 		}
 
 		colcount++; // the expected globalAppId of the next item
@@ -907,9 +1106,7 @@ void SN_ResourceMonitor::printData() {
 
 	_widgetListRWlock.unlock();
 
-	textout.flush();
-
-	++counter;
+	out->flush();
 }
 
 
@@ -924,11 +1121,11 @@ void SN_ResourceMonitor::printPrelimDataHeader() {
 		qDebug() << "can't open prelim data file" << _dataFile.fileName();
 	}
 	QString dataHeader = "";
-	if ( schedcontrol && schedcontrol->isRunning() ) {
-		SN_SelfAdjustingScheduler *sas = static_cast<SN_SelfAdjustingScheduler *>(schedcontrol->scheduler());
+	if ( _schedcontrol && _schedcontrol->isRunning() ) {
+		SN_SelfAdjustingScheduler *sas = static_cast<SN_SelfAdjustingScheduler *>(_schedcontrol->scheduler());
 		dataHeader.append("Scheduler (");
 		// freq, sensitivity, aggression, greediness
-		dataHeader.append("Frequency: " + QString::number(schedcontrol->scheduler()->frequency()) );
+		dataHeader.append("Frequency: " + QString::number(_schedcontrol->scheduler()->frequency()) );
 		dataHeader.append(" Sensitivity: " + QString::number(sas->getQTH()));
 		dataHeader.append(" Aggression: " + QString::number(sas->getDecF()));
 		dataHeader.append(" Greediness: " + QString::number(sas->getIncF()));
@@ -972,22 +1169,22 @@ void SN_ResourceMonitor::printPrelimData() {
 
 	// cpu usage aggregate
 	qreal cpuUsageSum = 0.0;
-	foreach (SN_RailawareWidget *rw, widgetList) {
+	foreach (SN_BaseWidget *rw, widgetList) {
 		cpuUsageSum += rw->perfMon()->getCpuUsage();
 	}
 	cpuUsageSum *= 100; // convert to percentage
 	_dataFile.write( qPrintable(QString::number(cpuUsageSum)) );
 	_dataFile.write(",");
 
-	foreach (SN_RailawareWidget *rw, widgetList) {
+	foreach (SN_BaseWidget *rw, widgetList) {
 		++count;
 		// time slice is implicit (each row = single time slice)
 
 		// Observed quality of each app
-		if ( rw->observedQuality() >= 1 )
+		if ( rw->observedQuality_Rq() >= 1 )
 			_dataFile.write( "1.0" );
 		else
-			_dataFile.write( qPrintable(QString::number(rw->observedQuality())) );
+			_dataFile.write( qPrintable(QString::number(rw->observedQuality_Rq())) );
 
 		if (count < widgetList.size())
 			_dataFile.write(",");

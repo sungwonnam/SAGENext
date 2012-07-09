@@ -1,7 +1,9 @@
 #include "sn_pointerui.h"
 
 #include "ui_sn_pointerui.h"
-#include "ui_sn_pointerui_conndialog.h"
+
+#include "sn_pointerui_conndialog.h"
+#include "sn_pointerui_vncdialog.h"
 
 /*
 #include <sys/types.h>
@@ -14,6 +16,7 @@
 
 //#include <QNetworkInterface>
 #include <QHostAddress>
+#include <QSysInfo>
 
 
 SN_PointerUI::SN_PointerUI(QWidget *parent)
@@ -25,18 +28,26 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
     , ungrabMouseAction(0)
     , scaleToWallX(0.0)
     , scaleToWallY(0.0)
-    , sendThread(0)
+//    , sendThread(0)
 	, isMouseCapturing(false)
     , mediaDropFrame(0)
-    , _sharingEdge(QString("top"))
+	, _wallPort(0)
+    , _sharingEdge(QString("right"))
 	, macCapture(0)
+	, _winCapture(0)
+	, _winCaptureServer(0)
+
+	, _iodeviceForMouseHook(0)
+
 	, mouseBtnPressed(0)
+    , _wasDblClick(false)
 
 {
 	ui->setupUi(this);
 
-	ui->isConnectedLabel->hide();
-#ifdef Q_OS_MAC
+//    setAttribute(Qt::WA_DeleteOnClose, true);
+
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN32)
 	ui->hookMouseBtn->hide();
 #endif
 
@@ -46,8 +57,17 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	ui->mainToolBar->addAction(ui->actionSend_text);
 
 
-	_settings = new QSettings("sagenextpointer.ini", QSettings::IniFormat, this);
+	_settings = new QSettings("EVL", "SAGENextPointer", this);
 
+    //
+    // handle msg socket error
+    //
+    QObject::connect(&_tcpMsgSock, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleSocketError(QAbstractSocket::SocketError)));
+
+    //
+    // handle msg socket state change
+    //
+    QObject::connect(&_tcpMsgSock, SIGNAL(stateChanged(QAbstractSocket::SocketState)), this, SLOT(handleSocketStateChange(QAbstractSocket::SocketState)));
 
 	//
 	// to receive a message from SAGENext
@@ -92,17 +112,53 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	fdialog->setModal(false);
 	fdialog->setVisible(false);
 	QObject::connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readLocalFiles(QStringList)));
+
+
+
+
+
+
+    //
+    // now read the settings for _wallAddress and _wallPort
+    //
+    QString savedWallAddr = _settings->value("walladdr", "").toString();
+    quint16 savedWallPort = _settings->value("wallport", 0).toUInt();
+
+    if (!savedWallAddr.isEmpty()  &&  savedWallPort) {
+        //
+        // try connecting to the server
+        //
+        _wallAddress = savedWallAddr;
+        _wallPort = savedWallPort;
+
+        _pointerName = _settings->value("pointername", "pointerName").toString();
+        _pointerColor = _settings->value("pointercolor", "#ff0000").toString();
+        _sharingEdge = _settings->value("sharingedge", "right").toString();
+
+        _tcpMsgSock.connectToHost(_wallAddress, _wallPort);
+    }
+    else {
+        if ( ! QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection) ) {
+            qDebug() << "invokeMethod() : on_actionNew_Connection_triggered failed";
+        }
+    }
 }
 
 SN_PointerUI::~SN_PointerUI()
 {
+    _tcpMsgSock.disconnect(); // disconnect all signal/slot connections
+
 	delete ui;
 	if (fdialog) delete fdialog;
 
 	if (hasMouseTracking()) releaseMouse();
 
+    if (_tcpMsgSock.state() == QAbstractSocket::ConnectingState)
+        _tcpMsgSock.abort();
 	_tcpMsgSock.close();
 
+     if (_tcpDataSock.state() == QAbstractSocket::ConnectingState)
+         _tcpDataSock.abort();
 	_tcpDataSock.close();
 	
 	if (macCapture) {
@@ -110,31 +166,157 @@ SN_PointerUI::~SN_PointerUI()
 //		delete macCapture; // doesn't need because macCapture is a child Qt object
 		macCapture->waitForFinished(-1);
 	}
+
+	if (_winCapture) {
+		_winCapture->kill();
+		_winCapture->waitForFinished(-1);
+	}
+
+	if (_winCaptureServer) {
+		_winCaptureServer->close();
+	}
+
+	if (_winCapturePipe.isOpen()) {
+		_winCapturePipe.close();
+	}
+
+    qDebug() << "Good Bye";
+}
+
+void SN_PointerUI::m_deleteMouseHookProcess() {
+	if (macCapture) {
+        macCapture->kill();
+        macCapture->waitForFinished(-1);
+        delete macCapture;
+        macCapture = 0;
+    }
+
+	if (_winCapture) {
+		_winCapturePipe.close();
+
+		_winCapture->kill();
+		_winCapture->waitForFinished(-1);
+		delete _winCapture;
+		_winCapture = 0;
+	}
+
+	_iodeviceForMouseHook = 0;
 }
 
 
+void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
+    qDebug() << "SN_PointerUI::handleSocketError() :" << error;
+
+
+    //
+    // SAGENext is closed
+    //
+    if (error == QAbstractSocket::RemoteHostClosedError) {
+
+        if (ui && ui->isConnectedLabel)
+            ui->isConnectedLabel->setText("The Wall closed");
+
+       m_deleteMouseHookProcess();
+
+        QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection);
+    }
+
+    //
+    // IP addr is valid, but SAGENext isn't available
+    //
+    else if (error == QAbstractSocket::ConnectionRefusedError) {
+
+        ui->isConnectedLabel->setText("Failed to connect\nIs wall running?");
+    }
+
+	else {
+		qDebug() << "SN_PointerUI::handleSocketError()" << error;
+	}
+}
+
+void SN_PointerUI::handleSocketStateChange(QAbstractSocket::SocketState newstate) {
+    switch (newstate) {
+    case QAbstractSocket::UnconnectedState : {
+        ui->isConnectedLabel->setText("Not Connected");
+
+        //
+        // Maybe schedule connection in 1 sec here ?
+        //
+		qDebug() << "SN_PointerUI::handleSocketStateChange() : UnConnectedState";
+
+		m_deleteMouseHookProcess();
+
+        break;
+    }
+    case QAbstractSocket::HostLookupState : {
+        ui->isConnectedLabel->setText("Looking up host...");
+        break;
+    }
+    case QAbstractSocket::ConnectingState : {
+        ui->isConnectedLabel->setText("Connecting to...\n" + _wallAddress);
+        break;
+    }
+    case QAbstractSocket::ConnectedState : {
+        // the server will send ACK_FROM_WALL upon a client connection
+        ui->isConnectedLabel->setText("Connected to Wall\n" + _wallAddress);
+        break;
+    }
+    case QAbstractSocket::BoundState : {
+        break;
+    }
+    case QAbstractSocket::ClosingState : {
+		qDebug() << "SN_PointerUI::handleSocketStateChange() : ClosingState";
+        break;
+    }
+    case QAbstractSocket::ListeningState : {
+        break;
+    }
+    }
+}
 
 // triggered by CMD (CTRL) + n
 void SN_PointerUI::on_actionNew_Connection_triggered()
 {
-	// open modal dialog to enter IP address and port
+    if (_tcpMsgSock.state() == QAbstractSocket::ConnectingState) {
+        _tcpMsgSock.abort();
+    }
+
+    //
+    // disconnect first
+    //
+    if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
+		_tcpMsgSock.disconnectFromHost(); // will enter UnconnectedState after waiting all data has been written.
+        _tcpDataSock.disconnectFromHost();
+
+        QApplication::sendPostedEvents(); // empties the event Q
+	}
+
+    //
+	// open modal dialog for a user to enter the IP address and port
+    //
 	SN_PointerUI_ConnDialog cd(_settings);
 	cd.exec();
 	if ( cd.result() == QDialog::Rejected) return;
 
-	_wallAddress = cd.address();
+
+    if (!cd.ipaddress().isNull()) {
+        _wallAddress = cd.ipaddress().toString();
+    }
+    else if (!cd.hostname().isEmpty()) {
+        _wallAddress = cd.hostname();
+    }
+    else {
+        QMessageBox::warning(this, "Error : Can't connect", "Both Hostname and IP address are empty");
+        return;
+    }
+    _wallPort = cd.port();
+
 	_pointerName = cd.pointerName();
 	_pointerColor = cd.pointerColor();
 //	_myIpAddress = cd.myAddress();
-	_vncUsername = cd.vncUsername();
-	_vncPasswd = cd.vncPasswd();
 	_sharingEdge = cd.sharingEdge();
 
-	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
-		_tcpMsgSock.disconnectFromHost();
-	}
-
-	_tcpMsgSock.connectToHost(QHostAddress(_wallAddress), cd.port());
+	_tcpMsgSock.connectToHost(_wallAddress, _wallPort);
 }
 
 void SN_PointerUI::on_actionOpen_Media_triggered()
@@ -157,11 +339,41 @@ void SN_PointerUI::on_actionShare_desktop_triggered()
 		return;
 	}
 
+	//
+	// Open a dialog for username/password
+	//
+	SN_PointerUI_VncDialog vncDialog;
+	int ret = vncDialog.exec(); // modal dialog
+
+	if (ret == QDialog::Rejected) return;
+	
+	QString vncUsername = "";
+	QString vncPasswd = "";
+
+#ifdef Q_OS_MAC
+    //
+    // Lion and higher
+    //
+    if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_7) {
+        vncUsername = vncDialog.username();
+    }
+#endif
+
+	vncPasswd = vncDialog.password();
+
+
 	// send msg to UiServer so that local sageapp (vncviewer) can be started
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
 	// msgtype, uiclientid, senderIP, display #, vnc passwd, framerate
-	sprintf(msg.data(), "%d %d %s %s %d", SAGENext::VNC_SHARING, 0, qPrintable(_vncUsername), qPrintable(_vncPasswd), 10);
+
+	sprintf(msg.data(), "%d %d %s %s %d"
+            , SAGENext::VNC_SHARING
+            , 0
+            , (vncUsername.isEmpty()) ? "_" : qPrintable(vncUsername)
+            , (vncPasswd.isEmpty()) ? "_" : qPrintable(vncPasswd)
+            , 10
+            );
 
 	sendMessage(msg);
 }
@@ -199,14 +411,13 @@ void SN_PointerUI::on_actionSend_text_triggered()
 
 
 
-
+/**
+  This is called upon receiving ACK_FROM_WALL
+  */
 void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight, int ftpPort) {
 
 	_uiclientid = uiclientid;
 	fileTransferPort = ftpPort;
-
-	ui->isConnectedLabel->setText("Connected to the wall");
-	ui->isConnectedLabel->show();
 
 	wallSize.rwidth() = wallwidth;
 	wallSize.rheight() = wallheight;
@@ -226,12 +437,12 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
 	//
 	// maccapture
 	//
-#ifdef Q_OS_MAC
+#if defined(Q_OS_MAC)
 	if (!macCapture) {
 		macCapture = new QProcess(this);
 		macCapture->setWorkingDirectory(QCoreApplication::applicationDirPath());
 
-		if ( ! QObject::connect(macCapture, SIGNAL(readyReadStandardOutput()), this, SLOT(sendMouseEventsToWall())) ) {
+		if ( ! QObject::connect(macCapture, SIGNAL(readyReadStandardOutput()), this, SLOT(readFromMouseHook())) ) {
 			qDebug() << "Can't connect macCapture signal to my slot. macCapture won't be started.";
 		}
 		else {
@@ -242,6 +453,8 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
 				QMessageBox::critical(this, "macCapture Error", "Failed to start macCapture");
 			}
 			else {
+				_iodeviceForMouseHook = macCapture;
+
 				QByteArray captureEdge(10, '\0');
 				int edge = 3;// left 1, right, top, bottom (in macCapture)
 				if ( _sharingEdge == "top" ) edge = 3;
@@ -253,15 +466,66 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
 			}
 		}
 	}
+#elif defined(Q_OS_WIN32)
+	if (!_winCaptureServer) {
+		_winCaptureServer = new SN_WinCaptureTcpServer(&_winCapturePipe, this);
+	}
+
+	if (!_winCaptureServer->isListening()) {
+		_winCaptureServer->listen(QHostAddress::LocalHost, 44556);
+	}
+
+	while(!_winCaptureServer->isListening()) {} // busy waiting
+
+	int sedge  = 1;
+	if (QString::compare("left", _sharingEdge, Qt::CaseInsensitive) == 0) sedge = 1;
+	else if (QString::compare("right", _sharingEdge, Qt::CaseInsensitive) == 0) sedge = 2;
+	else if (QString::compare("top", _sharingEdge, Qt::CaseInsensitive) == 0) sedge = 3;
+	else if (QString::compare("bottom", _sharingEdge, Qt::CaseInsensitive) == 0) sedge = 4;
+
+	QObject::connect(&_winCapturePipe, SIGNAL(readyRead()), this, SLOT(readFromMouseHook()));
+	if (!_winCapture) {
+		_winCapture = new QProcess(this);
+		_winCapture->setWorkingDirectory(QCoreApplication::applicationDirPath());
+		_winCapture->start("winCapture" + QString(QDir::separator()) + "winCapture " + QString::number(d->screenGeometry().width()) + " " + QString::number(d->screenGeometry().height()) + " " + QString::number(sedge));
+		if (! _winCapture->waitForStarted(-1) ) {
+			QMessageBox::critical(this, "winCapture Error", "Failed to start winCapture");
+		}
+		else {
+			_iodeviceForMouseHook = &_winCapturePipe;
+		}
+	}
 #else
 	//
 	// this is to know whether the cursor is on _sharingEdge
 	//
 //	setMouseTracking(true); // the widget receives mouse move events even if no buttons are pressed
 #endif
+
+
+    //
+    //  connect to udp socket
+    //
+    /*
+    _udpSocket.connectToHost(QHostAddress(_wallAddress), _wallPort + 10 + _uiclientid);
+    if (! _udpSocket.waitForConnected(-1)) {
+        qDebug() << "SN_PointerUI::initialize() : udpSocket connectToHost() failed";
+    }
+    else {
+        qDebug() << "SN_PointerUI::initialize() : connected" << _udpSocket.state();
+    }
+    */
 }
 
+void SN_PointerUI::readFromWinCapture() {
+	Q_ASSERT(_winCapturePipe.isOpen());
+	Q_ASSERT(_winCapturePipe.isReadable());
 
+	QByteArray msg(64, 0);
+	while (_winCapturePipe.readLine(msg.data(), msg.size()) > 0) {
+		qDebug() << "readFromWinCapture() : " << msg;
+	}
+}
 
 
 
@@ -292,10 +556,11 @@ void SN_PointerUI::hookMouse() {
 			setCursor(Qt::BlankCursor);
 
 
-#ifdef Q_OS_MAC
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN32)
 			// do nothing
 			ui->isConnectedLabel->setText("Pointer is in SAGENext");
 #else
+            ui->hookMouseBtn->setText("Pointer is shared");
 			ui->isConnectedLabel->setText("[Shift + Ctrl + Alt + m]\nto relase mouse");
 			//
 			// in Linux and Windows 7, this will work even the mouse curson isn't on this application window.
@@ -321,11 +586,12 @@ void SN_PointerUI::unhookMouse() {
 	isMouseCapturing = false;
 	unsetCursor();
 
-#ifdef Q_OS_MAC
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN32)
 		// do nothing
 #else
 	releaseMouse();
 //	qDebug() << "mouse released";
+    ui->hookMouseBtn->setText("share pointer");
 #endif
 	// remove cursor on the wall
 	if (_tcpMsgSock.state() == QAbstractSocket::ConnectedState) {
@@ -348,6 +614,24 @@ void SN_PointerUI::sendMessage(const QByteArray &msg) {
 	else {
 		qDebug() << "The message channel isn't writable";
 	}
+
+    /*
+    if (!_udpSocket.isValid()) {
+        qDebug() << "udp socket invalid";
+        return;
+    }
+    if (!_udpSocket.isWritable()) {
+        qDebug() << "udp socket isn't writable";
+        return;
+    }
+    if ( _udpSocket.write(msg) == -1 ) {
+        qDebug() << "_udpSocket.write error";
+    }
+    else {
+        _udpSocket.flush();
+        qDebug() << "msg sent" << msg;
+    }
+    */
 }
 
 void SN_PointerUI::readMessage() {
@@ -376,7 +660,7 @@ void SN_PointerUI::readMessage() {
 
 		// Now I can connect to the file server
 		if (ftpport > 0) {
-			_tcpDataSock.connectToHost(QHostAddress(_wallAddress), ftpport);
+			_tcpDataSock.connectToHost(_wallAddress, ftpport);
 			if ( _tcpDataSock.waitForConnected() ) {
 				QByteArray msg(EXTUI_MSG_SIZE, 0);
 				::sprintf(msg.data(), "%u", _uiclientid);
@@ -625,10 +909,8 @@ void SN_PointerUI::readLocalFiles(QStringList filenames) {
 /**
   This function is used by Mac OS X and invoked by QProcess::readyReadStandardOutput() signal
   */
-void SN_PointerUI::sendMouseEventsToWall() {
-	Q_ASSERT(macCapture);
-
-//	QTextStream textin(macCapture);
+void SN_PointerUI::readFromMouseHook() {
+	if (!_iodeviceForMouseHook) return;
 	
 	int msgcode = 0; // capture, release, move, click, wheel,..
 	int x = 0.0, y = 0.0; // MOVE (x, y) is event globalPos
@@ -638,20 +920,25 @@ void SN_PointerUI::sendMouseEventsToWall() {
 	
 	QByteArray msg(64, 0);
 	QTextStream in(&msg, QIODevice::ReadOnly);
-	while ( macCapture->readLine(msg.data(), msg.size()) > 0 ) {
+	while ( _iodeviceForMouseHook->readLine(msg.data(), msg.size()) > 0 ) {
+
+//		qDebug() << msg;
+
 		in >> msgcode;
 		switch(msgcode) {
 		
 		// CAPTURED
 		case 11: {
-			qDebug() << "Start capturing Mac mouse events";
+//			qDebug() << "Start capturing mouse events";
+			ui->isConnectedLabel->setText("Pointer is in the SAGENext !");
 			hookMouse();
 			break;
 		}
 			
 		// RELEASED
 		case 12: {
-			qDebug() << "Stop capturing Mac mouse events";
+//			qDebug() << "Stop capturing mouse events";
+			ui->isConnectedLabel->setText("Move your cursor to the " + _sharingEdge +" edge\nto share your pointer");
 			unhookMouse();
 			break;
 		}
@@ -780,16 +1067,16 @@ void SN_PointerUI::sendMouseMove(const QPoint globalPos, Qt::MouseButtons btns /
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 
 	if ( btns & Qt::LeftButton) {
-//		qDebug() << "send left dargging";
+//		qDebug() << "POINTER_DRAGGING";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_DRAGGING, _uiclientid, x, y);
 	}
 	else if (btns & Qt::RightButton) {
-//		qDebug() << "sendMouseMove() Rightbutton dragging";
+//		qDebug() << "POINTER_RIGHTDRAGGING";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTDRAGGING, _uiclientid, x, y);
 	}
 	else {
 		// just move pointer
-//		qDebug() << "sendMouseMove() Moving" << globalPos;
+//		qDebug() << "POINTER_MOVING" << globalPos;
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_MOVING, _uiclientid, x, y);
 	}
 	sendMessage(msg);
@@ -808,12 +1095,14 @@ void SN_PointerUI::sendMousePress(const QPoint globalPos, Qt::MouseButtons btns 
 		//
 		// this is needed to setPos of selection rectangle
 		//
+//		qDebug() << "POINTER_RIGHTPRESS";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTPRESS, _uiclientid, x, y);
 	}
 	else {
 		//
 		// will trigger setAppUnderPointer() which is needed for left mouse dragging
 		//
+//		qDebug() << "POINTER_PRESS";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_PRESS, _uiclientid, x, y);
 	}
 	sendMessage(msg);
@@ -830,10 +1119,12 @@ void SN_PointerUI::sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btn
 
 	if (btns & Qt::RightButton) {
 		// will finish selection rectangle
+//		qDebug() << "POINTER_RIGHTRELEASE";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTRELEASE, _uiclientid, x, y);
 	}
 	else {
 		// will pretend droping operation
+//		qDebug() << "POINTER_RELEASE";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RELEASE, _uiclientid, x, y);
 	}
 	sendMessage(msg);
@@ -846,9 +1137,11 @@ void SN_PointerUI::sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns 
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
 	
 	if (btns & Qt::RightButton) {
+//		qDebug() << "POINTER_RIGHTCLICK";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_RIGHTCLICK, _uiclientid, x, y);
 	}
 	else {
+//		qDebug() << "POINTER_CLICK";
 		sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_CLICK, _uiclientid, x, y);
 	}
 	sendMessage(msg);
@@ -862,6 +1155,8 @@ void SN_PointerUI::sendMouseDblClick(const QPoint globalPos, Qt::MouseButtons /*
 	x = scaleToWallX * globalPos.x();
 	y = scaleToWallY * globalPos.y();
 	QByteArray msg(EXTUI_SMALL_MSG_SIZE, 0);
+	
+//	qDebug() << "POINTER_DOUBLECLICK";
 	sprintf(msg.data(), "%d %u %d %d", SAGENext::POINTER_DOUBLECLICK, _uiclientid, x, y);
 	sendMessage(msg);
 
@@ -884,12 +1179,6 @@ void SN_PointerUI::sendMouseWheel(const QPoint globalPos, int delta) {
 	sprintf(msg.data(), "%d %u %d %d %d", SAGENext::POINTER_WHEEL, _uiclientid, x, y, delta);
 	sendMessage(msg);
 }
-
-
-
-
-
-
 
 
 
@@ -932,8 +1221,14 @@ void SN_PointerUI::mouseReleaseEvent(QMouseEvent *e) {
 		int ml = (e->globalPos() - mousePressedPos).manhattanLength();
 		//		qDebug() << "release" << e->button() << e->globalPos() << ml;
 		if ( ml <= 3 ) {
-			qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse CLICK";
-			sendMouseClick(e->globalPos(), e->button() | Qt::NoButton);
+
+            if (_wasDblClick) {
+                _wasDblClick = false; // reset the flag
+            }
+            else {
+                qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse CLICK";
+                sendMouseClick(e->globalPos(), e->button() | Qt::NoButton);
+            }
 		}
 		else {
 			//
@@ -964,6 +1259,9 @@ void SN_PointerUI::mouseDoubleClickEvent(QMouseEvent *e) {
 	if ( isMouseCapturing ) {
 		qDebug() << "mouseDoubleClickEvent()" << e->button() << "sending mouse DBLCLICK";
 		sendMouseDblClick(e->globalPos()); // Left double click
+
+        _wasDblClick = true;
+
 		e->accept();
 	}
 	else {
@@ -1058,133 +1356,6 @@ void SN_PointerUI_DropFrame::dropEvent(QDropEvent *e) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
-    : QDialog(parent)
-    , ui(new Ui::SN_PointerUI_ConnDialog)
-    , _settings(s)
-    , portnum(0)
-{
-	ui->setupUi(this);
-
-	addr.clear();
-
-	ui->ipaddr->setInputMask("000.000.000.000;_");
-	//        ui->myaddrLineEdit->setInputMask("000.000.000.000;_");
-	ui->port->setInputMask("00000;_");
-
-	ui->ipaddr->setText( _settings->value("walladdr", "127.0.0.1").toString() );
-
-
-	/**
-		QList<QHostAddress> myiplist = QNetworkInterface::allAddresses();
-		for (int i=0; i<myiplist.size(); ++i) {
-			if (myiplist.at(i).toIPv4Address()) {
-				ui->myAddrCB->addItem(myiplist.at(i).toString(), myiplist.at(i).toIPv4Address()); // QString, quint32
-			}
-		}
-		int currentIdx = ui->myAddrCB->findText( _settings->value("myaddr", "127.0.0.1").toString() );
-		ui->myAddrCB->setCurrentIndex(currentIdx);
-		**/
-
-
-
-	ui->port->setText( _settings->value("wallport", 30003).toString() );
-	ui->vncUsername->setText(_settings->value("vncusername", "user").toString());
-	ui->vncpasswd->setEchoMode(QLineEdit::Password);
-	ui->vncpasswd->setText(_settings->value("vncpasswd", "dummy").toString());
-	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointer").toString());
-
-	//		ui->pointerColorLabel->setText(_settings->value("pointercolor", "#FF0000").toString());
-	QColor pc(_settings->value("pointercolor", "#ff0000").toString());
-	pColor = pc.name();
-	QPixmap pixmap(ui->pointerColorLabel->size());
-	pixmap.fill(pc);
-	ui->pointerColorLabel->setPixmap(pixmap);
-
-	int idx = ui->sharingEdgeCB->findText(_settings->value("sharingedge", "top").toString());
-	if (idx != -1)
-		ui->sharingEdgeCB->setCurrentIndex(idx);
-	else
-		ui->sharingEdgeCB->setCurrentIndex(0);
-
-	adjustSize();
-
-//	ui->ipaddr->setText("127.0.0.1");
-//	ui->port->setText("30003");
-}
-
-SN_PointerUI_ConnDialog::~SN_PointerUI_ConnDialog() {
-	delete ui;
-}
-
-void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
-{
-	addr = ui->ipaddr->text();
-	portnum = ui->port->text().toInt();
-//	myaddr = ui->myAddrCB->currentText();
-	pName = ui->pointerNameLineEdit->text();
-	vncusername = ui->vncUsername->text();
-	vncpass = ui->vncpasswd->text();
-	psharingEdge = ui->sharingEdgeCB->currentText();
-	
-	_settings->setValue("walladdr", addr);
-	_settings->setValue("wallport", portnum);
-//	_settings->setValue("myaddr", myaddr);
-	_settings->setValue("pointername", pName);
-	_settings->setValue("pointercolor", pColor);
-	_settings->setValue("vncusername", vncusername);
-	_settings->setValue("vncpasswd", vncpass);
-	_settings->setValue("sharingedge", psharingEdge);
-	
-	if (vncusername.isEmpty()) {
-		vncusername = "user";
-	}
-	
-	accept();
-	//	done(0);
-}
-
-void SN_PointerUI_ConnDialog::on_buttonBox_rejected()
-{
-	reject();
-}
-
-void SN_PointerUI_ConnDialog::on_pointerColorButton_clicked()
-{
-	QColor prevColor;
-	prevColor.setNamedColor(_settings->value("pointercolor", "#FF0000").toString());
-	QColor newColor = QColorDialog::getColor(prevColor, this, "Pointer Color"); // pops up modal dialog
-
-	QPixmap pixmap(ui->pointerColorLabel->size());
-	pixmap.fill(newColor);
-//	ui->pointerColorLabel->setText(newColor.name());
-	ui->pointerColorLabel->setPixmap(pixmap);
-
-	pColor = newColor.name();
-}
-
-
-
-
-
-
-
-
-
-
-
-
 SN_PointerUI_StrDialog::SN_PointerUI_StrDialog(QWidget *parent)
     : QDialog(parent)
     , _lineedit(new QLineEdit(this))
@@ -1216,5 +1387,8 @@ void SN_PointerUI_StrDialog::setText() {
 	_text = _lineedit->text();
 	accept();
 }
+
+
+
 
 

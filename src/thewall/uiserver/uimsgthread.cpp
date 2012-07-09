@@ -15,6 +15,7 @@ UiMsgThread::UiMsgThread(const quint32 id, int sock, QObject *parent) :
   , _uiClientId(id)
   , _end(false)
   , _sockfd(sock)
+//  , _udpSock(0)
 {
 	int optval = 1;
 	//socket.setSocketOption(QAbstractSocket::LowDelayOption, (const QVariant *)&optval);
@@ -43,8 +44,24 @@ UiMsgThread::UiMsgThread(const quint32 id, int sock, QObject *parent) :
 		else {
 			perror("inet_ntop");
 		}
-
 	}
+
+    /*
+    _udpSock = ::socket(AF_INET, SOCK_DGRAM, 0);
+    if (_udpSock == -1) {
+        perror("UDP socket");
+    }
+    else {
+        struct sockaddr_in serveraddr;
+        bzero(&serveraddr, sizeof(struct sockaddr_in));
+        serveraddr.sin_family = AF_INET;
+        serveraddr.sin_port = 30003 + 10 + _uiClientId;
+        serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        if ( -1 == ::bind(_udpSock, (struct sockaddr *)&serveraddr, sizeof(struct sockaddr_in)) ) {
+            perror("UDP bind");
+        }
+    }
+    */
 }
 
 UiMsgThread::~UiMsgThread() {
@@ -77,7 +94,6 @@ void UiMsgThread::sendMsg(const QByteArray &msgstr) {
 	else {
 		//	qDebug("UiMsgThread::%s() : msg [%s] sent", __FUNCTION__, msgstr.constData());
 	}
-
 }
 
 void UiMsgThread::run() {
@@ -86,17 +102,33 @@ void UiMsgThread::run() {
 	QByteArray msgStr(EXTUI_SMALL_MSG_SIZE, 0);
 	int read = 0;
 
+    char addbuf[256];
+    socklen_t addlen;
+
 	while(!_end) {
 		msgStr.fill(0);
-
 		if ( (read = recv(_sockfd, (void *)msgStr.data(), EXTUI_SMALL_MSG_SIZE, MSG_WAITALL)) == -1 ) {
 			qCritical("UiMsgThread::%s() : socket error", __FUNCTION__);
 			break;
 		}
 		else if ( read == 0 ) {
-			qDebug("UiMsgThread::%s() : socket disconnected", __FUNCTION__);
+//			qDebug("UiMsgThread::%s() : socket disconnected", __FUNCTION__);
 			break;
 		}
+
+        //
+        // if srcaddr is null then connection is required
+        //
+        /*
+        if ( (read = recvfrom(_udpSock, (void *)msgStr.data(), EXTUI_SMALL_MSG_SIZE, 0, 0, 0)) == -1) {
+            qCritical("UiMsgThread::%s() : socket error", __FUNCTION__);
+			break;
+		}
+		else if ( read == 0 ) {
+			qDebug("UiMsgThread::%s() : socket disconnected", __FUNCTION__);
+			break;
+        }
+        */
 //		qDebug("UiMsgThread::%s() : received external UI msg [%s]", __FUNCTION__, msgStr.data());
 
 		//
@@ -110,8 +142,6 @@ void UiMsgThread::run() {
 		//			int t = ::send(sockfd, data.data(), data.size(), 0);
 		//			qDebug("UiMsgThread::%s() : %d byte ACK_FROM_WALL [%s] sent", __FUNCTION__, t, data.constData());
 	}
-
-
 //	qDebug("UiMsgThread::%s() : thread finished", __FUNCTION__);
 }
 

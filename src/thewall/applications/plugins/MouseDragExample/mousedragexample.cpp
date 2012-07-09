@@ -46,15 +46,6 @@ MouseDragExample::MouseDragExample()
 	  */
 	setContentsMargins(_marginleft, _margintop, _marginright, _marginbottom);
 
-	for (int i=0; i<_numItems; i++) {
-		QColor color(128, i * 12, 255 / (i+1));
-
-		// MouseDragExample's child item
-		TrackerItem *ti = new TrackerItem(0,0,128,128, QBrush(color), this);
-
-		ti->moveBy(_marginleft + i * 64, _margintop);
-	}
-
 	resize(1024, 768);
 }
 
@@ -67,7 +58,19 @@ MouseDragExample::~MouseDragExample()
   Don't forget this
   */
 SN_BaseWidget * MouseDragExample::createInstance() {
-	return new MouseDragExample;
+
+    MouseDragExample *instance = new MouseDragExample;
+
+    for (int i=0; i<_numItems; i++) {
+		QColor color(128, i * 12, 255 / (i+1));
+
+		// MouseDragExample's child item
+		TrackerItem *ti = new TrackerItem(0,0,128,128, QBrush(color), instance);
+
+		ti->moveBy(_marginleft + i * 64, _margintop);
+	}
+
+	return instance;
 }
 
 TrackerItem * MouseDragExample::getTrackerItemUnderPoint(const QPointF &point) {
@@ -89,6 +92,7 @@ void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const
 	qreal maxZ = 0.0;
 	TrackerItem *t = getTrackerItemUnderPoint(point);
 	if (t) {
+        _isMoving = false;
 
 		QMap<SN_PolygonArrowPointer *, TrackerItem *>::const_iterator it;
 		for (it=_dragTrackerMap.constBegin(); it!=_dragTrackerMap.constEnd(); it++) {
@@ -106,10 +110,13 @@ void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const
 }
 
 void MouseDragExample::handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
-	Q_UNUSED(pointer);
+    Q_UNUSED(point);
 	Q_UNUSED(btn);
 
 	_dragTrackerMap.erase(_dragTrackerMap.find(pointer));
+
+    _isMoving = false;
+    _isResizing = false;
 }
 
 void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {

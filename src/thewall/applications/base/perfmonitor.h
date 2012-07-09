@@ -16,23 +16,45 @@ public:
 //	~PerfMonitor();
 
 	/*!
-	  * This function measures delay between subsequent frame receivings
-	  * recvTimer.restart() is called here
-	  * recvTimer.start() must be called somewhere before calling this function
-	  * It is converted to second and
-	  * all the private member variable is set
+      This function is called by the widget.
+      It assumes that this function is called at the end of every frame is received by the receiving thread of the widget.
+
+      @param byteread : Byte received
+      @param actualtime_sec : The time spent (in second), including any overhead in the receiving thread, in receiving the amount of 'byteread' Byte.
+      @param cputime_sec : CPU time spent (in second) for receiving
 	  */
-//	void updateRecvLatency(ssize_t read, struct rusage rus, struct rusage rue);
+//	void updateDataWithLatencies(ssize_t byteread, qreal actualtime_sec, qreal cputime_sec);
+
+    /*!
+      The application keeps updating _cumulativeByteReceived by calling this function.
+      Optionally, the time(and CPU time) spent receiving a frame can be passed to calculate
+      FPS and CPU usage.
+
+      The _cumulativeByteReceived will be used to find out
+      the current BW usage (in Mbps)
+      */
+    void addToCumulativeByteReceived(quint64 byte, qreal actualtime_sec = 0, qreal cputim_sec = 0);
 
 
-	/*!
-	  System call recv() latency + delay enforced by scheduler. CPU usage is measured here as well.
+    /*!
+      This function is called by the resource monitor periodically.
+      It assumes the widget keeps updating the _cumulativeByteReceived.
 
-	  netlatency represents pure recv() delay and is passed from a caller.
+      The _currEffectiveBW, _requiredBW, maxBWachieved are updated in this function.
+      */
+    void updateDataWithCumulativeByteReceived(qint64 timestamp);
 
-	  This function assumes the recvTimer.start() had called !
-	  */
-	void updateObservedRecvLatency(ssize_t byteread, qreal netlatency, struct rusage rus, struct rusage rue);
+
+    /*!
+      returns Current BW / Required BW or -1 if Required BW == 0
+      */
+    qreal observedQuality_Rq() const;
+
+    /*!
+      returns Current BW / Demanded BW by scheduler or -1 if Demanded BW == 0
+      */
+    qreal observedQuality_Dq() const;
+
 
 	/*!
 	  Increments updateCount and measure currDispFps, calculate avgDispFps
@@ -41,19 +63,30 @@ public:
 
 
 	/*!
-	  Increments drawCount, and measure currDrawLatency, calculate avgDrawLatency.
-	  Returns currDrawLatency on success, -1.0 on error
+      This function is used to measure drawing latency (in paint() function)
+      Note than drawTimer.start() must be called before calling this function
+
+	  It increments drawCount, update the currDrawLatency and the avgDrawLatency.
+
+	  @return currDrawLatency on success, -1.0 on error
 	  */
 	qreal updateDrawLatency();
 
 	/*!
-	  If OpenGL, delay of binding new texture
-	  else delay of converting QImage to QPixmap
+      This function is used to measure widget's contents updating latency.
+      Such as coping pixels to GPU memory (in SN_SageStreamWidget)
+      reading new pdf page and render the page (in SN_PDFViewerWidget)
+
+      Note that updateTimer must be started before calling this function.
 	  */
 	qreal updateUpdateDelay();
 
-	qreal updateEQDelay();
 
+    /*!
+      event queuing delay.
+      This is not used
+      */
+	qreal updateEQDelay();
 
 
 
@@ -82,23 +115,33 @@ public:
 //	inline void setWidgetType(SN_BaseWidget::Widget_Type wt) {widgetType = wt;}
 
 
+    /*!
+      If the widget provides a priori
+      */
+    inline void setPriori(bool b = true) {_priori = b;}
+    inline bool priori() const {return _priori;}
 
 
-
-	inline QTime & getRecvTimer() { return recvTimer; }
+//	inline QTime & getRecvTimer() { return recvTimer; }
 	inline QTime & getDrawTimer() { return drawTimer; }
 	inline QTime & getDispTimer() { return dispTimer; }
 	inline QTime & getUpdtTimer() { return updateTimer; }
 	inline QTime & getEqTimer() {return eqTimer;}
 
-	inline quint64 getRecvCount() const {return recvFrameCount;}
+	inline quint64 getRecvCount() const {return _recvFrameCount;}
 	inline quint64 getDrawCount() const {return drawCount;}
 
+    /*!
+      This is network latency (recv() syscalls)
+      */
 	inline qreal getCurrRecvLatency() const { return currRecvLatency; }
 	inline qreal getAvgRecvLatency() const { return avgRecvLatency; }
 
-	inline qreal getCurrRecvFps() const { return currRecvFps; }
-	inline qreal getAvgRecvFps() const { return avgRecvFps; }
+    /*!
+      This is 1 / (network latency + app's whatever delay)
+      */
+	inline qreal getCurrEffectiveFps() const { return _currEffectiveFps; }
+	inline qreal getAvgEffectiveFps() const { return _avgEffectiveFps; }
 //	inline qreal getPeakFps() const { return peakRecvFps; }
 
 	inline void setExpectedFps(qreal f) {expectedFps = f;}
@@ -106,25 +149,63 @@ public:
 
 
 
-	inline qreal getCurrAbsDeviation() const {return currAbsDeviation;}
-	inline qreal getAvgAbsDeviation() const {return avgAbsDeviation;}
+//	inline qreal getCurrAbsDeviation() const {return currAbsDeviation;}
+//	inline qreal getAvgAbsDeviation() const {return avgAbsDeviation;}
 
-	inline qreal getCurrAdjDeviation() const {return currAdjDeviation;}
+//	inline qreal getCurrAdjDeviation() const {return currAdjDeviation;}
 
-	inline qreal getRecvFpsVariance() const {return recvFpsVariance;}
-	inline qreal getRecvFpsStdDeviation() const {return recvFpsStdDeviation;}
+//	inline qreal getRecvFpsVariance() const {return recvFpsVariance;}
+//	inline qreal getRecvFpsStdDeviation() const {return recvFpsStdDeviation;}
 
 
 	inline qreal getCurrDispFps() const { return currDispFps;}
 	inline qreal getAvgDispFps() const {return avgDispFps;}
 
-	inline qreal getCurrBandwidthMbps() const {return currBandwidth;}
+
+
+
+    ///
+    /// The Bandwidth
+    ///
+
+	inline qreal getCurrBW_Mbps() const {return _currEffectiveBW_Mbps;}
+
+    /*!
+      Override the value calculated in updateDataWithLatencies()
+      */
+//    inline void overrideCurrBW_Mbps(qreal r) {_currEffectiveBW_Mbps = r;}
+
+    /*!
+      Returns the required bandwidth to ensure the percentage of expected quality of the application.
+      If percentage == 1.0 then the return value indicates the bandwidth required to make the application runs at full quality
+
+      @param percentage must be between 0.0 <= percentage <= 1.0
+      */
+    qreal getRequiredBW_Mbps(qreal percentage = 1.0) const;
+
+
+    /*!
+      image streaming (SAGE) app : The image width * height * bpp * framerate (in Mbps)
+
+      An interactive app (best-effort type) will set this to 0 when there's no interaction thereby the app is sitting idle
+      */
+    inline void setRequiredBW_Mbps(qreal b) {_requiredBW_Mbps = b;}
+
+    inline void setMaxAchievedBW_Mbps(qreal b) {_maxBWachieved = b;}
+
+
+    inline bool isInteracting() const {return _isInteracting;}
+    inline void setInteracting(bool b=true) {_isInteracting = b;}
+
+
+
+
 
 	inline qreal getCurrDrawLatency() const { return currDrawLatency; }
 	inline qreal getAvgDrawLatency() const { return avgDrawLatency; }
 
-	inline qreal getCurrConvDelay() const {return currUpdateDelay;}
-	inline qreal getAvgConvDelay() const {return avgUpdateDelay;}
+	inline qreal getCurrUpdateDelay() const {return currUpdateDelay;}
+	inline qreal getAvgUpdateDelay() const {return avgUpdateDelay;}
 
 	inline qreal getCurrEqDelay() const {return currEqDelay;}
 	inline qreal getAvgEqDelay() const {return avgEqDelay;}
@@ -140,6 +221,8 @@ public:
 	inline qreal ts_nextframe() const {return _ts_nextframe;}
 //	inline qreal deadline_miseed() const {return _deadline_missed;}
 
+    inline qreal getCpuTimeSpent_sec() const {return _cpuTimeSpent_sec;}
+
 	inline qreal getCpuUsage() const {return cpuUsage;}
 //	inline long getStartNvcsw() const {return rustart_nvcsw;}
 //	inline long getStartNivcsw() const {return rustart_nivcsw;}
@@ -154,16 +237,27 @@ private:
 //	SN_BaseWidget::Widget_Type widgetType;
 	SN_BaseWidget *_widget;
 
-	/*!
-	  A QTimer object to measure delay of recv() in stream receiver.
-	  This doesn't include swapBuffer delay
-	  */
-	QTime recvTimer;
+
+    /*!
+      Updates
+      _currEffectiveBW
+      _requiredBW
+      _maxBWachieved
+      */
+    void _updateBWdata(qreal bw);
+
+
+    /*!
+      Whether this app provided a priori.
+      constant frame rate periodic app will have this
+      */
+    bool _priori;
+
 
 	/*!
 	  * This counter increments whenever a frame received. This tells how many frames have received from network.
 	  */
-	quint64 recvFrameCount;
+	quint64 _recvFrameCount;
 
 	/*!
 	  * network receiving delay (Only recv() latency) in second
@@ -173,13 +267,13 @@ private:
 	qreal aggrRecvLatency;
 
 	/*!
-	  * Tells frame receiving rate. This is not actual display frame rate.
+	  Tells frame receiving rate. This might not actual display frame rate.
 	  This FPS is calculated with ObservedDelay.
 	  ObservedDelay = network recv() delay + any other delay during frame receive
 	  */
-	qreal currRecvFps;
-	qreal aggrRecvFps;
-	qreal avgRecvFps;
+	qreal _currEffectiveFps;
+	qreal _aggrEffectiveFps;
+	qreal _avgEffectiveFps;
 
 	/*!
 	  This is calculated from observed frame rate. (Mbps)
@@ -187,10 +281,48 @@ private:
 	  The current bandwidth is calculated using byteRead (frame size in Byte) and ObservedDelay.
 	  ObservedDelay = network recv() delay + any other delay during frame receive
 	  */
-	qreal currBandwidth;
+	qreal _currEffectiveBW_Mbps;
+
+
+    /*!
+      The max BW achieved so far
+      */
+    qreal _maxBWachieved;
 
 
 
+    /*!
+      A required bandwidth to run the application in full quality.
+      A image streaming application (such as SAGE app) that has desired fps can have this. This is called a priori.
+
+      This can't be known for a best-effort application.
+      */
+    qreal _requiredBW_Mbps;
+
+    /*!
+      If Rq is increased, then we need to give the app some time to use the resources...
+      */
+    qint64 _isRqIncreased;
+
+
+    /*!
+      Cumulative Byte received
+      */
+    quint64 _cumulativeByteRecved;
+
+    quint64 _prevByteReceived;
+    qint64 _prevTimestamp;
+
+    /*!
+      key timestamp
+      value cumulative Byte
+      */
+    QList< QPair<qint64, quint64> > _cumulativeByteRecvedList;
+
+    /*!
+      true if the widget is being interacted by user
+      */
+    bool _isInteracting;
 
 
 
@@ -244,6 +376,8 @@ private:
 
 
 	/*!
+      Basically, it's content updating delay.
+
 	  If OpenGL it's used to measure texture uploading delay.
 	  If OpenGL PBO it's used to measure texture binding plus buffer mapping delay.
 	  If no OpenGL it's used to measure the delay of converting QImage to QPixmap.
@@ -298,14 +432,14 @@ private:
 	  The current absolute deviation from the expected fps.
 	  The observed(measured) fps is from currRecvFps (which is not display frame rate)
 	  */
-	qreal currAbsDeviation;
-	qreal aggrAbsDeviation;
-	qreal avgAbsDeviation;
+//	qreal currAbsDeviation;
+//	qreal aggrAbsDeviation;
+//	qreal avgAbsDeviation;
 
 	/*!
 	  current frame rate deviation from the adjusted fps
 	  */
-	qreal currAdjDeviation;
+//	qreal currAdjDeviation;
 
 
 
@@ -314,9 +448,9 @@ private:
 	/*!
 	  Recv FPS variance, standard deviation
 	  */
-	qreal aggrRecvFpsVariance;
-	qreal recvFpsVariance;
-	qreal recvFpsStdDeviation;
+//	qreal aggrRecvFpsVariance;
+//	qreal recvFpsVariance;
+//	qreal recvFpsStdDeviation;
 
 
 
@@ -338,8 +472,20 @@ private:
 
 
 
+    /*!
+      Cpu time spent in kernel mode + Cpu time spent in user mode
+      SysTime + UserTime (in second)
+      */
+    qreal _cpuTimeSpent_sec;
 
-	/**
+    /*!
+      The CPU time required (in microsecond) to achieve 100% performance
+      */
+    qreal _cpuTimeRequired;
+
+	/*!
+      (Systime + UsrTime ) / observed_delay
+
 	  * please multiply this by 100 to get percentage
 	  */
 	qreal cpuUsage;

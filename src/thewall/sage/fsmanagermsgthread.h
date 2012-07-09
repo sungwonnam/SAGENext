@@ -1,8 +1,7 @@
 #ifndef FSMANAGERMSGTHREAD_H
 #define FSMANAGERMSGTHREAD_H
 
-#include <QThread>
-#include <QRect>
+#include <QtCore>
 //#include "sage/fsManager.h"
 #include "sagecommondefinitions.h"
 
@@ -56,14 +55,21 @@ private:
 	  */
 	quint64 _globalAppId;
 
-	/**
+	/*!
 	  * fsCore::parseMessage()
 	  * calls corresponding function according to the sageMsg.getCode()
 	  */
 	void parseMessage(OldSage::sageMessage &sageMsg);
 
+    /*!
+      fsmThread should wait until _sageWidget is not null.
+      The SN_SageStreamWidget will be created by the SN_Launcher.
+      */
+    QWaitCondition _isSageWidgetCreated;
+    QMutex _mutex;
+
 signals:
-	/**
+	/*!
 	  * after the handshaking process between fsManager and sail,
 	  * fsm sends SAIL_INIT_MSG (appID, socket window sizes)
 	  * then emit this signal to create SageReceiver object that waits for sail connection (for pixel streaming)
@@ -72,8 +78,15 @@ signals:
 	  */
 //	void sailConnected(const quint64 sageAppId, QString appName, int protocol, int port, const QRect rect);
 
+    void sageAppConnectedToFSM(const QString &sageappname, const QString &mediafilepath, fsManagerMsgThread *msgthread);
+
 public slots:
-	/**
+    /*!
+      To signal _isSageWidgetCreated condition
+      */
+    void signalSageWidgetCreated();
+
+	/*!
 	  * sets _end = true which breaks the thread loop
 	  */
 	void breakWhileLoop();

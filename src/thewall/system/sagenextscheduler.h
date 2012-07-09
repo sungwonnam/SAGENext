@@ -12,6 +12,7 @@
 #include <QReadWriteLock>
 
 class QEvent;
+class SN_BaseWidget;
 class SN_RailawareWidget;
 class QGraphicsView;
 class QGraphicsScene;
@@ -34,96 +35,130 @@ class SN_AbstractScheduler;
 class SN_SchedulerControl : public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(bool scheduleEnd READ scheduleEnd WRITE setScheduleEnd)
 	Q_ENUMS(Scheduler_Type)
 
 public:
 	explicit SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent = 0);
 	~SN_SchedulerControl();
 
+    enum Scheduler_Type {ProportionalShare, DividerWidget, SelfAdjusting, DelayDistribution};
+
 	/*!
-	  qApp installs this eventFilter  using qApp->installEventFileter(SagenextScheduler *)
+	  qApp installs this eventFilter using qApp->installEventFileter(SagenextScheduler *) in main.cpp.
 	  This function is used to filter all the events of qApp
 	  */
 	bool eventFilter(QObject *, QEvent *);
 
 	inline void setGView(QGraphicsView *gv) {gview = gv;}
 
-	inline void setScheduleEnd(bool v) {_scheduleEnd = v;}
-	inline bool scheduleEnd() const {return _scheduleEnd;}
-
-	enum Scheduler_Type {DividerWidget, SelfAdjusting, DelayDistribution, SMART};
-
 	inline void setSchedulerType(SN_SchedulerControl::Scheduler_Type st) {schedType = st;}
+    inline SN_SchedulerControl::Scheduler_Type schedulerType() const {return schedType;}
 
-	int launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec=1000);
-	int launchScheduler(const QString &str, int msec=1000);
-	int launchScheduler();
+	int launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec=1000, bool start = false);
+	int launchScheduler(const QString &str, int msec=1000, bool start = false);
+	int launchScheduler(bool start = false);
 
-
-
-	inline bool isRunning() const {return _isRunning;}
+    bool isRunning();
 
 	inline SN_AbstractScheduler * scheduler() {return _scheduler;}
 
 private:
 	QGraphicsView *gview;
-	SN_ResourceMonitor *resourceMonitor;
 
-	bool _scheduleEnd;
+	SN_ResourceMonitor *_rMonitor;
 
 	Scheduler_Type schedType;
 
 	/*!
-	  in msec
+	  Scheduling frequency in msec
 	  */
-	int granularity;
-
-//	QList<AbstractScheduler *> schedList;
+	int _granularity;
 
 	/*!
-	  scheduler
+	  scheduler instance
 	  */
 	SN_AbstractScheduler *_scheduler;
 
-	bool _isRunning;
-
+    /*!
+      Is the scheduling thread running?
+      */
+//	bool _isRunning;
 
 	/*!
-	  control panel GUI
+	  control panel GUI for SelfAdjusting
 	  */
-	QFrame *controlPanel;
+	QFrame *_controlPanel;
+
+    QLabel *_lbl_schedStatus;
+
+    QThread *_sched_thread;
 
 signals:
+    /*!
+      This signal is invoked (not emitted) by rMonitor::dataRefreshed() signal emitted in the rMonitor::refresh() function
+      */
+    void readyToSchedule();
 
 public slots:
+    void startScheduler();
+
+    void stopScheduler();
+
 	void killScheduler();
+
+    /*!
+      stop / resume
+      */
+    void toggleSchedulerStatus();
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*!
   Abstract scheduler class
   */
-class SN_AbstractScheduler : public QThread {
+class SN_AbstractScheduler : public QObject {
 	Q_OBJECT
 //	Q_PROPERTY(bool end READ isEnd WRITE setEnd)
 
 public:
-	explicit SN_AbstractScheduler(SN_ResourceMonitor *rmon, int granularity=2, QObject *parent=0) : QThread(parent), proc(0), rMonitor(rmon), _granularity(granularity) {  }
+	explicit SN_AbstractScheduler(SN_ResourceMonitor *rmon, int granularity=2, QObject *parent=0) : QObject(parent), _end(false), proc(0), rMonitor(rmon), _granularity(granularity) {  }
 	virtual ~SN_AbstractScheduler();
 
-//	inline bool isEnd() const {return _end;}
-//	void setEnd(bool b = true);
-
-	QTimer timer;
+	inline bool isEnd() const {return _end;}
+    inline void setEnd(bool b = true) {_end = b;}
 
 	inline int frequency() const {return _granularity;}
 
+    /*!
+      This function can be called, for example, to set the adjusted quality of all application to 1.
+      */
+    virtual void reset() {}
+
+    static bool IsHittingResourceLimit;
+
 protected:
+    bool _end;
+
 	/*!
 	  calls doSchedule every x msec. x is defined by granularity
 	  */
-	virtual void run();
+//    virtual void run() {}
 
 	/*!
 	  rail configuration
@@ -145,104 +180,57 @@ protected:
 	SN_ResourceMonitor *rMonitor;
 //	bool _end;
 
-	int _granularity; // in microsecond
+	int _granularity; // in millisecond
 
-	QGraphicsScene *scene;
+//	QGraphicsScene *scene;
 
 	qint64 currMsecSinceEpoch;
 
 private slots:
 	virtual void doSchedule() = 0;
-	void applyNewInterval(int);
 };
 
 
 
 
 
-/*!
-  Partial implementation of SMART scheduler [Nieh and Lam 2003]
-  */
-class SMART_EventScheduler : public SN_AbstractScheduler {
-	Q_OBJECT
+
+
+
+
+
+
+
+
+
+
+
+class SN_ProportionalShareScheduler : public SN_AbstractScheduler
+{
+    Q_OBJECT
+
 public:
-	explicit SMART_EventScheduler(SN_ResourceMonitor *r, int granularity=2, QObject *parent=0);
-//	~SMART_EventScheduler();
+    explicit SN_ProportionalShareScheduler(SN_ResourceMonitor *r, int granularity = 100, QObject *parent=0);
+    ~SN_ProportionalShareScheduler() {}
 
-protected:
-//	void run();
-
-private:
-	/*!
-	  Scheduler always schedule from workingSet->top() until it isn't empty().
-	  Item in this container is sorted by deadline (ascending order)
-	  */
-	QList<SN_RailawareWidget *> workingSet;
-
-	/*!
-	  From the candidate set (processorNode->appList()) which is sorted by importance (priority, BVFT tuple),
-	  a new job (a new event) is inserted into working set in ascending earlist deadline order
-	  only when the new job wouldn't make more important jobs already in the working set miss their deadlines
-	  */
-	int insertIntoWorkingSet(SN_RailawareWidget *, qreal now);
+    void reset();
 
 private slots:
-	/*!
-	  iterate over workingSet which is sorted by deadline
-	  */
-	void doSchedule();
+    void doSchedule();
 };
 
 
-/*!
-  Resources are taken away from widget that has lower pirority than the fiducial widget
-  */
-class DividerWidgetScheduler : public SN_AbstractScheduler {
-	Q_OBJECT
-public:
-	explicit DividerWidgetScheduler(SN_ResourceMonitor *r, int granularity = 1000, QObject *parent=0);
-
-private:
-	/*!
-	  How often schedule will check to adjust deviation in millisecond
-	  */
-	int examine_interval;
-	int count;
-
-	qint64 currMsecSinceEpoch;
-
-	/*!
-	  readers lock for scheduler
-	  writers lock for clients
-	  */
-	qreal _Q_highest;
-	qreal _P_fiducial;
-	qreal _Q_fiducial;
 
 
-	QReadWriteLock rwlock;
 
 
-	qreal totalRequiredResource;
-	qreal totalRedundantResource;
 
 
-	SN_RailawareWidget *fiducialWidget;
-
-public:
-	void setQHighest(qreal qh) ;
-	void setPAnchor(qreal pa) ;
-	void setQAnchor(qreal qa);
-
-signals:
-	void QHighestChanged(qreal);
-	void PAnchorChanged(qreal);
-	void QAnchorChanged(qreal);
 
 
-private slots:
-	void doSchedule();
-};
+
+
+
 
 /*!
   Each widget shall adjust its quality by comparing its quality with others.
@@ -262,6 +250,8 @@ public:
 	inline qreal getQTH() const {return qualityThreshold;}
 	inline qreal getDecF() const {return decreasingFactor;}
 	inline qreal getIncF() const {return increasingFactor;}
+
+    void reset();
 
 private:
 
@@ -327,21 +317,74 @@ private slots:
 
 
 
-/*!
-  Delay is distributed proportional to priority
-  Proportional Fairness
 
-  Quality * weight / SUM(weight);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*!
+  Resources are taken away from widget that has lower pirority than the fiducial widget
   */
-class DelayDistributionScheduler : public SN_AbstractScheduler {
+class DividerWidgetScheduler : public SN_AbstractScheduler {
 	Q_OBJECT
 public:
-	explicit DelayDistributionScheduler(SN_ResourceMonitor *r, int granularity = 1000, QObject *parent=0);
+	explicit DividerWidgetScheduler(SN_ResourceMonitor *r, int granularity = 1000, QObject *parent=0);
+
+private:
+	/*!
+	  How often schedule will check to adjust deviation in millisecond
+	  */
+	int examine_interval;
+	int count;
+
+	qint64 currMsecSinceEpoch;
+
+	/*!
+	  readers lock for scheduler
+	  writers lock for clients
+	  */
+	qreal _Q_highest;
+	qreal _P_fiducial;
+	qreal _Q_fiducial;
+
+
+	QReadWriteLock rwlock;
+
+
+	qreal totalRequiredResource;
+	qreal totalRedundantResource;
+
+
+	SN_BaseWidget *fiducialWidget;
+
+public:
+	void setQHighest(qreal qh) ;
+	void setPAnchor(qreal pa) ;
+	void setQAnchor(qreal qa);
+
+signals:
+	void QHighestChanged(qreal);
+	void PAnchorChanged(qreal);
+	void QAnchorChanged(qreal);
+
 
 private slots:
 	void doSchedule();
-
 };
+
+
+
 
 
 #endif // SAGENEXTSCHEDULER_H

@@ -29,10 +29,6 @@ public:
 
 	virtual ~SN_RailawareWidget();
 
-        /*!
-          Resource Monitor may want this to reschedule an app
-          */
-	inline AffinityInfo * affInfo() {return _affInfo;}
 
         /*!
           In this function, AffinityInfo::cpuOfMineChanged() signal is connected to ResourceMonitor::updateAffInfo() slot if ResourceMonitor object exist. This connection ensures resourceMonitor to maintain up to date info on which app is affine to which processor.
@@ -45,19 +41,17 @@ public:
         /*!
           This will determine delay in stream loop
           */
-	int setQuality(qreal newQuality);
+//	int setQuality(qreal newQuality);
 
 		/**
 		  Returns *absolute* observed quality which is based on expected quality set by a user
 		  */
-	qreal observedQuality();
+//	qreal observedQuality();
 
 		/**
 		  Returns *relative* observed quality which is based on adjusted quality
 		  */
-	qreal observedQualityAdjusted();
-
-	qreal unitValue();
+//	qreal observedQualityAdjusted();
 
 
 	inline bool isScheduled() const {return _scheduled;}

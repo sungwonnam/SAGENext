@@ -6,6 +6,7 @@
 //#include <QAbstractSocket>
 #include <QSettings>
 #include <QTcpSocket>
+#include <QTcpServer>
 
 #include "sn_pointerui_msgthread.h"
 #include "sn_pointerui_sendthread.h"
@@ -13,9 +14,10 @@
 
 #include "../thewall/common/commondefinitions.h"
 
+
+
 namespace Ui {
-class SN_PointerUI;
-class SN_PointerUI_ConnDialog;
+	class SN_PointerUI;
 }
 
 
@@ -34,6 +36,56 @@ protected:
 signals:
 	void mediaDropped(QList<QUrl> mediaurls);
 };
+
+
+
+
+
+
+/*!
+  Win Capture pipe
+  */
+class SN_WinCaptureTcpServer : public QTcpServer
+{
+	Q_OBJECT
+public:
+	SN_WinCaptureTcpServer(QTcpSocket *s, QObject *parent=0) : QTcpServer(parent), _socket(s) {}
+
+private:
+	QTcpSocket *_socket;
+
+protected:
+	void incomingConnection(int handle) {
+//		qDebug() << "incoming connection";
+		Q_ASSERT(_socket);
+		_socket->setSocketDescriptor(handle);
+	}
+};
+
+
+
+
+
+class SN_PointerUI_StrDialog : public QDialog
+{
+	Q_OBJECT
+public:
+	SN_PointerUI_StrDialog(QWidget *parent=0);
+
+	inline QString text() {return _text;}
+
+private:
+	QLineEdit *_lineedit;
+	QPushButton *_okbutton;
+	QPushButton *_cancelbutton;
+
+	QString _text;
+
+public slots:
+	void setText();
+};
+
+
 
 
 
@@ -70,13 +122,12 @@ protected:
 
 	/**
 	  This is NOT the mouseRelease that results pointerClick()
-	  This is to know the point where mouse draggin has finished
+	  This is to know the point where mouse draggin has finished.
 	  */
 	void sendMouseRelease(const QPoint globalPos, Qt::MouseButtons btns = Qt::LeftButton);
 
 	/**
-	  mouse press followed by mouse release triggers this.
-	  However, if mouse has moved (while button pressed) greater than 3 manhattan length, then it's not a click
+	  The mouse press followed by mouse release will triggers this.
 	  */
 	void sendMouseClick(const QPoint globalPos, Qt::MouseButtons btns = Qt::LeftButton | Qt::NoButton);
 
@@ -112,15 +163,18 @@ private:
 
 	/**
       The socket for the message channel.
-	  All the mouse events is sent throught this socket.
+	  Handshaking messgaes, all the mouse events is sent throught this socket.
       */
 	QTcpSocket _tcpMsgSock;
 
 
 	/**
-	  The socket for file transferring (sendThread)
+	  The socket for file transferring.
 	  */
 	QTcpSocket _tcpDataSock;
+
+
+    QUdpSocket _udpSocket;
 
 
 	/**
@@ -150,7 +204,7 @@ private:
         /**
           The file transfer thread. _tcpDataSock is used.
           */
-	SN_PointerUI_DataThread *sendThread;
+//	SN_PointerUI_DataThread *sendThread;
 
 		/**
 		  to keep track mouse dragging start and end position
@@ -169,15 +223,15 @@ private:
 
 	QString _wallAddress;
 
+    quint16 _wallPort;
+
 	QString _pointerName;
 
 	QString _pointerColor;
 
-//	QString _myIpAddress;
+//	QString _vncUsername;
 
-	QString _vncUsername;
-
-	QString _vncPasswd;
+//	QString _vncPasswd;
 
 	QString _sharingEdge;
 		
@@ -194,6 +248,29 @@ private:
 		  DOUBLE_CLICK(5) int
 		  **/
 	QProcess *macCapture;
+
+	/*!
+	  winCapture.exe (from winCapture.py)
+	  built by py2exe
+	  */
+	QProcess *_winCapture;
+
+	/*!
+	  winCapture.exe will connect to localhost:44556 upon starting
+	  */
+	SN_WinCaptureTcpServer *_winCaptureServer;
+
+	/*!
+	  winCapture.exe and this program will communicate through socket.
+	  It's because py2exe disables STDOUT channel !!!!
+	  */
+	QTcpSocket _winCapturePipe;
+
+	/*!
+	  if Q_OS_MAC then it's macCapture (which is QProcess)
+	  if Q_OS_WIN then it's _winCapturePipe( which is QTcpSocket)
+	  */
+	QIODevice *_iodeviceForMouseHook;
 		
 		/**
 		  This is for macCapture
@@ -211,6 +288,19 @@ private:
 	QPoint currentGlobalPos;
 
 
+    /*!
+      In Linux, where Qt's mouse event handlers call sendMouseXXXX(),
+      The double click event deliver following messages
+      PRESS -> CLICK -> DBLCLICK -> CLICK
+
+      The last CLICK, which shouldn't be there, is because of the mouseReleaseEvent
+
+      So, this flag prevents sending CLICK in mouseReleaseEvent if
+      the event preceding is sendDblClick
+      */
+    bool _wasDblClick;
+
+
 		/**
 		  Queue invoking MessageThread::sendMsg()
 		  */
@@ -218,10 +308,14 @@ private:
 		
 //	void connectToWall(const char * ipaddr, quint16 port);
 
+    /*!
+      This function calls sendFileToWall() for each item in the QList.
+      The runSendFileThread() runs this function in a separate thread.
+      */
 	void sendFilesToWall(const QList<QUrl> &);
 
 	/*!
-	  send a file to wall. Sending consists of two operations. Sending a header followed by the actual file.
+	  This function sends a file to the wall. Sending consists of two operations: Sending a header (through data socket) followed by the actual file.
 	  */
 	void sendFileToWall(const QUrl &);
 
@@ -229,6 +323,9 @@ private:
 	  The filepath is the absoulte path name of the file reside at the wall.
 	  */
 	void recvFileFromWall(const QString &filepath, qint64 filesize);
+	
+	
+	void m_deleteMouseHookProcess();
 
 public slots:
 	/*!
@@ -257,6 +354,10 @@ public slots:
 
 
 private slots:
+    void handleSocketError(QAbstractSocket::SocketError error);
+
+    void handleSocketStateChange(QAbstractSocket::SocketState newstate);
+
         /*!
           CMD + N triggers the connection dialog.
 		  Upon accepting the dialog, it attempts to connect to the wall with the _tcpMsgSock socket.
@@ -264,6 +365,12 @@ private slots:
 		  If there already exist the message channel. The _tcpMsgSock will be closed.
           */
 	void on_actionNew_Connection_triggered();
+
+
+    /*!
+      This function keeps trying to connect to a TCP server in a forever loop.
+      */
+//    void connectToTheWall();
 
 
         /**
@@ -294,8 +401,10 @@ private slots:
 		  respond to macCapture (read from stdout, translate msg, send to the wall)
 		  This slot is connected to QProcess::readyReadStandardOutput() signal
 		  */
-	void sendMouseEventsToWall();
+	void readFromMouseHook();
 		
+
+	void readFromWinCapture();
 
 	/*!
 	  VNC sharing.
@@ -318,88 +427,5 @@ private slots:
 
 
 
-
-class SN_PointerUI_ConnDialog : public QDialog {
-	Q_OBJECT
-public:
-	SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent=0);
-	~SN_PointerUI_ConnDialog();
-
-	inline QString address() const {return addr;}
-	inline int port() const {return portnum;}
-	//inline QString myAddress() const {return myaddr;}
-	inline QString pointerName() const {return pName;}
-	inline QString pointerColor() const {return pColor;}
-	inline QString vncUsername() const {return vncusername;}
-	inline QString vncPasswd() const {return vncpass;}
-	inline QString sharingEdge() const {return psharingEdge;}
-
-private:
-	Ui::SN_PointerUI_ConnDialog *ui;
-	QSettings *_settings;
-
-        /**
-          wall address
-          */
-	QString addr;
-
-        /**
-          wall port
-          */
-	quint16 portnum;
-
-	QString vncusername;
-
-	QString vncpass;
-
-        /**
-          pointer name
-          */
-	QString pName;
-
-	QString pColor;
-
-	QString psharingEdge;
-
-private slots:
-	void on_buttonBox_rejected();
-	void on_buttonBox_accepted();
-	void on_pointerColorButton_clicked();
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class SN_PointerUI_StrDialog : public QDialog
-{
-	Q_OBJECT
-public:
-	SN_PointerUI_StrDialog(QWidget *parent=0);
-
-	inline QString text() {return _text;}
-
-private:
-	QLineEdit *_lineedit;
-	QPushButton *_okbutton;
-	QPushButton *_cancelbutton;
-
-	QString _text;
-
-public slots:
-	void setText();
-};
 
 #endif // EXTERNALGUIMAIN_H

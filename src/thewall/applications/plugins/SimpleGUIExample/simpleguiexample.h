@@ -29,20 +29,23 @@ protected:
           */
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
+    int test;
+
 
 private:
+    void _createGUIs();
 
         /*!
           Example GUI components
           */
-        QLabel *label;
+        QLabel *_label;
 
 		QColor _currentColor;
 
         /*!
           Every GUI components requires QGraphicsProxyWidget to be functioning on QGraphics framework
           */
-        QGraphicsProxyWidget *labelProxy;
+        QGraphicsProxyWidget *_labelProxy;
 
         QPushButton *btn_R; /**< red (1,0,0) */
         QPushButton *btn_M; /**< magenta (1,0,1) */
@@ -58,12 +61,12 @@ private:
         /*!
           Layout widget to layout GUI components nicely
           */
-        QGraphicsLinearLayout *btnLayout;
-        QGraphicsLinearLayout *mainLayout;
+        QGraphicsLinearLayout *_btnLayout;
+        QGraphicsLinearLayout *_mainLayout;
 
 		bool _isInvertOn;
 
-		void updateLabel(const QColor &c);
+		void _updateLabel(const QColor &c);
 
 private slots:
         void buttonR();

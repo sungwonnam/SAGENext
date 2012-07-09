@@ -13,7 +13,7 @@ class SN_Priority : public QObject
 public:
 	explicit SN_Priority(SN_BaseWidget *widget, QObject *parent = 0);
 
-	enum IntrType {NOINTR, MOVE, RESIZE, CLICK};
+	enum IntrType {NOINTR, MOVE, RESIZE, CLICK, CONTENTS};
 
 	inline qint64 timeLastInteracted() const {return _timeLastIntr;}
 	inline IntrType lastInteractionType() const {return _typeLastIntr;}
@@ -23,6 +23,8 @@ public:
 	inline quint16 evrToWall() const {return _evr_to_wall;}
 
 	inline quint64 evrSize() const {return _evrsize;}
+
+    inline qreal priority() const {return _priority;}
 
 	/*!
 	  All the member variables will be filled in this function.
@@ -36,7 +38,8 @@ public:
 	  */
 	qreal ipm() const;
 
-	qreal priority(qint64 currTimeEpoch = 0);
+	qreal computePriority(qint64 currTimeEpoch = 0);
+
 
 	inline int priorityQuantized() const;
 
@@ -74,6 +77,8 @@ protected:
 	  */
 	quint64 _intrCounter;
 
+    quint64 _intrCounterPrev;
+
 	/*!
 	  A list of (msec since epoch, the type of interaction) tuple
 	  */
@@ -97,6 +102,8 @@ private:
 	  This tells how much the application window covering the wall
 	  */
 	int _evr_to_wall;
+
+    qreal _ipm;
 
 	/*!
 	  _evr_to_win and _evr_to_wall are computed here

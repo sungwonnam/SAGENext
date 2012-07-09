@@ -3,6 +3,7 @@ SUBDIRS += \
 SimpleGUIExample \
 MouseHoverExample \
 MouseDragExample \
-snClock
+snClock \
+MandelbrotThreadExample
 
 

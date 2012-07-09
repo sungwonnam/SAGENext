@@ -5,12 +5,14 @@
 #include "../common/commonitem.h"
 
 #include <QtGui>
+#include <QGLPixelBuffer>
 
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include <QGLPixelBuffer>
+
+
 
 
 rfbBool SN_VNCClientWidget::got_data = FALSE;
@@ -19,7 +21,7 @@ QString SN_VNCClientWidget::vncpasswd = "evl123";
 
 SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int frate, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
 	: SN_RailawareWidget(globalappid, s, 0, parent, wflags)
-	, vncclient(0)
+	, _vncclient(0)
 	, serverPort(5900)
 	, _image(0)
     , _texid(-1)
@@ -31,15 +33,15 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	, _end(false)
 	, _framerate(frate)
     , _buttonMask(0)
+
+    , _pbomutex(0)
+    , _pbobufferready(0)
 {
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
 	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_VNC);
 	
-	if ( username == "user" )
-		SN_VNCClientWidget::username = "";
-	else
-		SN_VNCClientWidget::username = username;
+    SN_VNCClientWidget::username = username;
 	SN_VNCClientWidget::vncpasswd = passwd;
 	
 	_appInfo->setVncUsername(SN_VNCClientWidget::username);
@@ -50,14 +52,19 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	// 8 bit/sample
 	// 3 samples/pixel
 	// 4 Byte/pixel
-	vncclient = rfbGetClient(8, 3, 4);
+	_vncclient = rfbGetClient(8, 3, 4);
 
-	vncclient->canHandleNewFBSize = false;
-	vncclient->appData.useRemoteCursor = true;
-	vncclient->MallocFrameBuffer = SN_VNCClientWidget::resize_func;
-	vncclient->GotFrameBufferUpdate = SN_VNCClientWidget::update_func;
-	vncclient->HandleCursorPos = SN_VNCClientWidget::position_func;
-	vncclient->GetPassword = SN_VNCClientWidget::password_func;
+    if (!_vncclient) {
+        deleteLater();
+        return;
+    }
+
+	_vncclient->canHandleNewFBSize = false;
+	_vncclient->appData.useRemoteCursor = true;
+	_vncclient->MallocFrameBuffer = SN_VNCClientWidget::resize_func;
+	_vncclient->GotFrameBufferUpdate = SN_VNCClientWidget::update_func;
+	_vncclient->HandleCursorPos = SN_VNCClientWidget::position_func;
+	_vncclient->GetPassword = SN_VNCClientWidget::password_func;
 
 	serverAddr.setAddress(senderIP);
 	_appInfo->setSrcAddr(senderIP);
@@ -65,18 +72,18 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	
 
 	if (!SN_VNCClientWidget::username.isEmpty()  &&  !SN_VNCClientWidget::vncpasswd.isEmpty()) {
-		vncclient->GetCredential = SN_VNCClientWidget::getCredential;
+		_vncclient->GetCredential = SN_VNCClientWidget::getCredential;
 		const uint32_t authSchemes[] = {rfbARD, rfbVncAuth, rfbNoAuth};
 		int numSchemes = 3;
-		SetClientAuthSchemes(vncclient, authSchemes, numSchemes);
+		SetClientAuthSchemes(_vncclient, authSchemes, numSchemes);
 	}
 	else {
 		const uint32_t authSchemes[] = {rfbVncAuth, rfbNoAuth};
 		int numSchemes = 2;
-		SetClientAuthSchemes(vncclient, authSchemes, numSchemes);
+		SetClientAuthSchemes(_vncclient, authSchemes, numSchemes);
 	}
 
-	vncclient->FinishedFrameBufferUpdate = SN_VNCClientWidget::frame_func;
+	_vncclient->FinishedFrameBufferUpdate = SN_VNCClientWidget::frame_func;
 
 	int margc = 2;
 	char *margv[2];
@@ -85,26 +92,34 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	memset(margv[1], 0, 256);
 	sprintf(margv[1], "%s:%d", qPrintable(serverAddr.toString()), display);
 
-	if ( ! rfbInitClient(vncclient, &margc, margv) ) {
-		qCritical() << "rfbInitClient() error init";
+	if ( ! rfbInitClient(_vncclient, &margc, margv) ) {
+		qCritical() << "SN_VNCClientWidget::SN_VNCClientWidget() : rfbInitClient() error init";
+        _vncclient = 0;
 		deleteLater();
 	}
 
-	if (vncclient->serverPort == -1 )
-		vncclient->vncRec->doNotSleep = true;
-
-	_image = new QImage(vncclient->width, vncclient->height, QImage::Format_RGB32);
+	if (_vncclient && _vncclient->serverPort == -1 )
+		_vncclient->vncRec->doNotSleep = true;
 
 	/**
 	  Don't forget to call resize() once you know the size of image you're displaying.
 	  Also BaseWidget::resizeEvent() will call setTransformOriginPoint();
      */
-	resize(vncclient->width, vncclient->height);
-	_appInfo->setFrameSize(vncclient->width, vncclient->height, 32);
+    if (_vncclient) {
+        _image = new QImage(_vncclient->width, _vncclient->height, QImage::Format_RGB32);
+
+        resize(_vncclient->width, _vncclient->height);
+
+        _appInfo->setFrameSize(_vncclient->width, _vncclient->height, 32);
+    }
 
 
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 	if (_perfMon) {
+
+        //
+        // maybe treat this widget as non-periodic
+        //
 		_perfMon->setExpectedFps( (qreal)_framerate );
 		_perfMon->setAdjustedFps( (qreal)_framerate );
 	}
@@ -130,8 +145,8 @@ SN_VNCClientWidget::~SN_VNCClientWidget() {
 	future.cancel();
 	future.waitForFinished();
 
-	if (vncclient) {
-		rfbClientCleanup(vncclient);
+	if (_vncclient) {
+		rfbClientCleanup(_vncclient); // _vncclient will be freed in this function
 	}
 
 	if (_image) delete _image;
@@ -151,12 +166,13 @@ SN_VNCClientWidget::~SN_VNCClientWidget() {
 		}
 		if (_pbomutex) {
 			pthread_mutex_unlock(_pbomutex);
-			//		pthread_mutex_destroy(_mutex);
+			//	pthread_mutex_destroy(_mutex);
 		}
 
 		free(_pbobufferready);
 		free(_pbomutex);
 	}
+    qDebug() << "~SN_VNCClientWidget()";
 }
 
 void SN_VNCClientWidget::initGL(bool usepbo) {
@@ -287,7 +303,7 @@ void SN_VNCClientWidget::scheduleUpdate() {
 		//
 		// Note that it's QImage::Format_RGB888 we're getting from SAGE app
 		//
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vncclient->width, vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, vncclient->frameBuffer);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vncclient->width, _vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, _vncclient->frameBuffer);
 		//GLenum error = glGetError();
 		//if(error != GL_NO_ERROR) {
 		//		qCritical("texture upload failed. error code 0x%x\n", error);
@@ -347,7 +363,7 @@ void SN_VNCClientWidget::scheduleUpdate() {
 		//
 		glBindTexture(GL_TEXTURE_2D, _texid);
 		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vncclient->width, vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vncclient->width, _vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
 		update();
 
@@ -378,22 +394,18 @@ void SN_VNCClientWidget::scheduleUpdate() {
 
 void SN_VNCClientWidget::receivingThread() {
 	struct timeval lats, late;
-	struct rusage ru_start, ru_end;
-
-	if(_perfMon) {
-		_perfMon->getRecvTimer().start(); //QTime::start()
-
-#if defined(Q_OS_LINUX)
-		getrusage(RUSAGE_THREAD, &ru_start); // that of calling thread. Linux specific
-#elif defined(Q_OS_MAC)
-		getrusage(RUSAGE_SELF, &ru_start);
-#endif
-	}
 
 	while (!_end) {
 
 
+        if (_perfMon)
+			gettimeofday(&lats, 0);
 
+
+
+        //
+        // wait until pbo buffer mapped
+        //
 		if ( _usePbo) {
 			Q_ASSERT(_pbomutex);
 			Q_ASSERT(_pbobufferready);
@@ -410,8 +422,9 @@ void SN_VNCClientWidget::receivingThread() {
 
 
 
-
+        //
 		// sleep to ensure desired fps
+        //
 		qint64 now = 0;
         
 #if QT_VERSION < 0x040700
@@ -423,12 +436,12 @@ void SN_VNCClientWidget::receivingThread() {
 #endif
         qint64 time = 0;
 		forever {
-			if (!vncclient) {
+			if (!_vncclient) {
 				_end = true;
 				break;
 			}
 
-            int i = WaitForMessage(vncclient, 1000000); // 1000 microsecond == 1 msec
+            int i = WaitForMessage(_vncclient, 1000000); // 1000 microsecond == 1 msec
 			if ( i<0 ) {
 				rfbClientLog("VNC error. quit\n");
 				_end = true;
@@ -436,7 +449,7 @@ void SN_VNCClientWidget::receivingThread() {
 			}
 
 			if (i) {
-				if(!HandleRFBServerMessage(vncclient)) {
+				if(!HandleRFBServerMessage(_vncclient)) {
 					rfbClientLog("HandleRFBServerMessage quit\n");
 					_end = true;
 					break;
@@ -457,11 +470,11 @@ void SN_VNCClientWidget::receivingThread() {
 
 
 
-		if (_perfMon)
-			gettimeofday(&lats, 0);
+        //
+        // Now receive the image
+        //
 
-
-		unsigned char * vncpixels = (unsigned char *)vncclient->frameBuffer;
+		unsigned char * vncpixels = (unsigned char *)_vncclient->frameBuffer;
 
 		if (!_useOpenGL) {
 			QRgb *rgbbuffer = (QRgb *)(_image->scanLine(0)); // A RGB32 quadruplet on the format 0xffRRGGBB, equivalent to an unsigned int.
@@ -480,7 +493,7 @@ void SN_VNCClientWidget::receivingThread() {
 	//buffer[3*k + 2] = vncpixels[ 4*k + 2];
 	  }
 	  */
-			for (int i=0; i<vncclient->width * vncclient->height; i++) {
+			for (int i=0; i<_vncclient->width * _vncclient->height; i++) {
 				rgbbuffer[i] = qRgb(vncpixels[4*i+0], vncpixels[4*i+1], vncpixels[4*i+2]);
 			}
 		}
@@ -489,6 +502,9 @@ void SN_VNCClientWidget::receivingThread() {
 
 			if (_usePbo) {
 				Q_ASSERT(_mappedBufferPtr);
+                //
+                // copy to GPU memory
+                //
 //				qDebug() << "thread writing pixel to buffer" << _mappedBufferPtr;
 				::memcpy(_mappedBufferPtr, vncpixels, _appInfo->frameSizeInByte());
 
@@ -506,20 +522,14 @@ void SN_VNCClientWidget::receivingThread() {
 
 
 
-		if (_perfMon) {
+        if (_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
 			gettimeofday(&late, 0);
-#if defined(Q_OS_LINUX)
-			getrusage(RUSAGE_THREAD, &ru_end);
-#elif defined(Q_OS_MAC)
-			getrusage(RUSAGE_SELF, &ru_end);
-#endif
-			qreal networkrecvdelay = ((double)late.tv_sec + (double)late.tv_usec * 0.000001) - ((double)lats.tv_sec + (double)lats.tv_usec * 0.000001); // second
+			qreal actualdelay_sec = ((double)late.tv_sec + (double)late.tv_usec * 1e-6) - ((double)lats.tv_sec + (double)lats.tv_usec * 1e-6); // second
+            lats = late;
+
 
 			// calculate
-			_perfMon->updateObservedRecvLatency(vncclient->width * vncclient->height, networkrecvdelay, ru_start, ru_end);
-
-			ru_start = ru_end;
-			lats = late;
+			_perfMon->addToCumulativeByteReceived(_appInfo->frameSizeInByte(), actualdelay_sec, 0);
 		}
 
 

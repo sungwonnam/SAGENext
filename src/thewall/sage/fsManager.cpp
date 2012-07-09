@@ -8,7 +8,7 @@ fsManager::fsManager(const QSettings *settings, SN_Launcher *l, QObject *parent)
 
 	QTcpServer(parent),
 
-	settings(settings),
+	_settings(settings),
 	_launcher(l),
 	_sageAppId(0)
 {
@@ -16,7 +16,7 @@ fsManager::fsManager(const QSettings *settings, SN_Launcher *l, QObject *parent)
 //	msgThreadList.clear();
 
 	// read fsManager.conf and set values
-	fsIP.setAddress( settings->value("general/fsmip", "127.0.0.1").toString() );
+	_fsIP.setAddress( settings->value("general/fsmip", "127.0.0.1").toString() );
 //	fsmParam.fsPort = settings->value("general/fsmport", 20002).toInt();
 
 	// this + appID is used for streaming port number
@@ -24,7 +24,7 @@ fsManager::fsManager(const QSettings *settings, SN_Launcher *l, QObject *parent)
 //	fsmParam.streamPortBase = fsmParam.fsPort + 3;
 
 	if ( ! isListening() ) {
-		if ( ! listen(fsIP, settings->value("general/fsmport", 20002).toInt()) ) {
+		if ( ! listen(/*_fsIP*/ QHostAddress::Any, settings->value("general/fsmport", 20002).toInt()) ) {
 			qCritical("fsManager::%s() : listen failed", __FUNCTION__);
 		}
 	}
@@ -122,11 +122,28 @@ void fsManager::registerApp(quint64 appid, const QString &msgStr, fsManagerMsgTh
   * This is a message thread for each application
   */
 void fsManager::incomingConnection(int sockfd) {
-	++_sageAppId;
+
+    fsManagerMsgThread *thread = _createMsgThread(sockfd);
+
+    if (!thread) {
+        qDebug() << "fsManager::incomingConnection() : failed to create fsmMsgThread";
+    }
+    else {
+        thread->start();
+    }
+}
+
+fsManagerMsgThread * fsManager::_createMsgThread(int sockfd) {
+    ++_sageAppId;
 
 //	qDebug("fsManager::%s() : Incoming Connection, sockfd %d, sageAppId %llu. Starting msgThread", __FUNCTION__, sockfd, _sageAppId);
 
-	fsManagerMsgThread *thread = new fsManagerMsgThread(_sageAppId, sockfd, settings);
+	fsManagerMsgThread *thread = new fsManagerMsgThread(_sageAppId, sockfd, _settings);
+
+    if ( ! QObject::connect(thread, SIGNAL(sageAppConnectedToFSM(QString,QString,fsManagerMsgThread*)), this, SIGNAL(sageAppConnectedToFSM(QString,QString,fsManagerMsgThread*))) ) {
+        qDebug() << "fsManager::_createMsgThread() : failed to connect sageAppConnectedToFSM signals";
+    }
+
 //	connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
 	connect(this, SIGNAL(destroyed()), thread, SLOT(sendSailShutdownMsg()));
 
@@ -136,21 +153,7 @@ void fsManager::incomingConnection(int sockfd) {
 	connect(this, SIGNAL(shutdownSail(quint64)), thread, SLOT(sendSailShutdownMsg(quint64)));
 	connect(this, SIGNAL(sailSendSetRailMsg(AffinityInfo*,quint64)), thread, SLOT(sendSailSetRailMsg(AffinityInfo*,quint64)));
 
-	/*
-	ThreadParam threadParam;
-	threadParam.sockfd = sockfd;
-	threadParam.thread_ptr = thread;
-	*/
-
-//	clientMap.insert(sageAppId, thread);
-//	msgThreadList.push_back( thread );
-
-
-	/**
-	  give launcher the msgThread
-	  */
-	emit incomingSail(thread);
-//	thread->start();
+    return thread;
 }
 
 /**

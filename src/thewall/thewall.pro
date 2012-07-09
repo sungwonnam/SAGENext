@@ -6,6 +6,7 @@ TARGET = sagenext
 TEMPLATE = app
 
 
+
 #CONFIG += thread
 #CONFIG += copy_dir_files
 
@@ -16,7 +17,7 @@ TEMPLATE = app
 #INCLUDEPATH += $$WEBKITPATH/include/QtWebKit
 #LIBS += -L$$WEBKITPATH/lib -lQtWebKit
 
-LIBS += -lGL -lGLU
+LIBS += -lGL -lGLU -lrt
 
 # If unix (linux, mac)
 # use pkg-config
@@ -27,15 +28,19 @@ unix {
 
 #
 # LibVNCServer
-#
-# Add LIBVNCSERVER_INSTALL_PATH/lib/pkgconfig in PKG_CONFIG_PATH environment variable
+# install the package in trusted library directory such as /usr/local
+# or
+# Add LIBVNCSERVER_INSTALL_PATH/lib/pkgconfig in your PKG_CONFIG_PATH environment variable
 #
 unix {
-# unix includes linux-g++  linux-g++-64  macx   macx-g++   symbian ...
-    message("Linking LibVNCServer lib")
-    PKGCONFIG += libvncclient
-
-
+# unix includes linux-g++  linux-g++-64    macx   macx-g++   symbian ...
+    packagesExist(libvncclient) {
+        message("Linking LibVNCServer lib")
+    	PKGCONFIG += libvncclient
+    }
+    else {
+        error("Package LibVNCServer doesn't exist !")
+    }
 }
 #macx {
 #    LIBVNCSERVER = ${HOME}/Downloads/LibVNCServer
@@ -53,16 +58,28 @@ unix {
 # Add POPPLER_INSTALL_PATH/lib/pkgconfig in PKG_CONFIG_PATH
 #
 unix {
-    message("Linking Poppler-qt4")
-    PKGCONFIG += poppler-qt4
+    packagesExist(poppler-qt4) {
+        message("Linking poppler-qt4 lib")
+    	PKGCONFIG += poppler-qt4
+    }
+    else {
+        error("Package poppler-qt4 doesn't exist !")
+    }
 }
 
 #
 # Qwt
 #
-#QWT_HOME = /home/evl/snam5/Downloads/qwt-5.2
-#INCLUDEPATH += $${QWT_HOME}/src
-#LIBS += -L$${QWT_HOME}/lib -lqwt
+QWT_HOME = $$(HOME)/qwt-6.0.1
+exists( $$QWT_HOME/lib/libqwt.so ) {
+    message("Package Qwt is available")
+    INCLUDEPATH += $${QWT_HOME}/include
+	LIBS += -L$${QWT_HOME}/lib -lqwt
+    DEFINES += USE_QWT
+}
+else {
+    warning("Package Qwt is not available")
+}
 
 
 #
@@ -80,15 +97,17 @@ macx {
 
 
 
-BUILD_DIR = BUILD
+BUILD_DIR = _BUILD
 !exists($$BUILD_DIR) {
         #message("Creating build directory")
         system(mkdir $${BUILD_DIR})
 }
 
 
-MOC_DIR = MOC
-OBJECTS_DIR = $${BUILD_DIR}
+MOC_DIR = $$BUILD_DIR/_MOC
+OBJECTS_DIR = $$BUILD_DIR/_OBJ
+UI_DIR = $$BUILD_DIR/_UI
+
 
 
 # Use parenthesis to read from environment variable
@@ -126,13 +145,14 @@ SESSIONS_DIR = $$(HOME)/.sagenext/sessions
 }
 
 
+
+
 # where to put TARGET file
 DESTDIR = ../../
 #CONFIG(debug, debug|release):DESTDIR += debug
 #CONFIG(release, debug|release):DESTDIR += release
 
 FORMS += \
-#        settingdialog.ui \
         applications/base/affinitycontroldialog.ui \
         system/resourcemonitorwidget.ui \
     settingstackeddialog.ui \
@@ -185,7 +205,8 @@ applications/base/sagepixelreceiver.cpp \
     common/sn_sharedpointer.cpp \
     applications/base/sn_priority.cpp \
     system/prioritygrid.cpp \
-    applications/sn_sagestreammplayer.cpp
+    applications/sn_sagestreammplayer.cpp \
+    applications/sn_fittslawtest.cpp
 #    common/sn_drawingwidget.cpp
 #    applications/sn_pboexample.cpp
 
@@ -228,14 +249,11 @@ applications/base/sn_priority.h \
         sagenextlauncher.h \
         mediastorage.h \
     settingstackeddialog.h \
-    applications/sn_sagestreammplayer.h
+    applications/sn_sagestreammplayer.h \
+    applications/sn_fittslawtest.h
 
 
-#    common/sn_drawingwidget.h \
-#    applications/sn_pboexample.h
 
-
-#    common/filereceivingrunnable.h
 
 
 

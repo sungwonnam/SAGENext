@@ -49,7 +49,6 @@ public:
 //	SageStreamWidget(const quint64 sageappid,QString appName, int protocol, int receiverPort, const QRect initRect, const quint64 globalAppId, const QSettings *s, ResourceMonitor *rm=0, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
 
 	SN_SageStreamWidget(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm = 0, QGraphicsItem *parent = 0, Qt::WindowFlags wFlags = 0);
-
 	~SN_SageStreamWidget();
 
 	/*!
@@ -77,14 +76,24 @@ public:
 
 	  Once this is set, remaining handshaking should be done followed by pixel streaming
 	  */
-	inline void setFsmMsgThread(fsManagerMsgThread *thread) {
-		_fsmMsgThread = thread;
-		_fsmMsgThread->start();
-	}
+	inline void setFsmMsgThread(fsManagerMsgThread *thread) {_fsmMsgThread = thread;}
+
+
+    /*!
+      This will determine the delay in the pixel receiving thread
+      */
+    int setQuality(qreal newQuality);
+
+
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
+
+    /*!
+      This is for SN_SageFittsLawTest
+      */
+    QSemaphore *__sema;
 
 protected:
-	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-
 	/*!
 	  Override virtual function temporarily to display priority related info.
 	  Please remove this !
@@ -208,11 +217,8 @@ protected:
 //	void __recvThread();
 //	ssize_t __recvFrame(int sock, int bytecount, void *ptr);
 
-	bool __firstFrame;
+	bool _isFirstFrame;
 
-	bool __bufferMapped;
-
-//	bool _recvThreadEnd;
 
 	pthread_mutex_t *_pbomutex;
 	pthread_cond_t *_pbobufferready;
@@ -227,6 +233,23 @@ protected:
 	  The shader program is located at $SAGE_DIRECTORY/bin/yuv.vert/frag
 	  */
 	GLhandleARB _shaderProgHandle;
+
+
+    /*!
+      BLAME_XINERAMA
+      */
+    bool _blameXinerama;
+
+
+    void m_initOpenGL();
+
+
+signals:
+    /*!
+      This singal is emiited after the sage streamer (SAGE application) connected to this widget.
+      Thus, the streaming channel is established and the frame size, rate, appname, etc are known.
+      */
+    void streamerInitialized();
 
 public slots:
 	/**
@@ -245,7 +268,7 @@ public slots:
 	/**
 	  This slot starts pixel receiving thread and is called after waitForPixelStreamerConnection() finished
 	  */
-	void startReceivingThread();
+	virtual void startReceivingThread();
 
 
 	/**
@@ -261,7 +284,7 @@ public slots:
       In this slot, the back buffer is released (consumes data) after QImage is converted to QPixmap. (This delay is conversion latency)
 	  It calls then QGraphicsWidget::update()
 	  */
-	void scheduleUpdate();
+	virtual void scheduleUpdate();
 
 
 	/*!
@@ -273,7 +296,14 @@ public slots:
 	  signal thread for next frame
 	  texture update with previous buffer
 	  */
-	void schedulePboUpdate();
+	virtual void schedulePboUpdate();
+
+
+    /*!
+      no opengl no pbo no paint
+      */
+    virtual void scheduleDummyUpdate();
+
 };
 
 

@@ -1,6 +1,8 @@
 #include "sagenextscene.h"
 
-#include <QGraphicsItem>
+#include <QtGui>
+
+#include <unistd.h>
 
 #include "sagenextlauncher.h"
 #include "common/commonitem.h"
@@ -105,7 +107,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
     /**
 	  Create base widget for wall partitioning.
 	  */
-	_rootLayoutWidget = new SN_LayoutWidget("ROOT", 0, _settings);
+	_rootLayoutWidget = new SN_LayoutWidget("ROOT", 0, this, _settings);
 	_rootLayoutWidget->setRectangle(sceneRect);
 
 	/**
@@ -400,7 +402,7 @@ void SN_TheScene::saveSession() {
 	// create snapshot
 	////
 	QPixmap screenshot(sceneRect().size().toSize());
-	QPainter painter(&screenshot);
+	QPainter painter(&screenshot); // QPixmap is the paintDevice for this painter
 	render(&painter);
 	screenshot.save(screenshotFilename, "jpg", 100);
 
@@ -422,25 +424,48 @@ void SN_TheScene::saveSession() {
 			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 			if (!bw) continue;
 
-			AppInfo *ai = bw->appInfo();
+            out << QString("ITEM");
+
+            out << bw->globalAppId();
+
+            AppInfo *ai = bw->appInfo();
 //			bw->appInfo()->mediaType()
+            out << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
 
-			// common
-			out << QString("ITEM") << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
+            switch (ai->mediaType()) {
+			case SAGENext::MEDIA_TYPE_IMAGE :
+			case SAGENext::MEDIA_TYPE_LOCAL_VIDEO :
+			case SAGENext::MEDIA_TYPE_PDF :
+			case SAGENext::MEDIA_TYPE_PLUGIN : {
 
-			// video, image, pdf, plugin, web have filename
-			if (ai->fileInfo().exists()) {
+				Q_ASSERT(ai->fileInfo().exists());
 				out << ai->mediaFilename();
-				qDebug() << "SN_TheScene::saveSession() : " << QString("ITEM") << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->mediaFilename();
+				qDebug() << "SN_TheScene::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->mediaFilename();
+
+				break;
 			}
-			else if (!ai->webUrl().isEmpty()) {
+			case SAGENext::MEDIA_TYPE_WEBURL : {
+
+				Q_ASSERT(!ai->webUrl().isEmpty());
 				out << ai->webUrl().toString();
-				qDebug() << "SN_TheScene::saveSession() : " << QString("ITEM") << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->webUrl().toString();
+				qDebug() << "SN_TheScene::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->webUrl().toString();
+
+				break;
 			}
-			// vnc doesn't have filename
-			else {
+			case SAGENext::MEDIA_TYPE_VNC : {
+
 				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
-				qDebug() << "SN_TheScene::saveSession() : " << QString("ITEM") << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+				qDebug() << "SN_TheScene::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+
+				break;
+			}
+			case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
+
+				out << ai->srcAddr() << ai->executableName() << ai->cmdArgsString();
+				qDebug() << "SN_TheScene::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->executableName() << ai->cmdArgsString();
+
+				break;
+			}
 			}
 
 			///
@@ -462,9 +487,13 @@ void SN_TheScene::loadSession(QDataStream &in, SN_Launcher *launcher) {
 		QPointF scenepos;
 		QSizeF size;
 		qreal scale;
+        quint64 gaid;
+
 		while (!in.atEnd()) {
 			in >> header;
 			if (header != "ITEM") continue;
+
+            in >> gaid;
 
 			in >> mtype >> scenepos >> size >> scale;
 	//		qDebug() << "\tentry : " << mtype << scenepos << size << scale;
@@ -473,28 +502,84 @@ void SN_TheScene::loadSession(QDataStream &in, SN_Launcher *launcher) {
 			QString user;
 			QString pass;
 			QString srcaddr;
+            QString sageappname;
+            QString cmdargs;
 
-			SN_BaseWidget *bw = 0;
+			SN_BaseWidget *bw = getUserWidget(gaid);
 
-			if (mtype == SAGENext::MEDIA_TYPE_VNC) {
-				in >> srcaddr >> user >> pass;
-				bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos);
-			}
-			else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
-				in >> file;
-				bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, file, scenepos);
-			}
-			else {
-				in >> file;
-				bw = launcher->launch(mtype, file, scenepos);
-			}
+            if (bw) {
+                qDebug() << "SN_TheScene::loadSession() : There exist a widget with gid" << gaid;
+            }
+
+            switch ( (SAGENext::MEDIA_TYPE)mtype ) {
+            case SAGENext::MEDIA_TYPE_IMAGE :
+            case SAGENext::MEDIA_TYPE_PDF :
+            case SAGENext::MEDIA_TYPE_PLUGIN : {
+                in >> file;
+                if (!bw)
+                    bw = launcher->launch(mtype, file, scenepos, gaid);
+                break;
+            }
+            case SAGENext::MEDIA_TYPE_WEBURL : {
+                break;
+            }
+            case SAGENext::MEDIA_TYPE_VNC : {
+                in >> srcaddr >> user >> pass;
+                if (!bw)
+                    bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos, gaid);
+                break;
+            }
+            case SAGENext::MEDIA_TYPE_LOCAL_VIDEO : {
+                in >> file;
+                // command and its arguments will be overriden
+                if (!bw) {
+                    bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, file, scenepos, "127.0.0.1", "", "mplayer", gaid);
+                    ::usleep(100 * 1e+3); // 100 msec
+                }
+                break;
+            }
+            case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
+                in >> srcaddr >> sageappname >> cmdargs;
+                if (!bw) {
+                    bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_SAGE_STREAM, file, scenepos, srcaddr, cmdargs, sageappname, gaid);
+                    ::usleep(100 * 1e+3); // 100 msec
+                }
+                break;
+            }
+            }
+
+
 			if (!bw) {
 				qDebug() << "SN_TheScene::loadSession() : Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
 				continue;
 			}
+            else {
+                QApplication::sendPostedEvents();
+                QCoreApplication::processEvents();
 
-			bw->resize(size);
-			bw->setScale(scale);
+                //
+                // at this point, the bw has added to the _rootLayoutWidget already
+                //
+
+                /******
+
+                  in SN_BaseWidget::resizeEvent(), item's transformation origin is set to its center.
+                  Because of this, if an image, whose pos is an edge of the scene, is scaled down (from its CENTER), the image can end up positioning out of scene's visible area.
+                  So, I need to apply scale not from its center but from its topleft.
+                  //bw->setScale(scale);
+                  *****/
+                //QTransform scaleTrans(scale, 0, 0, scale, 0, 0); // m31(dx) and m32(dy) which specify horizontal and vertical translation are set to 0
+                //bw->setTransform(scaleTrans, true); // false -> this transformation matrix won't be combined with the current matrix. It will replace the current matrix.
+
+                /**
+                  below will work ok if item's transformOrigin is its top left
+                  **/
+                bw->setScale(scale);
+
+                bw->resize(size);
+
+                bw->setPos(scenepos);
+            }
 		}
 	}
 }

@@ -120,6 +120,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 #endif
 
     //	gwebview->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+//	gwebview->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 //	gwebview->installSceneEventFilter(this);
 //	webPage = gwebview->page();
 //	gwebview->setCacheMode(QGraphicsItem::ItemCoordinateCache);
@@ -205,16 +206,16 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
 
 SN_WebWidget::~SN_WebWidget() {
-//	if ( gwebview ) delete gwebview;
-//	delete urlbox;
 
-	/** I shouldn't do below. Below objects are deleted by Qt **/
-//	if (linearLayout) delete linearLayout;
-//	if (gwebview) delete gwebview;
-//	if (urlboxproxy) delete urlboxproxy;
-//	if (urlbox) delete urlbox;
+    if (gwebview) {
+        gwebview->stop();
+        gwebview->close();
 
-//	qDebug("WebWidget::%s()", __FUNCTION__);
+        //
+        // without this, it will crash on exit
+        //
+        delete gwebview;
+    }
 }
 
 
@@ -309,12 +310,24 @@ bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 }
 
 void SN_WebWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
-	SN_BaseWidget::handlePointerPress(pointer, point, btn); // keep the base implementation
+
+    //
+    // pointer button pressed on the content region
+    // so it's going to be mouse interaction with web page
+    //
+    if (gwebview && gwebview->geometry().contains(point)) {
+        _isMoving = false;
+        _isResizing = false;
+    }
+    else {
+        SN_BaseWidget::handlePointerPress(pointer, point, btn); // keep the base implementation
+    }
 }
 
 void SN_WebWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
 
-	if (gwebview && gwebview->geometry().contains(point)) {
+//	if (gwebview && gwebview->geometry().contains(point)) {
+    if (!_isMoving && !_isResizing) {
 		//
 		// I need to generate system mouse move event and send it to QGraphicsView (viewport of me)
 		//
@@ -392,9 +405,10 @@ void SN_WebWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
 	}
 }
 
-void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *, const QPointF &point, Qt::MouseButton btn) {
+void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *p, const QPointF &point, Qt::MouseButton btn) {
 
-	if (gwebview && gwebview->geometry().contains(point)) {
+//	if (gwebview && gwebview->geometry().contains(point)) {
+    if (!_isMoving && !_isResizing) {
 		Q_ASSERT(scene());
 		QGraphicsView *view = 0;
 		QPointF scenePos = mapToScene(point);
@@ -427,6 +441,13 @@ void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *, const QPointF 
 
 		gwebview->ungrabMouse();
 	}
+
+    else if (_isResizing) {
+        SN_BaseWidget::handlePointerRelease(p, point, btn);
+    }
+
+    _isMoving = false;
+    _isResizing = false;
 }
 
 

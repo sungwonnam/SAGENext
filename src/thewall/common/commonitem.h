@@ -33,9 +33,18 @@ public:
 	inline void setPriorityOverride(int v) {_priorityOverride = v;}
 	inline int priorityOverride() const {return _priorityOverride;}
 
+    void setSecondaryPixmap(const QString &resource);
+    void setSecondaryPixmap(const QPixmap &pixmap);
+
+    /*!
+      toggles pixmap for the button
+      */
+    void togglePixmap();
+
 private:
-	QPixmap _normalPixmap;
-	QPixmap _hoveredPixmap;
+    QGraphicsPixmapItem *_primary;
+
+    QGraphicsPixmapItem *_secondary;
 
 	void _attachLabel(const QString &labeltext, QGraphicsItem *parent);
 

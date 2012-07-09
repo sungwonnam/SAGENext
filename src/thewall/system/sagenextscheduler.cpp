@@ -1,76 +1,192 @@
 #include "sagenextscheduler.h"
 #include "resourcemonitor.h"
+#include "resourcemonitorwidget.h"
 
 #include "../applications/base/railawarewidget.h"
 #include "../applications/base/appinfo.h"
 #include "../applications/base/perfmonitor.h"
 #include "../applications/base/affinityinfo.h"
+#include "../applications/base/sn_priority.h"
 
 #include <sys/time.h>
 #include <sched.h>
 #include <pthread.h>
 
-SN_SchedulerControl::SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent) :
-	QObject(parent),
-	gview(0),
-	resourceMonitor(rm),
-	_scheduleEnd(false),
-	schedType(SN_SchedulerControl::SelfAdjusting),
-	granularity(1000),
-	_scheduler(0),
-	_isRunning(false),
-	controlPanel(0)
+SN_SchedulerControl::SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent)
+    : QObject(parent)
+    , gview(0)
+    , _rMonitor(rm)
+//	_scheduleEnd(false)
+    , schedType(SN_SchedulerControl::ProportionalShare)
+    , _granularity(1000)
+    , _scheduler(0)
+//    , _isRunning(false)
+    , _controlPanel(0)
+    , _lbl_schedStatus(0)
+    , _sched_thread(new QThread)
 {
 //	qDebug("%s::%s() : %d scheduler have started", metaObject()->className(), __FUNCTION__, schedList.size());
 //	connect(resourceMonitor, SIGNAL(appRemoved(int)), this, SLOT(loadBalance()));
+
 }
 
+SN_SchedulerControl::~SN_SchedulerControl() {
+    killScheduler();
+	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
+}
+
+bool SN_SchedulerControl::isRunning() {
+    if (_scheduler) {
+//        return _scheduler->isRunning();
+
+        if(_sched_thread)
+            return _sched_thread->isRunning();
+    }
+    return false;
+}
+
+void SN_SchedulerControl::startScheduler() {
+    if (!_scheduler) {
+        qDebug("%s::%s() : No scheduler instance. Create the scheduler first", metaObject()->className(), __FUNCTION__);
+        return;
+    }
+
+    /*
+    _scheduler->setEnd(false);
+    _scheduler->start();
+    */
+
+    Q_ASSERT(_sched_thread);
+
+    _scheduler->moveToThread(_sched_thread);
+    if ( ! QObject::connect(this, SIGNAL(readyToSchedule()), _scheduler, SLOT(doSchedule()), Qt::QueuedConnection)) {
+        qDebug() << "SN_SchedulerControl::startScheduler() : failed to connect doSchedule()";
+        return;
+    }
+
+    qDebug() << "SN_SchedulerControl::startScheduler() : starting schedule thread";
+
+    _sched_thread->start();
+
+    if (_lbl_schedStatus) {
+        _lbl_schedStatus->setText("Scheduling !");
+    }
+}
+
+
+void SN_SchedulerControl::stopScheduler() {
+    /*
+    if (_scheduler) {
+        _scheduler->setEnd();
+        _scheduler->wait();
+        _scheduler->reset();
+    }
+    */
+
+    if (_sched_thread) {
+        Q_ASSERT(_scheduler);
+        if ( ! QObject::disconnect(_scheduler, SLOT(doSchedule())) ) {
+            qDebug() << "SN_SchedulerControl::stopScheduler() : failed to disconnect doSchedule()";
+        }
+
+        if (_sched_thread->isRunning()) {
+            _sched_thread->quit();
+            _sched_thread->wait();
+            qDebug() << "SN_SchedulerControl::stopScheduler() : Scheduling thread finished";
+        }
+
+        _scheduler->reset();
+
+        if (_lbl_schedStatus) {
+            _lbl_schedStatus->setText("No Scheduling");
+        }
+    }
+}
+
+
 void SN_SchedulerControl::killScheduler() {
-	if(!_scheduler) return;
-
-	if (controlPanel) {
-		QLayout *l = controlPanel->layout();
-		if (l) {
-			delete l;
-		}
-		controlPanel->close();
-//		controlPanel->deleteLater();
-		delete controlPanel;
+	if (_controlPanel) {
+		_controlPanel->close();
+		delete _controlPanel;
+        _controlPanel = 0;
 	}
-//	_scheduler->setEnd(true);
 
+    if (_sched_thread) {
+        if ( ! QObject::disconnect(_scheduler, SLOT(doSchedule())) ) {
+            qDebug() << "SN_SchedulerControl::killScheduler() : failed to disconnect doSchedule()";
+        }
 
-	_scheduler->quit(); // equivalent to calling QThread::exit(0), does nothing if there's no event loop for the thread
+        if (_sched_thread->isRunning()) {
+            _sched_thread->quit();
+            _sched_thread->wait();
+            qDebug() << "SN_SchedulerControl::killScheduler() : Scheduling thread finished";
+        }
 
+        delete _sched_thread;
+        _sched_thread = 0;
+    }
 
+    if (_scheduler) {
+        delete _scheduler;
+        _scheduler = 0;
+    }
 
+    /*
 	if (_scheduler->isRunning())
 		_scheduler->wait();
 	delete _scheduler;
 	_scheduler = 0;
-
-	_isRunning = false;
+    */
 }
 
-int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec) {
-	Q_ASSERT(resourceMonitor);
+void SN_SchedulerControl::toggleSchedulerStatus() {
+    if (!_scheduler) return;
 
-	granularity = msec;
+    if (isRunning()) {
+        stopScheduler();
+    }
+    else {
+        startScheduler();
+    }
+}
+
+int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec/*1000*/, bool start /*false*/) {
+	Q_ASSERT(_rMonitor);
+
+	_granularity = msec;
 	schedType = st;
 
+    /*
 	if (_scheduler && _scheduler->isRunning()) {
-		qCritical() << "launchScheduler() : Scheduler is already running";
+		qCritical() << "SN_SchedulerControl::launchScheduler() : Scheduler is already running";
 		return -1;
 	}
+    */
 
 	switch(st) {
-	case SN_SchedulerControl::SMART : {
-		_scheduler = new SMART_EventScheduler(resourceMonitor, msec);
-		break;
-	}
+    case SN_SchedulerControl::ProportionalShare : {
+        _scheduler = new SN_ProportionalShareScheduler(_rMonitor, msec);
+
+        QVBoxLayout *vl = new QVBoxLayout;
+
+        _lbl_schedStatus = new QLabel;
+
+        QPushButton *toggle = new QPushButton("toggle scheduler");
+        QObject::connect(toggle, SIGNAL(clicked()), this, SLOT(toggleSchedulerStatus()));
+
+        vl->addWidget(_lbl_schedStatus); // first item is the label
+        vl->addWidget(toggle);
+
+        if (!_controlPanel)
+            _controlPanel = new QFrame;
+        _controlPanel->setLayout(vl);
+
+        break;
+    }
+
 	case SN_SchedulerControl::SelfAdjusting : {
 
-		SN_SelfAdjustingScheduler *sas  = new SN_SelfAdjustingScheduler(resourceMonitor, msec);
+		SN_SelfAdjustingScheduler *sas  = new SN_SelfAdjustingScheduler(_rMonitor, msec);
 		_scheduler = sas;
 
 		QLabel *interval = new QLabel("Frequency");
@@ -122,45 +238,71 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 		vli->addWidget(slider_inc);
 
 
-		// root layout of controlPanel
+		// horizontal layout for sliders
 		QHBoxLayout *hl = new QHBoxLayout;
 		hl->addLayout(vlf);
 		hl->addLayout(vlq);
 		hl->addLayout(vld);
 		hl->addLayout(vli);
 
-		if (!controlPanel) controlPanel = new QFrame;
-		controlPanel->setLayout(hl);
-		controlPanel->adjustSize();
-//		controlPanel->show();
+        _lbl_schedStatus = new QLabel;
+
+        QPushButton *button  = new QPushButton("Toggle Scheduler");
+        QObject::connect(button, SIGNAL(clicked()), this, SLOT(toggleSchedulerStatus()));
+
+        QVBoxLayout *vlayout = new QVBoxLayout;
+        vlayout->addWidget(_lbl_schedStatus); // first item is the label
+        vlayout->addLayout(hl);
+        vlayout->addWidget(button);
+
+
+		if (!_controlPanel) _controlPanel = new QFrame;
+		_controlPanel->setLayout(vlayout);
 
 		break;
 	}
+
 
 	case SN_SchedulerControl::DividerWidget : {
-		_scheduler = new DividerWidgetScheduler(resourceMonitor, msec);
-		break;
-	}
-	case SN_SchedulerControl::DelayDistribution : {
-		_scheduler = new DelayDistributionScheduler(resourceMonitor, msec);
+		_scheduler = new DividerWidgetScheduler(_rMonitor, msec);
 		break;
 	}
 	default :
 		break;
 	}
 
-	_scheduler->start();
-	_isRunning = true;
+    if (_controlPanel) {
+
+        if (_rMonitor->rMonWidget()) {
+            // show inside rmonitor widget
+            _rMonitor->rMonWidget()->setSchedCtrlFrame(_controlPanel);
+
+            // rMonWidget will take ownership of the controlPanel
+            // so make sure the schedControl doesn't touch the controlPanel
+            _controlPanel = 0;
+        }
+        else {
+            // show top-level widget
+            _controlPanel->setWindowTitle("Scheduler Control");
+            _controlPanel->adjustSize();
+            _controlPanel->show();
+        }
+    }
+
+
+    if (start) {
+        startScheduler();
+    }
+    else {
+        stopScheduler();
+    }
 
 	return 0;
 }
 
-int SN_SchedulerControl::launchScheduler(const QString &str, int msec) {
+int SN_SchedulerControl::launchScheduler(const QString &str, int msec/*1000*/, bool start/*false*/) {
 	Scheduler_Type st = SN_SchedulerControl::SelfAdjusting;
-	if ( QString::compare(str, "SMART", Qt::CaseInsensitive) == 0 ) {
-		st = SN_SchedulerControl::SMART;
-	}
-	else if (QString::compare(str, "DividerWidget", Qt::CaseInsensitive) == 0) {
+	if (QString::compare(str, "DividerWidget", Qt::CaseInsensitive) == 0) {
 		st = SN_SchedulerControl::DividerWidget;
 	}
 	else if (QString::compare(str, "SelfAdjusting", Qt::CaseInsensitive) == 0) {
@@ -169,29 +311,17 @@ int SN_SchedulerControl::launchScheduler(const QString &str, int msec) {
 	else if (QString::compare(str, "DelayDistribution", Qt::CaseInsensitive) == 0) {
 		st = SN_SchedulerControl::DelayDistribution;
 	}
+    else if (QString::compare(str, "ProportionalShare", Qt::CaseInsensitive) == 0) {
+        st = SN_SchedulerControl::ProportionalShare;
+    }
 
-	return launchScheduler(st, msec);
+	return launchScheduler(st, msec, start);
 }
 
-int SN_SchedulerControl::launchScheduler() {
-	return launchScheduler(schedType, granularity);
+int SN_SchedulerControl::launchScheduler(bool start/*false*/) {
+	return launchScheduler(schedType, _granularity, start);
 }
 
-SN_SchedulerControl::~SN_SchedulerControl() {
-
-	setScheduleEnd(true);
-//	if ( futureWatcher.isRunning() ) {
-//		futureWatcher.waitForFinished();
-//	}
-
-	/** always destroy scheduler before resource monitor */
-//	for (int i=0; i<schedList.size(); ++i) {
-//		schedList.at(i)->setEnd(true);
-//		schedList.at(i)->wait();
-//	}
-	killScheduler();
-	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
-}
 
 bool SN_SchedulerControl::eventFilter(QObject *, QEvent *) {
 
@@ -236,7 +366,7 @@ bool SN_SchedulerControl::eventFilter(QObject *, QEvent *) {
 
 
 
-
+bool SN_AbstractScheduler::IsHittingResourceLimit = false;
 
 
 
@@ -246,14 +376,11 @@ bool SN_SchedulerControl::eventFilter(QObject *, QEvent *) {
   Abstract
   *************/
 SN_AbstractScheduler::~SN_AbstractScheduler() {
-	qDebug() << "Scheduler has been deleted";
+	qDebug() << "The scheduler deleted";
 }
 
-void SN_AbstractScheduler::applyNewInterval(int i) {
 
-	timer.setInterval(i);
-}
-
+/*
 void SN_AbstractScheduler::run() {
 
 //	QTimer timer;
@@ -262,14 +389,18 @@ void SN_AbstractScheduler::run() {
 	connect(&timer, SIGNAL(timeout()), this, SLOT(doSchedule()));
 
 	timer.start();
-	qDebug("%s::%s() : Staring scheduler (QEventLoop) !", metaObject()->className(), __FUNCTION__);
+	qDebug("%s::%s() : Staring the scheduling thread ! (%d msec)", metaObject()->className(), __FUNCTION__, _granularity);
 
 
 	// Starts independent event loop of this thread. Enter eventloop and waits until exit() is called.
 	// any function in the scheduler must be called by signal-slot queued connection
 	// scheduler calls any function live in GUI eventloop (qApp::exec()) by slots
 	exec();
+
+    qDebug() << "[[ The Scheduling thread has finished ]]";
 }
+*/
+
 
 int SN_AbstractScheduler::configureRail(SN_RailawareWidget *rw, SN_ProcessorNode *pn) {
 	if (!rw || !rw->affInfo()) return -1;
@@ -298,6 +429,7 @@ int SN_AbstractScheduler::configureRail(SN_RailawareWidget *rw, SN_ProcessorNode
 }
 
 int SN_AbstractScheduler::configureRail(SN_RailawareWidget *rw) {
+    Q_UNUSED(rw);
 	return 0;
 }
 
@@ -339,283 +471,368 @@ int SN_AbstractScheduler::configureRail() {
 
 
 
-
-
-
-
-/**********************
-  SMART Event scheduler
-  ******************/
-SMART_EventScheduler::SMART_EventScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent) :
-	SN_AbstractScheduler(r, granularity, parent)
-{
-//	proc = p;
-	workingSet.clear();
-	QThread::setTerminationEnabled(true);
-}
-
-
-int SMART_EventScheduler::insertIntoWorkingSet(SN_RailawareWidget *newtask, qreal now) {
-	if (!newtask) return -1;
-
-	qreal new_task_finish_estimate = now + newtask->perfMon()->getCurrRecvLatency() + newtask->perfMon()->getAvgConvDelay();
-	qreal new_task_deadline = newtask->perfMon()->ts_nextframe();
-
-	if (workingSet.empty()  ||  new_task_finish_estimate == now) {
-		workingSet.push_back(newtask);
-		return workingSet.size();
-	}
-
-	QList<SN_RailawareWidget *>::iterator it = workingSet.begin();
-	SN_RailawareWidget *higher_task = 0;
-
-
-	/* see if adding w into working set hurts higher priority jobs in the set  */
-	for (; it!=workingSet.end(); it++) {
-		higher_task = *it;
-		Q_ASSERT(higher_task);
-
-		if ( higher_task->priorityData() > newtask->priorityData() ) {
-
-			qreal higher_task_deadline = higher_task->perfMon()->ts_nextframe();
-			qreal higher_task_avglatency = higher_task->perfMon()->getCurrRecvLatency() + higher_task->perfMon()->getAvgConvDelay();
-//			qreal new_task_finish_estimate = _t + newtask->perfMon()->getAvgRecvLatency();
-
-			if ( 0 < higher_task_deadline && higher_task_deadline <= now ) {
-				newtask->failToSchedule++;
-				return -1;
-//				continue;
-			}
-
-			if ( new_task_deadline < higher_task_deadline ) {
-				if ( new_task_finish_estimate + higher_task_avglatency > higher_task_deadline ) {
-					// can't schedule newtask
-
-//					qDebug("newtask %llu can't be scheduled", newtask->globalAppId());
-
-					newtask->failToSchedule++;
-
-					return -1;
-				}
-			}
-		}
-		/* when tasks have all same priority, then it's EDF scheduling */
-	}
-
-	/* add newtask in workingset earliest deadline order */
-
-	newtask->failToSchedule = 0; // reset
-
-	SN_RailawareWidget *w = 0;
-	for (it=workingSet.begin(); it!=workingSet.end(); it++) {
-		w = *it;
-		if (w->perfMon()->ts_nextframe() > newtask->perfMon()->ts_nextframe() ) {
-			workingSet.insert(it, newtask);
-			return workingSet.size();
-		}
-	}
-	workingSet.push_back(newtask);
-	return workingSet.size();
-}
-
-void SMART_EventScheduler::doSchedule() {
-
-	if(!rMonitor || rMonitor->getWidgetList().isEmpty()) return;
-
-	struct timeval now;
-	gettimeofday(&now, 0);
-	qreal nowsec = (qreal)(now.tv_sec) + 0.000001 * (qreal)(now.tv_usec);
-
-	/*!
-	  populate workingSet
-	  */
-	foreach (SN_RailawareWidget *rw, rMonitor->getWidgetList()) {
-		//		RailawareWidget *rw = 0;
-		//		for (; it != itend; it++ ) {
-		//			rw = *it;
-		if (!rw) continue;
-
-		//qDebug("%s::%s() : At processor %d, app %llu", metaObject()->className(), __FUNCTION__);
-
-		/* applying best effort algorithm on the candidate set */
-		insertIntoWorkingSet(rw, nowsec);
-	}
-	if (workingSet.empty()) return;
-
-//	struct timeval n;
-//	gettimeofday(&n, 0);
-//	qreal nn = (qreal)(n.tv_sec) + 0.000001 * (qreal)(n.tv_usec);
-//	qDebug("workingset overhead %.4f msec", 1000 * (nn-nowsec));
-
-
-
-//	foreach(RailawareWidget *r, workingSet) {
-//		qDebug("%llu, %.9f", r->globalAppId(), r->perfMon()->ts_nextframe());
-//	}
-
-	// remember, workingSet is orderd by deadline
-#if QT_VERSION >= 0x040700
-	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
-#else
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
-#endif
-
-	SN_RailawareWidget *rw = 0;
-
-//	QList<RailawareWidget *>::iterator it;
-//	for (it=workingSet.begin(); it!=workingSet.end(); it++) {
-//	for (int i=0; i<workingSet.size(); ++i) {
-	foreach (rw, workingSet) {
-//		rw = *it;
-//	while(!workingSet.isEmpty()) {
-//		rw = workingSet.at(i);
-//		rw = workingSet.front();
-
-		if (!rw) continue;
-
-		if (rw->isScheduled()) continue;
-
-		// frame must be displayed at this time
-		qreal frame_deadline = rw->perfMon()->ts_nextframe();
-
-		// recv must be scheduled at this time
-		qreal sched_deadline = frame_deadline - rw->perfMon()->getCurrRecvLatency() + rw->perfMon()->getAvgConvDelay();
-
-		if ( frame_deadline <= 0 /*not initialized yet*/ ||  sched_deadline <= nowsec /*already too late*/ )
-		{
-//			printf("sched invoke recv");
-			/*
-			if ( ! QMetaObject::invokeMethod(rw, "scheduleReceive", Qt::QueuedConnection) ) {
-				qCritical("%s::%s() : Failed to invoke scheduleUpdate on widget %llu", metaObject()->className(), __FUNCTION__, rw->globalAppId());
-			}
-			else {
-				rw->setScheduled(true);
-			}
-			*/
-			rw->setScheduled(true);
-			rw->scheduleReceive();
-		}
-		else {
-//			QTimer::singleShot( (frame_deadline - nowsec) * 1000, rw, SLOT(scheduleUpdate()) );
-//			rw->setScheduled(true);
-//			QTimer::singleShot( (sched_deadline - nowsec) * 1000, rw, SLOT(scheduleReceive()) );
-		}
-
-
-//		if ( /*rw->perfMon()->ts_nextframe() > 0  && */ rw->perfMon()->ts_nextframe() <= nowsec ) {
-//			//				rw = workingSet.takeFirst();
-//			//				qDebug("%s::%s() : Scheduling widget %llu on processor %d. (%.3f <= %.3f)", metaObject()->className(), __FUNCTION__, rw->globalAppId(), pid, rw->perfMon()->ts_nextframe(), nowsec);
-
-
-//			// a QEvent will be sent and the member is invoked as soon as the application enters the main event loop with QueuedConnection
-//			if ( ! QMetaObject::invokeMethod(rw, "scheduleUpdate", Qt::QueuedConnection) ) {
-//				qCritical("%s::%s() : Failed to invoke scheduleUpdate on widget %llu", metaObject()->className(), __FUNCTION__, rw->globalAppId());
-//			}
-//			//				qApp->processEvents(); // process all pending event for the CALLING thread. Calling this function processes events only for the calling thread
-
-//			else {
-//				// reset ts_nextframe to prevent duplicate scheduleupdate()
-////				rw->perfMon()->set_ts_nextframe(-1);
-//				rw->perfMon()->set_ts_currframe(nowsec);
-//				workingSet.pop_front();
-////				workingSet.removeOne(rw);
-////				workingSet.removeAt(i);
-////				--i;
-////				if (workingSet.isEmpty()) return;
-//			}
-//		}
-	}
-	workingSet.clear();
-
-
-	//		QThread::usleep(_granularity);
-//	QThread::msleep(2);
-
-	/* below is needed when this function isn't a separate thread */
-	//		qApp->flush(); // platform specific event (X events)
-	//		qApp->sendPostedEvents(); // empties the event queue
-	//		qApp->processEvents(); // for calling thread
-}
-
-
-
-
-
-
-
-DelayDistributionScheduler::DelayDistributionScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent) :
-	SN_AbstractScheduler(r, granularity, parent)
+SN_ProportionalShareScheduler::SN_ProportionalShareScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent)
+    : SN_AbstractScheduler(r, granularity, parent)
 {
 }
 
-void DelayDistributionScheduler::doSchedule() {
-	if (rMonitor->getWidgetList().isEmpty()) return;
+void SN_ProportionalShareScheduler::reset() {
+    QList<SN_BaseWidget *> wlist = rMonitor->getWidgetList();
+    QList<SN_BaseWidget *>::iterator it;
 
-#if QT_VERSION >= 0x040700
-	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
-#else
-    struct timeval tv;
-    gettimeofday(&tv, 0);
-    currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
-#endif
-	QList<SN_RailawareWidget *> wlist = rMonitor->getWidgetList(); // snapshot of current list
+    for (it = wlist.begin(); it != wlist.end(); it++ ) {
+        SN_BaseWidget *rw = (*it);
+        if (rw) {
+//            qDebug() << "SN_ProportionalShareScheduler::reset() : reset quality of" << rw->globalAppId();
+            rw->setQuality(1.0);
+        }
+    }
+}
 
-	qreal SumPriority = 0; qreal SumAdjDevi = 0;
-	qreal SumResNeeded = 0;
-	qreal system_wide_curr_bandwidth = 0;
-	foreach (SN_RailawareWidget *r, wlist) {
-		SumPriority += r->priority(currMsecSinceEpoch);
+//void SN_ProportionalShareScheduler::run() {
+//    qDebug() << "[[ Starting scheduling thread ]]";
+//    while(!_end) {
+//        QThread::msleep(_granularity);
+//        doSchedule();
+//    }
+//    qDebug() << "[[ Scheduling thread finished ]]";
+//}
 
-		// framerate deviation from adjusted FPS
-		SumAdjDevi += r->perfMon()->getCurrAdjDeviation();
+void SN_ProportionalShareScheduler::doSchedule() {
+    Q_ASSERT(rMonitor);
 
-		SumResNeeded += (r->perfMon()->getCurrAdjDeviation() * r->appInfo()->frameSizeInByte() * 8); // bps
-//		system_wide_curr_bandwidth += r->perfMon()->getCurrBandwidthMbps();
+    qreal SumPriority = 0.0;
 
-//		r->setQuality( r->observedQuality() );
+    qreal TheSizeOfBucket = 0.1; // 10 %
+
+    qreal TotalResource = rMonitor->totalBandwidthMbps(); // aggregate of rw->perfMon()->getCurrBandwidthMbps()
+
+    if (TotalResource <= 0) return;
+
+    if (rMonitor->getWidgetList().isEmpty()) return;
+
+    //
+    // Acquire the mutex for read
+    //
+    rMonitor->getWidgetListRWLock()->lockForRead();
+
+
+    QList<SN_BaseWidget *> * wlist = rMonitor->getWidgetListRef();
+    QList<SN_BaseWidget *>::const_iterator iter0;
+
+
+	//
+	// Copy the list of schedulable widgets to local QMap container
+	// In QMap, items are always sorted by a key when iterating over QMap
+    //
+    // The key is priority !
+	//
+	QMap<qreal, SN_BaseWidget *> widgetMapByPriority;
+
+    for (iter0 = wlist->constBegin(); iter0 != wlist->constEnd(); iter0++ ) {
+        SN_BaseWidget *rw = (*iter0);
+		if (!rw || !rw->priorityData()) continue;
+
+        /**************
+          *
+          *
+          compute priority !
+          *
+          *
+          ***************/
+        rw->priorityData()->computePriority(0);
+
+        if (rw->priority() > 0) {
+            SumPriority += rw->priority();
+
+            //
+            // priority offset based on ROI can be applied here
+            //
+
+
+            //
+            // The key is widget's priority, the value is the widget itself.
+            //
+            widgetMapByPriority.insertMulti(rw->priority(), rw);
+        }
+        else if (rw->priority() == 0) {
+            rw->setQuality(0);
+        }
+        else {
+            rw->setQuality(1);
+        }
 	}
-	qreal AvgAdjDevi = SumAdjDevi / wlist.size();
 
-//	if (SumResNeeded > 100 * 1000000) {
-//		// needed more than 100 Mbps
-//	}
 
-	qDebug() << SumResNeeded / 1000000 << "Mbps more needed";
-	foreach (SN_RailawareWidget *r, wlist) {
-		qreal p = r->priority(currMsecSinceEpoch) / SumPriority;
-		int intp = p * 100;
-		qDebug() << r->globalAppId() << p << intp << "%. I need " << ((r->perfMon()->getExpetctedFps() * 8 * r->appInfo()->frameSizeInByte()) / 1000000) - r->perfMon()->getCurrBandwidthMbps() << "Mbps more";
+//    qDebug() << "\n=============================================================================================================";
+//    qDebug() << "Total resource" << TotalResource << "Mbps, SumPriority" << SumPriority << "Num apps" << wmap.size();
 
-		qreal needed = ((r->perfMon()->getExpetctedFps() * 8 * r->appInfo()->frameSizeInByte()) / 1000000) - r->perfMon()->getCurrBandwidthMbps(); // Mbps more needed to fullfill expected FPS
-		qreal allowed = p * needed;
-	}
-	qDebug() << "\n\n";
 
-	/*
-	if (AvgAdjDevi > 5) {
-		// let's do something
+    QMap<qreal, SN_BaseWidget *>::const_iterator wmap_it;
 
-		foreach (RailawareWidget *r, wlist) {
-			// calculate current priority distribution
-			qreal weight = r->priority(currMsecSinceEpoch) / SumPriority;
-			qreal inverse_weight = 1 / weight;
+    //
+    // will allocate this much
+    //
+    qreal resources[widgetMapByPriority.size()];
+    for (int i=0; i<widgetMapByPriority.size(); i++) {
+        resources[i] = 0;
+    }
 
-			// I should give this much to others
-			0.01 * inverse_weight * SumResNeeded; // bps
+    // resources[] array index
+    int index = 0;
 
-			// I can have this much bps
-			qreal allowedBPS = weight * system_wide_curr_bandwidth; // bps
+    // loop's terminate condition
+    QBitArray bitarray(widgetMapByPriority.size());
 
-//			qreal expectedBPS = r->perfMon()->getExpetctedFps() * r->appInfo()->getFrameBytecount() * 8;
+    quint64 itercount = 0;
 
-			qreal adjustedFPS = allowedBPS / (8 * r->appInfo()->getFrameBytecount());
+    //
+    // start iteration
+    // to calculate the amount resource for each application will receive
+    //
+    while (
+           /* until there's no more resource to allocate */
+           TotalResource > 0
 
-			r->perfMon()->setAdjustedFps(adjustedFPS);
-		}
-	}
-	*/
+           &&
+
+           /* as long as there's a process that can consume resource */
+           bitarray.count(true) < widgetMapByPriority.size()
+           )
+    {
+
+        qreal AdjustedSumPriority = SumPriority; // reset the sum for next iteration
+
+        itercount++;
+//        qDebug() << "\nIteration start" << itercount << "TotalR" << TotalResource << "# done" << bitarray.count(true) << "/" << widgetMapByPriority.size();
+
+
+        //
+        // For each app
+        //
+        for (wmap_it = widgetMapByPriority.constBegin(), index=0; wmap_it != widgetMapByPriority.constEnd(); wmap_it++, index++) {
+            SN_BaseWidget *rw = wmap_it.value();
+
+            Q_ASSERT(rw);
+            Q_ASSERT(rw->priorityData());
+            Q_ASSERT(rw->perfMon());
+
+//            quint64 gaid = rw->globalAppId();
+
+            qreal priority = rw->priority();
+
+            //
+            // This is the amount I need to ensure 100% performance (quality 1.0)
+            //
+            qreal rwDesired = rw->perfMon()->getRequiredBW_Mbps();
+
+            //
+            // I'm over allocated
+            //
+            if ( resources[index] > rwDesired ) {
+                TotalResource += (resources[index] - rwDesired); // return the extra
+
+                resources[index] = rwDesired; // I'll be allocated the amount I wanted
+
+                bitarray.setBit(index, true); // I'm done. I don't need further actions
+
+                AdjustedSumPriority -= priority;
+
+//                qDebug() << "Overallocated" << resources[index] << rwDesired;
+            }
+
+            //
+            // Everything is perfect for me. So  I'm done
+            //
+            else if (resources[index] == rwDesired) {
+                bitarray.setBit(index, true); // I don't need further actions
+
+                AdjustedSumPriority -= priority;
+
+//                qDebug() << "\tPerfect allocation for GID" << gaid;
+            }
+
+
+            else {
+                //
+                // e.g. When the app window is compeletly obscured by other window
+                //
+                if (priority == 0) {
+                    resources[index] = 0; // cause I don't need it
+                    bitarray.setBit(index, true); // I don't need further actions. Ensure the terminate condition
+                }
+                //
+                // e.g. Interactive app is not being interacted
+                //
+                else if (rwDesired == 0) {
+                    resources[index] = 0; // cause I don't need it
+                    bitarray.setBit(index, true); // I don't need further actions. Ensure the terminate condition
+                    AdjustedSumPriority -= priority;
+                }
+                else {
+                    //
+                    // This tells how much this app is important compared to others.
+                    //
+                    qreal priorityProportion = 0;
+                    if ( AdjustedSumPriority <= 0) {
+                        qDebug() << "SN_ProportionalShareScheduler::doSchedule() : ERROR ! AdjustedSumPriority" << AdjustedSumPriority;
+                        break; // break the 'for each app' loop
+                    }
+                    else {
+                        priorityProportion = priority / AdjustedSumPriority; // priority proportion
+                    }
+
+                    //
+                    // The amount of resource for THIS app to show X % of quality.
+                    // !!! This assumes that an app provides its resource requirement !!!
+                    //
+                    qreal amount_needed_for_quality_X = rw->perfMon()->getRequiredBW_Mbps( TheSizeOfBucket );
+
+                    //
+                    // During a single iteration, this app should receive this amount.
+                    // This is to ensure fairness based on priority and visual quality
+                    //
+                    qreal size_of_single_scoop = priorityProportion * amount_needed_for_quality_X;
+
+                    qreal remainingroom = rwDesired - resources[index];
+
+                    //
+                    // I need the amount less than single scoop
+                    // So, I will be running at 100%
+                    //
+                    if ( size_of_single_scoop >= remainingroom ) {
+
+                        TotalResource -= remainingroom; // take resources
+                        resources[index] += remainingroom;
+
+                        bitarray.setBit(index, true); // I don't need further actions because I'm getting the amount == Rq
+
+                        AdjustedSumPriority -= priority;
+                    }
+
+                    //
+                    // I might not be able to run at 100%
+                    //
+                    else {
+                        TotalResource -= size_of_single_scoop; // take resources
+                        resources[index] += size_of_single_scoop;
+
+                        bitarray.setBit(index, false); // There might be resources that I can get more. So, I'm not done yet.
+                    }
+                }
+            }
+
+        } // end of for each app
+
+
+//        qDebug() << "Iteration end" << itercount << "TotalR" << TotalResource << "# done" << bitarray.count(true) << "/" << widgetMapByPriority.size();
+
+    } // end of while( TotalResource > 0   &&   bitarray.count(true) < # apps )
+
+    if (TotalResource <= 0) {
+        SN_AbstractScheduler::IsHittingResourceLimit = true;
+    }
+    else {
+        SN_AbstractScheduler::IsHittingResourceLimit = false;
+    }
+
+    //
+    // Now the calculation is done
+    // Let's allocate
+    //
+    index = 0;
+    for (wmap_it = widgetMapByPriority.constBegin(); wmap_it != widgetMapByPriority.constEnd(); wmap_it++) {
+        SN_BaseWidget *rw = wmap_it.value();
+
+        if (!rw) continue;
+
+//        qDebug() << "\t" << rw->globalAppId() << ":" << rw->priority() << ":" << resources[index];
+
+        if ( rw->perfMon()->getRequiredBW_Mbps() > 0 ) {
+            rw->setQuality( resources[index] / rw->perfMon()->getRequiredBW_Mbps() );
+        }
+        else {
+            rw->setQuality(0);
+        }
+
+        index++;
+    }
+
+
+    //
+    //
+    // Release the lock
+    //
+    rMonitor->getWidgetListRWLock()->unlock();
+
+
+    /*
+    qDebug() << "\n=============================================================================================================";
+
+
+    QList<qreal> uniqueKeys = wmap.uniqueKeys();
+    QList<qreal>::iterator keyit;
+
+    //
+    // For each priority
+    //
+    for (keyit=uniqueKeys.begin(); keyit!=uniqueKeys.end(); keyit++) {
+
+        qreal sumPriorityOfThis = 0.0;
+
+        qreal resourceForThisPriority = 0.0;
+
+        qreal sumResourceRequiredOfThis = 0.0;
+
+        int numapp = 0;
+
+        //
+        // find out sum of THIS priority
+        //
+        QMap<qreal, SN_RailawareWidget *>::iterator it = wmap.find(*keyit);
+        QMap<qreal, SN_RailawareWidget *>::iterator itcopy = it;
+        while(it != wmap.end() &&  it.key() == *keyit) {
+            SN_RailawareWidget *rw = it.value();
+            Q_ASSERT(rw);
+
+            sumPriorityOfThis += rw->priority();
+
+            sumResourceRequiredOfThis += rw->perfMon()->getReqBandwidthMbps();
+
+            ++it;
+
+            numapp++;
+        }
+
+
+
+        //
+        // The total available bandwidth
+        //
+        resourceForThisPriority = TotalResource  *  (sumPriorityOfThis / SumPriority);
+
+
+        qDebug() << "Priority group" << *keyit << " has" << numapp << "apps";
+        qDebug() << "\tpriority proportion" << sumPriorityOfThis / SumPriority;
+        qDebug() << "\tallowed / required B/W" << resourceForThisPriority << "/" << sumResourceRequiredOfThis;
+
+
+        while(itcopy != wmap.end() &&  itcopy.key() == *keyit) {
+            SN_RailawareWidget *rw = itcopy.value();
+            Q_ASSERT(rw);
+
+            qreal demandedQuality = resourceForThisPriority / sumResourceRequiredOfThis;
+
+            if (demandedQuality > 1) {
+
+            }
+
+            rw->setQuality( demandedQuality );
+
+            ++itcopy;
+        }
+    }
+    */
 }
 
 
@@ -624,14 +841,16 @@ void DelayDistributionScheduler::doSchedule() {
 
 
 
-SN_SelfAdjustingScheduler::SN_SelfAdjustingScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent) :
-	SN_AbstractScheduler(r, granularity, parent),
 
-	qualityThreshold(0.96),
-	decreasingFactor(-0.1),
-	increasingFactor(0.2),
+SN_SelfAdjustingScheduler::SN_SelfAdjustingScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent)
 
-	phaseToken(-1)
+    : SN_AbstractScheduler(r, granularity, parent)
+
+    , qualityThreshold(0.96)
+    , decreasingFactor(-0.1)
+    , increasingFactor(0.2)
+
+    , phaseToken(-1)
 {
 //	qDebug() << "Self Adjusting Scheduler ";
 }
@@ -642,7 +861,7 @@ void SN_SelfAdjustingScheduler::applyNewThreshold(int i) {
 		qualityThreshold = 0.001;
 	}
 	else {
-				qualityThreshold = (qreal)i / 100.0; // note that slider range 0 - 100
+		qualityThreshold = (qreal)i / 100.0; // note that slider range 0 - 100
 	}
 	rwlock.unlock();
 }
@@ -669,6 +888,24 @@ void SN_SelfAdjustingScheduler::applyNewIncF(int i) {
 	rwlock.unlock();
 }
 
+void SN_SelfAdjustingScheduler::reset() {
+//    qDebug() << "SN_SelfAdjustingScheduler::reset()";
+
+    QList<SN_BaseWidget *> wlist = rMonitor->getWidgetList();
+    QList<SN_BaseWidget *>::iterator it;
+
+    rwlock.lockForRead();
+
+    for (it = wlist.begin(); it != wlist.end(); it++ ) {
+        SN_BaseWidget *rw = (*it);
+        if (rw) {
+            rw->setQuality(1.0);
+        }
+    }
+
+    rwlock.unlock();
+}
+
 void SN_SelfAdjustingScheduler::doSchedule() {
 #if QT_VERSION >= 0x040700
 	currMsecSinceEpoch = QDateTime::currentMSecsSinceEpoch();
@@ -677,46 +914,75 @@ void SN_SelfAdjustingScheduler::doSchedule() {
     gettimeofday(&tv, 0);
     currMsecSinceEpoch = tv.tv_sec * 1000  +  tv.tv_usec * 0.0001;
 #endif
-	QList<SN_RailawareWidget *> wlist = rMonitor->getWidgetList();
+	QList<SN_BaseWidget *> wlist = rMonitor->getWidgetList();
+    QList<SN_BaseWidget *>::iterator iter0;
 
 
-	// items are always sorted by key when iterating over QMap
-	QMap<qreal, SN_RailawareWidget *> wmap;
-	foreach (SN_RailawareWidget *rw, wlist) {
-		if (!rw || !rw->perfMon()) continue;
-		wmap.insertMulti(rw->priority(currMsecSinceEpoch), rw);
+	//
+	// Copy the list of schedulable widgets to local QMap container
+	//
+	// In QMap, items are always sorted by a key when iterating over QMap
+	//
+	QMap<qreal, SN_BaseWidget *> wmap;
+    for (iter0 = wlist.begin(); iter0 != wlist.end(); iter0++ ) {
+        SN_BaseWidget *rw = (*iter0);
+		if (!rw || !rw->priorityData()) continue;
+
+        /****
+          ***
+          ***
+          compute priority
+          **
+          **
+          **/
+        rw->priorityData()->computePriority(0);
+
+
+        //
+		  //priority offset based on ROI can be applied here
+		  //
+
+
+		//
+		// The key is widget's priority, the value is the widget itself
+		//
+		wmap.insertMulti(rw->priority(), rw);
+
+
 	}
-	QMapIterator<qreal, SN_RailawareWidget *> it_secondary(wmap);
-	QMapIterator<qreal, SN_RailawareWidget *> it_primary(wmap); // iterate high priority first
-        it_primary.toBack();
+	QMapIterator<qreal, SN_BaseWidget *> it_secondary(wmap);
+	QMapIterator<qreal, SN_BaseWidget *> it_primary(wmap); // iterattion starts from the highest priority
+	it_primary.toBack();
 
 
-	int priorityBias = 100; // to quantize
+//	int priorityBias = 100; // to quantize
 	qreal priorityRank = 1.0; // greediness and aggression will bigger for higher priority widgets
+
 
 	rwlock.lockForRead();
 
 
 	while ( it_primary.hasPrevious() ) {
 		it_primary.previous();
-		SN_RailawareWidget *rw = it_primary.value();
+		SN_BaseWidget *rw = it_primary.value();
 
-//		qDebug() << rw->priority(currMsecSinceEpoch);
 
 		// sorted by priority descendant (high priority first)
 		if (!rw || !rw->perfMon()) continue;
 
-		int rwPriority = rw->priorityQuantized(currMsecSinceEpoch, priorityBias);
 
 		//
-		  //priority offset based on ROI can be applied here
-		  //
+		// priority() returns qreal type
+		//
+		int rwPriority = rw->priority();
 
-		qreal rwQuality = rw->observedQuality(); // current observed quality based on EXPECTED quality.
+
+
+		qreal rwQuality = rw->observedQuality_Rq(); // current observed quality based on EXPECTED quality.
 //		PerfMonitor *rwPm = rw->perfMon();
 //		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
 
-		qreal rwQualityAdjusted = rw->observedQualityAdjusted(); // current observed quality based on ADJUSTED quality
+		qreal rwQualityAdjusted = rw->observedQuality_Dq(); // current observed quality based on ADJUSTED quality
 
 		if (priorityRank == 1.0) {
 			// the highest priority widget
@@ -732,23 +998,29 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 
 //		qDebug() << rw->globalAppId() << rwPriority << rwQuality << rwQualityAdjusted;
 
-		// Compare with other widget in the list
-		// sorted by priority ascendant
+		//
+		//
+		// Begin comparing with other widgets in the list
+		// it_secondary is sorted by priority ascendant. (low priority first)
+		//
 		it_secondary.toFront(); // Always rewind for each rw
+
 		while ( it_secondary.hasNext() ) {
 			it_secondary.next();
-			SN_RailawareWidget *other = it_secondary.value();
+			SN_BaseWidget *other = it_secondary.value();
 
 			if (!other || !other->perfMon()) continue;
 			if (rw == other) continue;
 
-			int otherPriority = priorityBias * other->priority(currMsecSinceEpoch);
-			qreal otherQuality = other->observedQuality();
+			int otherPriority = other->priority();
+			qreal otherQuality = other->observedQuality_Rq();
 //			qreal otherQualityAdjusted = other->observedQualityAdjusted();
 
 //			qDebug() << "\t" << other->globalAppId() << otherPriority << otherQuality << otherQualityAdjusted;
 
+			//
 			// I'm doing OK as expected
+			//
 			if ( rwQualityAdjusted >= qualityThreshold ) {
 
 				if (rwPriority > otherPriority) {
@@ -792,7 +1064,9 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 			}
 
 
-			// I'm not acheiving adjusted quality
+			//
+			// I'm not acheiving demanded quality
+			//
 			else {
 				if (rwPriority > otherPriority) {
 					// Attack lower priority widget
@@ -819,7 +1093,7 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 //		if (!problem) {
 //			rw->adjustQuality(0.1);
 //		}
-		priorityRank += 0.2; // 1.0 for the highest priority ( higher the priority lower the rank)
+		priorityRank += 0.2; // 1.0 for the highest priority ( higher the priority lower the rank) => slow increase for lower priority apps
 	}
 	rwlock.unlock();
 
@@ -832,23 +1106,23 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 //	QList<RailawareWidget *> wlist = rMonitor->getWidgetList();
 
 	if ( phaseToken < 0 ) {
-		foreach (SN_RailawareWidget *rw, wlist) {
+		foreach (SN_BaseWidget *rw, wlist) {
 			if (!rw || !rw->perfMon()) continue;
 
 			qreal rwPriority = rw->priority(currMsecSinceEpoch);
-			qreal rwQuality = rw->observedQuality();
+			qreal rwQuality = rw->observedQuality_Rq();
 	//		PerfMonitor *rwPm = rw->perfMon();
 	//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
 
 			qreal temp = 1000;
 
 			// compare with other widget in the list
-			foreach (SN_RailawareWidget *higher, wlist) {
+			foreach (SN_BaseWidget *higher, wlist) {
 				if (!higher || !higher->perfMon()) continue;
 				if (rw == higher) continue;
 
 				qreal otherPriority = higher->priority(currMsecSinceEpoch);
-				qreal otherQuality = higher->observedQuality();
+				qreal otherQuality = higher->observedQuality_Rq();
 
 				if ( rwPriority < otherPriority  &&  rwQuality > otherQuality) {
 					if (otherQuality < temp) temp = otherQuality;
@@ -872,11 +1146,11 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 	}
 
 	else if (phaseToken > 0) {
-		foreach (SN_RailawareWidget *rw, wlist) {
+		foreach (SN_BaseWidget *rw, wlist) {
 			if (!rw || !rw->perfMon()) continue;
 
 			qreal rwPriority = rw->priority(currMsecSinceEpoch);
-			qreal rwQuality = rw->observedQuality();
+			qreal rwQuality = rw->observedQuality_Rq();
 	//		PerfMonitor *rwPm = rw->perfMon();
 	//		qreal myUnitValue = rwPriority / (rw->appInfo()->getFrameBytecount() * rw->perfMon()->getExpetctedFps()); // priority per unit byte/sec
 
@@ -884,12 +1158,12 @@ void SN_SelfAdjustingScheduler::doSchedule() {
 			qreal temp = -1;
 
 			// compare with other widget in the list
-			foreach (SN_RailawareWidget *lower, wlist) {
+			foreach (SN_BaseWidget *lower, wlist) {
 				if (!lower || !lower->perfMon()) continue;
 				if (rw == lower) continue;
 
 				qreal otherPriority = lower->priority(currMsecSinceEpoch);
-				qreal otherQuality = lower->observedQuality();
+				qreal otherQuality = lower->observedQuality_Rq();
 
 				if ( rwPriority > otherPriority ) {
 					if (rwQuality < otherQuality) {
@@ -1101,6 +1375,34 @@ void SelfAdjustingScheduler::doSchedule() {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 DividerWidgetScheduler::DividerWidgetScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent) :
 	SN_AbstractScheduler(r, granularity, parent),
 	_Q_highest(1.0),
@@ -1138,8 +1440,8 @@ void DividerWidgetScheduler::setPAnchor(qreal pa) {
 
 	if (rMonitor) {
 		qreal temp = 100000.0;
-		foreach (SN_RailawareWidget *rw, rMonitor->getWidgetList()) {
-			if ( rw->observedQuality() <= 0) continue;
+		foreach (SN_BaseWidget *rw, rMonitor->getWidgetList()) {
+			if ( rw->observedQuality_Rq() <= 0) continue;
 
 			qreal priority = rw->priority(currMsecSinceEpoch); // TODO : priority() must be light !
 
@@ -1161,7 +1463,7 @@ void DividerWidgetScheduler::doSchedule() {
 	  */
 	if (!rMonitor) return;
 
-	QList<SN_RailawareWidget *> widgetList = rMonitor->getWidgetList(); // copy of current widget list
+	QList<SN_BaseWidget *> widgetList = rMonitor->getWidgetList(); // copy of current widget list
 	if (widgetList.isEmpty()) return;
 
 #if QT_VERSION >= 0x040700
@@ -1178,7 +1480,7 @@ void DividerWidgetScheduler::doSchedule() {
 
 	// To find current the lowest/highest priority
 	qreal lowestp = 100, highestp = -100;
-	foreach (SN_RailawareWidget *rw, widgetList) {
+	foreach (SN_BaseWidget *rw, widgetList) {
 		qreal priority = rw->priority(currMsecSinceEpoch); // TODO : priority() must be light !
 
 		if ( priority < lowestp ) lowestp = priority;
@@ -1193,11 +1495,11 @@ void DividerWidgetScheduler::doSchedule() {
 
 	rwlock.lockForRead();
 
-	QMap<qreal, SN_RailawareWidget *> redunMap;
+//	QMap<qreal, SN_RailawareWidget *> redunMap;
 
 
 //	qreal anchorWidgetQuality = anchorWidget->perfMon()->getCurrRecvFps() / anchorWidget->perfMon()->getExpetctedFps();
-	qreal fiducialWidgetQuality = fiducialWidget->observedQuality();
+//	qreal fiducialWidgetQuality = fiducialWidget->observedQuality();
 	qreal fiducialWidgetPriority = fiducialWidget->priority(currMsecSinceEpoch);
 
 	qDebug() << "\n\nThe fiducial widget id" << fiducialWidget->globalAppId() << "priority" << fiducialWidgetPriority;
@@ -1254,7 +1556,7 @@ void DividerWidgetScheduler::doSchedule() {
 	  * It is total amount of bandwidth required for these widgets to fullfill the desired quality
 	  **/
 
-	foreach (SN_RailawareWidget *higher, widgetList) {
+	foreach (SN_BaseWidget *higher, widgetList) {
 		if ( higher->priority(currMsecSinceEpoch) <= fiducialWidgetPriority ) continue;
 
 		/*
@@ -1313,7 +1615,7 @@ void DividerWidgetScheduler::doSchedule() {
 		higher->setQuality(newQualityScale);
 
 		qreal expectedBW = 8 * higher->appInfo()->frameSizeInByte() * higher->perfMon()->getAdjustedFps(); // desired bandwidth based on the curve (in bps)
-		qreal observedBW = 1000000 * higher->perfMon()->getCurrBandwidthMbps(); // current observed bandwidth in bps
+		qreal observedBW = 1000000 * higher->perfMon()->getCurrBW_Mbps(); // current observed bandwidth in bps
 		qreal requiredBW = expectedBW - observedBW;
 		if (requiredBW > 0)
 			totalRequiredResource += requiredBW; // fixed size knapsack (in bps)
@@ -1333,8 +1635,8 @@ void DividerWidgetScheduler::doSchedule() {
 	  * It's bounded knapsack problem where weight is frame cost and value is priority
 	  */
 
-	QList<SN_RailawareWidget *> wlist; // sorted low priority widget list
-	QList<SN_RailawareWidget *>::iterator iter;
+	QList<SN_BaseWidget *> wlist; // sorted low priority widget list
+	QList<SN_BaseWidget *>::iterator iter;
 
 	qreal scoop = 1.0; // 1 frame
 //	qreal scoop = 0.5; // half frame
@@ -1357,19 +1659,19 @@ void DividerWidgetScheduler::doSchedule() {
 			// get if from lower priority widgets
 
 			// sort widget by unit value
-			foreach (SN_RailawareWidget *lower, widgetList) {
+			foreach (SN_BaseWidget *lower, widgetList) {
 				if ( lower->priority(currMsecSinceEpoch) >= fiducialWidgetPriority ) continue;
-				if ( lower->perfMon()->getCurrBandwidthMbps() <= 0 ) continue;
+				if ( lower->perfMon()->getCurrBW_Mbps() <= 0 ) continue;
 
 				// init widget's adjusted Fps to curretn fps
 				//		lower->perfMon()->setAdjustedFps(  lower->perfMon()->getAvgRecvFps() );
 
-				qreal unitValue = lower->priority(currMsecSinceEpoch) / lower->perfMon()->getCurrBandwidthMbps();
+				qreal unitValue = lower->priority(currMsecSinceEpoch) / lower->perfMon()->getCurrBW_Mbps();
 
 				// sorted by unitValue - ascending order. will preempt more from smaller unitvalue
 				for (iter=wlist.begin(); iter!=wlist.end(); iter++) {
-					SN_RailawareWidget *r = *iter;
-					if ( (r->priority(currMsecSinceEpoch) / r->perfMon()->getCurrBandwidthMbps())  >  unitValue ) {
+					SN_BaseWidget *r = *iter;
+					if ( (r->priority(currMsecSinceEpoch) / r->perfMon()->getCurrBW_Mbps())  >  unitValue ) {
 						// lower is less important. insert before *iter
 						wlist.insert(iter, lower);
 						break;
@@ -1390,7 +1692,7 @@ void DividerWidgetScheduler::doSchedule() {
 			  */
 
 //			while (totalRequiredResource > 0) {
-				foreach (SN_RailawareWidget *r, wlist) {
+				foreach (SN_BaseWidget *r, wlist) {
 
 					// lower quality
 //					if ( r->perfMon()->reAdjustFramerateBy( -1 * scoop) == -1 ) {
@@ -1424,7 +1726,7 @@ void DividerWidgetScheduler::doSchedule() {
 			qDebug() << "Higher priority widgets don't need more resources";
 
 			// try increase quality of low priority widgets
-			foreach(SN_RailawareWidget *r, widgetList) {
+			foreach(SN_BaseWidget *r, widgetList) {
 				if ( r->priority(currMsecSinceEpoch) < fiducialWidgetPriority ) {
 
 //					int ret = r->perfMon()->reAdjustFramerateBy(1.5 * scoop);

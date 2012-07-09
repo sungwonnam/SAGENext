@@ -3,6 +3,11 @@
 
 #include <QtGui>
 
+#ifdef USE_QWT
+#include <qwt_plot.h>
+#include <qwt_plot_curve.h>
+#endif
+
 /*
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>
@@ -73,37 +78,27 @@ class ResourceMonitorWidget : public QWidget
 {
 	Q_OBJECT
 public:
-	explicit ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_SchedulerControl *sc, SN_PriorityGrid *pg, QWidget *parent = 0);
+	explicit ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_PriorityGrid *pg, QWidget *parent = 0);
 	~ResourceMonitorWidget();
 
-	inline void setNumWidgets(int i) {_numWidgets=i;}
-	inline int numWidgets() const {return _numWidgets;}
-
-	inline void setMediaFilename(QString str) {_mediaFilename=str;}
-	inline QString mediaFilename() const {return _mediaFilename;}
+    /*!
+      SchedulerControl has its GUI.
+      When the resourcemonitorwidget is available, the sched control will add its GUI to the rmonwidget using this function
+      */
+    void setSchedCtrlFrame(QFrame *frame);
 
 private:
 	Ui::ResourceMonitorWidget *ui;
 
-	SN_ResourceMonitor *rMonitor;
-	SN_SchedulerControl *schedcontrol;
+    /*!
+      keep refreshing data or not
+      */
+    bool _isRefreshEnabled;
+
+	SN_ResourceMonitor *_rMonitor;
 
 	SN_PriorityGrid *_pGrid;
 
-	/*!
-	  how many widgets do you want to load
-	  */
-	int _numWidgets;
-
-	/*!
-	  media file to open when using mplayer
-	  */
-	QString _mediaFilename;
-
-	bool isAllocationEnabled;
-	bool isScheduleEnabled;
-
-//	QList<qint64> pidList;
 
 	/*!
 	  create HBoxLayouts for per CPU perf monitor
@@ -119,7 +114,7 @@ private:
 
 	QMap<int, PerfItem> PerfPerRankMap;
 
-	quint64 refreshCount;
+	quint64 _refreshCount;
 
 
 	void refreshCPUdata();
@@ -130,35 +125,31 @@ private:
 
 	void refreshPriorityGridData();
 
-//	void layoutButtons();
+#ifdef USE_QWT
+    QwtPlot *_priorityHistogramPlot;
+    QwtPlotCurve _priorityHistogram;
+    void updatePriorityHistogram();
 
-	/*!
-	  one per processor
-	  */
-//	QVector<QHBoxLayout *> hlvec;
+    QwtPlot *_qualityCurvePlot;
+    QwtPlotCurve _qualityCurve;
+    void updateQualityCurve();
+#endif
 
-
-	/*!
-	  Per widget performance data
-	  */
-//	QTableWidget widgetDataTable;
-
-
-	/*!
-	  */
-//	SchedulingPlot *plot;
-
-
-signals:
 
 public slots:
+    /*!
+      This is connected to the resource monitor's dataRefreshed signal
+      */
 	void refresh();
 
 private slots:
-//	void on_loadTestSetButton_clicked();
-//	void on_allocationButton_clicked();
-//	void on_scheduleButton_clicked();
 
+    /*!
+      Invoke SN_ResourceMonitor::setPrintData() slot and pass the filename
+      */
+    void on_printDataBtn_clicked();
+
+    void on_toggleRefreshDataBtn_clicked();
 };
 
 

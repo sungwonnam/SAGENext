@@ -32,7 +32,7 @@ class fsManager : public QTcpServer {
 	Q_OBJECT
 
 public:
-	fsManager(const QSettings *settings, SN_Launcher *l, QObject *parent = 0);
+	fsManager(const QSettings *_settings, SN_Launcher *l, QObject *parent = 0);
 	~fsManager();
 	//void registerApp(quint64 appid, const QString &msgStr, fsManagerMsgThread const * thread);
 //	fsManagerParam* getFsManagerParam() { return &fsmParam; }
@@ -51,7 +51,7 @@ protected:
 	void incomingConnection(int sockfd);
 
 private:
-	const QSettings *settings;
+	const QSettings *_settings;
 
 	SN_Launcher *_launcher;
 
@@ -65,14 +65,19 @@ private:
 //	QList<fsManagerMsgThread *> msgThreadList;
 	quint64 _sageAppId;
 //	fsManagerParam fsmParam;
-	QHostAddress fsIP;
+	QHostAddress _fsIP;
+
+    /*!
+      creates a fsmMessageThread
+      */
+    fsManagerMsgThread * _createMsgThread(int sockfd);
 
 signals:
 	void sailConnected(const quint64 _sageAppId, QString appName, int protocol, int port, const QRect initRect);
 	void sailDisconnected(quint64);
 	void shutdownSail(quint64 sageappid);
 	void sailSendSetRailMsg(AffinityInfo *, quint64);
-	void incomingSail(fsManagerMsgThread *);
+	void sageAppConnectedToFSM(const QString &sageappname, const QString &mediafilepath, fsManagerMsgThread *);
 
 public slots:
 	/**

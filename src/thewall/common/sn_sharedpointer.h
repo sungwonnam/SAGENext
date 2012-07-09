@@ -30,7 +30,19 @@ public:
 
 /**
   When a user shares his pointer through ui client,
-  This class is instantiated and added to the scene
+  This class is instantiated and added to the scene.
+
+
+  The sequence of messges result from each mouse action
+  click     : PRESS -> CLICK
+  drag      : PRESS -> DRAGGING -> RELEASE
+  move      : MOVING
+  dbl click : PRESS -> CLICK -> DBLCLICK
+
+
+  This means, for example, if user double click with his shared pointer then,
+  pointerPress() , pointerClick() , and pointerDoubleClick() will be called consecutively
+
   */
 class SN_PolygonArrowPointer : public QGraphicsPolygonItem
 {
@@ -48,7 +60,13 @@ public:
 	inline void setDrawing(bool b=true) {_isDrawing = b;}
 	void setErasing(bool b=true);
 
+    /*!
+      For running a scenario
+      */
 	void pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags);
+
+
+    inline void setTrapWidget(SN_BaseWidget *w) {_trapWidget = w;}
 
 
 	/*!
@@ -72,28 +90,33 @@ public:
 	virtual void pointerMove(const QPointF &scenePos, Qt::MouseButtons buttonFlags, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
         /**
-          This doesn't generate any mouse event. This is used to know the start of mouse dragging
+		  This is called by UiServer upon receiving SAGENext::POINTER_PRESS.
 
-          The setAppUnderPointer() is called if left button.
+          The setAppUnderPointer() is called if left button is pressed.
 		  Initiate selection rectangle if right button.
           */
 	virtual void pointerPress(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 
 		/**
+          Note that, only DRAGGING will generate SAGENext::POINTER_RELEASE.
+
 		  Both left and right release can be sent if the manhattan distance b/w pressed pos and released pos is greater than 3.
 		  So, this is triggered at the end of mouseDragging by the client.
 
-		  LeftRelease can mean app droping
-		  RightRelease can mean the end position of selection rectangle
+		  LeftRelease can mean the end of widget moving or resizing.
+		  RightRelease can mean the end position of selection rectangle.
+		  
+		  Note that, _basewidget/_specialItem will be reset in this function.
 		  */
 	virtual void pointerRelease(const QPointF &scenePos, Qt::MouseButton button, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
 		/**
-          simulate mouse click by sending mousePressEvent followed by mouseReleaseEvent
-
-		  press
-		  release
+		  This is called by UiServer upon receiving SAGENext::POINTER_CLICK.
+		  Note that, POINTER_CLICK always follows the POINTER_PRESS.
+		  
+          This handler simulates mouse click by sending mousePressEvent followed by mouseReleaseEvent
+		  unless SN_BaseWidget::handlePointerClick() returns TRUE.
           */
 	virtual void pointerClick(const QPointF &scenePos, Qt::MouseButton button,  Qt::KeyboardModifier modifier = Qt::NoModifier);
 
@@ -142,6 +165,11 @@ private:
 		  */
 	QColor _color;
 
+    /*!
+      A widget that traps this pointer in it.
+      */
+    SN_BaseWidget *_trapWidget;
+
         /**
           The app widget under this pointer
           This is set when pointerPress (left button) is called
@@ -175,6 +203,7 @@ private:
 		
 	bool _isDrawing;
 	bool _isErasing;
+
 
 		/**
 		  Returns the view on which the event occured.

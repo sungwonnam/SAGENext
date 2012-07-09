@@ -7,6 +7,8 @@
 
 #include "../../common/commonitem.h"
 
+//#include "../../system/resourcemonitor.h"
+
 #include <QtGui>
 
 #if QT_VERSION < 0x040700
@@ -16,19 +18,24 @@
 SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	: QGraphicsWidget(0, wflags)
     , _useOpenGL(true)
-	, _globalAppId(-1)
+	, _globalAppId(0)
 	, _settings(0)
 	, _windowState(SN_BaseWidget::W_NORMAL)
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
-	, _appInfo(new AppInfo())
+	, _appInfo(new AppInfo(0))
+    , _showInfo(false)
     , _priorityData(0)
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, _rMonitor(0)
 	, _quality(1.0)
 	, _contextMenu(0)
+
+    , _isMoving(false)
+    , _isResizing(false)
+    , _resizeRectangle(new QGraphicsRectItem(this))
 
     , _showInfoAction(0)
     , _hideInfoAction(0)
@@ -43,10 +50,11 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
     , _parallelAnimGroup(0)
     , pAnim_opacity(0)
 
-    , _timerID(0)
+//    , _timerID(0)
 	, _registerForMouseHover(false)
     , _bordersize(10)
-    , _showInfo(false)
+
+    , _isSchedulable(false)
 
 {
 	init();
@@ -61,13 +69,18 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
-	, _appInfo(new AppInfo())
+	, _appInfo(new AppInfo(globalappid))
+    , _showInfo(false)
     , _priorityData(0)
 	, _perfMon(new PerfMonitor(this))
 	, _affInfo(0)
 	, _rMonitor(0)
 	, _quality(1.0)
 	, _contextMenu(0)
+
+    , _isMoving(false)
+    , _isResizing(false)
+    , _resizeRectangle(new QGraphicsRectItem(this))
 
     , _showInfoAction(0)
     , _hideInfoAction(0)
@@ -82,35 +95,27 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
     , _parallelAnimGroup(0)
     , pAnim_opacity(0)
 
-    , _timerID(0)
+//    , _timerID(0)
 	, _registerForMouseHover(false)
     , _bordersize(10)
-    , _showInfo(false)
+
+    , _isSchedulable(false)
 
 {
-
-	// This will affect boundingRect(), windowFrameRect() of the widget.
-	_bordersize = _settings->value("gui/framemargin", 8).toInt();
-	if (isWindow()) {
-		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
-		setContentsMargins(_bordersize, _bordersize + 40, _bordersize, _bordersize); // by default, this is 0 0 0 0
-	}
-	else {
-		// setting frameMargins won't have any effect.. (Qt::Widget doesn't have frame)
-		// setting contentMargins won't have any effect unless this widget has a layout.
-	}
-
-	_useOpenGL = _settings->value("graphics/openglviewport").toBool();
-
-	if (_settings->value("system/resourcemonitor").toBool()) {
-		_priorityData = new SN_Priority(this);
-	}
+	setSettings(s);
 
 	init();
 }
 
 SN_BaseWidget::~SN_BaseWidget()
 {
+//    if (_isSchedulable) {
+//        if (_rMonitor) {
+//            _rMonitor->removeSchedulableWidget(this);
+//        }
+//    }
+
+
     if ( scene() ) {
         scene()->removeItem(this);
 
@@ -194,9 +199,18 @@ void SN_BaseWidget::init()
 	infoTextItem = new SN_SimpleTextItem(0, QColor(Qt::black), QColor(128, 128, 128, 164), this);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
-	infoTextItem->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 	//infoTextItem = new SwSimpleTextItem(settings->value("general/fontpointsize").toInt(), this);
 	infoTextItem->hide();
+
+
+//    _resizeRectangle->setFlag(QGraphicsItem::ItemStacksBehindParent);
+    _resizeRectangle->hide();
+    _resizeRectangle->setFlag(QGraphicsItem::ItemIsMovable, false);
+    _resizeRectangle->setFlag(QGraphicsItem::ItemIsSelectable, false);
+    _resizeRectangle->setAcceptedMouseButtons(0);
+    _resizeRectangle->setPen(QPen(QBrush(Qt::white), 10, Qt::DotLine));
+//    _resizeRectangle->setBrush(Qt::white);
+
 
 
 	//
@@ -249,6 +263,27 @@ void SN_BaseWidget::init()
 }
 
 
+void SN_BaseWidget::setSettings(const QSettings *s) {
+    _settings = s;
+
+    // This will affect boundingRect(), windowFrameRect() of the widget.
+	_bordersize = _settings->value("gui/framemargin", 8).toInt();
+	if (isWindow()) {
+		// Qt::Window might want to define mouse dragging. For that case, give more room to top margin
+		setContentsMargins(_bordersize, _bordersize + 40, _bordersize, _bordersize); // by default, this is 0 0 0 0
+	}
+	else {
+		// setting frameMargins won't have any effect.. (Qt::Widget doesn't have frame)
+		// setting contentMargins won't have any effect unless this widget has a layout.
+	}
+
+	_useOpenGL = _settings->value("graphics/openglviewport").toBool();
+
+	if (_settings->value("system/resourcemonitor").toBool()) {
+		_priorityData = new SN_Priority(this);
+	}
+}
+
 QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 	QRegion effectiveRegion;
 	if (!scene()) return effectiveRegion; // return empty region
@@ -293,13 +328,43 @@ QRegion SN_BaseWidget::effectiveVisibleRegion() const {
   ctepoch : current time since epoch
   */
 qreal SN_BaseWidget::priority(qint64 ctepoch /* 0 */) {
+    Q_UNUSED(ctepoch);
 //	Q_ASSERT(_priorityData);
-	if (!_priorityData) return 0.0;
-	return _priorityData->priority(ctepoch);
+	if (!_priorityData) return -1;
+
+    //
+    // The widget doesn't need resource.
+    // This is useful only for non-periodic widgets (where there's no fixed Rq)
+    // Usually, Rq is set to 0 when currBW is 0
+    //
+    if (_perfMon && _perfMon->getRequiredBW_Mbps() == 0) {
+        //
+        // no resource will be allocated by the scheduler
+        //
+        return 0.0;
+    }
+
+	return _priorityData->priority();
 }
 
 int SN_BaseWidget::priorityQuantized(qint64 currTimeEpoch, int bias /* 1 */) {
 	return bias * priority(currTimeEpoch);
+}
+
+
+qreal SN_BaseWidget::observedQuality_Rq() const {
+    if (_perfMon) {
+        return _perfMon->observedQuality_Rq();
+    }
+
+    return -1;
+}
+
+qreal SN_BaseWidget::observedQuality_Dq() const {
+    if (_perfMon) {
+        return _perfMon->observedQuality_Dq();
+    }
+    return -1;
 }
 
 
@@ -311,9 +376,10 @@ void SN_BaseWidget::drawInfo()
 		_showInfoAction->setDisabled(true);
 		_hideInfoAction->setEnabled(true);
 		//update();
+        infoTextItem->show();
 
 		/* starts timer */
-		_timerID = startTimer(1000); // timerEvent every 1000 msec
+//		_timerID = startTimer(1000); // timerEvent every 1000 msec
 	}
 	else {
 		hideInfo();
@@ -323,11 +389,12 @@ void SN_BaseWidget::drawInfo()
 void SN_BaseWidget::hideInfo()
 {
 	if (_showInfo) {
-		killTimer(_timerID);
+//		killTimer(_timerID);
 		_showInfo = false;
 		_hideInfoAction->setDisabled(true);
 		_showInfoAction->setEnabled(true);
-		update();
+        infoTextItem->hide();
+//		update();
 	}
 }
 
@@ -608,7 +675,9 @@ void SN_BaseWidget::setTopmost()
 }
 
 
-
+/*!
+  rescaling won't change the boundingRectangle
+  */
 void SN_BaseWidget::reScale(int tick, qreal factor)
 {
 	qreal currentScale = scale();
@@ -645,11 +714,17 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 
 // This function will not change widget's size !!
 //	qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
+
+
 }
 
 QRectF SN_BaseWidget::resizeHandleRect() const
 {
 	QSizeF size(128, 128);
+
+    //
+    // bottom right corner of the window
+    //
 	QPointF pos( boundingRect().right() - size.width(), boundingRect().bottom() - size.height());
 //	return mapRectToScene(QRectF(pos, size));
 	return QRectF(pos, size);
@@ -663,6 +738,20 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
 	Q_UNUSED(btn);
 
 	setTopmost();
+
+    if (btn == Qt::LeftButton) {
+		if (resizeHandleRect().contains(point)) {
+            _isResizing = true;
+            _isMoving = false;
+
+            _resizeRectangle->setRect(boundingRect());
+            _resizeRectangle->show();
+        }
+        else {
+            _isResizing = false;
+            _isMoving = true;
+        }
+    }
 }
 
 void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
@@ -670,43 +759,80 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
 	Q_UNUSED(point);
 	Q_UNUSED(btn);
 
-	// do nothing
+    _isMoving = false;
+
+    if (_isResizing) {
+
+        //
+        // now resize
+        //
+        if (isWindow()) {
+            resize( _resizeRectangle->rect().size() );
+        }
+
+        //
+        // rescale
+        //
+        else {
+            //qDebug() << _resizeRectangle->rect() << boundingRect() << size() << scale();
+            qreal se = _resizeRectangle->rect().width() * scale() / boundingRect().width();
+            setScale(se);
+        }
+
+        _resizeRectangle->hide();
+    }
+    _isResizing = false;
+
+    // base implementation does nothing
 }
 
 void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
 	Q_UNUSED(pointer);
+    Q_UNUSED(point);
 
-	if (btn == Qt::LeftButton) {
-		if (resizeHandleRect().contains(point)) {
-			if (isWindow()) {
-				// do resize
-				resize(size().width() + pointerDeltaX, size().height() + pointerDeltaY);
-			}
-			else {
-				// do scale.
-				// For now, resizeHandleSceneRect is always bottom right corner of the widget
+    if ( btn == Qt::LeftButton ) {
 
-				//
-				// keep updating resize rectangle (QGraphicsRectItem)
-				// this rectangle will become invisible once the pointer releaed
-				//
-			}
-//			_intMon->setLastInteraction(InteractionMonitor::RESIZE);
-//			_intMon->setLastInteractionType(InteractionMonitor::RESIZE);
-		}
-		else {
-			//
-			// widget is moved with pointer dragging
-			//
-			moveBy(pointerDeltaX, pointerDeltaY);
-//			_intMon->setLastInteractionType(InteractionMonitor::MOVE);
-//			_intMon->setLastInteraction(InteractionMonitor::MOVE);
-		}
-	}
+        //
+        // move the window
+        //
+        if (_isMoving) {
+            moveBy(pointerDeltaX, pointerDeltaY);
+        }
+
+        //
+        // resize/rescale window
+        //
+        else if (_isResizing) {
+
+            //
+            // show and resize the _resizeRectangle
+            //
+            QRectF rect = _resizeRectangle->rect();
+            if (isWindow()) {
+                rect.adjust(0, 0, pointerDeltaX, pointerDeltaY);
+            }
+            else {
+                qreal adjustment = 0.0;
+                if (size().width() < size().height()) {
+                    adjustment = pointerDeltaX / size().width();
+                }
+                else {
+                    adjustment = pointerDeltaY / size().height();
+                }
+                rect.adjust(0, 0, rect.width() * adjustment, rect.height() * adjustment);
+            }
+            _resizeRectangle->setRect(rect);
+        }
+
+
+        else {
+            // do nothing in the base implementation
+        }
+    }
 }
 
 
-void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
+void SN_BaseWidget::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *) {
 	/**
 	  changing painter state will hurt performance
 	  */
@@ -758,12 +884,6 @@ void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, Q
 #if defined(Q_OS_LINUX)
 		_appInfo->setDrawingThreadCpu(sched_getcpu());
 #endif
-		Q_ASSERT(infoTextItem);
-		infoTextItem->show();
-	}
-	else if (!_showInfo && infoTextItem->isVisible()){
-		Q_ASSERT(infoTextItem);
-		infoTextItem->hide();
 	}
 }
 
@@ -794,11 +914,11 @@ void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphi
 /**
   drawInfo() will start the timer
   */
-void SN_BaseWidget::timerEvent(QTimerEvent *e) {
+void SN_BaseWidget::timerEvent(QTimerEvent *) {
 //	qDebug("BaseWidget::%s()", __FUNCTION__);
-	if (e->timerId() == _timerID) {
-		updateInfoTextItem();
-	}
+//	if (e->timerId() == _timerID) {
+//		updateInfoTextItem();
+//	}
 }
 
 
@@ -812,7 +932,8 @@ void SN_BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 }
 
 void SN_BaseWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent *event) {
-	_contextMenu->exec(event->screenPos());
+//	_contextMenu->exec(event->screenPos());
+    _contextMenu->popup(event->screenPos());
 }
 
 void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
@@ -838,7 +959,7 @@ void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 
 void SN_BaseWidget::updateInfoTextItem()
 {
-	if (!infoTextItem) return;
+	if (!infoTextItem || !_showInfo) return;
 
 	QByteArray infotext(256, '\0');
 	QByteArray perftext(512, '\0');
@@ -872,21 +993,23 @@ void SN_BaseWidget::updateInfoTextItem()
 	}
 
 	if ( _perfMon ) {
-		sprintf(perftext.data(), "\nCurr/Avg Recv Lat : %.2f / %.2f ms\nCurr/Avg Conv Lat : %.2f / %.2f ms\nCurr/Avg Draw Lat : %.2f / %.2f ms\n\nCurr/Avg Recv FPS : %.2f / %.2f\nCurr/Avg recvFps AbsDevi. %.2f / %.2f\nRecv FPS variance %.4f\nCurr/Avg Disp FPS : %.2f / %.2f\n\nRecv/Draw Count %llu/%llu\nCurr Bandwidth : %.3f Mbps\nCPU usage : %.6f\nVol/InVol Ctx Sw : %ld / %ld" /*maxrss %ld, pageReclaims %ld"*/
+		sprintf(perftext.data(), "\nCurr/Avg Recv Lat : %.2f / %.2f ms \n Curr/Avg Upd Lat : %.2f / %.2f ms \n Curr/Avg Draw Lat : %.2f / %.2f ms \n Curr/Avg Recv FPS : %.2f / %.2f \n Curr/Avg Disp FPS : %.2f / %.2f \n Recv/Draw Count %llu/%llu \n Curr/ReqBW %.3f / %.3f Mbps \n CPU %.6f" /*\nVol/InVol Ctx Sw : %ld / %ld*/ /*maxrss %ld, pageReclaims %ld"*/
 		        ,_perfMon->getCurrRecvLatency() * 1000.0 , _perfMon->getAvgRecvLatency() * 1000.0
-		       ,_perfMon->getCurrConvDelay() * 1000.0 , _perfMon->getAvgConvDelay() * 1000.0
+		       ,_perfMon->getCurrUpdateDelay() * 1000.0 , _perfMon->getAvgUpdateDelay() * 1000.0
 		        /*_perfMon->getCurrEqDelay() * 1000.0, _perfMon->getAvgEqDelay() * 1000.0,*/
 		        ,_perfMon->getCurrDrawLatency() * 1000.0 , _perfMon->getAvgDrawLatency() * 1000.0
 
-		        ,_perfMon->getCurrRecvFps(), _perfMon->getAvgRecvFps()
-		        ,_perfMon->getCurrAbsDeviation(), _perfMon->getAvgAbsDeviation()
-		        ,_perfMon->getRecvFpsVariance()
+		        ,_perfMon->getCurrEffectiveFps(), _perfMon->getAvgEffectiveFps()
+//		        ,_perfMon->getCurrAbsDeviation(), _perfMon->getAvgAbsDeviation()
+//		        ,_perfMon->getRecvFpsVariance()
 		        ,_perfMon->getCurrDispFps(), _perfMon->getAvgDispFps()
 
 		        ,_perfMon->getRecvCount(), _perfMon->getDrawCount()
-		        ,_perfMon->getCurrBandwidthMbps()
+		        ,_perfMon->getCurrBW_Mbps()
+                , _perfMon->getRequiredBW_Mbps()
 
-		        ,_perfMon->getCpuUsage() * 100.0, _perfMon->getEndNvcsw(), _perfMon->getEndNivcsw()
+		        ,_perfMon->getCpuUsage() * 100.0
+//                , _perfMon->getEndNvcsw(), _perfMon->getEndNivcsw()
 		        /*perfMon->getEndMaxrss(), perfMon->getEndMinflt()*/
 		        );
 		text.append(perftext);
@@ -894,8 +1017,8 @@ void SN_BaseWidget::updateInfoTextItem()
 	}
 
 	if (infoTextItem) {
-		infoTextItem->setText(QString(text));
-		infoTextItem->update();
+		infoTextItem->setText(text);
+//		infoTextItem->update();
 	}
 }
 

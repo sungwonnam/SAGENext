@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>stopsign48.png</file>
+        <file>greenplay128.png</file>
+        <file>blackarrow_upleft128.png</file>
+    </qresource>
+</RCC>

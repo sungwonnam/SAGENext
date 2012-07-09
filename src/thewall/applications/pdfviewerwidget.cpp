@@ -122,6 +122,9 @@ void SN_PDFViewerWidget::nextPage() {
 void SN_PDFViewerWidget::setCurrentPage(int pageNumber) {
 	if (pageNumber < 0  || pageNumber >=  _document->numPages()) return;
 
+    //
+    // this is to measure content update latency
+    //
 	_perfMon->getUpdtTimer().start();
 
 //	if (_currentPage) {

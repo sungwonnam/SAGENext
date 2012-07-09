@@ -23,6 +23,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread 
     , _settings(s)
     , _textItem(0)
 	, _color(c)
+    , _trapWidget(0)
     , _basewidget(0)
     , _specialItem(0)
 	, _selectionRect(0)
@@ -87,9 +88,22 @@ void SN_PolygonArrowPointer::setErasing(bool b) {
 }
 
 void SN_PolygonArrowPointer::setPointerName(const QString &text) {
-//	_nameBg = new QGraphicsRectItem(this);
 
-	_textItem = new QGraphicsSimpleTextItem(text, this);
+    QColor bgcolor = QColor(Qt::darkGray);
+    QColor fgcolor = QColor(Qt::white);
+
+    if (text.compare("sungwon", Qt::CaseInsensitive) == 0) {
+        bgcolor = QColor(Qt::lightGray);
+        fgcolor = QColor(Qt::black);
+    }
+
+
+    QGraphicsRectItem *bg = new QGraphicsRectItem(this);
+    QBrush b(bgcolor, Qt::Dense4Pattern);
+    bg->setBrush(b);
+    bg->setPen(QPen(Qt::NoPen));
+
+	_textItem = new QGraphicsSimpleTextItem(text, bg);
 	_textItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
 	_textItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 
@@ -100,11 +114,13 @@ void SN_PolygonArrowPointer::setPointerName(const QString &text) {
 	f.setBold(true);
 	_textItem->setFont(f);
 
-	_textItem->setBrush(Qt::white);
-	_textItem->moveBy(60, boundingRect().height() - 30);
-//	_nameBg->moveBy(60, boundingRect().height() - 15);
+	_textItem->setBrush(fgcolor);
+//	_textItem->moveBy(60, boundingRect().height() - 30);
+//	_textItem->setPen(QColor(Qt::black));
 
-	_textItem->setPen(QColor(Qt::black));
+
+    bg->setRect( _textItem->boundingRect().adjusted(-2, -2, 2, 2) );
+    bg->moveBy(60, boundingRect().height() - 30);
 }
 
 
@@ -113,13 +129,6 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 
     qreal deltax = _scenePos.x() - oldp.x();
     qreal deltay = _scenePos.y() - oldp.y();
-
-
-	//
-    // move pointer itself
-    // Sets the position of the item to pos, which is in parent coordinates. For items with no parent, pos is in scene coordinates.
-	//
-    setPos(_scenePos);
 
 
 	////////////////////////////
@@ -138,9 +147,44 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 
 
 
+    //
+    // If _trapWidget then the widget wants to trap the pointer
+    // within its window
+    //
+    // FittsLawTest plugin for example
+    //
+    if (_trapWidget) {
+        QPointF localPoint = _trapWidget->mapFromScene(_scenePos);
+
+        // If the pointer is on the widget's window
+        // then move the pointer normally
+        // otherwise don't move the pointer
+        if (_trapWidget->contains(localPoint)) {
+//            setPos(_scenePos);
+            setOpacity(0);
+            _trapWidget->handlePointerDrag(this, localPoint, deltax, deltay, Qt::NoButton);
+        }
+        else {
+            setOpacity(1.0);
+        }
+
+        // return w/o moving pointer and further actions
+//        return;
+    }
+
+
+
+    //
+    // move pointer itself
+    // Sets the position of the item to pos, which is in parent coordinates. For items with no parent, pos is in scene coordinates.
+	//
+    setPos(_scenePos);
+
+
+
 	//////
 	///
-	// handle hovering
+	// handle hovering if No button is pressed
 	///
 	//////
 	if (btnFlags == 0 || btnFlags & Qt::NoButton) {
@@ -180,9 +224,15 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	}
 
 
-
+	///////////
 	//
     // LEFT button mouse dragging
+	//
+    // Because of the pointerPress action immediately preceding this,
+	// the _basewidget or _specialItem might be set at this point.
+	// The _basewidget is set if item's type is >= QGraphicsItem::UserType + BASEWIDGET_USER
+	// The _specialItem is set if item's type is >= QGraphicsItem::UserType + INTERACTIVE_ITEM
+    //
 	//
     else if ( btnFlags & Qt::LeftButton ) {
 		
@@ -199,10 +249,11 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		}
 		*/
 
+
 		//
-        // Because of pointerPress, appUnderPointer has already been set at this point
-		// _basewidget is set if items type is >= UserType + BASEWIDGET_USER
-        //
+		// If user's pointer is now dragging (w/ Left button pressed) on the user widget (SN_BaseWidget)
+		// the widget will handle this. Base implementation is either resizing or moving.
+		//		
         if (_basewidget) {
 			_basewidget->handlePointerDrag(this, _basewidget->mapFromScene(_scenePos), deltax, deltay, Qt::LeftButton, modifier);
         }
@@ -272,6 +323,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
         */
     }
 
+	////////////////////////
 	//
 	// RIGHT button mouse dragging
 	//
@@ -295,6 +347,13 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
 		sprintf(record, "%lld %d %u %d %d %d\n",QDateTime::currentMSecsSinceEpoch(), 3, _uiclientid, scenePos.toPoint().x(), scenePos.toPoint().y(), btn);
 		_scenarioFile->write(record);
 	}
+
+
+
+    //
+    // White pointer color
+    //
+    setBrush(Qt::white);
 
 
 	// note that pressEvent doesn't consider window frame
@@ -354,6 +413,7 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 			if (_scene->isOnAppRemoveButton(scenePos)) {
 				_scene->hoverAcceptingApps.removeAll(_basewidget);
 				_basewidget->close();
+                setBrush(_color);
 				return;
 
 //				if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
@@ -409,6 +469,12 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 			//
 		}
 	}
+
+
+    ///
+    // restore pointer color
+    //
+    setBrush(_color);
 }
 
 
@@ -482,7 +548,7 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 	}
 
 	//
-	// mouse left click event will be generated and sent to the viewport no matter what
+	// mouse left click
 	//
 	else if (btn == Qt::LeftButton) {
 		if (_basewidget) {
@@ -497,16 +563,40 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 			Q_ASSERT(_basewidget->priorityData());
 			_basewidget->priorityData()->setLastInteraction(SN_Priority::CLICK);
 			*/
-		}
 
+            if (_basewidget->handlePointerClick(this, _basewidget->mapFromScene(scenePos), btn)) {
+
+                //
+                // no mouse event will be generated
+                // if an application returns true in that function
+                //
+                setBrush(_color);
+
+                //
+                // if the function returns true then
+                // return without generating system's mouse event
+                //
+                return;
+            }
+		}
+        else if (_specialItem) {
+            // SN_PartitionBar doesn't need real mouse click event
+            setBrush(_color);
+            return;
+        }
+
+        //
+        //
+        // Generate system's mouse events
+        // Press -> Relese
+        //
+        //
 		QGraphicsView *view = eventReceivingViewport(scenePos);
 		if ( !view ) {
 			qDebug() << "pointerClick: no view is available";
 			return;
 		}
 		QPointF clickedViewPos = view->mapFromScene( scenePos );
-
-//		qDebug() << "pointerClick() : LeftButton" << scenePos;
 
 		QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
 		QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
@@ -517,12 +607,12 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 //			qDebug() << "\tcurrent mouse grabber:" << _scene->mouseGrabberItem();
 		}
 		else {
-			//qDebug() << "press delievered";
+//			qDebug() << "press delievered";
 			if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
 //				qDebug("SN_PolygonArrowPointer::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
 			}
 			else {
-				//qDebug() << "release delievered";
+//				qDebug() << "release delievered";
 				// who should ungrabmouse() ??
 				QGraphicsItem *mouseGrabberItem = _scene->mouseGrabberItem();
 				if (mouseGrabberItem) mouseGrabberItem->ungrabMouse();
@@ -530,6 +620,13 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 			}
 		}
 	}
+
+
+    //
+    // Note that sagenextpointer will send PRESS -> CLICK for the pointer click
+    // There's no RELEASE !
+    //
+    setBrush(_color);
 }
 
 
@@ -555,8 +652,16 @@ void SN_PolygonArrowPointer::pointerDoubleClick(const QPointF &scenePos, Qt::Mou
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
     if (gview) {
-        QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, gview->mapFromScene(scenePos), btn, btn | Qt::NoButton, modifier);
-		QMouseEvent release(QEvent::MouseButtonRelease, gview->mapFromScene(scenePos), btn, btn | Qt::NoButton, modifier);
+        QPoint posInViewport = gview->mapFromScene(scenePos);
+
+        QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, posInViewport, btn, btn | Qt::NoButton, modifier);
+		QMouseEvent release(QEvent::MouseButtonRelease, posInViewport, btn, btn | Qt::NoButton, modifier);
+
+        //
+        // Below is needed when SN_BaseWidget doesn't reimplement QGraphicsItem::mousePressEvent()
+        // Thus it can't become the mouse grabber upon receiving pressEvent
+        //
+//        _basewidget->grabMouse();
 
         // sendEvent doesn't delete event object, so event should be created in stack space
         if ( ! QApplication::sendEvent(gview->viewport(), &dblClickEvent) ) {
@@ -608,13 +713,20 @@ void SN_PolygonArrowPointer::pointerWheel(const QPointF &scenePos, int delta, Qt
 		if ( delta > 0 )  _delta = 120;
 		else if (delta <0) _delta = -120;
 
-		QWheelEvent we(gview->mapFromScene(scenePos), /*gview->mapToGlobal(scenePos.toPoint()),*/ _delta, Qt::NoButton, Qt::NoModifier);
+        QPoint posInViewport = gview->mapFromScene(scenePos);
+
+		QWheelEvent we(posInViewport, /*gview->mapToGlobal(scenePos.toPoint()),*/ _delta, Qt::NoButton, Qt::NoModifier);
+
+        //
+        // system mouse should be on the widget !!
+        //
+//        QCursor::setPos(gview->mapToGlobal(posInViewport));
 
         if ( ! QApplication::sendEvent(gview->viewport(), &we) ) {
             qDebug("PolygonArrow::%s() : send wheelEvent failed", __FUNCTION__);
         }
         else {
-            //qDebug() << "PolygonArrow wheel" << gview->mapFromScene(scenePos);
+            //qDebug() << "PolygonArrow wheel event sent" << gview->mapFromScene(scenePos);
         }
     }
 }
@@ -666,7 +778,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 		}
 		else {
 			// regualar graphics items or items that inherit QGraphicsItem/Widget
-
+            _guiItem = item->topLevelWidget();
 
 			if(object) {
 				if ( ::strcmp(object->metaObject()->className(), "SN_LineEdit") == 0 ) {

@@ -1,13 +1,16 @@
-#include "sn_layoutwidget.h"
+#include "common/sn_layoutwidget.h"
 
-#include "commonitem.h"
-#include "../applications/base/basewidget.h"
-#include "../applications/base/appinfo.h"
-#include "../sagenextlauncher.h"
+#include <unistd.h>
 
+#include "common/commonitem.h"
+#include "applications/base/basewidget.h"
+#include "applications/base/appinfo.h"
+#include "sagenextlauncher.h"
+#include "sagenextscene.h"
 
-SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidget, const QSettings *s, QGraphicsItem *parent)
+SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidget, SN_TheScene *scene, const QSettings *s, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
+    , _theScene(scene)
     , _settings(s)
     , _parentLayoutWidget(parentWidget)
 //    , _leftWidget(0)
@@ -37,6 +40,9 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 
 	// these png files are 499x499
 	_tileButton = new SN_PixmapButton(":/resources/tile_btn_over.jpg", _settings->value("gui/iconwidth").toDouble(), "", this);
+    _tileButton->setSecondaryPixmap(":/resources/tile_btn_cyan.jpg");
+
+
 	_hButton = new SN_PixmapButton(":/resources/horizontal_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 	_vButton = new SN_PixmapButton( ":/resources/vertical_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 
@@ -105,8 +111,8 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 
 //	qDebug() << "Layout : addItem() " << pos;
 	/**
-	  If _bar exist, that means this layoutWidget is just a container for child layoutwidgets.
-	  So this layoutWidget can't have any baseWidget as a child.
+	  If _bar exist, that means this layoutWidget is just a container for its child layoutwidgets.
+	  So this layoutWidget can't have any SN_BaseWidget as a child.
 	  */
 	if (_bar) {
 
@@ -120,21 +126,32 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 			_secondChildLayout->addItem(bw, _secondChildLayout->mapFromParent(pos));
 		}
 	}
+
+
 	/**
-	  BaseWidgets can be added to me
+	  The bw will be added to me
 	  */
 	else {
 		/**
-		  if the item already has a parent it is first removed from the previous parent
-		  This implicitly adds this item to the scene of the parent.
+		  If the bw already has a parent then it is first removed from its parent.
+		  (This implicitly adds this item to the scene of the parent.)
 
 		  QGraphicsObject::parentChanged() will be emitted
 		  */
 		bw->setParentItem(this);
 
 		if ( _isTileOn ) {
-			// I need to return as soon as possible
-			QMetaObject::invokeMethod(this, "doTile", Qt::QueuedConnection);
+            //
+            // If doTile() is called too early like this (right after the widget is created..)
+            // then its size() might return very small value.
+            // Especially for SN_SageStreamWidget where its size() is determined after the streamer connected to the widget.
+            //
+//			QMetaObject::invokeMethod(this, "doTile", Qt::QueuedConnection);
+
+            //
+            // So give the widget some time to determine its native size then call doTile()
+            //
+            QTimer::singleShot(500, this, SLOT(doTile()));
 		}
 		else {
 //		qDebug() << "SN_LayoutWidget::addItem() : bw->setPos() " << pos;
@@ -353,8 +370,8 @@ void SN_LayoutWidget::createChildPartitions(Qt::Orientation dividerOrientation, 
 	// create PartitionBar child item
 	_bar = new SN_WallPartitionBar(dividerOrientation, this, this);
 
-	_firstChildLayout = new SN_LayoutWidget("first", this, _settings, this);
-	_secondChildLayout = new SN_LayoutWidget("second", this, _settings, this);
+	_firstChildLayout = new SN_LayoutWidget("first", this, _theScene, _settings, this);
+	_secondChildLayout = new SN_LayoutWidget("second", this, _theScene, _settings, this);
 
 	_firstChildLayout->setSiblingLayout(_secondChildLayout);
 	_secondChildLayout->setSiblingLayout(_firstChildLayout);
@@ -573,33 +590,55 @@ void SN_LayoutWidget::deleteMyself() {
 }
 
 void SN_LayoutWidget::doTile() {
+    //
+    // If ther's bar then this layout widget doesn't have any SN_BaseWidget.
+    // So there's nothing to tile.
+    //
 	if (_bar) return;
 
 	int itemcount = 0;
 
 //	qreal layoutRatio = size().width() / size().height();
 
-	qreal sumWHratio = 0.0;
+//	qreal sumWHratio = 0.0;
 	foreach(QGraphicsItem *item, childItems()) {
 		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+
+        //
+        //
+        // I should skip ones that are minimized ..
+        //
+        //
+
 		itemcount++;
 
 		if (bw->size().isNull() || bw->size().isEmpty())
 			continue;
 
-		sumWHratio += (bw->size().width() / bw->size().height());
+//		sumWHratio += (bw->size().width() / bw->size().height());
 
 //		qDebug() << bw->size() << sumWHratio;
 	}
-	qreal avgWHratio = sumWHratio / itemcount;
-	qreal layoutWHratio = size().width() / size().height();
+//	qreal avgWHratio = sumWHratio / itemcount;
+
+
+    qreal layoutWidth = size().width();
+    qreal layoutHeight = size().height();
+
 
 	/**
+      FInd out how many widgets will be horizontally and vertically
+      based on SN_LayoutWidget's size.
+
 	  x(numH) : y(numV) = Width : Height
-	  y = x * H/W , x * y == numItem
+
+      y = x * Height/Width
+      x * y == numItem
+
 	  x = sqrt( numItem * W/H )
 	  **/
+    qreal layoutWHratio = layoutWidth / layoutHeight;
 	int numItemH = sqrt( itemcount * layoutWHratio );
 	if (numItemH < 1) numItemH = 1;
 	int numItemV = ::ceil( (qreal)itemcount / (qreal)numItemH );
@@ -629,18 +668,18 @@ void SN_LayoutWidget::doTile() {
 	***/
 
 
-	int itemSpacing = 32; // pixel
+	int itemSpacing = 32; // distance b/w widgets in pixel
 
-	qreal widthPerItem = size().width() - itemSpacing;
+	qreal widthPerItem = layoutWidth - itemSpacing;
 	if ( numItemH > 1) {
-		widthPerItem = (size().width() / numItemH) - itemSpacing;
+		widthPerItem = (layoutWidth / numItemH) - itemSpacing;
 	}
-	qreal heightPerItem = size().height() - itemSpacing;
+	qreal heightPerItem = layoutHeight - itemSpacing;
 	if (numItemV > 1) {
-		heightPerItem = (size().height() / numItemV) - itemSpacing;
+		heightPerItem = (layoutHeight / numItemV) - itemSpacing;
 	}
 
-	qDebug() << widthPerItem << heightPerItem;
+//    qDebug() << "SN_LayoutWidget::doTile() : size per widget is " << widthPerItem << "x" << heightPerItem;
 
 	int row = 0;
 	int col = 0;
@@ -665,6 +704,7 @@ void SN_LayoutWidget::doTile() {
 			scalewidth = widthPerItem / bw->size().width();
 			scaleheight = heightPerItem / bw->size().height();
 
+//            qDebug() << "SN_LayoutWidget::doTile() : scale of this widget" << qMin(scalewidth, scaleheight);
 			bw->setScale(qMin(scalewidth, scaleheight));
 		}
 		col++;
@@ -672,6 +712,9 @@ void SN_LayoutWidget::doTile() {
 }
 
 void SN_LayoutWidget::toggleTile() {
+    Q_ASSERT(_tileButton);
+    _tileButton->togglePixmap();
+
 	if (_isTileOn) {
 		_isTileOn = false;
 		// do nothing
@@ -716,29 +759,57 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 			// only consider user application
 			if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER ) continue;
 
-			SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+			const SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
 			if (!bw) continue;
 
-			AppInfo *ai = bw->appInfo();
 			out << QString("ITEM");
+
+            out << bw->globalAppId();
+
 			//
 			// item's pos() is saved. not the scenePos()
 			//
+            AppInfo *ai = bw->appInfo();
 			out << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
 
-			// video, image, pdf, plugin, web have filename
-			if (ai->fileInfo().exists()) {
+
+			switch (ai->mediaType()) {
+			case SAGENext::MEDIA_TYPE_IMAGE :
+			case SAGENext::MEDIA_TYPE_LOCAL_VIDEO :
+			case SAGENext::MEDIA_TYPE_PDF :
+			case SAGENext::MEDIA_TYPE_PLUGIN : {
+
+				Q_ASSERT(ai->fileInfo().exists());
 				out << ai->mediaFilename();
-				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->mediaFilename();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << bw->globalAppId() << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->mediaFilename();
+
+				break;
 			}
-			else if (!ai->webUrl().isEmpty()) {
+			case SAGENext::MEDIA_TYPE_WEBURL : {
+
+				Q_ASSERT(!ai->webUrl().isEmpty());
 				out << ai->webUrl().toString();
-				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->webUrl().toString();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << bw->globalAppId() << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->webUrl().toString();
+
+				break;
 			}
-			// vnc doesn't have filename
-			else {
+			case SAGENext::MEDIA_TYPE_VNC : {
+
 				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
-				qDebug() << "SN_LayoutWidget::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+				qDebug() << "SN_LayoutWidget::saveSession() : " << bw->globalAppId() << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
+
+				break;
+			}
+			case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
+
+				out << ai->srcAddr() << ai->executableName() << ai->cmdArgsString();
+                if (ai->executableName() == "mplayer") {
+                    out << ai->mediaFilename();
+                }
+				qDebug() << "SN_LayoutWidget::saveSession() : " << bw->globalAppId() << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->executableName() << ai->cmdArgsString() << ai->mediaFilename();
+
+				break;
+			}
 			}
 		}
 		out << QString("RETURN");
@@ -771,35 +842,94 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 		QSizeF size;
 		qreal scale;
 
+        quint64 gaid;
+        in >> gaid;
 
 		in >> mtype >> scenepos >> size >> scale;
-		//qDebug() << "\tentry : " << mtype << scenepos << size << scale;
 
 		QString file;
 		QString user;
 		QString pass;
 		QString srcaddr;
+		QString sageappname;
+		QString cmdargs;
 
-		SN_BaseWidget *bw = 0;
+        //
+        // See if there exist a widget with the globalAppId.
+        // If there is one then keep the existing widget and apply window geometries (pos, size, scale)
+        //
+        // Why I did this ?
+        // One issue with save/load session is it can't know the media file info of a SAGE widget where its streamer runs in remote machine.
+        // Temporary workaround for this is launching remote SAGE apps manually and then do loadSession to restore their window geometries.
+        // You must manually launch them in exact order so that they can have exactly same globalAppId.
+        //
+        Q_ASSERT(_theScene);
+		SN_BaseWidget *bw = _theScene->getUserWidget(gaid);
 
-		if (mtype == SAGENext::MEDIA_TYPE_VNC) {
-			in >> srcaddr >> user >> pass;
-			bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos);
-		}
-		else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
-			in >> file;
-			bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, file, scenepos);
-		}
-		else {
-			in >> file;
-			bw = launcher->launch(mtype, file, scenepos);
-		}
+        if (bw) {
+            qDebug() << "SN_LayoutWidget::loadSession() : There exist a widget with GID" << gaid;
+
+            //
+            // delete the widget
+            //
+            bw->close();
+            ::usleep(100 * 1e+3); // 100 msec
+        }
+
+        switch ( (SAGENext::MEDIA_TYPE)mtype ) {
+        case SAGENext::MEDIA_TYPE_IMAGE :
+        case SAGENext::MEDIA_TYPE_PDF :
+        case SAGENext::MEDIA_TYPE_PLUGIN : {
+            in >> file;
+            if (!bw) {
+                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_PLUGIN" << gaid << file;
+                bw = launcher->launch(mtype, file, scenepos, gaid);
+            }
+            break;
+        }
+        case SAGENext::MEDIA_TYPE_WEBURL : {
+            break;
+        }
+        case SAGENext::MEDIA_TYPE_VNC : {
+            in >> srcaddr >> user >> pass;
+            if (!bw) {
+                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_VNC" << gaid << srcaddr << user << pass;
+                bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos, gaid);
+            }
+            break;
+        }
+        case SAGENext::MEDIA_TYPE_LOCAL_VIDEO : {
+            in >> file;
+            // command and its arguments will be overriden
+            if (!bw) {
+                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_LOCAL_VIDEO" << gaid << file;
+                bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, file, scenepos, "127.0.0.1", "", "mplayer", gaid);
+                ::usleep(200 * 1e+3); // 200 msec
+            }
+            break;
+        }
+        case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
+            in >> srcaddr >> sageappname >> cmdargs;
+            if (sageappname == "mplayer") {
+                in >> file;
+            }
+            if (!bw) {
+                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_SAGE_STREAM" << gaid << srcaddr << sageappname << cmdargs << file;
+                bw = launcher->launchSageApp(SAGENext::MEDIA_TYPE_SAGE_STREAM, file, scenepos, srcaddr, cmdargs, sageappname, gaid);
+                ::usleep(200 * 1e+3); // 200 msec
+            }
+            break;
+        }
+        }
 
 
 		if (!bw) {
-			qDebug() << "Error : can't launch this entry from the session file" << mtype << file << srcaddr << user << pass << scenepos << size << scale;
+			qDebug() << "SN_LayoutWidget::loadSession() : Can't launch this entry from the session file" << gaid << mtype << file << srcaddr << user << pass << scenepos << size << scale;
 		}
 		else {
+			QApplication::sendPostedEvents();
+			QCoreApplication::processEvents();
+
 			//
 			// at this point, the bw has added to the _rootLayoutWidget already
 			//
@@ -833,7 +963,7 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 //		qDebug("%s::%s() : RETURN", metaObject()->className(), __FUNCTION__);
 	}
 	else {
-		qDebug("%s::%s() : Unknown entry", metaObject()->className(), __FUNCTION__);
+        qDebug() << "SN_LayoutWidget::loadSession() : Unknown header" << header;
 	}
 }
 

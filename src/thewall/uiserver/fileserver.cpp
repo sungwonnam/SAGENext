@@ -8,6 +8,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 
 FileServerThread::FileServerThread(int sockfd, const quint32 uiclientid, QObject *parent)
@@ -64,6 +65,7 @@ int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &f
 		break;
 	}
 	default: {
+		qDebug() << "FileServerThread::_recvFile() : unknown media type";
 		break;
 	}
 	} // end switch

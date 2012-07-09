@@ -1,63 +1,77 @@
 #include "perfmonitor.h"
+#include "appinfo.h"
+#include "system/sagenextscheduler.h"
+
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <math.h>
-
 #include <stdio.h>
 
 
 PerfMonitor::PerfMonitor(QObject *parent)
     : QObject(parent)
     , _widget(static_cast<SN_BaseWidget *>(parent))
+    , _priori(false)
 
-	, recvFrameCount(0)
-    , currRecvLatency(0.0)
-    , avgRecvLatency(0.0)
+	, _recvFrameCount(0)
+    , currRecvLatency(-1)
+    , avgRecvLatency(-1)
     , aggrRecvLatency(0.0)
-    , currRecvFps(0.0)
-    , aggrRecvFps(0.0)
-    , avgRecvFps(0.0)
-    , currBandwidth(0.0),
 
-	drawCount(0),
-	currDrawLatency(0.0),
-	avgDrawLatency(0.0),
-	aggrDrawLatency(0.0),
+    , _currEffectiveFps(0.0)
+    , _aggrEffectiveFps(0.0)
+    , _avgEffectiveFps(0.0)
 
-	updateDispCount(0),
-	currDispFps(0.0),
-	aggrDispFps(0.0),
-	avgDispFps(0.0),
+    , _currEffectiveBW_Mbps(0.0)
+    , _maxBWachieved(0.0)
+    , _requiredBW_Mbps(0.0)
+    , _isRqIncreased(0)
+    , _cumulativeByteRecved(0)
+    , _prevByteReceived(0)
+    , _prevTimestamp(0)
+    , _isInteracting(false)
 
-	updateCount(0),
-	currUpdateDelay(0.0),
-	aggrUpdateDelay(0.0),
-	avgUpdateDelay(0.0),
+	, drawCount(0)
+    , currDrawLatency(-1)
+    , avgDrawLatency(-1)
+    , aggrDrawLatency(0.0)
 
-	eqCount(0),
-	currEqDelay(0.0),
-	aggrEqDelay(0.0),
-	avgEqDelay(0.0),
+    , updateDispCount(0)
+    , currDispFps(0.0)
+    , aggrDispFps(0.0)
+    , avgDispFps(0.0)
 
-	expectedFps(24), /* set default value just in case */
-	adjustedFps(24),
-	currAbsDeviation(0.0),
-	aggrAbsDeviation(0.0),
-	avgAbsDeviation(0.0),
+    , updateCount(0)
+    , currUpdateDelay(0.0)
+    , aggrUpdateDelay(0.0)
+    , avgUpdateDelay(0.0)
 
-	aggrRecvFpsVariance(0.0),
-	recvFpsVariance(0.0),
-	recvFpsStdDeviation(0.0),
+    , eqCount(0)
+    , currEqDelay(0.0)
+    , aggrEqDelay(0.0)
+    , avgEqDelay(0.0)
 
-	_ts_currframe(0.0),
-	_ts_nextframe(0.0),
-	_deadline_missed(0.0),
+    , expectedFps(24) /* set default value just in case */
+	, adjustedFps(24)
+//	currAbsDeviation(0.0),
+//	aggrAbsDeviation(0.0),
+//	avgAbsDeviation(0.0),
 
-	cpuUsage(0.0),
-	ruend_nvcsw(0),
-	ruend_nivcsw(0),
-	ruend_maxrss(0),
-	ruend_minflt(0)
+//	aggrRecvFpsVariance(0.0),
+//	recvFpsVariance(0.0),
+//	recvFpsStdDeviation(0.0),
+
+	, _ts_currframe(0.0)
+    , _ts_nextframe(0.0)
+    , _deadline_missed(0.0)
+
+    , _cpuTimeSpent_sec(0.0)
+    , _cpuTimeRequired(0.0)
+    , cpuUsage(0.0)
+    , ruend_nvcsw(0)
+    , ruend_nivcsw(0)
+    , ruend_maxrss(0)
+    , ruend_minflt(0)
 {
 	if ( _widget->widgetType() == SN_BaseWidget::Widget_RealTime) {
 		// set initial avgRecvLatency
@@ -70,121 +84,413 @@ PerfMonitor::PerfMonitor(QObject *parent)
 }
 
 void PerfMonitor::printData() const {
-	// avgRecvLatency,  avgConvDelay,  avgDrawLatency,  avgRecvFps, avgDispFps, recvFpsVariance , avgAbsDeviation, recvFpsStdDeviation
-	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << avgRecvFps << avgDispFps  << recvFpsVariance << avgAbsDeviation << recvFpsStdDeviation;
+	// avgRecvLatency,  avgConvDelay,  avgDrawLatency,  avgRecvFps, avgDispFps
+//	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << _avgEffectiveFps << avgDispFps;
 }
 
-void PerfMonitor::updateObservedRecvLatency(ssize_t byteread, qreal netlatency, rusage rustart, rusage ruend) {
+/**
+void PerfMonitor::_updateBWdata(qreal bwtemp) {
+    ///
+    // If app provided resource required (e.g. constant framerate streaming such as Sage app)
+    // then I know current BW is always less than or equal to required BW and
+    // its requiredBW will never change
+    //
+    if (_priori) {
+        if (bwtemp == 0) {
+            _currEffectiveBW_Mbps = bwtemp;
+            // _requiredBW_Mbps = 0; // how to restore this ???
+            _currEffectiveFps = 0;
+        }
+        else if (bwtemp <= _requiredBW_Mbps) {
+            _currEffectiveBW_Mbps = bwtemp;
+        }
+        else {
+            // perhaps measurement error so discard the data measured
+            _currEffectiveBW_Mbps = _requiredBW_Mbps;
+        }
+    }
 
-	if ( recvTimer.isNull() ) {
-		qWarning("PerfMonitor::%s() : recvTimer is null", __FUNCTION__);
-		return;
-	}
-	if ( ! recvTimer.isValid()) {
-		qWarning("PerfMonitor::%s() : recvTimer isn't valid", __FUNCTION__);
-		return;
-	}
+    //
+    // No priori
+    //
+    else {
+        _currEffectiveBW_Mbps = bwtemp; // have to believe current measurement
 
-	/** ASSUMES recvTimer.start() had been called **/
-	int elapsed = recvTimer.restart(); // millisecond
-//	int elapsed = recvTimer.elapsed(); // millisecond
+        //
+        // the widget isn't consuming resource, so update requiredBW so that scheduler won't count this widget
+        //
+        if ( _currEffectiveBW_Mbps == 0 ) {
+            //
+            ////////////////// DECREASE Rq immediately
+            //
+            _requiredBW_Mbps = 0;
+            _currEffectiveFps = 0;
+        }
 
-	/***
-	  observed delay includes recv() latency plus any delay introduced until subsequent recv().
-	  Therefore, this is the FPS that user perceives.
-	  **/
-	qreal observed_delay = (qreal)elapsed * 0.001; // to second
+        //
+        // The observedQ_Rq > 1
+        // This can happen when the app kept decreasing its Rq (to get higher Dq from the scheduler) because there's no more resource available
+        // Note that a non-periodic widget's required BW starts with 0
+        //
+        else if (_currEffectiveBW_Mbps > _requiredBW_Mbps) {
+            //
+            // my Rq set too small. Increase !
+            //
+            _requiredBW_Mbps = _currEffectiveBW_Mbps;
+            qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "Reset Rq for over performing" << _requiredBW_Mbps;
+        }
+
+        //
+        // The observedQ_Rq <= 1
+        //
+        else if (_currEffectiveBW_Mbps <= _requiredBW_Mbps) {
+
+            //
+            // When there's no more resource seen by the scheduler,
+            // if an app increase its Rq then,
+            // its quality will be decreased as a result
+            //
+            if (SN_AbstractScheduler::IsHittingResourceLimit) {
+                // So it's better to Decrease Rq to obtain higher Dq from the scheduler
+                _requiredBW_Mbps = _currEffectiveBW_Mbps;
+                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "NO MORE Res!! Decrease Rq to receive Dq 1" << _requiredBW_Mbps;
+            }
+            else {
+                //
+                ///////////////// INCREASE Rq /////////////////////////////
+                //
+
+                //
+                // If this is high priority app then demandedQuality could be closer to 1.0
+                // (Even if this is low priority app, with high TotalResource demandedQuality could be closer to 1.0)
+                // This means observedQ_Rq ~= observedQ_Dq ~= 1.0
+                // Then let's increase Rq and see what happens !
+                // because it may be able to consume more
+                //
+                if ( _widget->demandedQuality() >= 0.9) {
+
+                    _requiredBW_Mbps = qMax(_maxBWachieved, 1.2f * _requiredBW_Mbps); // the max or 150% of current Rq
+//                    _requiredBW_Mbps = 1.2f * _maxBWachieved;
+                }
+
+                //
+                // The low demandedQuality means
+                // The TotalResource is low enough and this app is somewhat low priority
+                //
+                else {
+                    _requiredBW_Mbps = qMin(_maxBWachieved, 1.2f * _requiredBW_Mbps);
+                }
+                _isRqIncreased = QDateTime::currentMSecsSinceEpoch();
+                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "There're more resource. Let's INCREASE Rq" << _requiredBW_Mbps;
+            }
+        }
+    }
+
+    _maxBWachieved = qMax(_maxBWachieved, _currEffectiveBW_Mbps);
+}
+**/
+
+void PerfMonitor::_updateBWdata(qreal bwtemp) {
+
+    ///
+    // If app provided resource required (e.g. constant framerate streaming such as Sage app)
+    // then I know current BW is always less than or equal to required BW and
+    // its requiredBW will never change
+    //
+    if (_priori) {
+        if (bwtemp == 0) {
+            _currEffectiveBW_Mbps = bwtemp;
+            // _requiredBW_Mbps = 0; // how to restore this ???
+            _currEffectiveFps = 0;
+        }
+        else if (bwtemp <= _requiredBW_Mbps) {
+            _currEffectiveBW_Mbps = bwtemp;
+        }
+        else {
+            // perhaps measurement error so discard the data measured
+            _currEffectiveBW_Mbps = _requiredBW_Mbps;
+        }
+    }
+
+    //
+    // No priori
+    //
+    else {
+        qint64 now = QDateTime::currentMSecsSinceEpoch();
+
+        _currEffectiveBW_Mbps = bwtemp; // have to believe current measurement
+
+//        _requiredBW_Mbps = bwtemp;
+//        return;
+
+        //
+        // the widget isn't consuming resource, so update requiredBW so that scheduler won't count this widget
+        //
+        if ( _currEffectiveBW_Mbps == 0 ) {
+
+            //
+            ////////////////// DECREASE Rq immediately
+            //
+            _requiredBW_Mbps = 0;
+            _currEffectiveFps = 0;
+        }
+
+        //
+        // The observedQ_Rq > 1
+        // The required bw is set too low (incorrect value), so update Rq
+        //
+        // Note that a non-periodic widget's required BW starts with 0
+        //
+        // Also, this can easily happen when Dq is set to 1
+        // in that case the app will run best-effort w/o extra delay
+        // so, Rq can be updated with correct value which is currentBW
+        //
+        else if (_currEffectiveBW_Mbps > _requiredBW_Mbps) {
+
+            //
+            // The app was idling. Now it's woken up
+            // So try some big Rq
+            //
+            if ( _requiredBW_Mbps == 0) {
+                //
+                /////////////////////// GUESS Rq /////////////////////////////
+                //
+                _requiredBW_Mbps = qMax(_maxBWachieved, (_widget->appInfo()->frameSizeInByte() * 8 * 30) / 1e+6);
+
+                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "GUESS Rq when woken up" << _requiredBW_Mbps;
+            }
+            else {
+                // It was set too low..
+                ////////////////////// INCREASE Rq /////////////////////////////
+                //
+                _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
+
+                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "INCREASE Rq for over performing" << _requiredBW_Mbps;
+            }
+
+            _isRqIncreased = QDateTime::currentMSecsSinceEpoch();
+        }
+
+        //
+        // The observedQ_Rq <= 1 This is normal operation.
+        //
+        else if (_currEffectiveBW_Mbps <= _requiredBW_Mbps) {
+            //
+            // it's quite consuming what the scheduler demanded.
+            // Oq ~= Dq
+            //
+            if ( observedQuality_Dq() >= 0.9 ) {
+
+                //
+                // If this is high priority app then demandedQuality could be closer to 1.0
+                // (Even if this is low priority app, with high enough TotalResource demandedQuality could be closer to 1.0)
+                // This means observedQ_Rq ~= observedQ_Dq ~= 1.0
+                // Then let's increase Rq and see what happens !
+                // because it may be able to consume more
+                //
+                //
+                // This could mean
+                // - High priority, low resource
+                // OR
+                // - Low priority, high enough TotalResource
+                //
+                if ( _widget->demandedQuality() >= 1.0) {
+
+                   // nothing I could do. just update Rq
+                    // because it's extra delay is already 0
+                    // no one's stealing from this app !
+                    _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
+
+                }
+
+                //
+                // This GUARANTEES the TotalResource is not enough -> SYSTEM OVERLOADED
+                // Why would scheduler demand lower quality if there's enough resource ?
+                //
+                else {
+
+                    //
+                    // Resource is scarce. lower Rq so that app can obtain higher Dq from the scheduler ==> GREEDY !
+                    //
+                    // If my currBW is increased as a result of high Dq then
+                    // my Rq will be adjusted anyway
+                    //
+                    _requiredBW_Mbps = _currEffectiveBW_Mbps;
+                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "Resource Scarce. Let's decrease Rq to obtain high Dq" << _requiredBW_Mbps;
+                }
+
+               // _isRqIncreased = QDateTime::currentMSecsSinceEpoch();
+
+//                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "There's more resource. Let's INCREASE Rq" << _requiredBW_Mbps;
+            }
+
+            //
+            // It's not even consuming the amount the scheduler allowed
+            // so lower the requiredBW a bit
+            //
+            else {
+
+                if ( _isRqIncreased > 0 && now - _isRqIncreased > 3000) {
+
+                    //
+                    //////////////////// DECREASE Rq /////////////////////////////
+                    //
+                    _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
+
+                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "!! DECREASE Rq for under-performing" << _requiredBW_Mbps;
+
+                    _isRqIncreased = 0;
+                }
+            }
+        }
+    }
+
+    _maxBWachieved = qMax(_maxBWachieved, _currEffectiveBW_Mbps);
+}
+
+//
+// Resource monitor 's refresh() calls this function
+//
+void PerfMonitor::updateDataWithCumulativeByteReceived(qint64 timestamp) {
+
+    if (_prevByteReceived > 0 ) {
+        quint64 deltaByte = _cumulativeByteRecved - _prevByteReceived;
+        qint64 deltaMsec = timestamp - _prevTimestamp;
+
+        qreal bwtemp = (1e-6 * 8.0f * (qreal)deltaByte) / ((qreal)deltaMsec / 1000.0f); // Mbps
+        _updateBWdata( bwtemp );
+    }
+    _prevByteReceived = _cumulativeByteRecved;
+    _prevTimestamp = timestamp;
+
+/*
+    if (!_cumulativeByteRecvedList.isEmpty()) {
+        const QPair<qint64, quint64> recentValue = _cumulativeByteRecvedList.front();
+        quint64 deltaByte = _cumulativeByteRecved  -  recentValue.second;
+        qint64 deltaMsec = timestamp - recentValue.first;
+
+        //
+        // current BW usage
+        //
+        qreal bwtemp = (1e-6 * 8.0f * (qreal)deltaByte) / ((qreal)deltaMsec / 1000.0f); // Mbps
+
+        _updateBWdata( bwtemp );
+    }
+
+    //
+    // update value & maintain 10 data points
+    //
+    _cumulativeByteRecvedList.push_front( QPair<qint64, quint64>(timestamp, _cumulativeByteRecved) );
+    if (_cumulativeByteRecvedList.size() > 10) {
+        _cumulativeByteRecvedList.pop_back();
+    }
+*/
+}
+
+//
+// The widget updates this
+//
+void PerfMonitor::addToCumulativeByteReceived(quint64 byte, qreal actualtime_sec /* 0 */, qreal cputime_sec /* 0 */) {
+
+     ++_recvFrameCount;
+
+    _cumulativeByteRecved += byte;
+
+    if ( actualtime_sec > 0) {
+
+        // this is handled by rMonitor
+//        _updateBWdata(bwtemp);
+
+        //
+        // FPS that user perceives
+        //
+        _currEffectiveFps = 1.0 / actualtime_sec;
+        //peakRecvFps = currRecvFps;
+
+        // deviation from expectedFps
+        /*
+        qreal temp = expectedFps - _currEffectiveFps;
+        currAbsDeviation = (temp > 0) ? temp : 0;
+        //fprintf(stderr, "%.2f\n", currAbsDeviation);
+        temp = adjustedFps - _currEffectiveFps;
+        currAdjDeviation = (temp > 0) ? temp : 0;
+        */
 
 
+        unsigned int skip = 200;
+        if ( _recvFrameCount > skip ) {
+    //		aggrRecvLatency += currRecvLatency;
+    //		avgRecvLatency = aggrRecvLatency / (qreal)(_recvFrameCount-skip);
 
-	++recvFrameCount;
+            //
+            // observed average fps
+            //
+            _aggrEffectiveFps += _currEffectiveFps;
+            _avgEffectiveFps = _aggrEffectiveFps / (qreal)(_recvFrameCount - skip);
 
-
-
-//	currRecvLatency  = (qreal)elapsed * 0.001; // to second
-
-	/***
-	  The netlatency is network pixel receive latency only (recv() system call).
-	  Therefore this can't be used to calculate observed frame rate.
-	****/
-	currRecvLatency = netlatency;
-
-
-
-	// is calculated with network latency + delay enforced by scheduler
-	currBandwidth = (byteread * 8.0) / observed_delay; // bps
-	currBandwidth /= 1000000.0; // Mbps
+            /* average absolute deviation */
+    //		aggrAbsDeviation += currAbsDeviation;
+    //		avgAbsDeviation = aggrAbsDeviation / (qreal)(_recvFrameCount- skip);
 
 
-	currRecvFps = 1.0 / observed_delay; // frame per second
-//	if ( currRecvFps > peakRecvFps )
-//		peakRecvFps = currRecvFps;
+            /* variance Var(X0 = E[(X-u)2] */
+    //		aggrRecvFpsVariance += pow(_currEffectiveFps - _avgEffectiveFps, 2);
+    //		recvFpsVariance = aggrRecvFpsVariance / (qreal)(_recvFrameCount - skip);
 
-	// deviation from expectedFps
-	qreal temp = expectedFps - currRecvFps;
-	currAbsDeviation = (temp > 0) ? temp : 0;
-	//	fprintf(stderr, "%.2f\n", currAbsDeviation);
-	temp = adjustedFps - currRecvFps;
-	currAdjDeviation = (temp > 0) ? temp : 0;
+            /* standard deviation */
+    //		recvFpsStdDeviation = sqrt(recvFpsVariance);
+        }
 
+    }
 
-	struct timeval tv;
-	gettimeofday(&tv, 0);
-	qreal now = (qreal)(tv.tv_sec) + 0.000001 * (qreal)(tv.tv_usec); // seconds
+    if (cputime_sec > 0) {
 
-	// set current timestamp
-	_ts_currframe = now;
-
-	if ( _ts_nextframe > 0 )
-		_deadline_missed = _ts_currframe - _ts_nextframe;
-
-	// update _ts_nextframe
-	if (expectedFps > 0) {
-//		_ts_nextframe = _ts_currframe + 1.0 / expectedFps;
-		_ts_nextframe = _ts_currframe + 1.0 / adjustedFps;
-	}
-
-
-	unsigned int skip = 200;
-	if ( recvFrameCount > skip ) {
-		aggrRecvLatency += currRecvLatency;
-		avgRecvLatency = aggrRecvLatency / (qreal)(recvFrameCount-skip);
-
-		/* observed fps */
-		aggrRecvFps += currRecvFps;
-		avgRecvFps = aggrRecvFps / (qreal)(recvFrameCount- skip);
-
-		/* average absolute deviation */
-		aggrAbsDeviation += currAbsDeviation;
-		avgAbsDeviation = aggrAbsDeviation / (qreal)(recvFrameCount- skip);
-
-
-		/* variance Var(X0 = E[(X-u)2] */
-		aggrRecvFpsVariance += pow(currRecvFps - avgRecvFps, 2);
-		recvFpsVariance = aggrRecvFpsVariance / (qreal)(recvFrameCount - skip);
-
-		/* standard deviation */
-		recvFpsStdDeviation = sqrt(recvFpsVariance);
-	}
-
-
+        //
+        // CPU time
+        //
+        _cpuTimeSpent_sec = cputime_sec;
+        cpuUsage = cputime_sec / actualtime_sec;
+    }
 
 
 	// Time spent in operating system code on behalf of processes.
-	double systime = ((double)ruend.ru_stime.tv_sec + 0.000001*(double)ruend.ru_stime.tv_usec) - ((double)rustart.ru_stime.tv_sec + 0.000001 * (double)rustart.ru_stime.tv_usec);
+//	double systime = ((double)ruend.ru_stime.tv_sec + 0.000001*(double)ruend.ru_stime.tv_usec) - ((double)rustart.ru_stime.tv_sec + 0.000001 * (double)rustart.ru_stime.tv_usec);
 
 	// Time spent executing user instructions.
-	double usrtime = ((double)ruend.ru_utime.tv_sec + 0.000001*(double)ruend.ru_utime.tv_usec) - ((double)rustart.ru_utime.tv_sec + 0.000001 * (double)rustart.ru_utime.tv_usec);
+//	double usrtime = ((double)ruend.ru_utime.tv_sec + 0.000001*(double)ruend.ru_utime.tv_usec) - ((double)rustart.ru_utime.tv_sec + 0.000001 * (double)rustart.ru_utime.tv_usec);
 
-	// ratio to recvLatency
-	double cutemp = (systime + usrtime) / observed_delay;
-	if(cutemp > 0) cpuUsage = cutemp;
-//	fprintf(stderr, "system %.4f, usrtime %.4f, currLatency %.4f\n", systime*1000.0, usrtime*1000.0, currRecvLatency*1000.0);
+	// ratio of time spent actually doing something to the total time spent
+//    _cpuTimeSpent = 1000000 * (systime + usrtime); // in microsecond
 
-	ruend_nvcsw = ruend.ru_nvcsw;
-	ruend_nivcsw = ruend.ru_nivcsw;
-	ruend_maxrss = ruend.ru_maxrss;
-	ruend_minflt = ruend.ru_minflt;
+//	ruend_nvcsw = ruend.ru_nvcsw;
+//	ruend_nivcsw = ruend.ru_nivcsw;
+//	ruend_maxrss = ruend.ru_maxrss;
+//	ruend_minflt = ruend.ru_minflt;
+}
+
+
+
+qreal PerfMonitor::observedQuality_Rq() const {
+    if ( _requiredBW_Mbps > 0) {
+        return _currEffectiveBW_Mbps / _requiredBW_Mbps;
+    }
+    else {
+        return -1;
+    }
+}
+
+qreal PerfMonitor::observedQuality_Dq() const {
+    if (_widget) {
+        qreal demandedBW = _widget->demandedQuality() * _requiredBW_Mbps;
+        if (demandedBW > 0) {
+            return _currEffectiveBW_Mbps / demandedBW;
+        }
+    }
+    else {
+        qDebug() << "PerfMonitor::observedQuality_Dq() : _widget is null";
+    }
+
+    return -1;
 }
 
 
@@ -223,11 +529,11 @@ void PerfMonitor::updateDispFps() {
 }
 
 /*!
-  Pixmap painting delay
+  The time spent in paint()
   */
 qreal PerfMonitor::updateDrawLatency() {
 	if ( drawTimer.isNull() ) {
-		qWarning("PerfMonitor::%s() : drawTimer object is null", __FUNCTION__);
+		qWarning("PerfMonitor::%s() : drawTimer is null. Please start it first.", __FUNCTION__);
 		return -1.0;
 	}
 //	if ( ! drawTimer.isValid()) {
@@ -237,6 +543,10 @@ qreal PerfMonitor::updateDrawLatency() {
 
 	/* to measure painting delay */
 	++drawCount;
+
+    //
+    // drawTimer.start() must be called by the widget
+    //
 	int elapsed = drawTimer.elapsed();
 	currDrawLatency  = (qreal)elapsed * 0.001; // to second
 
@@ -250,6 +560,7 @@ qreal PerfMonitor::updateDrawLatency() {
 
 qreal PerfMonitor::updateUpdateDelay() {
 	if (updateTimer.isNull()) {
+        qWarning("PerfMonitor::%s() : updateTimer is null. Please start it first.", __FUNCTION__);
 		return -1.0;
 	}
 
@@ -267,6 +578,7 @@ qreal PerfMonitor::updateUpdateDelay() {
 
 qreal PerfMonitor::updateEQDelay() {
 	if (eqTimer.isNull()) {
+        qWarning("PerfMonitor::%s() : eqTimer is null. Please start it first.", __FUNCTION__);
 		return -1.0;
 	}
 
@@ -281,14 +593,14 @@ qreal PerfMonitor::updateEQDelay() {
 }
 
 void PerfMonitor::reset() {
-	recvFrameCount = 0;
+	_recvFrameCount = 0;
 	currRecvLatency =0.0;
 	avgRecvLatency = 1.0 / expectedFps; // set default
 	aggrRecvLatency = 0.0;
-	currRecvFps = 0.0;
-	aggrRecvFps = 0.0;
-	avgRecvFps = 0.0;
-	currBandwidth = 0.0;
+	_currEffectiveFps = 0.0;
+	_aggrEffectiveFps = 0.0;
+	_avgEffectiveFps = 0.0;
+	_currEffectiveBW_Mbps = 0.0;
 
 	drawCount = 0;
 	currDrawLatency = 0.0;
@@ -313,13 +625,13 @@ void PerfMonitor::reset() {
 //	expectedFps = 0.0;
 	if (_widget->widgetType() == SN_BaseWidget::Widget_RealTime)
 		adjustedFps = expectedFps;
-	currAbsDeviation = 0.0;
-	aggrAbsDeviation = 0.0;
-	avgAbsDeviation = 0.0;
+//	currAbsDeviation = 0.0;
+//	aggrAbsDeviation = 0.0;
+//	avgAbsDeviation = 0.0;
 
-	aggrRecvFpsVariance = 0.0;
-	recvFpsVariance = 0.0;
-	recvFpsStdDeviation = 0.0;
+//	aggrRecvFpsVariance = 0.0;
+//	recvFpsVariance = 0.0;
+//	recvFpsStdDeviation = 0.0;
 
 	_ts_currframe = 0.0;
 	_ts_nextframe = 0.0;
@@ -330,6 +642,15 @@ void PerfMonitor::reset() {
 	ruend_nivcsw = 0;
 	ruend_maxrss = 0;
 	ruend_minflt = 0;
+}
+
+
+qreal PerfMonitor::getRequiredBW_Mbps(qreal percentage /* = 1.0 */) const {
+    if (percentage > 1) {
+        return _requiredBW_Mbps;
+    }
+
+    return _requiredBW_Mbps * percentage;
 }
 
 

@@ -238,7 +238,7 @@ CGEventRef myCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef
 
 	if (captured) {
 	    // dont send too frequently...
-	    if (now - lastMsgTime >= (1.0/30.0)) { // 30 Hz
+	    if (now - lastMsgTime >= (1.0/60.0)) { // 60 Hz
 			lastMsgTime = now;
 
 		// this sends normalized coordinate for old SAGE

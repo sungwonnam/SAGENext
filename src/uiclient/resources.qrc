@@ -4,5 +4,7 @@
         <file>images/letter_T_48.png</file>
         <file>images/opendir_128.png</file>
         <file>images/vnc_128.png</file>
+        <file>images/vnc_48.png</file>
+        <file>images/net_wired_128.png</file>
     </qresource>
 </RCC>

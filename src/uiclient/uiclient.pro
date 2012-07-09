@@ -37,25 +37,40 @@ macx {
 	    system(gcc -Wall -o macCapture macCapture.c -framework ApplicationServices)
 		!exists(macCapture) {
 			error(macCapture failed to compiple)
-		} else {
-			system(mv macCapture ../../)
 		}
 	}
 }
+
+macx {
+# append & at the end of each command if you want multiple command
+QMAKE_POST_LINK = cp macCapture ../../sagenextpointer.app/Contents/MacOS/
+}
+
+
+win32 {
+	message("Building winCapture with py2exe")
+	system(python buildWinCapture.py py2exe -b 1)
+}
+
 
 
 SOURCES += \
 	main.cpp\
     sn_pointerui.cpp \
-	sn_pointerui_sendthread.cpp
+    sn_pointerui_vncdialog.cpp \
+    sn_pointerui_conndialog.cpp
+#	sn_pointerui_sendthread.cpp
 
 HEADERS  += \
     sn_pointerui.h \
-	sn_pointerui_sendthread.h
+    sn_pointerui_vncdialog.h \
+    sn_pointerui_conndialog.h
+#	sn_pointerui_sendthread.h
 
 FORMS    += \
 	sn_pointerui.ui \
-	sn_pointerui_conndialog.ui
+	sn_pointerui_conndialog.ui \
+    sn_pointerui_vncdialog.ui
 
 RESOURCES += \
     resources.qrc

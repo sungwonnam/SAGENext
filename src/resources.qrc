@@ -29,9 +29,10 @@
         <file>resources/minus_64x64.png</file>
         <file>resources/plus_64x64.png</file>
         <file>resources/media-pause-128x128.png</file>
-        <file>resources/black_arrow_left_48x48.png</file>
-        <file>resources/black_arrow_right_48x48.png</file>
-        <file>resources/black_stop_48x48.png</file>
-        <file>resources/black_reload_48x48.png</file>
+        <file>resources/group_data_128.png</file>
+        <file>resources/tile_btn_cyan.jpg</file>
+        <file>resources/greenplay128.png</file>
+        <file>resources/blackarrow_upleft128.png</file>
+        <file>resources/stopsign48.png</file>
     </qresource>
 </RCC>

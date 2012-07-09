@@ -197,19 +197,27 @@ public:
 	inline Numa_Info * getNumaInfo() const {return numaInfo;}
 
 
-	inline void setScheduler(SN_SchedulerControl *sc) {schedcontrol = sc;}
+	void setScheduler(SN_SchedulerControl *sc);
 
 	inline void setPriorityGrid(SN_PriorityGrid *p) {_pGrid = p;}
 
-	inline void setRMonWidget(ResourceMonitorWidget *rmw) {_rMonWidget = rmw;}
+	void setRMonWidget(ResourceMonitorWidget *rmw);
 	inline ResourceMonitorWidget * rMonWidget() {return _rMonWidget;}
 
 	/*!
 	  returns a copy of the widget list.
 	  */
-	inline QList<SN_RailawareWidget *> getWidgetList() {return widgetList;}
+	inline QList<SN_BaseWidget *> getWidgetList() const {return widgetList;}
+
+    /*!
+      returns a reference of the list
+      */
+    inline QList<SN_BaseWidget *> * getWidgetListRef() {return &widgetList;}
 
 	inline QReadWriteLock * getWidgetListRWLock() {return &_widgetListRWlock;}
+
+
+    inline qreal totalBandwidthMbps() const {return _totalBWAchieved_Mbps;}
 
 
 
@@ -231,18 +239,18 @@ public:
 	/*!
 	  writer's lock needs to be acquired
 	  */
-	void addSchedulableWidget(SN_RailawareWidget *rw);
+	void addSchedulableWidget(SN_BaseWidget *rw);
 
 	/*!
 	  writer's lock needs to be acquired
 	  */
-	void removeSchedulableWidget(SN_RailawareWidget *rw);
+	void removeSchedulableWidget(SN_BaseWidget *rw);
 
 	/*!
 	  return a widget with earliest deadline in the list
 	  reader's lock
 	  */
-	SN_RailawareWidget * getEarliestDeadlineWidget();
+//	SN_RailawareWidget * getEarliestDeadlineWidget();
 
 
 protected:
@@ -270,7 +278,7 @@ private:
 	/*!
 	  A pointer to the scheduler control object
 	  */
-	SN_SchedulerControl *schedcontrol;
+	SN_SchedulerControl *_schedcontrol;
 
 	/*!
 	  Priority Grid aka priority heatmap
@@ -285,10 +293,18 @@ private:
 
 //	void buildProcTree();
 
+
+    /*!
+      The sum of the bandwidth achieved by all the schedulable applications at given time.
+      So, this is Max of the sum of the rw->_perfMon->getCurrBandwidthMbps()
+      */
+    qreal _totalBWAchieved_Mbps;
+
+
 	/*!
 	  An array index represents cpu id seen by OS
 	  */
-	void buildProcVector();
+//	void buildProcVector();
 
 	void buildSimpleProcList();
 
@@ -297,12 +313,14 @@ private:
 	  A list of all schedulable widgets.
 	  Accessing to this list is protected by rwlock
 	  */
-	QList<SN_RailawareWidget *> widgetList;
+	QList<SN_BaseWidget *> widgetList;
 
 	/*!
-	  items in a QMap is sorted by key (Ascendant order)
+	  The items in a QMap is sorted by a key (Ascendant order)
+
+      Key is globalAppId
 	  */
-	QMap<quint64, SN_RailawareWidget *> _widgetMap;
+	QMap<quint64, SN_BaseWidget *> _widgetMap;
 
 	/*!
 	  read/write lock for accessing widgetList
@@ -327,6 +345,7 @@ private:
 	  */
 	QFile _dataFile;
 
+    QTextStream _dataTextOut;
 
 signals:
 	/*!
@@ -335,12 +354,14 @@ signals:
 	  */
 	void appRemoved(int procid);
 
+    void dataRefreshed();
+
 public slots:
 	/*!
 	  This function is called at RailawareWidget::fadeOutClose(), it calls ProcessorNode::removeApp()
 	  The signal appRemoved(int) is emitted in this function.
 	  */
-	void removeApp(SN_RailawareWidget *);
+//	void removeApp(SN_BaseWidget *);
 
 	/*!
 	  AffinityInfo class has functions that will emit affInfoChanged signal. AffinityInfo::setCpuOfMine(), AffinityInfo::applyNewParameter()
@@ -359,26 +380,25 @@ public slots:
 	/*!
 	  Assign a processor pn to rw
 	  */
-	int assignProcessor(SN_RailawareWidget *rw, SN_ProcessorNode *pn);
+//	int assignProcessor(SN_RailawareWidget *rw, SN_ProcessorNode *pn);
 
 	/*!
 	  Assign the most under loaded processor to rw.
 	  returns assigned processor id, -1 on error.
 	  */
-	int assignProcessor(SN_RailawareWidget *rw);
+//	int assignProcessor(SN_BaseWidget *rw);
 
 	/*!
 	  overloaded function.
 	  assign a processor for each widget in the widgetList
 	  returns number of assigned widgets -1 on error
 	  */
-	int assignProcessor();
-
+//	int assignProcessor();
 
 	/*!
 	  set processor affinity for rw to FFFFFFFFF
 	  */
-	void resetProcessorAllocation(SN_RailawareWidget *rw);
+	void resetProcessorAllocation(SN_BaseWidget *rw);
 
 	/*!
 	  overloaded function. Assign FFFF for all widgets.
@@ -387,28 +407,44 @@ public slots:
 	  */
 	void resetProcessorAllocation();
 
-
 	/*!
 	  This is experimental and incomplete
 	  */
-	void loadBalance();
+//	void loadBalance();
 
-	/*!
+
+    /*!
+      Create a file
+      and set the _printDataFlag so that data can be written to the file
+      */
+    bool setPrintFile(const QString &filepath);
+
+    void stopPrintData();
+
+    void closeDataFile();
+
+    /*!
+      It prints data (priority|winsize) for each app separated by ','
+      Note that each column X in a line represents priority and window size of the application with global app id X
+      */
+	void printData(QTextStream *out, bool widgetIDasColCount = false);
+
+
+
+
+
+
+    /*!
 	  print perf data header
 	  This slot shoud be called once
 	  */
 	void printPrelimDataHeader();
 
-	/*!
+    /*!
 	  print perf data for SAGENext paper.
 	  This slot should be called periodically
 	  */
 	void printPrelimData();
-
-
-	void printData();
-
-	void closeDataFile();
 };
 
 #endif // RESOURCEMONITOR_H

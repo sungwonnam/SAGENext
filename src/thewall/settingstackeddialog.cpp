@@ -66,6 +66,11 @@ void GeneralSettingDialog::accept() {
 
 GeneralSettingDialog::~GeneralSettingDialog() { delete ui;}
 
+
+
+
+
+
 /* System */
 SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 	: QDialog(parent)
@@ -86,6 +91,22 @@ SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 
 	if (_settings->value("system/resourcemonitor", false).toBool()) {
 		ui->rmonitorCheckBox->setCheckState(Qt::Checked);
+
+		if (_settings->value("system/resourcemonitorwidget", false).toBool()) {
+			ui->rmonitorWidgetCheckBox->setCheckState(Qt::Checked);
+		}
+		else {
+			ui->rmonitorWidgetCheckBox->setCheckState(Qt::Unchecked);
+		}
+
+		if (_settings->value("system/prioritygrid", false).toBool()) {
+			ui->pGridCheckBox->setCheckState(Qt::Checked);
+		}
+		else {
+			ui->pGridCheckBox->setCheckState(Qt::Unchecked);
+		}
+
+
 		if (_settings->value("system/scheduler", false).toBool()) {
 			ui->schedulerCheckBox->setCheckState(Qt::Checked);
 			ui->schedFreqLineEdit->setEnabled(true);
@@ -97,6 +118,7 @@ SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 	}
 	else {
 		ui->rmonitorCheckBox->setCheckState(Qt::Unchecked);
+		ui->pGridCheckBox->setCheckState(Qt::Unchecked);
 		ui->schedulerCheckBox->setCheckState(Qt::Unchecked);
 	}
 
@@ -106,17 +128,23 @@ SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 void SystemSettingDialog::on_schedulerCheckBox_stateChanged(int state) {
 	if (state == Qt::Checked) {
 		ui->rmonitorCheckBox->setChecked(true);
-		ui->schedFreqLineEdit->setEnabled(true);
+//		ui->schedFreqLineEdit->setEnabled(true);
 	}
 	else {
-		ui->schedFreqLineEdit->setDisabled(true);
+//		ui->schedFreqLineEdit->setDisabled(true);
 	}
 }
 
 void SystemSettingDialog::on_rmonitorCheckBox_stateChanged(int state) {
 	if (state == Qt::Unchecked) {
+		ui->pGridCheckBox->setCheckState(Qt::Unchecked);
 		ui->schedulerCheckBox->setCheckState(Qt::Unchecked);
+		ui->rmonitorWidgetCheckBox->setCheckState(Qt::Unchecked);
+        ui->schedFreqLineEdit->setEnabled(false);
 	}
+    else if (state == Qt::Checked) {
+        ui->schedFreqLineEdit->setEnabled(true);
+    }
 }
 
 void SystemSettingDialog::accept() {
@@ -135,26 +163,63 @@ void SystemSettingDialog::accept() {
 	_settings->setValue("system/sailaffinity", false);
 
 
-	_settings->setValue("system/resourcemonitor", false);
-	_settings->setValue("system/scheduler", false);
+    //
+    // enable/disable resource monitor
+    //
+	_settings->setValue("system/resourcemonitor", ui->rmonitorCheckBox->isChecked());
 
-	// this is used in sagePixelReceiver
-	_settings->setValue("system/scheduler_type", "SelfAdjusting");
+    //
+    // rmonitor and scheduling frequency in msec
+    //
+    _settings->setValue("system/scheduler_freq", ui->schedFreqLineEdit->text().toInt());
+
+    //
+    // enable/disable resource monitor widget for real-time monitoring
+    //
+	_settings->setValue("system/resourcemonitorwidget", ui->rmonitorWidgetCheckBox->isChecked());
+
+    //
+    // enable/disable priority grid for setting priority based on wall usage
+    //
+	_settings->setValue("system/prioritygrid", ui->pGridCheckBox->isChecked());
+
+    //
+    // enable/disable scheduler
+    //
+	_settings->setValue("system/scheduler", ui->schedulerCheckBox->isChecked());
 
 
+    if (ui->schedulerCheckBox->isChecked()) {
+        //
+        // scheduler type
+        //
+        //	_settings->setValue("system/scheduler_type", "SelfAdjusting");
+        _settings->setValue("system/scheduler_type", "ProportionalShare");
+    }
+    else {
+        _settings->setValue("system/scheduler_type", "");
+    }
+
+
+/*
 	if ( ui->schedulerCheckBox->isChecked() ) {
 		_settings->setValue("system/scheduler", true);
 		_settings->setValue("system/resourcemonitor", true);
 //		_settings->setValue("system/scheduler_type", ui->schedulerComboBox->currentText() );
-		_settings->setValue("system/scheduler_freq", ui->schedFreqLineEdit->text().toInt());
+
 	}
 	else if (ui->rmonitorCheckBox->isChecked()) {
 		_settings->setValue("system/scheduler", false);
 		_settings->setValue("system/resourcemonitor", true);
 	}
+
+
 	if ( ! _settings->value("system/resourcemonitor").toBool() ) {
 		_settings->setValue("system/scheduler", false);
+		_settings->setValue("system/prioritygrid", false);
+		_settings->setValue("system/resourcemonitorwidget", false);
 	}
+    */
 }
 
 SystemSettingDialog::~SystemSettingDialog() {delete ui;}
@@ -407,7 +472,7 @@ SettingStackedDialog::SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int
 {
     ui->setupUi(this);
     
-    setWindowTitle(tr("Config Dialog"));
+    setWindowTitle(tr("SAGENext Configuration [ ~/.sagenext/sagenext.ini ]"));
 	
 	connect(ui->listWidget, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(changeStackedWidget(QListWidgetItem*,QListWidgetItem*)));
 	
@@ -477,9 +542,9 @@ void SettingStackedDialog::on_buttonBox_accepted()
 	/* network parameters used by fsManagerMsgThread
 	  let's put these here for now
 	  */
-	_settings->setValue("network/recvwindow", 16777216);
-	_settings->setValue("network/sendwindow", 65535);
-	_settings->setValue("network/mtu", 1450);
+	_settings->setValue("network/recvwindow", 4 * 1048576);
+	_settings->setValue("network/sendwindow", 1048576);
+	_settings->setValue("network/mtu", 8800);
 
 
 //	_settings->setValue("misc/printperfdataattheend", false);

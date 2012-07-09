@@ -13,14 +13,15 @@
 class AppInfo
 {
 public:
-	AppInfo();
+	AppInfo(quint64 gaid);
 
 	/**
 	  * assumes filename is absolute path
 	  */
-	AppInfo(int width, int height, int bpp = 24);
-	AppInfo(int width, int height, int bpp, const QString filename, const QString srcip);
+	AppInfo(quint64 gaid, int width, int height, int bpp = 24);
+	AppInfo(quint64 gaid, int width, int height, int bpp, const QString filename, const QString srcip);
 
+	inline quint64 GID() const {return _GID;}
 
 	inline void setMediaType(SAGENext::MEDIA_TYPE t) {_mtype = t;}
 	inline SAGENext::MEDIA_TYPE mediaType() const { return _mtype; }
@@ -28,6 +29,9 @@ public:
 	inline void setFileInfo(const QString &absoluteFilePath) {_fileinfo.setFile(absoluteFilePath);}
 	inline QFileInfo fileInfo() const {return _fileinfo;}
 	inline QString mediaFilename() const { return _fileinfo.absoluteFilePath(); }
+
+//    inline void setRemoteFilepath(const QString &rf) {_remoteFilepath = rf;}
+//    QString remoteFilepath() const {return _remoteFilepath;}
 
 	/**
 	  useful for SageStreamWidget
@@ -38,8 +42,11 @@ public:
 	/**
 	  useful for SageStreamWidget
 	  */
-	inline void setCmdArgs(const QStringList &strlist) {_cmdArgs = strlist;}
-	inline QStringList cmdArgs() const {return _cmdArgs;}
+	inline void setCmdArgs(const QStringList &strlist) {_cmdArgsList = strlist;}
+	inline void setCmdArgs(const QString &str) {_cmdArgsString = str;}
+	inline QStringList cmdArgsList() const {return _cmdArgsList;}
+	inline QString cmdArgsString() const {return _cmdArgsString;}
+
 
 	/**
 	  WebWidget
@@ -94,6 +101,8 @@ public:
 	inline int networkUserBufferLength() const {return _networkUserBufferLength;}
 
 private:
+	quint64 _GID;
+	
 	SAGENext::MEDIA_TYPE _mtype;
 
 	/**
@@ -106,10 +115,20 @@ private:
 	  */
 	QString _executableName;
 
+    /*!
+      The absolute filepath of remote media
+      */
+//    QString _remoteFilepath;
+
 	/*!
 	  cmd line arguments for SAIL app
 	  */
-	QStringList _cmdArgs;
+	QStringList _cmdArgsList;
+
+	/*!
+	  cmd line arguments in a single string
+	  */
+	QString _cmdArgsString;
 
 	/**
 	  web URL for WebWidget

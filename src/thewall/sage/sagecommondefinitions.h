@@ -11,16 +11,18 @@ const int NOTIFY_APP_SHUTDOWN = 7;
 
 
 /**
-  message to sail offset
+  The offset for the message to sail
   */
 const int SAIL_MESSAGE = 30000;
-const int SAIL_INIT_MSG = SAIL_MESSAGE + 102; // from fsm to SAIL
-const int SAIL_CONNECT_TO_RCV = SAIL_MESSAGE + 101; // from fsm to SAIL
-const int SAIL_CONNECT_TO_RCV_PORT = SAIL_MESSAGE + 109;
-const int SAIL_CONNECTED_TO_RCV = SAIL_MESSAGE + 5;
-const int SAIL_SHUTDOWN = SAIL_MESSAGE + 3; // from SAIL to fsm
-const int SAIL_INIT_STREAM = SAIL_MESSAGE + 9;
-const int SAIL_SET_RAIL = SAIL_MESSAGE + 110;
+
+const int SAIL_INIT_MSG             = SAIL_MESSAGE + 102; // from fsm to SAIL
+const int SAIL_CONNECT_TO_RCV       = SAIL_MESSAGE + 101; // from fsm to SAIL
+const int SAIL_CONNECT_TO_RCV_PORT  = SAIL_MESSAGE + 109;
+const int SAIL_CONNECTED_TO_RCV     = SAIL_MESSAGE + 5;
+const int SAIL_SHUTDOWN             = SAIL_MESSAGE + 3; // from SAIL to fsm
+const int SAIL_INIT_STREAM          = SAIL_MESSAGE + 9;
+const int SAIL_SET_RAIL             = SAIL_MESSAGE + 110;
+const int SAIL_FRAME_RATE           = SAIL_MESSAGE + 105;
 
 
 

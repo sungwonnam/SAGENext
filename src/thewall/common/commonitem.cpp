@@ -1,9 +1,9 @@
 #include "commonitem.h"
 
-
-
 SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
+    , _primary(0)
+    , _secondary(0)
     , _mousePressFlag(false)
     , _priorityOverride(0)
 {
@@ -13,59 +13,94 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const Q
 	if (desiredWidth) {
 		orgPixmap = orgPixmap.scaledToWidth(desiredWidth);
 	}
-	_normalPixmap = orgPixmap;
-	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(_normalPixmap, this);
+	_primary = new QGraphicsPixmapItem(orgPixmap, this);
 
 	// This widget (PixmapButton) has to receive mouse event
-	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
-	resize(p->pixmap().size());
+	_primary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+	resize(_primary->pixmap().size());
 //	setOpacity(0.5);
 
 	if (!label.isNull() && !label.isEmpty()) {
-		_attachLabel(label, p);
+		_attachLabel(label, _primary);
 	}
 }
 SN_PixmapButton::SN_PixmapButton(const QPixmap &pixmap, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
+    , _primary(0)
+    , _secondary(0)
+    , _mousePressFlag(false)
 {
 	setFlag(QGraphicsItem::ItemIgnoresTransformations);
 
-	QGraphicsPixmapItem *p = 0;
 	if ( desiredWidth ) {
-		p = new QGraphicsPixmapItem(pixmap.scaledToWidth(desiredWidth), this);
+		_primary = new QGraphicsPixmapItem(pixmap.scaledToWidth(desiredWidth), this);
 	}
 	else {
-		p = new QGraphicsPixmapItem(pixmap, this);
+		_primary = new QGraphicsPixmapItem(pixmap, this);
 	}
 
 	// This widget (PixmapButton) has to receive mouse event
-	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
-	resize(p->pixmap().size());
+	_primary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+	resize(_primary->pixmap().size());
 //	setOpacity(0.5);
 
 
 	if (!label.isNull() && !label.isEmpty()) {
-		_attachLabel(label, p);
+		_attachLabel(label, _primary);
 	}
 }
 
 SN_PixmapButton::SN_PixmapButton(const QString &res, const QSize &size, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
+    , _primary(0)
+    , _secondary(0)
+    , _mousePressFlag(false)
 {
 	setFlag(QGraphicsItem::ItemIgnoresTransformations);
 
 	QPixmap pixmap(res);
-	QGraphicsPixmapItem *p = new QGraphicsPixmapItem(pixmap.scaled(size), this);
+	_primary = new QGraphicsPixmapItem(pixmap.scaled(size), this);
 
-	p->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
-	resize(p->pixmap().size());
+	_primary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+	resize(_primary->pixmap().size());
 
 	if (!label.isNull() && !label.isEmpty()) {
-		_attachLabel(label, p);
+		_attachLabel(label, _primary);
 	}
 }
 
 SN_PixmapButton::~SN_PixmapButton() {
+}
+
+void SN_PixmapButton::setSecondaryPixmap(const QString &resource) {
+    QPixmap p(resource);
+    setSecondaryPixmap(p);
+}
+
+void SN_PixmapButton::setSecondaryPixmap(const QPixmap &pixmap) {
+    QPixmap p = pixmap.scaledToWidth(_primary->pixmap().width());
+    _secondary = new QGraphicsPixmapItem(p, this);
+
+    //
+    // By default, graphics items are stacked by insertion order
+    // So this ensures the _primary is shown
+    //
+//    _secondary->stackBefore(_primary);
+
+    _secondary->setVisible(false);
+
+    _secondary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+}
+
+void SN_PixmapButton::togglePixmap() {
+    if (!_secondary) return;
+
+    if (_secondary->isVisible()) {
+        _secondary->setVisible(false);
+    }
+    else {
+        _secondary->setVisible(true);
+    }
 }
 
 void SN_PixmapButton::_attachLabel(const QString &labeltext, QGraphicsItem *parent) {
@@ -93,9 +128,22 @@ void SN_PixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {
 void SN_PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 //	setOpacity(0.5);
 //	qDebug() << "pixmapbutton emitting signal";
-	if (_mousePressFlag)
+    if (_mousePressFlag) {
 		emit clicked(_priorityOverride);
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
