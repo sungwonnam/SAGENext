@@ -120,10 +120,14 @@ SN_SimpleTextItem::SN_SimpleTextItem(int ps, const QColor &fontcolor, const QCol
 }
 
 void SN_SimpleTextItem::setFontPointSize(int ps) {
-	QFont f;
-	f.setStyleStrategy(QFont::OpenGLCompatible);
-	f.setPointSize(ps);
-	setFont(f);
+    // point size has to be > 0
+   if(ps > 0) {
+        QFont f;
+        f.setStyleStrategy(QFont::OpenGLCompatible);
+        f.setPointSize(ps);
+        setFont(f);
+    }
+
 }
 
 void SN_SimpleTextItem::wheelEvent(QGraphicsSceneWheelEvent *event) {

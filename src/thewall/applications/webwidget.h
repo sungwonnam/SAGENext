@@ -98,22 +98,30 @@ private:
 	QGraphicsWebView *gwebview;
 //	QLineEdit *urlbox;
 	SN_LineEdit *_customurlbox;
-	QGraphicsProxyWidget *urlboxproxy;
+    //QGraphicsProxyWidget *urlboxproxy;
 
-    QToolBar* mainBrowserToolbar;
-    QGraphicsProxyWidget *toolbarProxy;
+    //QToolBar* mainBrowserToolbar;
+    //QGraphicsProxyWidget *toolbarProxy;
 
-    /*
+
     SN_PixmapButton* backHistoryButton;
     SN_PixmapButton* forwardHistoryButton;
+
     SN_PixmapButton* reloadPageButton;
-    SN_PixmapButton* stoploadPageButton;
+    //SN_PixmapButton* stoploadPageButton;
+
     SN_PixmapButton* increaseZoomButton;
     SN_PixmapButton* decreaseZoomButton;
-    */
+
+    SN_PixmapButton* newWindowButton;
+
     QAction* incZoom;
     QAction* decZoom;
+    QAction* newWindow;
 
+    /*
+      Display to show the zoom factor
+     */
     SN_SimpleTextWidget* zoomDisplay;
 
 	QWebPage *webPage;
