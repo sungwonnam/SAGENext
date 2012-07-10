@@ -299,6 +299,12 @@ private:
       the event preceding is sendDblClick
       */
     bool _wasDblClick;
+	
+	/*!
+	  This is for Win32.
+	  winCapture doesn't send DblClick so it's handled in readFromMouseHook
+	  */
+	qint64 _prevClickTime;
 
 
 		/**
@@ -419,6 +425,7 @@ private slots:
 	  The action (ui->actionSend_text is defined in the sn_pointerui.ui
 	  */
 	void on_actionSend_text_triggered();
+	
 };
 
 
