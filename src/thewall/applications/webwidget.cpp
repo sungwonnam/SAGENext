@@ -74,7 +74,8 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	_customurlbox = new SN_LineEdit(this);
 	_customurlbox->_lineedit->setText("http://");
 	_customurlbox->_lineedit->setFont(f);
-    _customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
+    _customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed, QSizePolicy::LineEdit);
+    _customurlbox->setMinimumHeight(128);
 	QObject::connect(_customurlbox, SIGNAL(textChanged(QString)), this, SLOT(setUrl(QString)));
 
 
@@ -172,6 +173,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
     linearLayout->setOrientation(Qt::Vertical);
     linearLayout->setSpacing(4);
     linearLayout->setContentsMargins(5,5,5,10);
+    linearLayout->insertStretch(0, 2);
 
 
 	// The layout takes ownership of these items.

@@ -89,9 +89,9 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
     /*
         Put clock in the upper left corner
      */
-    QTimer *timer = new QTimer();
+    QTimer *timer = new QTimer(); // Memory leak !
     connect(timer, SIGNAL(timeout()), this, SLOT(updateClock()));
-    timer->start(100);
+    timer->start(30000);
 
     _snClockDisplay = new SN_SimpleTextWidget(0, QColor(Qt::white), QColor(Qt::transparent));
     _snClockDisplay->setFlag(QGraphicsItem::ItemIsMovable, false);
@@ -217,6 +217,12 @@ SN_TheScene::~SN_TheScene() {
 		delete _drawingCanvas;
 	}
 	*/
+
+    QObject::disconnect(this, SLOT(updateClock()));
+    if (_snClockDisplay) {
+        removeItem(_snClockDisplay);
+        delete _snClockDisplay;
+    }
 
 	foreach (QGraphicsItem *item, items()) {
 		if (!item) continue;

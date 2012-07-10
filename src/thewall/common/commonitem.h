@@ -124,7 +124,7 @@ class SN_LineEdit : public QGraphicsWidget
 {
 	Q_OBJECT
 public:
-	SN_LineEdit(QGraphicsItem *parent=0);
+	SN_LineEdit(QGraphicsItem *parent = 0);
 	SN_LineEdit(const SN_LineEdit &);
 	~SN_LineEdit() {}
 
