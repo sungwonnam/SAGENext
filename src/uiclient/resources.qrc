@@ -6,5 +6,6 @@
         <file>images/vnc_128.png</file>
         <file>images/vnc_48.png</file>
         <file>images/net_wired_128.png</file>
+        <file>images/splash_small.png</file>
     </qresource>
 </RCC>

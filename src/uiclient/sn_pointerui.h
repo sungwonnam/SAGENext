@@ -148,6 +148,8 @@ private:
           This should be map data structure to support multiple wall connections
           */
 	quint32 _uiclientid;
+	
+	QLabel _inSAGEsplash;
 
 	/**
 	  receives this from UiServer upon connection.
