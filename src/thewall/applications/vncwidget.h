@@ -46,8 +46,7 @@ public:
 
 private:
         rfbClient *_vncclient;
-        QHostAddress serverAddr;
-        quint16 serverPort;
+        quint16 _serverPort;
 
         /*!
           pixel buffer
@@ -104,7 +103,19 @@ private:
 		  */
 		int _buttonMask;
 
-        QFuture<void> future;
+        QString _vncServerIpAddr;
+
+        int _displayNumber;
+
+        QFuture<int> _initVNC_future;
+        QFutureWatcher<int> _initVNC_futureWatcher;
+        int m_initVNC();
+
+
+        /*!
+          QFuture Handle for the recv thread
+          */
+        QFuture<void> _recvThread_future;
 
 
 		bool initPboMutex();
@@ -132,12 +143,14 @@ private:
 
         static void update_func(rfbClient* client,int x,int y,int w,int h);
 
+
+
 public slots:
 		/*!
 		  The receivingThread() should be invoked after the constructor returns
 		  to be able to get QGLContext
 		  */
-		void startThread();
+		void startImageRecvThread();
 
 
         /*!

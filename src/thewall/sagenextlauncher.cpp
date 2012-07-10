@@ -450,6 +450,10 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 	//
 	//////////////////////////////////////////
 
+    if (type == SAGENext::MEDIA_TYPE_LOCAL_VIDEO || type == SAGENext::MEDIA_TYPE_SAGE_STREAM) {
+        return launchSageApp(type, filename, scenepos);
+    }
+
     quint64 GID = _getUpdatedGlobalAppId(gaid);
 
 	SN_BaseWidget *w = 0;

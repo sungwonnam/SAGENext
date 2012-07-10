@@ -22,7 +22,7 @@ QString SN_VNCClientWidget::vncpasswd = "evl123";
 SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString senderIP, int display, const QString username, const QString passwd, int frate, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
 	: SN_RailawareWidget(globalappid, s, 0, parent, wflags)
 	, _vncclient(0)
-	, serverPort(5900)
+	, _serverPort(5900)
 	, _image(0)
     , _texid(-1)
     , _usePbo(true)
@@ -33,6 +33,8 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	, _end(false)
 	, _framerate(frate)
     , _buttonMask(0)
+    , _vncServerIpAddr(senderIP)
+    , _displayNumber(display)
 
     , _pbomutex(0)
     , _pbobufferready(0)
@@ -40,23 +42,55 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
 	_appInfo->setMediaType(SAGENext::MEDIA_TYPE_VNC);
-	
-    SN_VNCClientWidget::username = username;
-	SN_VNCClientWidget::vncpasswd = passwd;
-	
+    _appInfo->setSrcAddr(_vncServerIpAddr);
 	_appInfo->setVncUsername(SN_VNCClientWidget::username);
 	_appInfo->setVncPassword(SN_VNCClientWidget::vncpasswd);
 
+    SN_VNCClientWidget::username = username;
+	SN_VNCClientWidget::vncpasswd = passwd;
+
 //	qDebug() << "vnc widget constructor " <<  username << passwd << VNCClientWidget::username << VNCClientWidget::vncpasswd;
 
-	// 8 bit/sample
+
+	if (_perfMon) {
+
+        //
+        // maybe treat this widget as non-periodic
+        //
+		_perfMon->setExpectedFps( (qreal)_framerate );
+		_perfMon->setAdjustedFps( (qreal)_framerate );
+	}
+
+//	_usePbo = s->value("graphics/openglpbo", false).toBool();
+	if (QGLPixelBuffer::hasOpenGLPbuffers()) {
+		_usePbo = true;
+	}
+	else {
+		_usePbo = false;
+	}
+
+    QObject::connect(&_initVNC_futureWatcher, SIGNAL(finished()), this, SLOT(startImageRecvThread()));
+
+    _initVNC_future = QtConcurrent::run(this, &SN_VNCClientWidget::m_initVNC);
+    _initVNC_futureWatcher.setFuture(_initVNC_future);
+
+	/*
+	  This is to make sure OpenGL related codes to run after the widget is added to the scene.
+	  A widget can have access to valid OpenGL context only after it is added to the scene that has OpenGL viewport.
+	  */
+//	QTimer::singleShot(10, this, SLOT(startImageRecvThread()));
+}
+
+int SN_VNCClientWidget::m_initVNC() {
+
+    // 8 bit/sample
 	// 3 samples/pixel
 	// 4 Byte/pixel
 	_vncclient = rfbGetClient(8, 3, 4);
 
     if (!_vncclient) {
-        deleteLater();
-        return;
+        qDebug() << "SN_VNCClientWidget::m_initVNC() : rfbGetClient() failed !!";
+        return -1;
     }
 
 	_vncclient->canHandleNewFBSize = false;
@@ -66,10 +100,6 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	_vncclient->HandleCursorPos = SN_VNCClientWidget::position_func;
 	_vncclient->GetPassword = SN_VNCClientWidget::password_func;
 
-	serverAddr.setAddress(senderIP);
-	_appInfo->setSrcAddr(senderIP);
-	
-	
 
 	if (!SN_VNCClientWidget::username.isEmpty()  &&  !SN_VNCClientWidget::vncpasswd.isEmpty()) {
 		_vncclient->GetCredential = SN_VNCClientWidget::getCredential;
@@ -90,60 +120,25 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	margv[0] = strdup("vnc");
 	margv[1] = (char *)malloc(256);
 	memset(margv[1], 0, 256);
-	sprintf(margv[1], "%s:%d", qPrintable(serverAddr.toString()), display);
+	sprintf(margv[1], "%s:%d", qPrintable(_vncServerIpAddr), _displayNumber);
 
 	if ( ! rfbInitClient(_vncclient, &margc, margv) ) {
-		qCritical() << "SN_VNCClientWidget::SN_VNCClientWidget() : rfbInitClient() error init";
+		qCritical() << "SN_VNCClientWidget::m_initVNC() : rfbInitClient() failed !!!";
         _vncclient = 0;
-		deleteLater();
+        return -1;
 	}
 
 	if (_vncclient && _vncclient->serverPort == -1 )
 		_vncclient->vncRec->doNotSleep = true;
 
-	/**
-	  Don't forget to call resize() once you know the size of image you're displaying.
-	  Also BaseWidget::resizeEvent() will call setTransformOriginPoint();
-     */
-    if (_vncclient) {
-        _image = new QImage(_vncclient->width, _vncclient->height, QImage::Format_RGB32);
+    return 0;
 
-        resize(_vncclient->width, _vncclient->height);
-
-        _appInfo->setFrameSize(_vncclient->width, _vncclient->height, 32);
-    }
-
-
-	setWidgetType(SN_BaseWidget::Widget_RealTime);
-	if (_perfMon) {
-
-        //
-        // maybe treat this widget as non-periodic
-        //
-		_perfMon->setExpectedFps( (qreal)_framerate );
-		_perfMon->setAdjustedFps( (qreal)_framerate );
-	}
-
-//	_usePbo = s->value("graphics/openglpbo", false).toBool();
-	if (QGLPixelBuffer::hasOpenGLPbuffers()) {
-		_usePbo = true;
-	}
-	else {
-		_usePbo = false;
-	}
-
-	/*
-	  This is to make sure OpenGL related codes to run after the widget is added to the scene.
-	  A widget can have access to valid OpenGL context only after it is added to the scene that has OpenGL viewport.
-	  */
-	QTimer::singleShot(10, this, SLOT(startThread()));
 }
-
 
 SN_VNCClientWidget::~SN_VNCClientWidget() {
 	_end = true;
-	future.cancel();
-	future.waitForFinished();
+	_recvThread_future.cancel();
+	_recvThread_future.waitForFinished();
 
 	if (_vncclient) {
 		rfbClientCleanup(_vncclient); // _vncclient will be freed in this function
@@ -206,14 +201,34 @@ void SN_VNCClientWidget::initGL(bool usepbo) {
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
-void SN_VNCClientWidget::startThread() {
+void SN_VNCClientWidget::startImageRecvThread() {
+
+    if (_initVNC_future.result() != 0) {
+        qDebug() << "SN_VNCClientWidget::startImageRecvThread() : m_initVNC() failed. Can't start the recvThread";
+        deleteLater();
+        return;
+    }
+
+    /**
+	  Don't forget to call resize() once you know the size of image you're displaying.
+	  Also BaseWidget::resizeEvent() will call setTransformOriginPoint();
+     */
+    if (_vncclient) {
+        _image = new QImage(_vncclient->width, _vncclient->height, QImage::Format_RGB32);
+
+        resize(_vncclient->width, _vncclient->height);
+
+        _appInfo->setFrameSize(_vncclient->width, _vncclient->height, 32);
+    }
+
+
 	if (_useOpenGL) {
 		initGL(_usePbo);
 	}
 
 	// starting the thread.
 	// if _usePbo then the thread will wait on condition __bufferMapped
-	future = QtConcurrent::run(this, &SN_VNCClientWidget::receivingThread);
+	_recvThread_future = QtConcurrent::run(this, &SN_VNCClientWidget::receivingThread);
 
 	scheduleUpdate();
 }
