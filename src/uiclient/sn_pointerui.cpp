@@ -53,9 +53,9 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 #endif
 
 	ui->mainToolBar->addAction(ui->actionNew_Connection);
-	ui->mainToolBar->addAction(ui->actionOpen_Media);
+//	ui->mainToolBar->addAction(ui->actionOpen_Media);
 	ui->mainToolBar->addAction(ui->actionShare_desktop);
-	ui->mainToolBar->addAction(ui->actionSend_text);
+//	ui->mainToolBar->addAction(ui->actionSend_text);
 
 
 	_settings = new QSettings("EVL", "SAGENextPointer", this);
