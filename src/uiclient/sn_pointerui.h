@@ -149,7 +149,7 @@ private:
           */
 	quint32 _uiclientid;
 	
-	QLabel _inSAGEsplash;
+	QSplashScreen _inSAGEsplash;
 
 	/**
 	  receives this from UiServer upon connection.

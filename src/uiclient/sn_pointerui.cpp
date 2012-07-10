@@ -122,7 +122,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	QPixmap splashsmall(":/images/splash_small.png");
 	_inSAGEsplash.setPixmap(splashsmall);
 	_inSAGEsplash.setGeometry(0, 0, splashsmall.width(), splashsmall.height());
-	_inSAGEsplash.setFrameShape(QFrame::NoFrame);
+//	_inSAGEsplash.setFrameShape(QFrame::NoFrame);
 	_inSAGEsplash.hide();
 
 
