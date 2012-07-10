@@ -27,6 +27,8 @@ private:
     QGraphicsProxyWidget *proxy_time_label;
     QGraphicsLinearLayout* layout;
 
+    void m_init();
+
 private slots:
     void update();
 

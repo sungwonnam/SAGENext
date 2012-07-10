@@ -9,11 +9,17 @@ snClock::snClock()
 {
     setWindowFlags(Qt::Window);
 
+    //setWindowFrameMargins(0, 0, 0, 0);
+
+    //setContentsMargins(0, 0,0,0);
+}
+
+void snClock::m_init() {
     QTimer *timer = new QTimer();
     layout =  new QGraphicsLinearLayout(Qt::Horizontal);
 
     connect(timer, SIGNAL(timeout()), this, SLOT(update()));
-    timer->start(100);
+    timer->start(30000);
 
     // create label
     time_label = new QLabel();
@@ -32,15 +38,11 @@ snClock::snClock()
     setLayout(layout);
 
     resize(175 , 100);
-
-    //setWindowFrameMargins(0, 0, 0, 0);
-
-    //setContentsMargins(0, 0,0,0);
 }
 
 snClock::~snClock()
 {
-    
+    QObject::disconnect(this, SLOT(update()));
 }
 
 void snClock::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
@@ -49,7 +51,9 @@ void snClock::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, Q
 }
 
 SN_BaseWidget * snClock::createInstance() {
-    return new snClock;
+    snClock *clock = new snClock;
+    clock->m_init();
+    return clock;
 }
 
 void snClock::update() {
