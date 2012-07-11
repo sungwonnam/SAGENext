@@ -34,7 +34,6 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	setItemIndexMethod(QGraphicsScene::NoIndex);
 
 
-//	QBrush brush(Qt::black, QPixmap(":/resources/evl-logo.png")); // 1920 x 725 pixels
 	setBackgroundBrush(QColor(10,10,10));
 	/*
 	QGraphicsPixmapItem *pi = new QGraphicsPixmapItem(QPixmap(":/resources/evl-logo.png"));
@@ -49,6 +48,14 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 //	pi->setPos(sceneRect.width()/2, sceneRect.height()/2);
 
 
+    QPixmap evllogo(":/resources/evl-logo.png");
+    QGraphicsPixmapItem *bg = new QGraphicsPixmapItem(evllogo.scaledToWidth(sceneRect.width()/2, Qt::SmoothTransformation));
+    bg->setOpacity(0.2);
+    bg->setFlag(QGraphicsItem::ItemIsMovable, false);
+    bg->setFlag(QGraphicsItem::ItemIsSelectable, false);
+    bg->setAcceptedMouseButtons(0);
+    bg->setPos((sceneRect.width() - bg->boundingRect().width())/2, (sceneRect.height() - bg->boundingRect().height())/2);
+    addItem(bg);
 
 
 	/*
