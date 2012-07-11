@@ -148,6 +148,8 @@ private:
           This should be map data structure to support multiple wall connections
           */
 	quint32 _uiclientid;
+	
+	QSplashScreen _inSAGEsplash;
 
 	/**
 	  receives this from UiServer upon connection.
@@ -299,6 +301,12 @@ private:
       the event preceding is sendDblClick
       */
     bool _wasDblClick;
+	
+	/*!
+	  This is for Win32.
+	  winCapture doesn't send DblClick so it's handled in readFromMouseHook
+	  */
+	qint64 _prevClickTime;
 
 
 		/**
@@ -419,6 +427,7 @@ private slots:
 	  The action (ui->actionSend_text is defined in the sn_pointerui.ui
 	  */
 	void on_actionSend_text_triggered();
+	
 };
 
 

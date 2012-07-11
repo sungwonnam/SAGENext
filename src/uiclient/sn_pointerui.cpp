@@ -41,6 +41,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 
 	, mouseBtnPressed(0)
     , _wasDblClick(false)
+	, _prevClickTime(0)
 
 {
 	ui->setupUi(this);
@@ -52,9 +53,9 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 #endif
 
 	ui->mainToolBar->addAction(ui->actionNew_Connection);
-	ui->mainToolBar->addAction(ui->actionOpen_Media);
+//	ui->mainToolBar->addAction(ui->actionOpen_Media);
 	ui->mainToolBar->addAction(ui->actionShare_desktop);
-	ui->mainToolBar->addAction(ui->actionSend_text);
+//	ui->mainToolBar->addAction(ui->actionSend_text);
 
 
 	_settings = new QSettings("EVL", "SAGENextPointer", this);
@@ -114,6 +115,15 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	QObject::connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readLocalFiles(QStringList)));
 
 
+	
+	//
+	// in SAGE image
+	//
+	QPixmap splashsmall(":/images/splash_small.png");
+	_inSAGEsplash.setPixmap(splashsmall);
+	_inSAGEsplash.setGeometry(0, 0, splashsmall.width(), splashsmall.height());
+//	_inSAGEsplash.setFrameShape(QFrame::NoFrame);
+	_inSAGEsplash.hide();
 
 
 
@@ -517,6 +527,7 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
     */
 }
 
+
 void SN_PointerUI::readFromWinCapture() {
 	Q_ASSERT(_winCapturePipe.isOpen());
 	Q_ASSERT(_winCapturePipe.isReadable());
@@ -549,6 +560,8 @@ void SN_PointerUI::hookMouse() {
 			// set the flag
 			//
 			isMouseCapturing = true;
+			
+			_inSAGEsplash.show();
 
 			//
 			// change cursor shape
@@ -583,6 +596,7 @@ void SN_PointerUI::hookMouse() {
 }
 
 void SN_PointerUI::unhookMouse() {
+	_inSAGEsplash.hide();
 	isMouseCapturing = false;
 	unsetCursor();
 
@@ -608,6 +622,7 @@ void SN_PointerUI::sendMessage(const QByteArray &msg) {
 			qDebug() << "QTcpSocket::write() error";
 		}
 		else {
+//			qDebug() << "sendMessage() :" << msg;
 			_tcpMsgSock.flush();
 		}
 	}
@@ -974,9 +989,22 @@ void SN_PointerUI::readFromMouseHook() {
 			if ( button == 1 && state == 1 ) {
 				mouseBtnPressed = 1;
 				mousePressedPos = currentGlobalPos;
-
+#ifdef Q_OS_WIN32
+				qint64 now = QDateTime::currentMSecsSinceEpoch();
+				
+				// if this click is occurred pretty quickly (250 msec)
+				// then it's dbl click
+				if (now - _prevClickTime < 250) {
+					sendMouseDblClick(currentGlobalPos);
+					_wasDblClick = true;
+				}
+				else
+					sendMousePress(currentGlobalPos); // normal left press
+#else
+				
 				// send left press
 				sendMousePress(currentGlobalPos); // setAppUnderApp()
+#endif
 			}
 
 			//
@@ -996,23 +1024,32 @@ void SN_PointerUI::readFromMouseHook() {
 			else if ( button == 1 && state == 0 && mouseBtnPressed == 1) {
 				// mouse left click
 				mouseBtnPressed = 0;
-
-				int ml = (currentGlobalPos - mousePressedPos).manhattanLength();
-
-				//
-				// pointerClick() won't be generated as a result of mouseDragging
-				//
-				if ( ml <= 3 ) {
-					sendMouseClick(currentGlobalPos); // left click
+				
+				if (_wasDblClick) {
+					_wasDblClick = false;
 				}
-
-				//
-				// pointerRelease() at the end of mouse dragging
-				//
 				else {
-
-					// send left release (after dragging)
-					sendMouseRelease(currentGlobalPos); // left release
+					
+					int ml = (currentGlobalPos - mousePressedPos).manhattanLength();
+					
+					//
+					// pointerClick() won't be generated as a result of mouseDragging
+					//
+					if ( ml <= 3 ) {
+#if defined(Q_OS_WIN32)
+						_prevClickTime = QDateTime::currentMSecsSinceEpoch();
+#endif
+						sendMouseClick(currentGlobalPos); // left click
+					}
+					
+					//
+					// pointerRelease() at the end of mouse dragging
+					//
+					else {
+						
+						// send left release (after dragging)
+						sendMouseRelease(currentGlobalPos); // left release
+					}
 				}
 			}
 
@@ -1045,6 +1082,7 @@ void SN_PointerUI::readFromMouseHook() {
 			in >> button >> state;
 //			qDebug() << "dbl click from macCapture" << currentGlobalPos;
 			sendMouseDblClick(currentGlobalPos);
+			break;
 		}
 			
 		// WHEEL, scroll up(-1), down(1)
