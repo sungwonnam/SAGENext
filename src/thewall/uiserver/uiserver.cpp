@@ -127,6 +127,25 @@ void SN_UiServer::incomingConnection(int sockfd) {
     qDebug("SN_UiServer::%s() : The ui client %u (%s) has connected to UiServer", __FUNCTION__, _uiClientId, qPrintable(thread->peerAddress().toString()));
 }
 
+int SN_UiServer::sendMsgToUiClient(quint32 uiclientid, const QByteArray &msg) {
+    UiMsgThread *msgThread = getUiMsgThread(uiclientid);
+    if (!msgThread) {
+        qDebug() << "SN_UiServer::sendMessageToUiClient() : there's no msgThread for uiclient" << uiclientid;
+        return -1;
+    }
+
+    /*
+    if ( ! QMetaObject::invokeMethod(msgThread, "sendMsg", Qt::QueuedConnection, Q_ARG(QByteArray, msg)) ) {
+        qDebug() << "SN_UiServer::sendMessageToUiClient() : failed to invoke sendMsg()";
+        return -1;
+    }
+    */
+
+    msgThread->sendMsg(msg);
+
+    return 0;
+}
+
 void SN_UiServer::handleMessage(const QByteArray msg) {
 
 	UiMsgThread *msgThread = static_cast<UiMsgThread *>(sender());

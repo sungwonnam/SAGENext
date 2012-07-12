@@ -78,12 +78,35 @@ int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &f
 	qDebug() << "FileServerThread::_recvFile() :  will receive" << file.fileName() << filesize << "Byte";
 
 	QByteArray buffer(filesize, 0);
-    if ( ::recv(_dataSock, buffer.data(), filesize, MSG_WAITALL) <= 0 ) {
-        qCritical("%s::%s() : error while receiving the file.", metaObject()->className(), __FUNCTION__);
-        return -1;
+
+    char *bufptr = buffer.data();
+    qint64 remained = filesize;
+    qint64 chunksize = 10485760; // 10 MB
+
+    while (remained > 0) {
+        if (remained < chunksize) {
+            chunksize = remained;
+        }
+
+//        file.write(bufptr, chunksize);
+
+        if ( ::recv(_dataSock, bufptr, chunksize, MSG_WAITALL) <= 0 ) {
+            qCritical("%s::%s() : error while receiving the file.", metaObject()->className(), __FUNCTION__);
+            emit bytesWrittenToFile(_uiclientid, filename, -1); //meaning it's cancelled
+            return -1;
+        }
+
+        bufptr += chunksize;
+
+        remained -= chunksize;
+
+        emit bytesWrittenToFile(_uiclientid, filename, filesize - remained);
     }
 
+
 	file.write(buffer);
+
+
 	if (!file.exists() || file.size() <= 0) {
 		qDebug("%s::%s() : %s is not a valid file", metaObject()->className(), __FUNCTION__, qPrintable(file.fileName()));
 		return -1;
@@ -102,6 +125,8 @@ int FileServerThread::_sendFile(const QString &filepath) {
 		qDebug() << "FileServerThread::_sendFile() : couldn't open the file" << filepath;
 		return -1;
 	}
+
+    qDebug() << "FileServerThread::_sendFile() : will send" << f.fileName() << f.size() << "Byte";
 
 	//
 	// very inefficient way to send file !!
@@ -146,14 +171,14 @@ void FileServerThread::run() {
 
 		if (mode == 0) {
 			// download from uiclient
-			qDebug() << "FileServerThread received the header for downloading" << mediatype << filename << filesize << "Byte";
+//			qDebug() << "FileServerThread received the header for downloading" << mediatype << filename << filesize << "Byte";
 			if ( _recvFile(mediatype, QString(filename), filesize) != 0) {
 				qDebug() << "FileServerThread failed to receive a file" << filename;
 			}
 		}
 		else if (mode == 1) {
 			// upload to uiclient
-			qDebug() << "FileServerThread received the header for uploading" << filename << filesize << "Byte";
+//			qDebug() << "FileServerThread received the header for uploading" << filename << filesize << "Byte";
 
 			 // filename must be full absolute path name
 			if ( _sendFile(QString(filename)) != 0 ) {
@@ -177,11 +202,12 @@ void FileServerThread::run() {
 
 
 
-SN_FileServer::SN_FileServer(const QSettings *s, SN_Launcher *l, QObject *parent)
+SN_FileServer::SN_FileServer(const QSettings *s, SN_Launcher *l, SN_UiServer *uiserver, QObject *parent)
     : QTcpServer(parent)
     , _settings(s)
     , _fileServerPort(0)
     , _launcher(l)
+    , _uiServer(uiserver)
 {
 	_fileServerPort = _settings->value("general/fileserverport", 46000).toInt();
 
@@ -233,9 +259,24 @@ void SN_FileServer::incomingConnection(int handle) {
 
 	connect(thread, SIGNAL(fileReceived(int,QString)), _launcher, SLOT(launch(int,QString)));
 
+    QObject::connect(thread, SIGNAL(bytesWrittenToFile(qint32,QString,qint64)), this, SLOT(sendRecvProgress(qint32,QString,qint64)));
+
 	_uiFileServerThreadMap.insert(uiclientid, thread);
 
 	thread->start();
+}
+
+void SN_FileServer::sendRecvProgress(qint32 uiclientid, QString filename, qint64 bytes) {
+    QByteArray msg(EXTUI_MSG_SIZE, 0);
+    sprintf(msg.data(), "%d %s %lld", SAGENext::FILESERVER_RECVING_FILE, qPrintable(filename), bytes);
+    /*
+    QMetaObject::invokeMethod(_uiServer, "sendMsgToUiClient", Qt::AutoConnection
+                              , Q_RETURN_ARG(int, retval)
+                              , Q_ARG(quint32, uiclientid)
+                              , Q_ARG(QByteArray, msg)
+                              );
+                              */
+    _uiServer->sendMsgToUiClient(uiclientid, msg);
 }
 
 void SN_FileServer::threadFinished() {
