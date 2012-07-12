@@ -42,6 +42,8 @@ private:
 signals:
 	void fileReceived(int mediatype, QString filename);
 
+    void bytesWrittenToFile(qint32 uiclientid, QString filename, qint64 bytes);
+
 public slots:
 	void endThread();
 };
@@ -54,7 +56,7 @@ class SN_FileServer : public QTcpServer
 {
     Q_OBJECT
 public:
-    explicit SN_FileServer(const QSettings *s, SN_Launcher *l, QObject *parent = 0);
+    explicit SN_FileServer(const QSettings *s, SN_Launcher *l, SN_UiServer *uiserver, QObject *parent = 0);
 	~SN_FileServer();
 
 	inline int fileServerListenPort() const {return _fileServerPort;}
@@ -71,6 +73,8 @@ private:
 
 	SN_Launcher *_launcher;
 
+    SN_UiServer *_uiServer;
+
 signals:
 
 public slots:
@@ -79,6 +83,7 @@ public slots:
 	  */
 	void threadFinished();
 
+    void sendRecvProgress(qint32 uiclientid, QString filename, qint64 bytes);
 };
 
 #endif // FILESERVER_H

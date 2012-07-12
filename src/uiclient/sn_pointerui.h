@@ -231,10 +231,6 @@ private:
 
 	QString _pointerColor;
 
-//	QString _vncUsername;
-
-//	QString _vncPasswd;
-
 	QString _sharingEdge;
 		
 		/**
@@ -317,6 +313,19 @@ private:
 //	void connectToWall(const char * ipaddr, quint16 port);
 
     /*!
+      Assuming file transferring is sequential.
+      This is the filename (w/o space characters) currently being transferred
+      */
+    QPair<QString, qint64> _fileBeingSent;
+
+    /*!
+      file sending thread should wait until the SAGENext finishes receiving the file
+      */
+    QSemaphore _fileTransferSemaphore;
+
+    QProgressDialog *_progressDialog;
+
+    /*!
       This function calls sendFileToWall() for each item in the QList.
       The runSendFileThread() runs this function in a separate thread.
       */
@@ -389,6 +398,18 @@ private slots:
 	void hookMouse();
 
 	void unhookMouse();
+
+
+    /*!
+      The send thread is about to send()
+      */
+    void fileSendingBegins(QString filename, qint64 filesize);
+
+    /*!
+      SAGENext informed me that it received the file _fileBeingSent
+      So this function releases _fileTransferSemaphore for the send thread can return
+      */
+//    void fileSendingCompleted();
 
 
         /**
