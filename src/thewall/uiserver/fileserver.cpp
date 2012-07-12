@@ -78,12 +78,6 @@ int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &f
 	qDebug() << "FileServerThread::_recvFile() :  will receive" << file.fileName() << filesize << "Byte";
 
 	QByteArray buffer(filesize, 0);
-    if ( ::recv(_dataSock, buffer.data(), filesize, MSG_WAITALL) <= 0 ) {
-        qCritical("%s::%s() : error while receiving the file.", metaObject()->className(), __FUNCTION__);
-        return -1;
-    }
-
-
 
     char *bufptr = buffer.data();
     qint64 remained = filesize;
@@ -94,16 +88,23 @@ int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &f
             chunksize = remained;
         }
 
-        file.write(bufptr, chunksize);
+//        file.write(bufptr, chunksize);
+
+        if ( ::recv(_dataSock, bufptr, chunksize, MSG_WAITALL) <= 0 ) {
+            qCritical("%s::%s() : error while receiving the file.", metaObject()->className(), __FUNCTION__);
+            emit bytesWrittenToFile(_uiclientid, filename, -1); //meaning it's cancelled
+            return -1;
+        }
+
         bufptr += chunksize;
 
         remained -= chunksize;
 
         emit bytesWrittenToFile(_uiclientid, filename, filesize - remained);
     }
-    /*
+
+
 	file.write(buffer);
-    */
 
 
 	if (!file.exists() || file.size() <= 0) {

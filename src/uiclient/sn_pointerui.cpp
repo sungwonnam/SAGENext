@@ -729,11 +729,13 @@ void SN_PointerUI::readMessage() {
 
 //            qDebug() << "FILESERVER_RECEIVING_FILE" << bytes;
 
-            if (_progressDialog) {
-                _progressDialog->setValue((int)bytes);
+            if (bytes > 0) {
+                if (_progressDialog) {
+                    _progressDialog->setValue((int)bytes);
+                }
             }
 
-            if (filename == _fileBeingSent.first &&  bytes == _fileBeingSent.second) {
+            if (filename == _fileBeingSent.first  &&  (bytes == _fileBeingSent.second  ||  bytes <= 0) ) {
                 _fileTransferSemaphore.release(1);
             }
 
