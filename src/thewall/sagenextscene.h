@@ -64,6 +64,8 @@ public:
 	  */
 	SN_BaseWidget * getUserWidget(quint64 gaid);
 
+    QSet<SN_BaseWidget *> getCollidingUserWidgets(QGraphicsItem *item);
+
 	/*!
 	  returns the number of user application (UserType + BASEWIDGET_USER)
 	  Note that the number of application the resourceMonitor reports doesn't include non-schedulable widget

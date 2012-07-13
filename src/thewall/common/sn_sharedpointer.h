@@ -17,11 +17,13 @@ class QFile;
 /**
   A selection rectangle when the pointer selects a set of basewidget with dragging (Right button)
   */
-class SelectionRectangle : public QGraphicsWidget
+class SN_SelectionRectangle : public QGraphicsWidget
 {
 	Q_OBJECT
 public:
-	explicit SelectionRectangle(QGraphicsItem *parent = 0);
+	explicit SN_SelectionRectangle(QGraphicsItem *parent = 0);
+
+    QSet<SN_BaseWidget *> _selectedWidgetList;
 };
 
 
@@ -66,6 +68,14 @@ public:
 	void pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags);
 
 
+    /*!
+      This is only for the SN_FittsLawTest.
+
+      If the pointer is moving on the _trapWidget then
+      _trapWidget->handlePointerDrag() is called by the pointer.
+
+
+      */
     inline void setTrapWidget(SN_BaseWidget *w) {_trapWidget = w;}
 
 
@@ -126,7 +136,6 @@ public:
 		   press
 		   release
 		   doubleclick
-		   release
 
           */
 	virtual void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button,  Qt::KeyboardModifier modifier = Qt::NoModifier);
@@ -193,7 +202,7 @@ private:
 		/**
 		  A rectangle when mouse draggin on empty space
 		  */
-	SelectionRectangle *_selectionRect;
+	SN_SelectionRectangle *_selectionRect;
 		
 		/**
 		  a set of basewidgtes selected by selection rectangle

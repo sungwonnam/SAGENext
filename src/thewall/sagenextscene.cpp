@@ -135,9 +135,6 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	_drawingCanvas->resize(sceneRect.size());
 	addItem(_drawingCanvas);
 	*/
-
-
-
 }
 
 SN_BaseWidget * SN_TheScene::getUserWidget(quint64 gaid) {
@@ -158,6 +155,16 @@ SN_BaseWidget * SN_TheScene::getUserWidget(quint64 gaid) {
 		}
 	}
 	return 0;
+}
+
+QSet<SN_BaseWidget *> SN_TheScene::getCollidingUserWidgets(QGraphicsItem *item) {
+    QSet<SN_BaseWidget *> result;
+    foreach (QGraphicsItem *item, collidingItems(item, Qt::IntersectsItemBoundingRect)) {
+        if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
+            result.insert( static_cast<SN_BaseWidget *>(item) );
+        }
+    }
+    return result;
 }
 
 bool SN_TheScene::isOnAppRemoveButton(const QPointF &scenepos) {

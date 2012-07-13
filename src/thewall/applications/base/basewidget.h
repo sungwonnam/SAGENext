@@ -69,6 +69,10 @@ public:
         inline Widget_Type widgetType() const {return _widgetType;}
 
 
+        bool _isSelectedByPointer;
+        inline void setSelectedByPointer(bool b=true) {_isSelectedByPointer = b;}
+        inline bool selectedByPointer() const {return _isSelectedByPointer;}
+
 
         void setSettings(const QSettings *s);
 
