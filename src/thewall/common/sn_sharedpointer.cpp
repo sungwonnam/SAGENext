@@ -25,7 +25,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread 
 	, _color(c)
     , _trapWidget(0)
     , _basewidget(0)
-    , _specialItem(0)
+    , _graphicsItem(0)
 	, _selectionRect(0)
 	, _selectedApps(0)
 	, _scenarioFile(scenarioFile)
@@ -262,9 +262,9 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		// If the SN_PartitionBar item (== UserType + INTERACTIVE_ITEM) is under the pointer
 		// User is dragging a partitionBar
 		//
-		else if (_specialItem) {
+		else if (_graphicsItem) {
 //			QGraphicsLineItem *l = qgraphicsitem_cast<QGraphicsLineItem *>(_item);
-			SN_WallPartitionBar *bar = dynamic_cast<SN_WallPartitionBar *>(_specialItem);
+			SN_WallPartitionBar *bar = dynamic_cast<SN_WallPartitionBar *>(_graphicsItem);
 			if (bar) {
 //				qDebug() << "pointerMove bar" << deltax << deltay;
 				if ( bar->orientation() == Qt::Horizontal) {
@@ -353,7 +353,7 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
     //
     // White pointer color
     //
-    setBrush(Qt::white);
+    setBrush(Qt::lightGray);
 
 
 	// note that pressEvent doesn't consider window frame
@@ -361,7 +361,7 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
 		//qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
     }
 	else {
-		Q_ASSERT(_basewidget || _specialItem);
+		Q_ASSERT(_basewidget || _graphicsItem);
 
 		if (_basewidget) {
 //			_basewidget->setTopmost();
@@ -424,6 +424,15 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 			}
 
 
+            //
+            // minimizeBar
+            //
+            if (_scene->isOnMinimizeBar(scenePos)) {
+                _scene->minimizeWidgetOnTheBar(_basewidget, scenePos);
+                setBrush(_color);
+                return;
+            }
+
 			//
 			// I can move this app to SN_LayoutWidget that contains released scenePos
 			// Always pass scene position
@@ -449,14 +458,14 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 		_basewidget = 0;
 	}
 
-	else if (_specialItem) {
+	else if (_graphicsItem) {
 		// do nothing for SN_PartitionBar
 
 
 		//
 		// RESET
 		//
-		_specialItem = 0;
+		_graphicsItem = 0;
 	}
 
 	else {
@@ -564,6 +573,18 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 			_basewidget->priorityData()->setLastInteraction(SN_Priority::CLICK);
 			*/
 
+            if (_basewidget->windowState() == SN_BaseWidget::W_MINIMIZED) {
+                setBrush(_color);
+
+                _scene->restoreWidgetFromTheBar(_basewidget);
+
+                return;
+            }
+
+            //
+            // if handlePointerClick() returns true then
+            // no system's click event will be generated
+            //
             if (_basewidget->handlePointerClick(this, _basewidget->mapFromScene(scenePos), btn)) {
 
                 //
@@ -579,11 +600,20 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
                 return;
             }
 		}
-        else if (_specialItem) {
-            // SN_PartitionBar doesn't need real mouse click event
+
+        //
+        // SN_PartitionBar
+        //
+        else if (_graphicsItem) {
+            // SN_PartitionBar doesn't need a real mouse click event
             setBrush(_color);
             return;
         }
+
+
+
+
+
 
         //
         //
@@ -738,8 +768,8 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
     //app = static_cast<BaseGraphicsWidget *>(scene()->itemAt(scenePosOfPointer, QTransform()));
 
 	_basewidget = 0; // reset
-	_specialItem = 0;
-	_guiItem = 0;
+	_graphicsItem = 0;
+	_graphicsWidget = 0;
 
     //qDebug() << "\nPolygonArrow::setAppUnderPointer() :" << list.size() << " items";
     foreach (QGraphicsItem *item, list) {
@@ -755,7 +785,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 			//
             _basewidget = static_cast<SN_BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
-			_specialItem = 0;
+			_graphicsItem = 0;
             return true;
         }
 		else if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_NONUSER) {
@@ -763,7 +793,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 			// custom item that inherits SN_BaseWidget.
 			// Such as mediabrowser
 			//
-			_specialItem = 0;
+			_graphicsItem = 0;
 			_basewidget = 0;
 			return false;
 		}
@@ -772,20 +802,24 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 			// A QGraphicsItem doesn't inherit SN_BaseWidget.
 			// But still can be interacted with user shared pointers (SN_PartitionBar)
 			//
-			_specialItem = item;
+			_graphicsItem = item;
 			_basewidget = 0;
 			return true;
 		}
 		else {
 			// regualar graphics items or items that inherit QGraphicsItem/Widget
-            _guiItem = item->topLevelWidget();
+            _graphicsWidget = item->topLevelWidget();
 
 			if(object) {
 				if ( ::strcmp(object->metaObject()->className(), "SN_LineEdit") == 0 ) {
 					SN_LineEdit *sle = static_cast<SN_LineEdit *>(object);
 					sle->setThePointer(this);
-					_guiItem = sle;
+					_graphicsWidget = sle;
 				}
+
+                else if (::strcmp(object->metaObject()->className(), "SN_MinimizeBar") == 0) {
+                    _graphicsWidget = static_cast<SN_MinimizeBar *>(object);
+                }
 			}
 		}
     }
@@ -796,12 +830,12 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 }
 
 void SN_PolygonArrowPointer::injectStringToItem(const QString &str) {
-	if (_guiItem) {
+	if (_graphicsWidget) {
 		qDebug() << "SN_PolygonArrowPointer::injectStringToItem()" << str;
 
-		qDebug() << "current gui item is a type of" << _guiItem->metaObject()->className();
+		qDebug() << "current gui item is a type of" << _graphicsWidget->metaObject()->className();
 
-		SN_LineEdit *sle = static_cast<SN_LineEdit *>(_guiItem);
+		SN_LineEdit *sle = static_cast<SN_LineEdit *>(_graphicsWidget);
 		Q_ASSERT(sle);
 		sle->setText(str);
 	}

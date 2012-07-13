@@ -59,7 +59,9 @@ public:
 
 
         enum Window_State { W_NORMAL, W_MINIMIZED, W_MAXIMIZED, W_HIDDEN, W_ICONIZED };
+        Window_State _windowState; /**< app wnidow state */
         inline Window_State windowState() const {return _windowState;}
+		inline void setWindowState(Window_State ws) {_windowState = ws;}
 
 
 
@@ -329,9 +331,6 @@ protected:
         quint64 _globalAppId; /**< Unique identifier */
 
         const QSettings *_settings; /**< Global configuration parameters */
-
-        Window_State _windowState; /**< app wnidow state */
-		inline void setWindowState(Window_State ws) {_windowState = ws;}
 
 
         Widget_Type _widgetType; /**< widget type */

@@ -171,19 +171,23 @@ private:
     SN_BaseWidget *_trapWidget;
 
         /**
-          The app widget under this pointer
+          The graphics widget, that inherits SN_BaseWidget, under this pointer.
           This is set when pointerPress (left button) is called
           */
 	SN_BaseWidget *_basewidget;
 
 	/**
-	  The graphics item under this pointer. This is to keep track general items on the scene that can be interacted with shared pointer
+	  The graphics item under this pointer.
+      This is to keep track general items on the scene that can be interacted with shared pointer
 	  Such as SN_PartitonBar
       */
-	QGraphicsItem *_specialItem;
+	QGraphicsItem *_graphicsItem;
 
 
-	QGraphicsWidget *_guiItem;
+    /**
+      same for the graphics widget
+      */
+	QGraphicsWidget *_graphicsWidget;
 
 		
 		/**

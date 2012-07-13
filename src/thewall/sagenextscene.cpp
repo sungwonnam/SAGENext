@@ -27,6 +27,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
     , _closeButton(0)
     , _appRemoveButton(0)
 //    , _drawingCanvas(0)
+    , _minimizeBar(0)
 {
 	//
 	// This approach is ideal for dynamic scenes, where many items are added, moved or removed continuously.
@@ -94,13 +95,31 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	addItem(_appRemoveButton);
 
 
-
-
-	/**
-	  Create base widget for wall partitioning.
+    /**
+	  Create the root layout widget for wall partitioning.
 	  */
 	_rootLayoutWidget = new SN_LayoutWidget("ROOT", 0, this, _settings);
-	_rootLayoutWidget->setRectangle(sceneRect);
+
+
+    //
+    // Minimize Bar on the bottom
+    //
+    int minimizeBarHeight = _settings->value("gui/minimizebarheight", 128).toInt();
+    _minimizeBar = new SN_MinimizeBar(QSizeF(width(), minimizeBarHeight), this, _rootLayoutWidget);
+    _minimizeBar->setPos(0, height() - minimizeBarHeight);
+    addItem(_minimizeBar);
+
+
+    if (_rootLayoutWidget) {
+        QRectF rootLayoutRect;
+        if (_minimizeBar) {
+            rootLayoutRect = sceneRect.adjusted(0, _appRemoveButton->size().height(), 0, -_minimizeBar->size().height());
+        }
+        else {
+            rootLayoutRect = sceneRect;
+        }
+        _rootLayoutWidget->setRectangle(rootLayoutRect);
+    }
 
 	/**
 	  Child widgets of _rootLayoutWidget, which are sagenext applications, will be added to the scene automatically.
@@ -111,13 +130,12 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 
 
 
-
-
 	/*
 	_drawingCanvas = new SN_DrawingWidget;
 	_drawingCanvas->resize(sceneRect.size());
 	addItem(_drawingCanvas);
 	*/
+
 
 
 }
@@ -144,8 +162,24 @@ SN_BaseWidget * SN_TheScene::getUserWidget(quint64 gaid) {
 
 bool SN_TheScene::isOnAppRemoveButton(const QPointF &scenepos) {
 	if (!_appRemoveButton) return false;
-
 	return _appRemoveButton->geometry().contains(scenepos);
+}
+
+bool SN_TheScene::isOnMinimizeBar(const QPointF &scenepos) {
+    if (!_minimizeBar) return false;
+    return _minimizeBar->geometry().contains(scenepos);
+}
+
+void SN_TheScene::minimizeWidgetOnTheBar(SN_BaseWidget *widget, const QPointF &scenepos) {
+    if (!_minimizeBar) return;
+
+    _minimizeBar->minimizeAndPlaceWidget(widget, _minimizeBar->mapFromScene(scenepos));
+}
+
+void SN_TheScene::restoreWidgetFromTheBar(SN_BaseWidget *widget) {
+    if (!_minimizeBar) return;
+
+    _minimizeBar->restoreWidget(widget);
 }
 
 /**
@@ -209,6 +243,11 @@ SN_TheScene::~SN_TheScene() {
 		delete _drawingCanvas;
 	}
 	*/
+
+    if (_minimizeBar) {
+        removeItem(_minimizeBar);
+        delete _minimizeBar;
+    }
 
 	foreach (QGraphicsItem *item, items()) {
 		if (!item) continue;
@@ -609,137 +648,76 @@ foreach (QGraphicsItem *gi, scene()->items()) {
 
 
 
+SN_MinimizeBar::SN_MinimizeBar(const QSizeF size, SN_TheScene *scene, SN_LayoutWidget *rootlayout, QGraphicsItem *parent, Qt::WindowFlags wf)
+    : QGraphicsWidget(parent, wf)
+    , _rootLayout(rootlayout)
+    , _theScene(scene)
+{
+    setFlag(QGraphicsItem::ItemIsMovable, false);
+
+    QBrush brush(QColor(70,70,70), Qt::Dense7Pattern);
+    QPalette p;
+    p.setBrush(QPalette::Window, brush);
+    setPalette(p);
+
+    setAutoFillBackground(true);
+
+    setContentsMargins(0,0,0,0);
+    setWindowFrameMargins(0,0,0,0);
+
+    resize(size);
+}
+
+void SN_MinimizeBar::minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF position) {
+
+    Q_ASSERT(widget->appInfo());
+    widget->appInfo()->setRecentPos(widget->scenePos());
+    widget->appInfo()->setRecentScale(widget->scale());
+    widget->appInfo()->setRecentSize(widget->size());
+
+    qreal scaleFactor = size().height() / widget->size().height();
+
+    if (widget->isWindow()) {
+        widget->resize( widget->size() * scaleFactor);
+    }
+    else {
+        widget->setScale(scaleFactor);
+    }
+
+    widget->setParentItem(this);
+
+    widget->setWindowState(SN_BaseWidget::W_MINIMIZED);
+
+    widget->setPos(position.x(), 2);
+}
+
+void SN_MinimizeBar::restoreWidget(SN_BaseWidget *widget) {
+    foreach(QGraphicsItem *item, childItems()) {
+        if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER)
+            continue;
+
+        SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+        if (!bw) continue;
+
+        if (widget == bw) {
+            bw->setWindowState(SN_BaseWidget::W_NORMAL);
+            bw->resize(bw->appInfo()->recentSize());
+            bw->setScale(bw->appInfo()->recentScale());
+
+            if (_rootLayout) {
+                _rootLayout->addItem(bw, QPointF(bw->appInfo()->recentPos().x(), 20));
+            }
+            else {
+                Q_ASSERT(_theScene);
+                _theScene->addItem(bw);
+                bw->setPos(bw->appInfo()->recentPos());
+            }
+
+            break;
+        }
+    }
+}
 
 
 
 
-
-
-//PartitionTreeNode::PartitionTreeNode(QGraphicsScene *s, PartitionTreeNode *p, const QRectF &r, QObject *parent)
-//    : QObject(parent)
-//    , _scene(s)
-//    , _parentNode(p)
-
-//    , _leftOrTop(0)
-//    , _rightOrBottom(0)
-//    , _orientation(0)
-//    , _lineItem(0)
-
-//    , _tileButton(0)
-//    , _hButton(0)
-//    , _vButton(0)
-//    , _closeButton(0)
-//{
-//	_rectf = r;
-
-//	qDebug() << "PartitionTreeNode() " << _rectf;
-
-//	_hButton = new PixmapButton(":/resources/minimize_shape.gif");
-//	connect(_hButton, SIGNAL(clicked()), this, SLOT(createNewHPartition()));
-//	// add this button to the scene based on _rectf
-//	_scene->addItem(_hButton);
-//	_hButton->setPos(_rectf.width() - _hButton->rect().width(), _rectf.y() +  _rectf.height() / 2);
-
-
-//	if ( _parentNode ) {
-//		_closeButton = new PixmapButton(":/resources/close_over.png");
-//		connect(_closeButton, SIGNAL(clicked()), _parentNode, SLOT(deleteChildPartitions()));
-//		_scene->addItem(_closeButton);
-//		_closeButton->setPos(_rectf.width() - _closeButton->rect().width(),  _rectf.y() + _rectf.height()/2);
-//	}
-//}
-//PartitionTreeNode::~PartitionTreeNode() {
-//	if (_lineItem) delete _lineItem;
-
-//	if (_hButton) delete _hButton;
-//	if (_vButton) delete _vButton;
-//	if (_closeButton) delete _closeButton;
-//	if (_tileButton) delete _tileButton;
-
-//	if (_leftOrTop) delete _leftOrTop;
-//	if (_rightOrBottom) delete _rightOrBottom;
-//}
-
-//void PartitionTreeNode::lineHasMoved(const QPointF &newpos) {
-//	Q_ASSERT(_leftOrTop);
-//	Q_ASSERT(_rightOrBottom);
-
-//	QRectF leftrect;
-//	QRectF rightrect;
-
-//	if (_orientation == 1) {
-//		// horizontal
-//		// line only moves up and down
-
-//		// top
-//		leftrect = QRectF( _rectf.x(), _rectf.y(), _rectf.width(), newpos.y() - _rectf.y() );
-
-//		// bottom
-//		rightrect = QRectF(_rectf.x(), newpos.y(), _rectf.width(), _rectf.bottomRight().y() - newpos.y());
-//	}
-//	else if (_orientation ==2) {
-
-//	}
-
-//	_leftOrTop->setNewRectf(leftrect);
-//	_rightOrBottom->setNewRectf(rightrect);
-//}
-
-//void PartitionTreeNode::createNewPartition(int o) {
-//	_orientation = o;
-
-//	QRectF leftrect;
-//	QRectF rightrect;
-//	Qt::Orientation ori;
-
-//	if (o == 1) {
-//		// horizontal
-//		ori = Qt::Horizontal;
-//		qreal newHeight = _rectf.height() / 2.0;
-//		leftrect = QRectF(_rectf.x(), _rectf.y(), _rectf.width(), newHeight);
-//		rightrect = QRectF(_rectf.x(), _rectf.y() + newHeight, _rectf.width(), newHeight);
-//	}
-//	else if ( o == 2) {
-//		ori = Qt::Vertical;
-//	}
-//	_leftOrTop = new PartitionTreeNode(_scene, this, leftrect);
-//	_rightOrBottom = new PartitionTreeNode(_scene, this, rightrect);
-
-//	// hide my buttons
-//	if (_hButton) _hButton->hide();
-//	if (_closeButton) _closeButton->hide();
-
-
-//	// create line item and I'm the owner
-////	_lineItem = new PartitionBar(ori, this);
-//	_lineItem->setPos(rightrect.topLeft());
-//	_scene->addItem(_lineItem);
-
-//}
-
-//void PartitionTreeNode::deleteChildPartitions() {
-//	Q_ASSERT(_lineItem);
-//	Q_ASSERT(_leftOrTop);
-//	Q_ASSERT(_rightOrBottom);
-
-//	delete _lineItem;
-//	delete _leftOrTop;
-//	delete _rightOrBottom;
-
-//	// show my buttons
-//	_hButton->show();
-//	if (_parentNode && _closeButton) _closeButton->show();
-//}
-
-//void PartitionTreeNode::setNewRectf(const QRectF &r) {
-//	qDebug() << "PartitionTreeNode::setNewRectf()" << r;
-
-//	// because I'm an actual partition
-//	Q_ASSERT( !_lineItem );
-//	Q_ASSERT( !_leftOrTop );
-//	Q_ASSERT( !_rightOrBottom );
-
-//	_rectf = r;
-
-//	// adjust belonging widget's pos
-//}
