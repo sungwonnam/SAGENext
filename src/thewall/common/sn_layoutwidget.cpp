@@ -1002,7 +1002,7 @@ SN_WallPartitionBar::SN_WallPartitionBar(Qt::Orientation ori, SN_LayoutWidget *o
 	QPen pen;
 	pen.setWidth(12);
 	pen.setStyle(Qt::DashLine);
-	pen.setColor(QColor(Qt::lightGray));
+	pen.setColor(QColor(Qt::gray));
 	setPen(pen);
 }
 

@@ -23,7 +23,7 @@ class SN_BaseWidget;
 
 class SN_Launcher;
 
-
+class SN_MinimizeBar;
 
 class SN_TheScene : public QGraphicsScene
 {
@@ -39,6 +39,11 @@ public:
 
 	bool isOnAppRemoveButton(const QPointF &scenepos);
 
+    bool isOnMinimizeBar(const QPointF &scenepos);
+
+    void minimizeWidgetOnTheBar(SN_BaseWidget *widget, const QPointF &scenepos);
+
+    void restoreWidgetFromTheBar(SN_BaseWidget *widget);
 
 	/**
 	  Add basewidget to the SAGENextLayoutWidget
@@ -120,6 +125,8 @@ private:
 	  */
 //	SN_DrawingWidget *_drawingCanvas;
 
+    SN_MinimizeBar *_minimizeBar;
+
 public slots:
 	void closeAllUserApp();
 
@@ -138,71 +145,29 @@ public slots:
 
 
 
+class SN_MinimizeBar : public QGraphicsWidget
+{
+    Q_OBJECT
+public:
+    SN_MinimizeBar(const QSizeF size, SN_TheScene *scene, SN_LayoutWidget *rootlayout, QGraphicsItem *parent=0, Qt::WindowFlags wf=0);
 
-//class PartitionTreeNode : public QObject {
-//	Q_OBJECT
-//public:
-//	explicit PartitionTreeNode(QGraphicsScene *s, PartitionTreeNode *p, const QRectF &rect, QObject *parent=0);
-//	~PartitionTreeNode();
+private:
+    SN_LayoutWidget *_rootLayout;
 
-//	inline PartitionTreeNode * leftOrTop() {return _leftOrTop;}
-//	inline PartitionTreeNode * rightOrBottom() {return _rightOrBottom;}
+    SN_TheScene *_theScene;
 
-//	inline int orientation() const {return _orientation;}
+public slots:
+    /*!
+      minimize and place the widget on the position which is in this widget's local coordinate
+      */
+    void minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF position);
 
-//	/**
-//	  adjust children's _rectf
-//	  */
-//	void lineHasMoved(const QPointF &newpos);
-
-//private:
-//	QGraphicsScene *_scene;
-
-//	PartitionTreeNode *_parentNode;
-//	/**
-//	  left or top
-//	  */
-//	PartitionTreeNode * _leftOrTop;
-//	PartitionTreeNode * _rightOrBottom;
-
-//	/**
-//	  1 : horizontal
-//	  2 : vertical
-//	  */
-//	int _orientation;
-
-//	QGraphicsLineItem *_lineItem;
-
-////	int _partitionId;
-
-//	PixmapButton *_tileButton;
-
-//	PixmapButton *_hButton;
-//	PixmapButton *_vButton;
-
-//	PixmapButton *_closeButton;
-
-//	QRectF _rectf;
-
-//	/**
-//	  create childs and I become partition holder which has _lineItem and no button showing
-//	  */
-//	void createNewPartition(int o);
-
-//public slots:
-//	inline void createNewHPartition() {createNewPartition(1);}
-//	inline void createNewVPartition() {createNewPartition(2);}
-
-//	/**
-//	  I'm actual partition and my rect changed
-//	  */
-//	void setNewRectf(const QRectF &r);
-
-//	/**
-//	  delete childs and I become an actual partition which has no _lineItem and all buttons showing
-//	  */
-//	void deleteChildPartitions();
-//};
+    /*!
+      Find the widget under the position
+      then restore it
+      */
+    void restoreWidget(SN_BaseWidget *widget);
+};
 
 
 
