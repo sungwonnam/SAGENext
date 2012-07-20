@@ -206,6 +206,8 @@ SN_PointerUI::~SN_PointerUI()
 }
 
 void SN_PointerUI::m_deleteMouseHookProcess() {
+    unhookMouse();
+
 	if (macCapture) {
         macCapture->kill();
         macCapture->waitForFinished(-1);
@@ -238,7 +240,7 @@ void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
         if (ui && ui->isConnectedLabel)
             ui->isConnectedLabel->setText("The Wall closed");
 
-       m_deleteMouseHookProcess();
+        m_deleteMouseHookProcess();
 
         QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection);
     }
