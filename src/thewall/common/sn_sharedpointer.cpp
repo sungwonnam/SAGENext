@@ -10,6 +10,7 @@
 
 SN_SelectionRectangle::SN_SelectionRectangle(QGraphicsItem *parent)
 	: QGraphicsWidget(parent)
+    , isMoving(false)
 {
     QBrush brush(QColor(170,170,170, 128), Qt::Dense7Pattern);
     QPalette p;
@@ -39,7 +40,6 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread 
     , _basewidget(0)
     , _graphicsItem(0)
     , _selectionRect(new SN_SelectionRectangle)
-	, _selectedApps(0)
 	, _scenarioFile(scenarioFile)
 	, _isDrawing(false)
 	, _isErasing(false)
@@ -271,6 +271,24 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		//		
         if (_basewidget) {
 
+            /*
+            //
+            // if there are widgets selected by this pointer
+            //
+            if (_selectionRect->_selectedWidgetList.size() > 0) {
+                //
+                // And _basewidget is not resizing mode
+                //
+                if (_basewidget->isMoving()) {
+
+                }
+            }
+            else {
+                _basewidget->handlePointerDrag(this, _basewidget->mapFromScene(_scenePos), deltax, deltay, Qt::LeftButton, modifier);
+            }
+            */
+
+
             _basewidget->handlePointerDrag(this, _basewidget->mapFromScene(_scenePos), deltax, deltay, Qt::LeftButton, modifier);
         }
 
@@ -385,6 +403,27 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
     //
     if (setAppUnderPointer(scenePos)) {
         if (_basewidget) {
+
+            /*
+            //
+            // if there are widgets selected by this pointer
+            //  and pointerPress occurred on one of the selected widgets
+            //
+            if (_selectionRect->_selectedWidgetList.size() > 0
+                    &&
+                    _selectionRect->_selectedWidgetList.contains(_basewidget))
+            {
+                QSetIterator<SN_BaseWidget *> iter(_selectionRect);
+                while(iter.hasNext()) {
+                    (iter.next())->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
+                }
+            }
+            else {
+                _basewidget->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
+            }
+            */
+
+
             _basewidget->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
         }
 	}

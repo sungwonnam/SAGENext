@@ -422,7 +422,17 @@ private slots:
       */
     void recreateAllDataFiles();
 
+    /*!
+      There are total 2 to the NUM_SUBJECTS rounds.
+      Round 0 is dry run
+      */
     void advanceRound();
+
+    /*!
+      There are always two rounds only
+      Round 0 is dry run
+      */
+//    void advanceRoundSimple();
 
 };
 

@@ -73,6 +73,8 @@ public:
         inline void setSelectedByPointer(bool b=true) {_isSelectedByPointer = b;}
         inline bool selectedByPointer() const {return _isSelectedByPointer;}
 
+        inline bool isMoving() const {return _isMoving;}
+        inline bool isResizing() const {return _isResizing;}
 
         void setSettings(const QSettings *s);
 

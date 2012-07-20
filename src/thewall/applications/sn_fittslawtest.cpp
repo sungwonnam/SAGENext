@@ -412,9 +412,7 @@ bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, co
             _sum_norm_latency += (hitlatency / distance);
 
 
-            if (!_isDryRun) {
-                _dataObject->writeData(_userID, "HIT", SN_SageFittsLawTest::RoundID, _targetHitCount, hitlatency, distance, _missCountPerTarget);
-            }
+            _dataObject->writeData(_userID, "HIT", SN_SageFittsLawTest::RoundID, _targetHitCount, hitlatency, distance, _missCountPerTarget);
 
             //
             // reset the miss count upon a successful hit
@@ -446,14 +444,14 @@ bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, co
         //
         else {
 //            qDebug() << "FittsLawTest::handlePointerClick() : missed  !";
-            if (!_isDryRun) {
+//            if (!_isDryRun) {
                 _missCountPerTarget++;
 
                 _dataObject->writeData(_userID, "MISS", SN_SageFittsLawTest::RoundID, _targetHitCount);
 
                 _missCountPerRound += _missCountPerTarget;
                 _missCountTotal += _missCountPerTarget;
-            }
+//            }
         }
     }
 
@@ -621,7 +619,10 @@ void SN_SageFittsLawTest::startRound() {
     _startstop->hide();
     _target->show();
 
-    if (!_isDryRun) {
+    if (_isDryRun) {
+        _dataObject->writeData(_userID, "DRY_RND", SN_SageFittsLawTest::RoundID);
+    }
+    else {
         _dataObject->writeData(_userID, "START_RND", SN_SageFittsLawTest::RoundID);
 
         //
@@ -724,17 +725,16 @@ void SN_SageFittsLawTest::finishRound() {
     _startstop->setPixmap(_stopPixmap);
     _startstop->show();
 
-    //
-    // increment round count
-    //
+
+
+    _dataObject->writeData(_userID, "FINISH_RND", SN_SageFittsLawTest::RoundID, -1, -1, -1, -1
+                           , _sum_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+                           , _sum_norm_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+                           , _missCountPerRound
+                           );
+
     if (!_isDryRun) {
         _roundCount++;
-
-        _dataObject->writeData(_userID, "FINISH_RND", SN_SageFittsLawTest::RoundID, -1, -1, -1, -1
-                               , _sum_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
-                               , _sum_norm_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
-                               , _missCountPerRound
-                               );
 
         if (_roundCount >= SN_SageFittsLawTest::_NUM_ROUND_PER_USER) {
             qDebug() << "FittsLawTest::finishRound() : A test has completed for user" << _userID;
@@ -749,9 +749,16 @@ void SN_SageFittsLawTest::finishRound() {
             //
             _dataObject->flushCloseAll(_userID);
         }
+        else {
+            qDebug() << "FittsLawTest::finishRound() : A round" << _roundCount - 1 << "has completed for user" << _userID;
+        }
     }
+
+    //
+    // dry run doesn't increment local round count
+    //
     else {
-        qDebug() << "FittsLawTest::finishRound() : A DRY round finished for user" << _userID;
+        qDebug() << "FittsLawTest::finishRound() : A DRY round (round 0) has finished for user" << _userID;
     }
 
     _missCountPerTarget = 0;

@@ -24,6 +24,8 @@ public:
 	explicit SN_SelectionRectangle(QGraphicsItem *parent = 0);
 
     QSet<SN_BaseWidget *> _selectedWidgetList;
+
+    bool isMoving;
 };
 
 
@@ -204,11 +206,6 @@ private:
 		  */
 	SN_SelectionRectangle *_selectionRect;
 		
-		/**
-		  a set of basewidgtes selected by selection rectangle
-		  */
-	QGraphicsItemGroup *_selectedApps;
-
 		/**
 		  To record all the actions that users gave
 		  */
