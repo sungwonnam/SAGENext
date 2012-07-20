@@ -17,10 +17,12 @@
 
 SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	: QGraphicsWidget(0, wflags)
+    , _windowState(SN_BaseWidget::W_NORMAL)
+    , _isSelectedByPointer(false)
     , _useOpenGL(true)
 	, _globalAppId(0)
 	, _settings(0)
-	, _windowState(SN_BaseWidget::W_NORMAL)
+
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
@@ -62,10 +64,11 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 
 SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent /*0*/, Qt::WindowFlags wflags /*0*/)
 	: QGraphicsWidget(parent, wflags)
+    , _windowState(SN_BaseWidget::W_NORMAL)
+    , _isSelectedByPointer(false)
     , _useOpenGL(true)
 	, _globalAppId(globalappid)
 	, _settings(s)
-	, _windowState(SN_BaseWidget::W_NORMAL)
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
@@ -832,7 +835,7 @@ void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QP
 }
 
 
-void SN_BaseWidget::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *) {
+void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 	/**
 	  changing painter state will hurt performance
 	  */
@@ -847,7 +850,7 @@ void SN_BaseWidget::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget 
 //	painter->setPen(pen);
 //	painter->drawRect(windowFrameRect());
 	
-	if (! isWindow()) {
+	if (! isWindow()  &&  selectedByPointer() ) {
 /*
 		QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
 		if (isSelected()) {
@@ -865,14 +868,13 @@ void SN_BaseWidget::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget 
 //		  Below draws rectangle around widget's content (using boundingRect)
 //		  Because of this, it has to set Pen (which chagens painter state)
 //		  And this can be called anytime because it's not filling the rectangle
-		/*
 		QPen pen;
 		pen.setWidth( _bordersize );
-		pen.setBrush(brush);
+        pen.setColor(QColor(170, 170, 5, 200));
+//		pen.setBrush(brush);
 
 		painter->setPen(pen);
 		painter->drawRect(boundingRect());
-		*/
 
 //		  Below fills rectangle (works as background) so it has to be called BEFORE any drawing code
 //		painter->fillRect(boundingRect(), brush);
@@ -894,7 +896,7 @@ void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphi
 //    qDebug() << "size" << size() << "boundingrect" << boundingRect() << "geometry" << geometry();
 
     QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
-	if (isSelected()) {
+	if (selectedByPointer()) {
 		lg.setColorAt(0, QColor(250, 250, 0, 164));
 		lg.setColorAt(1, QColor(200, 0, 0, 164));
 	}

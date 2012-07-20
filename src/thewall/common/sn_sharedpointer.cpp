@@ -8,11 +8,24 @@
 
 //#include "sn_drawingwidget.h"
 
-SelectionRectangle::SelectionRectangle(QGraphicsItem *parent)
+SN_SelectionRectangle::SN_SelectionRectangle(QGraphicsItem *parent)
 	: QGraphicsWidget(parent)
+    , isMoving(false)
 {
-	
+    QBrush brush(QColor(170,170,170, 128), Qt::Dense7Pattern);
+    QPalette p;
+    p.setBrush(QPalette::Window, brush);
+    setPalette(p);
+
+    setAutoFillBackground(true);
+
+    setAcceptedMouseButtons(0);
+
+    setContentsMargins(0,0,0,0);
+    setWindowFrameMargins(0,0,0,0);
 }
+
+
 
 
 SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *s, SN_TheScene *scene, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
@@ -26,8 +39,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread 
     , _trapWidget(0)
     , _basewidget(0)
     , _graphicsItem(0)
-	, _selectionRect(0)
-	, _selectedApps(0)
+    , _selectionRect(new SN_SelectionRectangle)
 	, _scenarioFile(scenarioFile)
 	, _isDrawing(false)
 	, _isErasing(false)
@@ -57,6 +69,9 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread 
 
 	if (!name.isNull() && !name.isEmpty())
 		setPointerName(name);
+
+    _selectionRect->hide();
+    _scene->addItem(_selectionRect);
 }
 
 SN_PolygonArrowPointer::~SN_PolygonArrowPointer() {
@@ -255,7 +270,26 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		// the widget will handle this. Base implementation is either resizing or moving.
 		//		
         if (_basewidget) {
-			_basewidget->handlePointerDrag(this, _basewidget->mapFromScene(_scenePos), deltax, deltay, Qt::LeftButton, modifier);
+
+            /*
+            //
+            // if there are widgets selected by this pointer
+            //
+            if (_selectionRect->_selectedWidgetList.size() > 0) {
+                //
+                // And _basewidget is not resizing mode
+                //
+                if (_basewidget->isMoving()) {
+
+                }
+            }
+            else {
+                _basewidget->handlePointerDrag(this, _basewidget->mapFromScene(_scenePos), deltax, deltay, Qt::LeftButton, modifier);
+            }
+            */
+
+
+            _basewidget->handlePointerDrag(this, _basewidget->mapFromScene(_scenePos), deltax, deltay, Qt::LeftButton, modifier);
         }
 
 		//
@@ -331,8 +365,18 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		// to be able to provide selection rectangle
 		// mouse RIGHT PRESS must be sent from uiclient
 
-		// resize selection rectangle
+        //
+		// resize selection rectangle if it's begun.
 		// selection rectangle's bottom right must be on the scenePos
+        //
+
+        if (_selectionRect->isVisible()) {
+            QPointF bottomRight = _selectionRect->mapFromScene(_scenePos);
+
+            QRectF rect = _selectionRect->geometry();
+
+            _selectionRect->setGeometry(rect.x(), rect.y(), bottomRight.x(), bottomRight.y());
+        }
 	}
 }
 
@@ -349,43 +393,58 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
 	}
 
 
-
     //
     // White pointer color
     //
     setBrush(Qt::lightGray);
 
+    //
+    // There's something under the pointer positino
+    //
+    if (setAppUnderPointer(scenePos)) {
+        if (_basewidget) {
 
-	// note that pressEvent doesn't consider window frame
-    if (!setAppUnderPointer(scenePos)) {
-		//qDebug() << "PolygonArrow::pointerPress() : setAppUnderPointer failed";
-    }
-	else {
-		Q_ASSERT(_basewidget || _graphicsItem);
+            /*
+            //
+            // if there are widgets selected by this pointer
+            //  and pointerPress occurred on one of the selected widgets
+            //
+            if (_selectionRect->_selectedWidgetList.size() > 0
+                    &&
+                    _selectionRect->_selectedWidgetList.contains(_basewidget))
+            {
+                QSetIterator<SN_BaseWidget *> iter(_selectionRect);
+                while(iter.hasNext()) {
+                    (iter.next())->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
+                }
+            }
+            else {
+                _basewidget->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
+            }
+            */
 
-		if (_basewidget) {
-//			_basewidget->setTopmost();
-			_basewidget->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
-		}
 
-		/**
-//		qDebug() << "PolygonArrow::pointerPress() : got the app";
-		if (btn == Qt::LeftButton) {
-			if (_basewidget)
-				_basewidget->setTopmost();
-		}
-		else if (btn == Qt::RightButton) {
-			// this won't be delivered
-			// do nothing
-
-			// to be able to provide selection rectangle
-			// mouse RIGHT PRESS must be sent from uiclient
-
-			// Assume each pointer has the selection rectangle widget
-			// selRect->setPos(scenePos);
-		}
-		**/
+            _basewidget->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
+        }
 	}
+
+    //
+    // there's nothing under the point where the pointer is pressed
+    //
+    else {
+
+    }
+
+
+
+    if (btn == Qt::RightButton) {
+        //
+        // then start the selection rectangle (it finish upon release)
+        //
+        _selectionRect->setPos(scenePos);
+        _selectionRect->resize(1,1);
+        _selectionRect->show();
+    }
 }
 
 
@@ -405,6 +464,9 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 	}
 
 
+    //
+    //  item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER
+    //
 	if (_basewidget) {
 		if (button == Qt::LeftButton) {
 			//
@@ -458,26 +520,38 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 		_basewidget = 0;
 	}
 
+    //
+    // item->type() >= QGraphicsItem::UserType + INTERACTIVE_ITEM
+    // do nothing for SN_PartitionBar
+    //
 	else if (_graphicsItem) {
-		// do nothing for SN_PartitionBar
-
-
 		//
 		// RESET
 		//
 		_graphicsItem = 0;
 	}
 
-	else {
-		// An item under the pointer can be BASEWIDGET_NONUSER or general QGraphicsItem/Widget (this includes SN_LayoutWidget)
 
-		if ( button == Qt::RightButton) {
-			//
-			// mouse dragging with right button has finished.
-			// Finalize selection rectangle
-			//
-		}
-	}
+
+
+
+    if (button == Qt::RightButton) {
+        //
+        // complete selection rectangle
+        //
+        QSet<SN_BaseWidget *> selected = _scene->getCollidingUserWidgets(_selectionRect);
+        _selectionRect->_selectedWidgetList.unite(selected);
+
+        QSetIterator<SN_BaseWidget *> iter(_selectionRect->_selectedWidgetList);
+        while(iter.hasNext()) {
+            SN_BaseWidget *bw = iter.next();
+            bw->setSelectedByPointer();
+        }
+        _selectionRect->hide();
+
+        qDebug() << "SN_PolygonArrowPointer::pointerRelease() : selected set is now" << _selectionRect->_selectedWidgetList.size();
+
+    }
 
 
     ///
@@ -538,20 +612,23 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 	//
 	if ( btn == Qt::RightButton) {
 		if (_basewidget) {
-			if ( _basewidget->isSelected() ) {
+			if ( _basewidget->selectedByPointer()) {
 				//
 				// unselect widget
 				//
-				_basewidget->setSelected(false);
+				_basewidget->setSelectedByPointer(false);
 				// to be effective, turn off WA_OpaquePaintEvent or set setAutoFillBackground(true)
 //				_basewidget->palette().setColor(QPalette::Window, QColor(100, 100, 100, 128));
+
+                _selectionRect->_selectedWidgetList.remove(_basewidget);
 			}
 			else {
 				//
 				// select widget
 				//
-				_basewidget->setSelected(true);
+				_basewidget->setSelectedByPointer();
 //				_basewidget->palette().setColor(QPalette::Window, QColor(170, 170, 5, 164));
+                _selectionRect->_selectedWidgetList.insert(_basewidget);
 			}
 		}
 	}
@@ -779,35 +856,46 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 
 		QGraphicsObject *object = item->toGraphicsObject();
 
+        //
+        // User application (inherits SN_BaseWidget)
+        //
         if ( item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
-			//
-			// User application (inherits SN_BaseWidget)
-			//
+
             _basewidget = static_cast<SN_BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
 			_graphicsItem = 0;
             return true;
         }
+
+        //
+        // User application (inherits SN_BaseWidget)
+        // But acts differently....
+        // thereby the pointer should operate different on this widget.
+        //
 		else if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_NONUSER) {
-			//
-			// custom item that inherits SN_BaseWidget.
-			// Such as mediabrowser
-			//
 			_graphicsItem = 0;
 			_basewidget = 0;
 			return false;
 		}
+
+        //
+        // A QGraphicsItem type object that doesn't inherit SN_BaseWidget.
+        // But still can be interacted with user shared pointers.
+        //
+        // SN_PartitionBar
+        //
 		else if (item->type() >= QGraphicsItem::UserType + INTERACTIVE_ITEM) {
-			//
-			// A QGraphicsItem doesn't inherit SN_BaseWidget.
-			// But still can be interacted with user shared pointers (SN_PartitionBar)
-			//
+
 			_graphicsItem = item;
 			_basewidget = 0;
 			return true;
 		}
+
+        //
+        // regualar graphics items or items that inherit QGraphicsItem/Widget
+        //
 		else {
-			// regualar graphics items or items that inherit QGraphicsItem/Widget
+
             _graphicsWidget = item->topLevelWidget();
 
 			if(object) {
