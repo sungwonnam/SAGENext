@@ -247,6 +247,7 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
     , _pGrid(0)
     , numaInfo(0)
     , _totalBWAchieved_Mbps(0.0)
+, _currentTotalBW_Mbps(0.0)
     , _rMonWidget(0)
     , _printDataFlag(false)
 {
@@ -569,6 +570,8 @@ void SN_ResourceMonitor::refresh() {
     }
 */
        _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
+_currentTotalBW_Mbps = currentTotalBandwidth;
+//_totalBWAchieved_Mbps = 9780;
 
 
 	_widgetListRWlock.unlock();

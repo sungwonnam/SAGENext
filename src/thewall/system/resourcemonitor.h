@@ -218,6 +218,7 @@ public:
 
 
     inline qreal totalBandwidthMbps() const {return _totalBWAchieved_Mbps;}
+inline qreal currentTotalBW_Mbps() const {return _currentTotalBW_Mbps;}
 
 
 
@@ -299,6 +300,8 @@ private:
       So, this is Max of the sum of the rw->_perfMon->getCurrBandwidthMbps()
       */
     qreal _totalBWAchieved_Mbps;
+
+	qreal _currentTotalBW_Mbps;
 
 
 	/*!
