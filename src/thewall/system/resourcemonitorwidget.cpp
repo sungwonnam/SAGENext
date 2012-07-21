@@ -380,7 +380,7 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
             item->setData(Qt::DisplayRole, "noop");
             break;
         case 1:
-            item->setData(Qt::DisplayRole, "");
+            item->setData(Qt::DisplayRole, _rMonitor->currentTotalBW_Mbps());
             break;
         case 2:
             item->setData(Qt::DisplayRole, _rMonitor->totalBandwidthMbps());
