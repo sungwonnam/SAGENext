@@ -481,6 +481,14 @@ void SN_BaseWidget::maximize()
 	_appInfo->setRecentSize(size());
 	_appInfo->setRecentScale(scale());
 
+    //
+    // widget shouldn't obstruct layout buttons (tile, horizontal, vertical,..) on the left side of the layout
+    //
+    int layoutButtonWidth = 0;
+    if (parentWidget()) {
+        layoutButtonWidth = _settings->value("gui/iconwidth").toInt();
+    }
+
 
 	if ( isWindow() ) {
 		if (pAnim_pos && pAnim_size && _parallelAnimGroup) {
@@ -496,7 +504,7 @@ void SN_BaseWidget::maximize()
 		}
 		else {
 			if (parentWidget()) {
-				resize(parentWidget()->size() - QSizeF(40, 60));
+				resize(parentWidget()->size() - QSizeF(40 + layoutButtonWidth, 60));
 				setPos(parentWidget()->boundingRect().topLeft() + QPointF(20,40));
 			}
 			else {
@@ -517,7 +525,7 @@ void SN_BaseWidget::maximize()
 
 		if (parentWidget()) {
 			// SN_LayoutWidget is the parent widget
-			scaleFactorW = parentWidget()->size().width() / s.width();
+			scaleFactorW = (parentWidget()->size().width() - layoutButtonWidth) / s.width();
 			scaleFactorH = parentWidget()->size().height() / s.height();
 		}
 		else {
@@ -525,6 +533,10 @@ void SN_BaseWidget::maximize()
 			scaleFactorW = scene()->width() / s.width();
 			scaleFactorH = scene()->height() / s.height();
 		}
+
+        //
+        // How much should I scale up (or down) to fit in the SN_LayoutWidget or Scene
+        //
 		qreal scaleFactor = 1.0;
 		(scaleFactorW < scaleFactorH) ? scaleFactor = scaleFactorW : scaleFactor = scaleFactorH;
 
@@ -542,8 +554,13 @@ void SN_BaseWidget::maximize()
 		}
 		else {
 			if (parentWidget()) { // could be the SN_LayoutWidget or 0
-				qreal xoffset = (parentWidget()->size().width() - s.width() * scaleFactor)/2;
+                //
+                // My aspect ratio can be different from the SN_LayoutWidget's aspect ratio
+                // So below determine offsets when placing my 0,0 position on the layout widget
+                //
+				qreal xoffset = (parentWidget()->size().width() - layoutButtonWidth - s.width() * scaleFactor)/2;
 				qreal yoffset = (parentWidget()->size().height() - s.height() * scaleFactor)/2;
+
 				setPos( parentWidget()->boundingRect().left() + xoffset , parentWidget()->boundingRect().top() + yoffset);
 			}
 			else {

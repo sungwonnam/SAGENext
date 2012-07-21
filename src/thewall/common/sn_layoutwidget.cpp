@@ -623,7 +623,7 @@ void SN_LayoutWidget::doTile() {
 //	qreal avgWHratio = sumWHratio / itemcount;
 
 
-    qreal layoutWidth = size().width();
+    qreal layoutWidth = size().width() - _tileButton->size().width();
     qreal layoutHeight = size().height();
 
 
