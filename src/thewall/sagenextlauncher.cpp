@@ -351,7 +351,8 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 			// conversion at the mplayer is cheaper
 			// and image is converted to RGB using shader program
 			//
-        QString arg = "-vo sage -nosound -loop 0 -sws 4 -framedrop -quiet";
+//        QString arg = "-vo sage -nosound -loop 0 -sws 4 -framedrop -quiet";
+        QString arg = _settings->value("general/mplayercmdargs", "-vo sage -nosound -loop 0 -sws 4 -framedrop -quiet").toString();
         sws->appInfo()->setCmdArgs(arg);
 
         cmd = "mplayer";
