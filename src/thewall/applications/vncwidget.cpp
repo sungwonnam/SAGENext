@@ -55,7 +55,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
     //
     resize(1440, 900);
 
-    QString text = "Desktop sharing sesstion for\n" + username + "\nis initializing. Please Wait.";
+    QString text = "Desktop sharing session for\n" + username + "\nis initializing. Please Wait.";
     QFont f;
     f.setPointSize(46);
     _initVNCtext->setFont(f);
