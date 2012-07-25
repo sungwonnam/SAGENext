@@ -123,6 +123,7 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
     _progressDialog->setWindowModality(Qt::WindowModal);
     _progressDialog->setAutoClose(true); // will be hidden when reset() is called
     _progressDialog->setAutoReset(true); // will call reset() automatically as soon as value() equals maximum()
+    _progressDialog->setMinimumDuration(0);
 //    QObject::connect(_progressDialog, SIGNAL(accepted()), this, SLOT(fileSendingCompleted()));
 
 	
@@ -737,6 +738,9 @@ void SN_PointerUI::readMessage() {
                 }
             }
 
+            //
+            // This is to ensure sequential file transferring
+            //
             if (filename == _fileBeingSent.first  &&  (bytes == _fileBeingSent.second  ||  bytes <= 0) ) {
                 _fileTransferSemaphore.release(1);
             }
@@ -881,7 +885,7 @@ void SN_PointerUI::fileSendingBegins(QString filename, qint64 filesize) {
     if (_progressDialog) {
         _progressDialog->setLabelText(filename);
         _progressDialog->setRange(0, (int)filesize);
-//        _progressDialog->open(this, SLOT(fileSendingCompleted()));
+        _progressDialog->setValue(0);
         _progressDialog->open();
     }
 }
