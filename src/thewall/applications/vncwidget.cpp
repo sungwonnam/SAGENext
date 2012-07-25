@@ -38,6 +38,8 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 
     , _pbomutex(0)
     , _pbobufferready(0)
+
+    , _initVNCtext(new QGraphicsSimpleTextItem(this))
 {
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
@@ -46,8 +48,26 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	_appInfo->setVncUsername(SN_VNCClientWidget::username);
 	_appInfo->setVncPassword(SN_VNCClientWidget::vncpasswd);
 
+
+    //
+    // initial size.
+    // This will be updated in startImageRecvThread()
+    //
+    resize(1440, 900);
+
+    QString text = "Desktop sharing sesstion for\n" + username + "\nis initializing. Please Wait.";
+    QFont f;
+    f.setPointSize(46);
+    _initVNCtext->setFont(f);
+    _initVNCtext->setText(text);
+    _initVNCtext->setPos( (1440 - _initVNCtext->boundingRect().width())/2 , (900 - _initVNCtext->boundingRect().height())/2);
+
+
+
     SN_VNCClientWidget::username = username;
 	SN_VNCClientWidget::vncpasswd = passwd;
+
+
 
 //	qDebug() << "vnc widget constructor " <<  username << passwd << VNCClientWidget::username << VNCClientWidget::vncpasswd;
 
@@ -68,6 +88,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	else {
 		_usePbo = false;
 	}
+    _usePbo = false;
 
     QObject::connect(&_initVNC_futureWatcher, SIGNAL(finished()), this, SLOT(startImageRecvThread()));
 
@@ -89,7 +110,7 @@ int SN_VNCClientWidget::m_initVNC() {
 	_vncclient = rfbGetClient(8, 3, 4);
 
     if (!_vncclient) {
-        qDebug() << "SN_VNCClientWidget::m_initVNC() : rfbGetClient() failed !!";
+        qDebug() << "SN_VNCClientWidget::m_initVNC() : rfbGetClient() failed for " << SN_VNCClientWidget::username;
         return -1;
     }
 
@@ -123,7 +144,7 @@ int SN_VNCClientWidget::m_initVNC() {
 	sprintf(margv[1], "%s:%d", qPrintable(_vncServerIpAddr), _displayNumber);
 
 	if ( ! rfbInitClient(_vncclient, &margc, margv) ) {
-		qCritical() << "SN_VNCClientWidget::m_initVNC() : rfbInitClient() failed !!!";
+		qCritical() << "SN_VNCClientWidget::m_initVNC() : rfbInitClient() failed for" << SN_VNCClientWidget::username;
         _vncclient = 0;
         return -1;
 	}
@@ -231,6 +252,11 @@ void SN_VNCClientWidget::startImageRecvThread() {
 	_recvThread_future = QtConcurrent::run(this, &SN_VNCClientWidget::receivingThread);
 
 	scheduleUpdate();
+
+    if (_initVNCtext) {
+        _initVNCtext->hide();
+        delete _initVNCtext;
+    }
 }
 
 

@@ -43,6 +43,8 @@ public:
 //		void mousePressEvent(QGraphicsSceneMouseEvent *event);
 //		void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
+        inline QFutureWatcher<int> * initVNC_FutureWatcher() {return &_initVNC_futureWatcher;}
+
 
 private:
         rfbClient *_vncclient;
@@ -123,7 +125,14 @@ private:
 		pthread_cond_t *_pbobufferready;
 
 
+        /*!
+          This text item will be displayed during VNC initialization
+          */
+        QGraphicsSimpleTextItem *_initVNCtext;
+
+
 		void initGL(bool usepbo);
+
 
 		static rfbCredential * getCredential(struct _rfbClient *client, int credentialType);
 
@@ -142,7 +151,6 @@ private:
         static char *password_func(rfbClient* client);
 
         static void update_func(rfbClient* client,int x,int y,int w,int h);
-
 
 
 public slots:

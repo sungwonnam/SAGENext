@@ -22,7 +22,7 @@ FileServerThread::FileServerThread(int sockfd, const quint32 uiclientid, QObject
 FileServerThread::~FileServerThread() {
 	_end = true;
 	::close(_dataSock);
-	qDebug() << "~FileServerThread" << _uiclientid;
+//	qDebug() << "~FileServerThread" << _uiclientid;
 }
 
 void FileServerThread::endThread() {

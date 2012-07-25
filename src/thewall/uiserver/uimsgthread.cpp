@@ -72,10 +72,10 @@ UiMsgThread::~UiMsgThread() {
 	sprintf(msg.data(), "%d %u goodbye",SAGENext::WALL_IS_CLOSING, _uiClientId);
 
 	if (  ::shutdown(_sockfd, SHUT_RDWR) != 0 ) {
-		qDebug("UiMsgThread::%s() : shutdown error", __FUNCTION__);
+//		qDebug("UiMsgThread::%s() : shutdown error", __FUNCTION__);
 	}
 	if ( ::close(_sockfd) != 0 ) {
-		qDebug("UiMsgThread::%s() : close error", __FUNCTION__);
+//		qDebug("UiMsgThread::%s() : close error", __FUNCTION__);
 	}
 	wait();
 
@@ -102,13 +102,11 @@ void UiMsgThread::run() {
 	QByteArray msgStr(EXTUI_SMALL_MSG_SIZE, 0);
 	int read = 0;
 
-    char addbuf[256];
-    socklen_t addlen;
-
 	while(!_end) {
 		msgStr.fill(0);
 		if ( (read = recv(_sockfd, (void *)msgStr.data(), EXTUI_SMALL_MSG_SIZE, MSG_WAITALL)) == -1 ) {
 			qCritical("UiMsgThread::%s() : socket error", __FUNCTION__);
+            perror("recv");
 			break;
 		}
 		else if ( read == 0 ) {
