@@ -891,11 +891,13 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
             break;
         }
         case SAGENext::MEDIA_TYPE_VNC : {
+            /*
             in >> srcaddr >> user >> pass;
             if (!bw) {
                 qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_VNC" << gaid << srcaddr << user << pass;
-                bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos, gaid);
+                bw = launcher->launch(user, pass, 0, srcaddr, 0, 10, scenepos, gaid);
             }
+            */
             break;
         }
         case SAGENext::MEDIA_TYPE_LOCAL_VIDEO : {
