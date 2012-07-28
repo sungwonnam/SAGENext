@@ -491,10 +491,10 @@ void SN_TheScene::saveSession() {
 				break;
 			}
 			case SAGENext::MEDIA_TYPE_VNC : {
-
+/*
 				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
 				qDebug() << "SN_TheScene::saveSession() : " << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
-
+*/
 				break;
 			}
 			case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
