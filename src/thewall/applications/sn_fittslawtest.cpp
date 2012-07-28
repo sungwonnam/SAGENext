@@ -75,7 +75,8 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
 
     _startPixmap = QPixmap(":/resources/greenplay128.png");
     _stopPixmap = QPixmap(":/resources/stopsign48.png").scaledToWidth(128);
-    _cursorPixmap = QPixmap(":/resources/cursor_arrow_48x48.png");
+//    _cursorPixmap = QPixmap(":/resources/cursor_arrow_48x48.png");
+    _cursorPixmap = QPixmap(":/resources/blackarrow_upleft128.png");
 
     _init();
 
