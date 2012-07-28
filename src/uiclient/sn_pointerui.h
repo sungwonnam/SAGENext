@@ -8,10 +8,6 @@
 #include <QTcpSocket>
 #include <QTcpServer>
 
-#include "sn_pointerui_msgthread.h"
-#include "sn_pointerui_sendthread.h"
-
-
 #include "../thewall/common/commondefinitions.h"
 
 
@@ -176,7 +172,7 @@ private:
 	QTcpSocket _tcpDataSock;
 
 
-    QUdpSocket _udpSocket;
+//    QUdpSocket _udpSocket;
 
 
 	/**
@@ -254,7 +250,9 @@ private:
 	QProcess *_winCapture;
 
 	/*!
-	  winCapture.exe will connect to localhost:44556 upon starting
+	  winCapture.exe will connect to localhost:44556 upon starting.
+      This is because winCapture binary made by py2exe doesn't support stdout/err outputs.
+      So data from winCapture is sent through TCP socket
 	  */
 	SN_WinCaptureTcpServer *_winCaptureServer;
 
