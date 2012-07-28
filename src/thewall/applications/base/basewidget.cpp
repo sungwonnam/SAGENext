@@ -410,9 +410,9 @@ void SN_BaseWidget::minimize()
 	// based on this, I could use QGraphicsLayoutItem::setMinimumWidth/Height
 
 	// before minimizing, widget's bounding rectangle must be saved.
-	_appInfo->setRecentPos(pos());
-	_appInfo->setRecentSize(size());
-	_appInfo->setRecentScale(scale());
+//	_appInfo->setRecentPos(pos());
+//	_appInfo->setRecentSize(size());
+//	_appInfo->setRecentScale(scale());
 	//	QPointF pos = mapToScene(boundingRect().topLeft());
 	//	qDebug("BaseGraphicsWidget::%s() : Pos (%.1f, %.1f) on the scene", __FUNCTION__, pos.x(), pos.y());
 
@@ -477,9 +477,9 @@ void SN_BaseWidget::maximize()
 	// record current position and scale
 	//
 	Q_ASSERT(_appInfo);
-	_appInfo->setRecentPos(pos());
-	_appInfo->setRecentSize(size());
-	_appInfo->setRecentScale(scale());
+//	_appInfo->setRecentPos(pos());
+//	_appInfo->setRecentSize(size());
+//	_appInfo->setRecentScale(scale());
 
     //
     // widget shouldn't obstruct layout buttons (tile, horizontal, vertical,..) on the left side of the layout
@@ -771,6 +771,10 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
             _isResizing = false;
             _isMoving = true;
         }
+        
+        _appInfo->setRecentPos(scenePos());
+        _appInfo->setRecentSize(size());
+        _appInfo->setRecentScale(scale());
     }
 }
 

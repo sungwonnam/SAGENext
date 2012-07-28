@@ -680,9 +680,6 @@ SN_MinimizeBar::SN_MinimizeBar(const QSizeF size, SN_TheScene *scene, SN_LayoutW
 void SN_MinimizeBar::minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF position) {
 
     Q_ASSERT(widget->appInfo());
-    widget->appInfo()->setRecentPos(widget->scenePos());
-    widget->appInfo()->setRecentScale(widget->scale());
-    widget->appInfo()->setRecentSize(widget->size());
 
     qreal scaleFactor = size().height() / widget->size().height();
 
@@ -693,6 +690,9 @@ void SN_MinimizeBar::minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF
         widget->setScale(scaleFactor);
     }
 
+    //
+    // widget is no longer a child of SN_LayoutWIdget
+    //
     widget->setParentItem(this);
 
     widget->setWindowState(SN_BaseWidget::W_MINIMIZED);
@@ -700,6 +700,12 @@ void SN_MinimizeBar::minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF
     widget->setPos(position.x(), 2);
 }
 
+/*!
+  Note that widget's recent scenePos, size, scale are saved
+  when a pointer is PRESSED on the widget.
+  
+  See SN_BaseWidget::handlePointerPress()
+  */
 void SN_MinimizeBar::restoreWidget(SN_BaseWidget *widget) {
     foreach(QGraphicsItem *item, childItems()) {
         if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER)
@@ -713,9 +719,15 @@ void SN_MinimizeBar::restoreWidget(SN_BaseWidget *widget) {
             bw->resize(bw->appInfo()->recentSize());
             bw->setScale(bw->appInfo()->recentScale());
 
+            //
+            // SN_LayoutWidget exist?
+            //
             if (_rootLayout) {
-                _rootLayout->addItem(bw, QPointF(bw->appInfo()->recentPos().x(), 20));
+                _rootLayout->addItem(bw, bw->appInfo()->recentPos());
             }
+            //
+            // otherwise, it's scene
+            //
             else {
                 Q_ASSERT(_theScene);
                 _theScene->addItem(bw);

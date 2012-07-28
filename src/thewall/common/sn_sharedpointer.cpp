@@ -487,7 +487,7 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 
 
             //
-            // minimizeBar
+            // If it's dropped onto the minimizeBar on the bottom of the scene
             //
             if (_scene->isOnMinimizeBar(scenePos)) {
                 _scene->minimizeWidgetOnTheBar(_basewidget, scenePos);
