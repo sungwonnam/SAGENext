@@ -99,8 +99,8 @@
   <action name="actionShare_desktop">
    <property name="icon">
     <iconset resource="resources.qrc">
-     <normaloff>:/images/vnc_48.png</normaloff>
-     <normalon>:/images/vnc_128.png</normalon>:/images/vnc_48.png</iconset>
+     <normaloff>:/images/vnc_logo.svg.png</normaloff>
+     <normalon>:/images/vnc_logo.svg.png</normalon>:/images/vnc_logo.svg.png</iconset>
    </property>
    <property name="text">
     <string>share desktop</string>

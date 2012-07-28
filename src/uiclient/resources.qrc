@@ -1,13 +1,10 @@
 <RCC>
     <qresource prefix="/">
-        <file>images/connect_128.png</file>
         <file>images/letter_T_48.png</file>
         <file>images/opendir_128.png</file>
-        <file>images/vnc_128.png</file>
-        <file>images/vnc_48.png</file>
-        <file>images/net_wired_128.png</file>
         <file>images/splash_small.png</file>
         <file>images/powerbutton_off.med.png</file>
         <file>images/powerbutton_on.med.png</file>
+        <file>images/vnc_logo.svg.png</file>
     </qresource>
 </RCC>
