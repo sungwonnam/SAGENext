@@ -794,10 +794,10 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 				break;
 			}
 			case SAGENext::MEDIA_TYPE_VNC : {
-
+/*
 				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
 				qDebug() << "SN_LayoutWidget::saveSession() : " << bw->globalAppId() << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
-
+*/
 				break;
 			}
 			case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
@@ -891,11 +891,13 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
             break;
         }
         case SAGENext::MEDIA_TYPE_VNC : {
+            /*
             in >> srcaddr >> user >> pass;
             if (!bw) {
                 qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_VNC" << gaid << srcaddr << user << pass;
-                bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos, gaid);
+                bw = launcher->launch(user, pass, 0, srcaddr, 0, 10, scenepos, gaid);
             }
+            */
             break;
         }
         case SAGENext::MEDIA_TYPE_LOCAL_VIDEO : {
