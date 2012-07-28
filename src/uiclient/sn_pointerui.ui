@@ -50,7 +50,7 @@
      <x>0</x>
      <y>0</y>
      <width>242</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -72,9 +72,9 @@
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionNew_Connection">
    <property name="icon">
-    <iconset>
-     <normaloff>images/net_wired_128.png</normaloff>
-     <normalon>:/images/net_wired_128.png</normalon>images/net_wired_128.png</iconset>
+    <iconset resource="resources.qrc">
+     <normaloff>:/images/powerbutton_off.med.png</normaloff>
+     <normalon>:/images/powerbutton_off.med.png</normalon>:/images/powerbutton_off.med.png</iconset>
    </property>
    <property name="text">
     <string>New Connection</string>

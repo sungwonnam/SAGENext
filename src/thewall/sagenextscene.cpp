@@ -49,7 +49,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 //	pi->setPos(sceneRect.width()/2, sceneRect.height()/2);
 
 
-    QPixmap evllogo(":/resources/evl-logo.png");
+    QPixmap evllogo(":/resources/evl-logo-sagenext.png");
     QGraphicsPixmapItem *bg = new QGraphicsPixmapItem(evllogo.scaledToWidth(sceneRect.width()/2, Qt::SmoothTransformation));
     bg->setOpacity(0.2);
     bg->setFlag(QGraphicsItem::ItemIsMovable, false);

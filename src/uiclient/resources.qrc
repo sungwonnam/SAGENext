@@ -7,5 +7,7 @@
         <file>images/vnc_48.png</file>
         <file>images/net_wired_128.png</file>
         <file>images/splash_small.png</file>
+        <file>images/powerbutton_off.med.png</file>
+        <file>images/powerbutton_on.med.png</file>
     </qresource>
 </RCC>

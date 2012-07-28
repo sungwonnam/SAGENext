@@ -263,6 +263,9 @@ void SN_PointerUI::handleSocketStateChange(QAbstractSocket::SocketState newstate
     switch (newstate) {
     case QAbstractSocket::UnconnectedState : {
         ui->isConnectedLabel->setText("Not Connected");
+        
+        // change icon
+        ui->actionNew_Connection->setIcon(QIcon(":/images/powerbutton_off.med.png"));
 
         //
         // Maybe schedule connection in 1 sec here ?
@@ -305,7 +308,7 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
     if (_tcpMsgSock.state() == QAbstractSocket::ConnectingState) {
         _tcpMsgSock.abort();
     }
-
+    
     //
     // disconnect first
     //
@@ -440,7 +443,10 @@ void SN_PointerUI::on_actionSend_text_triggered()
   This is called upon receiving ACK_FROM_WALL
   */
 void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight, int ftpPort) {
-
+    
+    // change icon
+    ui->actionNew_Connection->setIcon(QIcon(":/images/powerbutton_on.med.png"));
+    
 	_uiclientid = uiclientid;
 	fileTransferPort = ftpPort;
 
