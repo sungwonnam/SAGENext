@@ -2,7 +2,7 @@ TEMPLATE = subdirs
 SUBDIRS += \
 SimpleGUIExample \
 MouseHoverExample \
-    MouseDragExample \
-    MandelbrotThreadExample
+MouseDragExample
+#MandelbrotThreadExample
 
 

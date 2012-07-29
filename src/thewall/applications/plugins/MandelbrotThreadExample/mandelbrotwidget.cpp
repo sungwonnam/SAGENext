@@ -40,7 +40,6 @@ MandelbrotExample::MandelbrotExample()
 #ifndef QT_NO_CURSOR
     setCursor(Qt::CrossCursor);
 #endif
-    resize(550, 400);
 
 //    qDebug() << "MandelbrotExample::MandelbrotExample() : boundingRect() " << boundingRect();
 }
@@ -55,6 +54,7 @@ void MandelbrotExample::m_init() {
 SN_BaseWidget * MandelbrotExample::createInstance() {
     MandelbrotExample *bw = new MandelbrotExample;
     bw->m_init();
+    bw->resize(550, 400);
     return bw;
 }
 
