@@ -208,6 +208,7 @@ void SN_SagePixelReceiver::run() {
             _pboBufIdx = (_pboBufIdx + 1) % 2;
 
             bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
+            if (!bufptr) continue;
         }
         else {
             Q_ASSERT(_doubleBuffer);

@@ -465,7 +465,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	error = glGetError();
 	if(error != GL_NO_ERROR) qCritical("glMapBufferARB() error code 0x%x\n", error);
 
-	if (ptr) {
+	//if (ptr) {
 		_pbobufarray[_pboBufIdx] = ptr;
 
         //
@@ -486,10 +486,10 @@ void SN_SageStreamWidget::schedulePboUpdate() {
         // let the receiver re-acquire the lock after woken by
         //
         pthread_mutex_unlock(_pbomutex);
-	}
-	else {
-		qCritical() << "SN_SageStreamWidget::schedulePboUpdate() : glMapBUffer failed()";
-	}
+	//}
+	//else {
+		//qCritical() << "SN_SageStreamWidget::schedulePboUpdate() : glMapBUffer failed()";
+	//}
 
 
 	//

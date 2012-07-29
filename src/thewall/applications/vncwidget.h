@@ -9,7 +9,6 @@
 #include <QHostAddress>
 #include <QtCore>
 
-
 #if defined(Q_OS_LINUX)
 //#define GLEW_STATIC 1
 #define GL_GLEXT_PROTOTYPES
@@ -23,6 +22,8 @@
 
 #include <rfb/rfbproto.h>
 #include <rfb/rfbclient.h>
+
+class QGLWidget;
 
 
 /*!
@@ -152,6 +153,10 @@ private:
 
         static void update_func(rfbClient* client,int x,int y,int w,int h);
 
+        QGLWidget *_textureUpdateWidget;
+
+signals:
+    void frameReceived();
 
 public slots:
 		/*!
@@ -167,6 +172,9 @@ public slots:
           */
         void scheduleUpdate();
 
+	void upup();
+	inline void _update() {update();}
+
         /*!
           Reimplementing virtual function.
           */
@@ -174,38 +182,5 @@ public slots:
 };
 
 
-
-/***
-class VNCClientThread : public QThread {
-	Q_OBJECT
-public:
-	VNCClientThread(rfbClient *client, QObject *parent=0);
-	~VNCClientThread();
-
-	inline void setPerfMon(PerfMonitor *pm) {_perfMon = pm;}
-
-	inline void setRgbBuffer(unsigned char *b) {_rgbBuffer = b;}
-
-private:
-	rfbClient *_vncclient;
-
-	PerfMonitor *_perfMon;
-
-	unsigned char *_rgbBuffer;
-
-protected:
-	void run();
-
-signals:
-	void frameReady();
-
-	void vncError();
-
-public slots:
-	void terminateThread();
-
-	void receiveFrame();
-};
-**/
 
 #endif // VNCWIDGET_H
