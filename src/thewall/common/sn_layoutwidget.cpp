@@ -154,7 +154,7 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
             QTimer::singleShot(500, this, SLOT(doTile()));
 		}
 		else {
-//		qDebug() << "SN_LayoutWidget::addItem() : bw->setPos() " << pos;
+//            qDebug() << "SN_LayoutWidget::addItem() : adding bw on point" << pos;
 			bw->setPos(pos);
 		}
 	}

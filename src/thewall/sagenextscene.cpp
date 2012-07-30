@@ -679,8 +679,6 @@ SN_MinimizeBar::SN_MinimizeBar(const QSizeF size, SN_TheScene *scene, SN_LayoutW
 
 void SN_MinimizeBar::minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF position) {
 
-    Q_ASSERT(widget->appInfo());
-
     qreal scaleFactor = size().height() / widget->size().height();
 
     if (widget->isWindow()) {
@@ -723,7 +721,12 @@ void SN_MinimizeBar::restoreWidget(SN_BaseWidget *widget) {
             // SN_LayoutWidget exist?
             //
             if (_rootLayout) {
-                _rootLayout->addItem(bw, bw->appInfo()->recentPos());
+                QPointF pos = _rootLayout->mapFromScene(bw->appInfo()->recentPos());
+
+//                qDebug() << "widget's recent scenepos" << bw->appInfo()->recentPos();
+//                qDebug() << "is mapped to rootlayout widget's coord" << pos;
+
+                _rootLayout->addItem(bw, pos);
             }
             //
             // otherwise, it's scene

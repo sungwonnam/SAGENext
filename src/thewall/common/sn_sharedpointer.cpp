@@ -424,7 +424,13 @@ void SN_PolygonArrowPointer::pointerPress(const QPointF &scenePos, Qt::MouseButt
             */
 
 
-            _basewidget->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
+            //
+            // Do not call press() when the pointer is pressed on the minimized bar
+            // because it's the press() function that saves widget's geometry
+            //
+            if ( ! _scene->isOnMinimizeBar(scenePos)) {
+                _basewidget->handlePointerPress(this, _basewidget->mapFromScene(scenePos), btn);
+            }
         }
 	}
 
