@@ -1133,7 +1133,7 @@ bool SN_FittsLawTestData::_openGlobalDataFile() {
     _globalOut = new QTextStream(_globalDataFile);
 
 //    (*_globalOut) << "# users" << FittsLawTestData::_NUM_SUBJECTS << "StreamerIP" << FittsLawTest::_streamerIpAddr << "Overhead" << FittsLawTest::_streamImageSize;
-    (*_globalOut) << "# TimeStamp, ActionType, UserID, RoundID, TargetCount, HitLatency, Distance\n";
+    (*_globalOut) << "# TimeStamp, ActionType, UserID, RoundID, TargetCount, HitLatency, NormalizedHitsLatency\n";
 
     return true;
 }
@@ -1214,33 +1214,47 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
 
         _rwlock.lockForWrite();
 
-//        (*_globalOut) << "TimeStamp, ActionType, UserID, RoundID [,TargetCount, HitLatency]\n";
-        (*_globalOut) << ts << "," << actionType << "," << id << "," << roundid;
-        if (targetcount >= 0) {
-            (*_globalOut) << "," << targetcount;
-        }
-        if (latency > 0) {
-            (*_globalOut) << "," << latency;
-        }
-        if (distance > 0) {
-            (*_globalOut) << "," << distance;
-            (*_globalOut) << "," << latency/distance;
-        }
-        if (missfortarget >= 0) {
-            (*_globalOut) << "," << missfortarget;
-        }
+//        (*_globalOut) << "TimeStamp, ActionType, UserID, RoundID [,TargetCount, HitLatency, Normalized HitLatency, Miss count]\n";
 
-        if (avg_latency > 0) {
-            (*_globalOut) << ",,," << avg_latency;
-        }
-        if (avg_norm_latency > 0) {
-            (*_globalOut) << "," << avg_norm_latency;
-        }
-        if (misscountround >= 0) {
-            (*_globalOut) << "," << misscountround;
-        }
+        //
+        // save only the final results
+        //
+        if (actionType == "FINISH_RND") {
+            (*_globalOut) << ts << "," << actionType << "," << id << "," << roundid;
 
-        (*_globalOut) << "\n";
+
+            if (targetcount >= 0) {
+                (*_globalOut) << "," << targetcount;
+            }
+            if (latency > 0) {
+                (*_globalOut) << "," << latency;
+            }
+            if (distance > 0) {
+//                (*_globalOut) << "," << distance;
+                (*_globalOut) << "," << latency/distance; // normalized latency
+            }
+            if (missfortarget >= 0) {
+                (*_globalOut) << "," << missfortarget;
+            }
+
+
+
+
+            //
+            // The final results
+            //
+            if (avg_latency > 0) {
+                (*_globalOut) << ",," << avg_latency;
+            }
+            if (avg_norm_latency > 0) {
+                (*_globalOut) << "," << avg_norm_latency;
+            }
+            if (misscountround >= 0) {
+                (*_globalOut) << "," << misscountround;
+            }
+
+            (*_globalOut) << "\n";
+        }
 
         _rwlock.unlock();
     }
@@ -1269,8 +1283,7 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
                     (*appOut) << "," << latency;
                 }
                 if (distance > 0) {
-                    (*appOut) << "," << distance;
-
+//                    (*appOut) << "," << distance;
                     (*appOut) << "," << latency/distance;
                 }
                 if (missfortarget >= 0) {
@@ -1279,7 +1292,7 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
             }
             else if (actionType == "FINISH_RND") {
 
-                (*appOut) << ",,," << avg_latency;
+                (*appOut) << ",," << avg_latency;
     //            if (avg_norm_latency > 0) {
                     (*appOut) << "," << avg_norm_latency;
     //            }
