@@ -240,6 +240,10 @@ private:
     qint64 _targetAppearTime;
     qint64 _targetHitTime;
 
+    /*!
+      To enforce two frames to update screen
+      */
+    bool _screenUpdateFlag;
 
 signals:
     /*!

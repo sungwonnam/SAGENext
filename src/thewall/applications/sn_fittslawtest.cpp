@@ -61,7 +61,12 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
 
     , _targetAppearTime(0.0)
     , _targetHitTime(0.0)
+
+    , _screenUpdateFlag(false)
 {
+    //
+    // sagepixelreceiver will wait for the sema
+    //
     __sema = new QSemaphore;
 
     //
@@ -281,7 +286,19 @@ SN_SageFittsLawTest::~SN_SageFittsLawTest() {
 void SN_SageFittsLawTest::scheduleDummyUpdate() {
     if (doubleBuffer)
         doubleBuffer->releaseBackBuffer();
-    update();
+
+
+    //
+    // two frame need to be received to update the screen
+    //
+    if (_screenUpdateFlag) {
+        _screenUpdateFlag = false;
+        update();
+    }
+    else {
+        _screenUpdateFlag = true;
+    }
+
 }
 
 
@@ -1086,22 +1103,26 @@ void SN_FittsLawTestData::advanceRound() {
     case 1: {
         Q_ASSERT(_widgetMap.value('A', 0));
         (_widgetMap['A'])->setReady();
+
+
         break;
     }
     case 2: {
         Q_ASSERT(_widgetMap.value('B', 0));
-
         (_widgetMap['B'])->setReady();
+
         break;
     }
     case 3: {
         (_widgetMap['B'])->setReady();
         (_widgetMap['A'])->setReady();
+
         break;
     }
     case 4: {
         Q_ASSERT(_widgetMap.value('C', 0));
         (_widgetMap['C'])->setReady();
+
         break;
     }
     case 5: {
@@ -1133,7 +1154,7 @@ bool SN_FittsLawTestData::_openGlobalDataFile() {
     _globalOut = new QTextStream(_globalDataFile);
 
 //    (*_globalOut) << "# users" << FittsLawTestData::_NUM_SUBJECTS << "StreamerIP" << FittsLawTest::_streamerIpAddr << "Overhead" << FittsLawTest::_streamImageSize;
-    (*_globalOut) << "# TimeStamp, ActionType, UserID, RoundID, TargetCount, HitLatency, NormalizedHitsLatency\n";
+//    (*_globalOut) << "# TimeStamp, ActionType, UserID, RoundID, TargetCount, HitLatency, NormalizedHitsLatency\n";
 
     return true;
 }
