@@ -967,6 +967,12 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 	else {
         qDebug() << "SN_LayoutWidget::loadSession() : Unknown header" << header;
 	}
+
+
+    int timeout = _settings->value("system/timedsession", 0).toInt();
+    if (timeout > 0) {
+        QTimer::singleShot( timeout * 1000, _theScene, SLOT(closeNow()));
+    }
 }
 
 //QRectF SN_LayoutWidget::boundingRect() const {

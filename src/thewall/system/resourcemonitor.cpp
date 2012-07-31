@@ -569,10 +569,23 @@ void SN_ResourceMonitor::refresh() {
         _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
     }
 */
-       _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
-_currentTotalBW_Mbps = currentTotalBandwidth;
-//_totalBWAchieved_Mbps = 9780;
 
+    //
+    // Total resource is set manually
+    //
+    qreal totalbw = settings->value("system/manualtotalbw", 0).toDouble();
+    if ( totalbw != 0 ) {
+        _totalBWAchieved_Mbps = totalbw;
+    }
+
+    //
+    // Total resource will be updated automatically
+    //
+    else {
+        _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
+    }
+
+    _currentTotalBW_Mbps = currentTotalBandwidth;
 
 	_widgetListRWlock.unlock();
 

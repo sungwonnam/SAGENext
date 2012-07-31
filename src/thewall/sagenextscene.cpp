@@ -229,8 +229,8 @@ void SN_TheScene::prepareClosing() {
 }
 
 void SN_TheScene::closeNow() {
-_closeFlag = true;
-prepareClosing();
+    _closeFlag = true;
+    prepareClosing();
 }
 
 SN_TheScene::~SN_TheScene() {
