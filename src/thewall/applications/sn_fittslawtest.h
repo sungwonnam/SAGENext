@@ -243,7 +243,12 @@ private:
     /*!
       To enforce two frames to update screen
       */
-    bool _screenUpdateFlag;
+    int _screenUpdateFlag;
+
+	/*!
+	How many frames needed to update the screen
+	*/
+	int _numFramesForScreenUpdate;
 
 signals:
     /*!

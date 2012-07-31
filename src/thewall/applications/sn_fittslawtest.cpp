@@ -62,7 +62,8 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
     , _targetAppearTime(0.0)
     , _targetHitTime(0.0)
 
-    , _screenUpdateFlag(false)
+    , _screenUpdateFlag(0)
+	, _numFramesForScreenUpdate(6)
 {
     //
     // sagepixelreceiver will wait for the sema
@@ -101,8 +102,9 @@ void SN_SageFittsLawTest::_init() {
             QByteArray line = f.readLine();
             int num_subject, num_targets_per_round;
 //            QByteArray streamerip(64, '\0');
+			int num_frame_for_update = 0;
 
-            sscanf(line.data(), "%d %d %d %d", &num_subject, &num_targets_per_round, &winwidth, &winheight);
+            sscanf(line.data(), "%d %d %d %d %d", &num_subject, &num_targets_per_round, &winwidth, &winheight, &num_frame_for_update);
 
             SN_FittsLawTestData::_NUM_SUBJECTS = num_subject;
             SN_SageFittsLawTest::_NUM_ROUND_PER_USER = pow(2, num_subject - 1);
@@ -110,6 +112,9 @@ void SN_SageFittsLawTest::_init() {
 
 //            SN_FittsLawTest::_streamerIpAddr = QString(streamerip);
 //            SN_SageFittsLawTest::_streamImageSize = QSize(overheadwidth, overheadheight);
+
+			if (num_frame_for_update > 0)
+				_numFramesForScreenUpdate = num_frame_for_update;
 
             f.close();
         }
@@ -289,14 +294,15 @@ void SN_SageFittsLawTest::scheduleDummyUpdate() {
 
 
     //
-    // two frame need to be received to update the screen
+    // multiple frames might be need to be received to update the screen
     //
-    if (_screenUpdateFlag) {
-        _screenUpdateFlag = false;
+    if (_screenUpdateFlag == 0) {
+        _screenUpdateFlag = _numFramesForScreenUpdate - 1; 
         update();
     }
     else {
-        _screenUpdateFlag = true;
+        //_screenUpdateFlag = true;
+        _screenUpdateFlag--;
     }
 
 }
