@@ -437,6 +437,8 @@ private slots:
       */
     void advanceRound();
 
+    void finalRound();
+
     /*!
       There are always two rounds only
       Round 0 is dry run

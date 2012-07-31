@@ -107,7 +107,7 @@ void SN_SageFittsLawTest::_init() {
             sscanf(line.data(), "%d %d %d %d %d", &num_subject, &num_targets_per_round, &winwidth, &winheight, &num_frame_for_update);
 
             SN_FittsLawTestData::_NUM_SUBJECTS = num_subject;
-            SN_SageFittsLawTest::_NUM_ROUND_PER_USER = pow(2, num_subject - 1);
+            SN_SageFittsLawTest::_NUM_ROUND_PER_USER = pow(2, num_subject - 1); // not including the dry round
             SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND = num_targets_per_round;
 
 //            SN_FittsLawTest::_streamerIpAddr = QString(streamerip);
@@ -1014,6 +1014,9 @@ void SN_FittsLawTestData::m_createGUI() {
         QPushButton *nextRnd = new QPushButton("NextRound");
         QObject::connect(nextRnd, SIGNAL(clicked()), this, SLOT(advanceRound()));
 
+        QPushButton *finalRnd = new QPushButton("_FinalRound_");
+        QObject::connect(finalRnd, SIGNAL(clicked()), this, SLOT(finalRound()));
+
         QPushButton *recreateFiles = new QPushButton("RecreateDataFiles");
         QObject::connect(recreateFiles, SIGNAL(clicked()), this, SLOT(recreateAllDataFiles()));
 
@@ -1022,6 +1025,7 @@ void SN_FittsLawTestData::m_createGUI() {
 
         QVBoxLayout *hl = new QVBoxLayout;
         hl->addWidget(nextRnd);
+        hl->addWidget(finalRnd);
         hl->addWidget(recreateFiles);
         hl->addWidget(close);
         _frame->setLayout(hl);
@@ -1081,6 +1085,7 @@ void SN_FittsLawTestData::advanceRound() {
 
     if ( SN_SageFittsLawTest::RoundID > (pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1) ) {
         qDebug() << "advanceRound() : reset RoundID";
+
         SN_SageFittsLawTest::RoundID = 1; // no more dry run is needed.
     }
     qDebug() << "\nSN_FittsLawTestData::advanceRound() : Ready for Round ID" << SN_SageFittsLawTest::RoundID;
@@ -1106,6 +1111,10 @@ void SN_FittsLawTestData::advanceRound() {
         }
         break;
     }
+
+        //
+        // Final round if _NUM_SUBJECTS == 1
+        //
     case 1: {
         Q_ASSERT(_widgetMap.value('A', 0));
         (_widgetMap['A'])->setReady();
@@ -1119,15 +1128,29 @@ void SN_FittsLawTestData::advanceRound() {
 
         break;
     }
+
+        //
+        // Final round if _NUM_SUBJECTS == 2
+        //
     case 3: {
-        (_widgetMap['B'])->setReady();
-        (_widgetMap['A'])->setReady();
+        if (SN_FittsLawTestData::_NUM_SUBJECTS == 3) {
+            (_widgetMap['C'])->setReady();
+        }
+        else if (SN_FittsLawTestData::_NUM_SUBJECTS == 2) {
+            //
+            // the final round
+            //
+            (_widgetMap['B'])->setReady();
+            (_widgetMap['A'])->setReady();
+        }
 
         break;
     }
     case 4: {
-        Q_ASSERT(_widgetMap.value('C', 0));
-        (_widgetMap['C'])->setReady();
+//        (_widgetMap['C'])->setReady();
+
+        (_widgetMap['B'])->setReady();
+        (_widgetMap['A'])->setReady();
 
         break;
     }
@@ -1141,6 +1164,10 @@ void SN_FittsLawTestData::advanceRound() {
         (_widgetMap['B'])->setReady();
         break;
     }
+
+        //
+        // Final round if _NUM_SUBJECTS == 3
+        //
     case 7: {
         (_widgetMap['C'])->setReady();
         (_widgetMap['B'])->setReady();
@@ -1148,6 +1175,27 @@ void SN_FittsLawTestData::advanceRound() {
         break;
     }
     }
+}
+
+void SN_FittsLawTestData::finalRound() {
+    if (_globalOut) _globalOut->flush();
+
+    _isDryRun = false;
+
+    //
+    // Set it to the final Round
+    //
+    SN_SageFittsLawTest::RoundID = (pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1);
+
+    SN_SageFittsLawTest *widget = 0;
+    widget = _widgetMap.value('A',0);
+    if (widget) widget->setReady();
+
+    widget = _widgetMap.value('B',0);
+    if (widget) widget->setReady();
+
+    widget = _widgetMap.value('C',0);
+    if (widget) widget->setReady();
 }
 
 bool SN_FittsLawTestData::_openGlobalDataFile() {
