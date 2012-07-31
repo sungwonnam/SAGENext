@@ -552,7 +552,7 @@ void SN_SageFittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, con
                 // which is connected up scheduleUpdate()
                 //
 				if (__sema && __sema->available() < 1)
-                	__sema->release(2);
+                	__sema->release(1);
             }
             else {
                 update();
