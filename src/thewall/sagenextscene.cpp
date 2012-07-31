@@ -228,6 +228,11 @@ void SN_TheScene::prepareClosing() {
 	}
 }
 
+void SN_TheScene::closeNow() {
+_closeFlag = true;
+prepareClosing();
+}
+
 SN_TheScene::~SN_TheScene() {
 	if (_closeButton) {
 		removeItem(_closeButton);

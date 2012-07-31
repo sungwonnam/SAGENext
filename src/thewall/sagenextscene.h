@@ -137,6 +137,8 @@ public slots:
 	  */
 	void prepareClosing();
 
+	void closeNow();
+
 	/**
 	  save current app layout when SN_LayoutWidget is not present
 	  */
