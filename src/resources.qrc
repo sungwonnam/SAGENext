@@ -34,5 +34,6 @@
         <file>resources/greenplay128.png</file>
         <file>resources/blackarrow_upleft128.png</file>
         <file>resources/stopsign48.png</file>
+        <file>resources/redarrow_missed_upleft128.png</file>
     </qresource>
 </RCC>

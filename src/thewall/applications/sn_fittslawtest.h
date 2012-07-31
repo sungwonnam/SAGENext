@@ -250,6 +250,15 @@ private:
 	*/
 	int _numFramesForScreenUpdate;
 
+
+    /*!
+      Allow / Disallow miss click.
+      Allow : target will remain until successful click
+      Disallow : target will disappear upon click whether or not it's hit
+      */
+    bool _isAllowingMissClick;
+
+
 signals:
     /*!
       The user clicked the green circle.
@@ -304,7 +313,7 @@ public slots:
       If there's no saved position then randomly choose one by calling m_getRandomPos()
       otherwise, use the saved value in the _targetPosList.
       */
-    void determineNextTargetPosition();
+    void determineNextTargetPosition(int local_round_count, int next_target_id, bool force_random_determine=false);
 
     /*!
       reset _roundCount
@@ -336,6 +345,12 @@ public slots:
       This slot will just call update()
       */
     void scheduleDummyUpdate();
+
+    inline void setTargetCursorPixmap(const QString &res = ":/resources/blackarrow_upleft128.png") {
+        _cursor->setPixmap(res);
+    }
+
+    inline void setAllowingMissClick(bool b=true) {qDebug() << _userID << "allow miss click:" << b;_isAllowingMissClick = b;}
 };
 
 
@@ -372,7 +387,7 @@ public:
 
 //    void writeData(const QString &id, const QString &actionType, int targetcount = -1, const QByteArray &bytearry = QByteArray());
 
-    void flushCloseAll(const QString &id);
+    void flushAll(const QString &id);
 
 private:
     QString _filenameBase;
@@ -438,6 +453,8 @@ private slots:
     void advanceRound();
 
     void finalRound();
+
+    void toggleAllowMissClick(bool b);
 
     /*!
       There are always two rounds only
