@@ -1060,7 +1060,7 @@ void SN_FittsLawTestData::m_createGUI() {
         QVBoxLayout *hl = new QVBoxLayout;
         hl->addWidget(nextRnd);
         hl->addWidget(finalRnd);
-        hl->addWidget(recreateFiles);
+//        hl->addWidget(recreateFiles);
         hl->addWidget(close);
         hl->addWidget(isAllowingMissClick);
         _frame->setLayout(hl);
