@@ -217,6 +217,8 @@ void SN_VNCClientWidget::initGL(bool usepbo) {
 	_pboIds[0] = -1;
 	_pboIds[1] = -1;
 
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
 	if (usepbo) {
 //		qDebug() << "VNCWidget : OpenGL pbuffer extension is present. Using PBO";
 		glGenBuffersARB(2, _pboIds);
@@ -239,7 +241,6 @@ void SN_VNCClientWidget::initGL(bool usepbo) {
         _textureUpdateWidget->hide();
 	}
 
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 void SN_VNCClientWidget::startImageRecvThread() {
@@ -271,7 +272,7 @@ void SN_VNCClientWidget::startImageRecvThread() {
 	// if _usePbo then the thread will wait on condition __bufferMapped
 	_recvThread_future = QtConcurrent::run(this, &SN_VNCClientWidget::receivingThread);
 
-	//scheduleUpdate();
+	scheduleUpdate();
 
     if (_initVNCtext) {
         _initVNCtext->hide();
