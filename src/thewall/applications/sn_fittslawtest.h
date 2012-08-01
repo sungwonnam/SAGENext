@@ -325,10 +325,6 @@ public slots:
       */
     void clearTargetPosList();
 
-    /*!
-      clear all measurement data and populate it with null values
-      */
-    void clearData();
 
     /*!
       A test consists of 4 rounds.
@@ -452,16 +448,14 @@ private slots:
       */
     void advanceRound();
 
+    /*!
+      Immediately execute the final round
+      */
     void finalRound();
 
     void toggleAllowMissClick(bool b);
 
-    /*!
-      There are always two rounds only
-      Round 0 is dry run
-      */
-//    void advanceRoundSimple();
-
+    void clearAllSavedTgtPos();
 };
 
 #endif // SN_FITTSLAWTEST_H

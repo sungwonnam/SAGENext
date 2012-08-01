@@ -132,7 +132,6 @@ void SN_SageFittsLawTest::_init() {
     }
 
     clearTargetPosList();
-    clearData();
 
     qDebug("%s::%s() : %d Subjects, %d Tgts/Rnd, %d Rnds/User, Window %dx%d, %d frame per screen update\n"
            , metaObject()->className()
@@ -870,10 +869,10 @@ void SN_SageFittsLawTest::clearTargetPosList() {
     for (int i=0; i< SN_SageFittsLawTest::_NUM_ROUND_PER_USER * SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND; i++) {
         _targetPosList.append( QPointF() ); // init with null point
     }
+
+    qDebug() << _userID << "cleared Tgt position data";
 }
 
-void SN_SageFittsLawTest::clearData() {
-}
 
 QPointF SN_SageFittsLawTest::m_getRandomPos() {
     Q_ASSERT(_contentWidget);
@@ -1047,8 +1046,11 @@ void SN_FittsLawTestData::m_createGUI() {
         QPushButton *finalRnd = new QPushButton("_FinalRound_");
         QObject::connect(finalRnd, SIGNAL(clicked()), this, SLOT(finalRound()));
 
-        QPushButton *recreateFiles = new QPushButton("RecreateDataFiles");
-        QObject::connect(recreateFiles, SIGNAL(clicked()), this, SLOT(recreateAllDataFiles()));
+//        QPushButton *recreateFiles = new QPushButton("RecreateDataFiles");
+//        QObject::connect(recreateFiles, SIGNAL(clicked()), this, SLOT(recreateAllDataFiles()));
+
+        QPushButton *clearTgtPos = new QPushButton("Clear Saved Tgt Pos");
+        QObject::connect(clearTgtPos, SIGNAL(clicked()), this, SLOT(clearAllSavedTgtPos()));
 
         QPushButton *close = new QPushButton("Finish");
         QObject::connect(close, SIGNAL(clicked()), this, SLOT(closeAll()));
@@ -1061,6 +1063,7 @@ void SN_FittsLawTestData::m_createGUI() {
         hl->addWidget(nextRnd);
         hl->addWidget(finalRnd);
 //        hl->addWidget(recreateFiles);
+        hl->addWidget(clearTgtPos);
         hl->addWidget(close);
         hl->addWidget(isAllowingMissClick);
         _frame->setLayout(hl);
@@ -1076,6 +1079,16 @@ void SN_FittsLawTestData::toggleAllowMissClick(bool b) {
         SN_SageFittsLawTest *widget = it.value();
         if (widget) {
             widget->setAllowingMissClick(b);
+        }
+    }
+}
+
+void SN_FittsLawTestData::clearAllSavedTgtPos() {
+    QMap<QChar, SN_SageFittsLawTest *>::iterator it;
+    for (it=_widgetMap.begin(); it!=_widgetMap.end(); it++) {
+        SN_SageFittsLawTest *widget = it.value();
+        if (widget) {
+            widget->clearTargetPosList();
         }
     }
 }
