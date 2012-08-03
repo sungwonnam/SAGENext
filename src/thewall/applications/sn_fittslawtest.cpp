@@ -341,6 +341,7 @@ int SN_SageFittsLawTest::setQuality(qreal newQuality) {
         // because the widget set its required BW 0
         // meaning it's not consuming resource
         //
+        _quality = 0;
         return -1;
     }
     else if ( newQuality >= 1.0 ) {
@@ -1405,9 +1406,6 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
         if (actionType == "MISS") {
         }
         else {
-            if (actionType == "START_RND" && roundid == 1) {
-                (*appOut) << "\n";
-            }
             (*appOut) << ts << "," << actionType << "," << id << "," << roundid;
 
             if (actionType == "HIT"){
@@ -1435,6 +1433,10 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
     //            if (misscountround > 0) {
                     (*appOut) << "," << misscountround;
     //            }
+	//            
+				if (roundid == pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1) {
+					(*appOut) << "\n";
+				}
             }
             (*appOut) << "\n";
         }
