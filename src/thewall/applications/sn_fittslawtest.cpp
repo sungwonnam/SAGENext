@@ -306,6 +306,12 @@ void SN_SageFittsLawTest::scheduleDummyUpdate() {
     //
     if (_screenUpdateFlag == 0) {
         _screenUpdateFlag = _numFramesForScreenUpdate - 1; 
+
+		//
+		// This shouldn't be in the paint() function !
+		// Because if any widget calls update(), all widgets' paint() will be called.
+		//
+        _cursor->setPos( mapToItem(_contentWidget, _cursorPoint) );
         update();
     }
     else {
@@ -391,6 +397,9 @@ void SN_SageFittsLawTest::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *) {
     // do nothing
 }
 
+/*!
+ * THis function will be called whenever ANY widget issues the update()
+ */
 void SN_SageFittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 
     if (_isRunning) {
@@ -398,7 +407,6 @@ void SN_SageFittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsIte
         // draw cursor
 //        painter->drawPixmap(_cursorPoint, _cursorPixmap);
 
-        _cursor->setPos( mapToItem(_contentWidget, _cursorPoint) );
 
         if (_isDryRun) {
             painter->drawText( _contentWidget->geometry(), Qt::AlignCenter, "PRACTICE RUN");
