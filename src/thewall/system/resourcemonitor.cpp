@@ -977,6 +977,28 @@ bool SN_ResourceMonitor::setPrintFile(const QString &filepath) {
 
 void SN_ResourceMonitor::stopPrintData() {
     _printDataFlag = false;
+
+    _dataTextOut << "# Final Bandwidth\n";
+
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+
+    SN_BaseWidget *bw = 0;
+    QMap<quint64, SN_BaseWidget *>::const_iterator it;
+	for (it = _widgetMap.constBegin(); it != _widgetMap.constEnd(); it++) {
+
+        bw = it.value();
+        if (!bw) continue;
+
+//        qDebug() << bw->globalAppId() << bw->perfMon()->cumulativeByteReceived() << now - bw->perfMon()->measureStartTime();
+
+        qreal final_Mbps = 8.0f * (qreal)bw->perfMon()->cumulativeByteReceived() / (1000.0f * (now - bw->perfMon()->measureStartTime()));
+
+        _dataTextOut << "#," << bw->globalAppId() << "," << final_Mbps << "\n";
+
+    }
+
+
+
     _dataTextOut.flush();
     _dataTextOut.setDevice(0);
 
@@ -1045,9 +1067,9 @@ void SN_ResourceMonitor::printData(QTextStream *out, bool widgetIDasColCount /* 
     //
 	// the wall layout factors
     //
-	(*out) << _widgetMap.size()
+	(*out) << _widgetMap.size();
 //	        << "," << _theScene->getRatioEmptySpace()
-	        << "," << _theScene->getRatioOverlapped();
+//	        << "," << _theScene->getRatioOverlapped();
 
     /*
 	QSize avgqwinsize = _theScene->getAvgWinSize().toSize();

@@ -13,6 +13,9 @@ PerfMonitor::PerfMonitor(QObject *parent)
     , _widget(static_cast<SN_BaseWidget *>(parent))
     , _priori(false)
 
+    , _measureStartTime(0)
+    , _measureEndTime(0)
+
 	, _recvFrameCount(0)
     , currRecvLatency(-1)
     , avgRecvLatency(-1)
