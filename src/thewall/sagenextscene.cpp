@@ -50,6 +50,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 
 
     QPixmap evllogo(":/resources/evl-logo-sagenext.png");
+    Q_ASSERT(!evllogo.isNull());
     QGraphicsPixmapItem *bg = new QGraphicsPixmapItem(evllogo.scaledToWidth(sceneRect.width()/2, Qt::SmoothTransformation));
     bg->setOpacity(0.2);
     bg->setFlag(QGraphicsItem::ItemIsMovable, false);

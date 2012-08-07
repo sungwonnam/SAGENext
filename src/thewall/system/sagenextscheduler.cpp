@@ -142,11 +142,25 @@ void SN_SchedulerControl::killScheduler() {
 void SN_SchedulerControl::toggleSchedulerStatus() {
     if (!_scheduler) return;
 
+    bool flag = false;
+    if (_rMonitor && _rMonitor->isPrintingData()) {
+        _rMonitor->stopPrintData();
+        flag = true;
+    }
+
     if (isRunning()) {
         stopScheduler();
     }
     else {
         startScheduler();
+    }
+
+
+    //
+    // resume printing data
+    //
+    if (flag) {
+        _rMonitor->setPrintFile(QDir::homePath() + "/.sagenext/rMon_" + QDateTime::currentDateTime().toString("hh.mm.ss_MM.dd"));
     }
 }
 

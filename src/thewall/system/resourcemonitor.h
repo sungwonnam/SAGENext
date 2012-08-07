@@ -218,8 +218,10 @@ public:
 
 
     inline qreal totalBandwidthMbps() const {return _totalBWAchieved_Mbps;}
-inline qreal currentTotalBW_Mbps() const {return _currentTotalBW_Mbps;}
+    inline qreal currentTotalBW_Mbps() const {return _currentTotalBW_Mbps;}
 
+
+    inline bool isPrintingData() const {return _printDataFlag;}
 
 
 	/*!
