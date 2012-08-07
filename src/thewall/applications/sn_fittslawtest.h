@@ -256,7 +256,7 @@ private:
       Allow : target will remain until successful click
       Disallow : target will disappear upon click whether or not it's hit
       */
-    bool _isAllowingMissClick;
+    bool _isMissClickPenalty;
 
 
 signals:
@@ -346,7 +346,7 @@ public slots:
         _cursor->setPixmap(res);
     }
 
-    inline void setAllowingMissClick(bool b=true) {qDebug() << _userID << "allow miss click:" << b;_isAllowingMissClick = b;}
+    inline void setMissClickPenalty(bool b=false) {qDebug() << _userID << "miss click penalty ?" << b;_isMissClickPenalty = b;}
 };
 
 
@@ -449,11 +449,16 @@ private slots:
     void advanceRound();
 
     /*!
+      Practice Round (dryrun)
+      */
+    void practiceRound();
+
+    /*!
       Immediately execute the final round
       */
     void finalRound();
 
-    void toggleAllowMissClick(bool b);
+    void toggleMissClickPenalty(bool b);
 
     void clearAllSavedTgtPos();
 };

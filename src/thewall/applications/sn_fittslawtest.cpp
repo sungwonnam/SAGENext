@@ -65,13 +65,15 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
     , _screenUpdateFlag(0)
 	, _numFramesForScreenUpdate(6)
 
-    , _isAllowingMissClick(true)
+    , _isMissClickPenalty(false)
 {
     //
     // sagepixelreceiver will wait for the sema
     //
     __sema = new QSemaphore;
 
+    _useOpenGL = false;
+    _useShader = false;
     _usePbo = false;
 
 
@@ -397,6 +399,7 @@ void SN_SageFittsLawTest::resizeEvent(QGraphicsSceneResizeEvent *event) {
 
 void SN_SageFittsLawTest::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *) {
     // do nothing
+//    qDebug() << "DBL CLICK";
 }
 
 /*!
@@ -537,7 +540,7 @@ bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, co
         _missCountPerRound += _missCountPerTarget;
         _missCountTotal += _missCountPerTarget;
 
-        if (!_isAllowingMissClick) {
+        if (_isMissClickPenalty) {
 
             //
             // save current missed target's position
@@ -933,9 +936,11 @@ void SN_SageFittsLawTest::startReceivingThread() {
     //
     // initialize OpenGL
     //
+    /*
 	if (_useOpenGL) {
         m_initOpenGL();
 	}
+    */
 
     //
     // create the recv thread
@@ -1057,32 +1062,36 @@ void SN_FittsLawTestData::m_createGUI() {
 
         _frame->setWindowTitle("FittsLawTest Controller");
 
-        QPushButton *nextRnd = new QPushButton("NextRound");
+        QPushButton *nextRnd = new QPushButton("Next Round");
         QObject::connect(nextRnd, SIGNAL(clicked()), this, SLOT(advanceRound()));
 
-        QPushButton *finalRnd = new QPushButton("_FinalRound_");
+        QPushButton *pracRnd = new QPushButton("Practice Round");
+        QObject::connect(pracRnd, SIGNAL(clicked()), this, SLOT(practiceRound()));
+
+        QPushButton *finalRnd = new QPushButton("_Final Round_");
         QObject::connect(finalRnd, SIGNAL(clicked()), this, SLOT(finalRound()));
 
 //        QPushButton *recreateFiles = new QPushButton("RecreateDataFiles");
 //        QObject::connect(recreateFiles, SIGNAL(clicked()), this, SLOT(recreateAllDataFiles()));
 
-        QPushButton *clearTgtPos = new QPushButton("Clear Saved Tgt Pos");
-        QObject::connect(clearTgtPos, SIGNAL(clicked()), this, SLOT(clearAllSavedTgtPos()));
+//        QPushButton *clearTgtPos = new QPushButton("Clear Saved Tgt Pos");
+//        QObject::connect(clearTgtPos, SIGNAL(clicked()), this, SLOT(clearAllSavedTgtPos()));
 
         QPushButton *close = new QPushButton("Finish");
         QObject::connect(close, SIGNAL(clicked()), this, SLOT(closeAll()));
 
-        QCheckBox *isAllowingMissClick = new QCheckBox("Allow Miss Click");
-        isAllowingMissClick->setChecked(true);
-        QObject::connect(isAllowingMissClick, SIGNAL(toggled(bool)), this, SLOT(toggleAllowMissClick(bool)));
+        QCheckBox *isMissClickPenalty = new QCheckBox("MissClick Penalty");
+        isMissClickPenalty->setChecked(false);
+        QObject::connect(isMissClickPenalty, SIGNAL(toggled(bool)), this, SLOT(toggleMissClickPenalty(bool)));
 
         QVBoxLayout *hl = new QVBoxLayout;
         hl->addWidget(nextRnd);
+        hl->addWidget(pracRnd);
         hl->addWidget(finalRnd);
 //        hl->addWidget(recreateFiles);
-        hl->addWidget(clearTgtPos);
+//        hl->addWidget(clearTgtPos);
         hl->addWidget(close);
-        hl->addWidget(isAllowingMissClick);
+        hl->addWidget(isMissClickPenalty);
         _frame->setLayout(hl);
     }
 
@@ -1090,12 +1099,17 @@ void SN_FittsLawTestData::m_createGUI() {
     _frame->move(QPoint(10,10));
 }
 
-void SN_FittsLawTestData::toggleAllowMissClick(bool b) {
+void SN_FittsLawTestData::toggleMissClickPenalty(bool b) {
     QMap<QChar, SN_SageFittsLawTest *>::iterator it;
     for (it=_widgetMap.begin(); it!=_widgetMap.end(); it++) {
         SN_SageFittsLawTest *widget = it.value();
         if (widget) {
-            widget->setAllowingMissClick(b);
+
+            //
+            // if b is true then
+            // No missclick penalty (target will stay even if user miss clicked)
+            //
+            widget->setMissClickPenalty(b);
         }
     }
 }
@@ -1152,6 +1166,14 @@ void SN_FittsLawTestData::advanceRound() {
     Q_ASSERT(_widgetMap.size() == SN_FittsLawTestData::_NUM_SUBJECTS);
 
     if (_globalOut) _globalOut->flush();
+
+    QTextStream *ts = 0;
+    ts = _perAppOuts.value('A', 0);
+    if (ts) ts->flush();
+    ts = _perAppOuts.value('B', 0);
+    if (ts) ts->flush();
+    ts = _perAppOuts.value('C', 0);
+    if (ts) ts->flush();
 
     //
     // increment the RoundID, it's initialized with -1
@@ -1250,6 +1272,19 @@ void SN_FittsLawTestData::advanceRound() {
         break;
     }
     }
+}
+
+void SN_FittsLawTestData::practiceRound() {
+    if (_globalOut) _globalOut->flush();
+
+    _isDryRun = true;
+
+    //
+    // Set it to the practice Round
+    //
+    SN_SageFittsLawTest::RoundID = -1;
+
+    advanceRound();
 }
 
 void SN_FittsLawTestData::finalRound() {
