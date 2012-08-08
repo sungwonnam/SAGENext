@@ -256,6 +256,11 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 
 	buildSimpleProcList();
 
+    qreal totalR = settings->value("system/manualtotalbw", 0).toDouble();
+	if (totalR > 0) {
+		qDebug() << "SN_ResourceMonitor() : TotalResource is set to" << totalR << "Mbps";
+	}
+
 	if (settings->value("system/numnumanodes").toInt() > 1) {
 		numaInfo = (Numa_Info *)malloc(sizeof(Numa_Info) * settings->value("system/numnumanodes").toInt());
 		for (int i=0; i<settings->value("system/numnumanodes").toInt(); ++i) {
