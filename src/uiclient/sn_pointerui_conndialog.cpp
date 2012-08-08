@@ -87,6 +87,7 @@ void SN_PointerUI_ConnDialog::on_buttonBox_accepted()
 	portnum = ui->port->text().toInt();
 //	myaddr = ui->myAddrCB->currentText();
 	pName = ui->pointerNameLineEdit->text();
+    pName.replace(QChar(' '), "_", Qt::CaseInsensitive);
 	psharingEdge = ui->sharingEdgeCB->currentText();
 
 	_settings->setValue("wallport", portnum);
