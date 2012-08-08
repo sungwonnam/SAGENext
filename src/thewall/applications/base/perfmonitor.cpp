@@ -13,6 +13,9 @@ PerfMonitor::PerfMonitor(QObject *parent)
     , _widget(static_cast<SN_BaseWidget *>(parent))
     , _priori(false)
 
+    , _measureStartTime(0)
+    , _measureEndTime(0)
+
 	, _recvFrameCount(0)
     , currRecvLatency(-1)
     , avgRecvLatency(-1)
@@ -257,7 +260,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                 //
                 _requiredBW_Mbps = qMax(_maxBWachieved, (_widget->appInfo()->frameSizeInByte() * 8 * 30) / 1e+6);
 
-                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "GUESS Rq when woken up" << _requiredBW_Mbps;
+//                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "GUESS Rq when woken up" << _requiredBW_Mbps;
             }
             else {
                 // It was set too low..
@@ -265,7 +268,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                 //
                 _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
 
-                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "INCREASE Rq for over performing" << _requiredBW_Mbps;
+//                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "INCREASE Rq for over performing" << _requiredBW_Mbps;
             }
 
             _isRqIncreased = QDateTime::currentMSecsSinceEpoch();
@@ -316,7 +319,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                     // my Rq will be adjusted anyway
                     //
                     _requiredBW_Mbps = _currEffectiveBW_Mbps;
-                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "Resource Scarce. Let's decrease Rq to obtain high Dq" << _requiredBW_Mbps;
+//                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "Resource Scarce. Let's decrease Rq to obtain high Dq" << _requiredBW_Mbps;
                 }
 
                // _isRqIncreased = QDateTime::currentMSecsSinceEpoch();
@@ -337,7 +340,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                     //
                     _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
 
-                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "!! DECREASE Rq for under-performing" << _requiredBW_Mbps;
+//                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "!! DECREASE Rq for under-performing" << _requiredBW_Mbps;
 
                     _isRqIncreased = 0;
                 }

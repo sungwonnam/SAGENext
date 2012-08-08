@@ -72,6 +72,9 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
     //
     __sema = new QSemaphore;
 
+    _usePbo = false;
+
+
     //
     // set Schedulable widget
     // SN_Launcher will be able to add this widget to rMonitor's widget list
@@ -300,7 +303,6 @@ void SN_SageFittsLawTest::scheduleDummyUpdate() {
     if (doubleBuffer)
         doubleBuffer->releaseBackBuffer();
 
-
     //
     // multiple frames might be need to be received to update the screen
     //
@@ -403,13 +405,9 @@ void SN_SageFittsLawTest::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *) {
 void SN_SageFittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 
     if (_isRunning) {
-//        qDebug() << "FittsLawTest::paint()";
-        // draw cursor
-//        painter->drawPixmap(_cursorPoint, _cursorPixmap);
-
-
         if (_isDryRun) {
             painter->drawText( _contentWidget->geometry(), Qt::AlignCenter, "PRACTICE RUN");
+            _cursor->setPos( mapToItem(_contentWidget, _cursorPoint) );
         }
     }
 
@@ -595,7 +593,6 @@ void SN_SageFittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, con
                 }
             }
             */
-
             _cursorPoint = point;
         }
     }
@@ -834,6 +831,7 @@ void SN_SageFittsLawTest::determineNextTargetPosition(int local_round_count, int
     //
     if (! nextPos.isNull() ) {
 //        qDebug() << "determineNextTargetPosition()" << _roundCount << _targetHitCount << "has point data" << nextPos;
+//        qDebug() << _userID << "Round" << SN_SageFittsLawTest::RoundID << "(" << _roundCount << "," << _targetHitCount << ") has saved pos data";
     }
 
     //
@@ -841,7 +839,7 @@ void SN_SageFittsLawTest::determineNextTargetPosition(int local_round_count, int
     //
     else {
         nextPos = m_getRandomPos();
-        qDebug() << "determineNextTargetPosition() : determined target pos for" << local_round_count << next_target_id;
+//        qDebug() << "determineNextTargetPosition() : determined target pos for" << local_round_count << next_target_id;
 
         //
         // Assumes the list is already filled with null data (call clearTargetPosList() !!)
@@ -951,7 +949,7 @@ void SN_SageFittsLawTest::startReceivingThread() {
     //
 
 //    QObject::connect(_receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
-
+    /***
     if (!_blameXinerama) {
         if (_usePbo) {
             if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(schedulePboUpdate())) ) {
@@ -968,10 +966,17 @@ void SN_SageFittsLawTest::startReceivingThread() {
     }
     else {
         // I think Xinerama makes graphics performance bad..
-        // On venom, five 1080p videos can't sustain 24 fps..
-        qDebug() << "SN_SageFittsLawTest::startReceivingThread() : BLAME_XINERAMA defined. no frameReceived/scheduleUpdate connection";
+        // On venom, five 1080p videos can't sustain 24 fps.. So reboot the machine
+//        qDebug() << "SN_SageFittsLawTest::startReceivingThread() : BLAME_XINERAMA defined. no frameReceived/scheduleUpdate connection";
         QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleDummyUpdate()));
     }
+    ***/
+
+    if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleDummyUpdate())) ) {
+        qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleDummyUpdate() slot", metaObject()->className(), __FUNCTION__);
+        return;
+    }
+
 
     qDebug() << "SN_SageFittsLawTest (" << _globalAppId << _sageAppId << ") ready for streaming.";
 	qDebug() << "\t" << "app name" << _appInfo->executableName() << ",media file" << _appInfo->fileInfo().fileName() << "from" << _appInfo->srcAddr();
@@ -980,6 +985,9 @@ void SN_SageFittsLawTest::startReceivingThread() {
 	qDebug() << "\t" << "GL pixel format" << _pixelFormat << ",use SHADER (for YUV format)" << _useShader << ",use OpenGL PBO" << _usePbo;
 
 
+    //
+    // thread will start in startRound()
+    //
 //    _receiverThread->start();
 }
 
@@ -1442,7 +1450,7 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
                     (*appOut) << "," << misscountround;
     //            }
 	//            
-				if (roundid == pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1) {
+				if (roundid == 0 || roundid == pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1) {
 					(*appOut) << "\n";
 				}
             }
@@ -1506,8 +1514,8 @@ void SN_FittsLawTestData::flushAll(const QString &id) {
         count = 0; // reset
 
         qDebug() << "\n===============================================================================";
-        qDebug() << "FittsLawTestData::flushCloseAll() : The test finished for all subjects !";
-        qDebug() << "===============================================================================";
+        qDebug() << "FittsLawTestData::flushAll() : The test finished for all subjects !";
+        qDebug() << "===============================================================================\n";
 
         if (_globalOut) _globalOut->flush();
 //        if (_globalDataFile) _globalDataFile->close();

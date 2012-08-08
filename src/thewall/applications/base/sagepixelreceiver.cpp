@@ -166,6 +166,11 @@ void SN_SagePixelReceiver::run() {
     qint64 recvDelay = 0;
     qint64 start;
 
+
+    if (_perfMon) {
+        _perfMon->setMeasureStartTime(QDateTime::currentMSecsSinceEpoch());
+    }
+
 	while(! _end ) {
 
         if (_isScheduler)
@@ -326,6 +331,10 @@ void SN_SagePixelReceiver::run() {
         }
 
 	} /*** end of receiving loop ***/
+
+    if (_perfMon) {
+        _perfMon->setMeasureEndTime(QDateTime::currentMSecsSinceEpoch());
+    }
 
 	/* pixel receiving thread exit */
 //	qDebug("SagePixelReceiver : thread exit");

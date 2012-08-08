@@ -121,6 +121,13 @@ public:
     inline void setPriori(bool b = true) {_priori = b;}
     inline bool priori() const {return _priori;}
 
+    inline quint64 cumulativeByteReceived() const {return _cumulativeByteRecved;}
+
+    inline void setMeasureStartTime(qint64 t) {_measureStartTime = t;}
+    inline qint64 measureStartTime() const {return _measureStartTime;}
+    inline void setMeasureEndTime(qint64 t) {_measureEndTime = t;}
+    inline qint64 measureEndTime() const {return _measureEndTime;}
+
 
 //	inline QTime & getRecvTimer() { return recvTimer; }
 	inline QTime & getDrawTimer() { return drawTimer; }
@@ -252,6 +259,9 @@ private:
       constant frame rate periodic app will have this
       */
     bool _priori;
+
+    qint64 _measureStartTime;
+    qint64 _measureEndTime;
 
 
 	/*!
