@@ -473,13 +473,6 @@ void SN_BaseWidget::maximize()
 	_maximizeAction->setEnabled(false);
 	_restoreAction->setEnabled(true);
 
-	//
-	// record current position and scale
-	//
-	Q_ASSERT(_appInfo);
-//	_appInfo->setRecentPos(pos());
-//	_appInfo->setRecentSize(size());
-//	_appInfo->setRecentScale(scale());
 
     //
     // widget shouldn't obstruct layout buttons (tile, horizontal, vertical,..) on the left side of the layout
@@ -742,6 +735,13 @@ QRectF SN_BaseWidget::resizeHandleRect() const
 {
 	QSizeF size(128, 128);
 
+    if (boundingRect().width() <= size.width()) {
+        size.rwidth() = boundingRect().width() / 2;
+    }
+    if (boundingRect().height() <= size.height()) {
+        size.rheight() = boundingRect().height() / 2;
+    }
+
     //
     // bottom right corner of the window
     //
@@ -772,9 +772,11 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
             _isMoving = true;
         }
         
-        _appInfo->setRecentPos(scenePos());
-        _appInfo->setRecentSize(size());
-        _appInfo->setRecentScale(scale());
+        if (_windowState == SN_BaseWidget::W_NORMAL) {
+            _appInfo->setRecentPos(scenePos());
+            _appInfo->setRecentSize(size());
+            _appInfo->setRecentScale(scale());
+        }
     }
 }
 
@@ -803,8 +805,8 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
             setScale(se);
         }
 
-        _resizeRectangle->hide();
     }
+    _resizeRectangle->hide();
     _isResizing = false;
 
     // base implementation does nothing
