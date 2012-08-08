@@ -69,7 +69,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
 //        setFlag(QGraphicsItem::ItemHasNoContents, true); // paint() has no effect
         _usePbo = false;
         _useOpenGL = false;
-        drawInfo();
+//        drawInfo();
     }
 
 
