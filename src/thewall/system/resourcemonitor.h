@@ -361,6 +361,12 @@ signals:
 
     void dataRefreshed();
 
+    /*!
+      true : started
+      false : stopped
+      */
+    void schedulerStateChanged(bool);
+
 public slots:
 	/*!
 	  This function is called at RailawareWidget::fadeOutClose(), it calls ProcessorNode::removeApp()

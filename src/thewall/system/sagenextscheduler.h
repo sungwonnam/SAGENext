@@ -99,6 +99,12 @@ signals:
       */
     void readyToSchedule();
 
+    /*!
+      true if started
+      false if stopped
+      */
+    void schedulerStateChanged(bool);
+
 public slots:
     void startScheduler();
 

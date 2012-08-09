@@ -466,7 +466,15 @@ void SN_ResourceMonitor::buildSimpleProcList() {
 void SN_ResourceMonitor::setScheduler(SN_SchedulerControl *sc) {
     Q_ASSERT(sc);
     _schedcontrol = sc;
+
+    //
+    // The signal dataRefreshed() is emitted right before ::refresh() returns.
+    // This signal will trigger the schedulerControl to emit readyToSchedule() signal.
+    // which will invoke scheduler::doSchedule()
+    //
     QObject::connect(this, SIGNAL(dataRefreshed()), _schedcontrol, SIGNAL(readyToSchedule()));
+
+    QObject::connect(_schedcontrol, SIGNAL(schedulerStateChanged(bool)), this, SIGNAL(schedulerStateChanged(bool)));
 }
 
 void SN_ResourceMonitor::refresh() {

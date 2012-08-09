@@ -71,6 +71,8 @@ void SN_SchedulerControl::startScheduler() {
     if (_lbl_schedStatus) {
         _lbl_schedStatus->setText("Scheduling !");
     }
+
+    emit schedulerStateChanged(true);
 }
 
 
@@ -100,6 +102,8 @@ void SN_SchedulerControl::stopScheduler() {
         if (_lbl_schedStatus) {
             _lbl_schedStatus->setText("No Scheduling");
         }
+
+        emit schedulerStateChanged(false);
     }
 }
 
