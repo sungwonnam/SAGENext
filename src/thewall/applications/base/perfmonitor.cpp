@@ -310,8 +310,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
 					//
                 	// Then let's increase Rq and see what happens because it may be able to consume more
 					//
-                    _requiredBW_Mbps = 1.1 * _currEffectiveBW_Mbps;
-                    /*_requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;*/
+                    _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
 
 					//qDebug() << "___Maybe I can use more" << _requiredBW_Mbps;
                 }
