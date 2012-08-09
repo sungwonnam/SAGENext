@@ -71,8 +71,7 @@ MandelbrotRenderer::~MandelbrotRenderer()
 //! [1]
 
 //! [2]
-void MandelbrotRenderer::render(double centerX, double centerY, double scaleFactor,
-                          QSize resultSize)
+void MandelbrotRenderer::render(double centerX, double centerY, double scaleFactor, QSize resultSize)
 {
     QMutexLocker locker(&mutex);
 
@@ -93,6 +92,8 @@ void MandelbrotRenderer::render(double centerX, double centerY, double scaleFact
 //! [3]
 void MandelbrotRenderer::run()
 {
+    qDebug() << "MandelbrotRenderer::run()";
+
     forever {
         mutex.lock();
         QSize resultSize = this->resultSize;
