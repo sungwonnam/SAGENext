@@ -244,6 +244,12 @@ private:
 //	SN_BaseWidget::Widget_Type widgetType;
 	SN_BaseWidget *_widget;
 
+	qreal _overPerformAvg;
+	qreal _overPerformAgg;
+	qreal _overPerformCnt;
+
+	int _underPerformCnt;
+
 
     /*!
       Updates

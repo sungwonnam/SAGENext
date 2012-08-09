@@ -751,6 +751,8 @@ void SN_SageFittsLawTest::finishRound() {
 
     _cursor->hide();
 
+	_screenUpdateFlag = 0;
+
     _lbl_rndcount->setText("Round Count");
     _lbl_tgtcount->setText("Target Count");
 

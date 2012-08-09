@@ -11,6 +11,12 @@
 PerfMonitor::PerfMonitor(QObject *parent)
     : QObject(parent)
     , _widget(static_cast<SN_BaseWidget *>(parent))
+
+	, _overPerformAvg(0)
+	, _overPerformAgg(0)
+	, _overPerformCnt(0)
+	, _underPerformCnt(0)
+
     , _priori(false)
 
     , _measureStartTime(0)
@@ -267,13 +273,16 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                 // It was set too low..
                 ////////////////////// INCREASE Rq /////////////////////////////
                 //
+				/*
+				_overPerformCnt += 1;
+				_overPerformAgg += _currEffectiveBW_Mbps;
+				_overPerformAvg = _overPerformAgg / _overPerformCnt;
+				*/
+
                 _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
-
-//                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "INCREASE Rq for over performing" << _requiredBW_Mbps;
-				qDebug() << "___Over performing, currBW" << _currEffectiveBW_Mbps << "Rq is now:" << _requiredBW_Mbps;
-
+            	//_isRqIncreased = QDateTime::currentMSecsSinceEpoch();
+				//qDebug() << "___Over performing avg BW" << _overPerformAvg << "Rq is now:" << _requiredBW_Mbps;
             }
-            //_isRqIncreased = QDateTime::currentMSecsSinceEpoch();
         }
 
         //
@@ -300,7 +309,8 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                 	// Then let's increase Rq and see what happens because it may be able to consume more
 					//
                     _requiredBW_Mbps = 1.1 * _currEffectiveBW_Mbps;
-					qDebug() << "___Maybe I can use more" << _requiredBW_Mbps;
+               		//_isRqIncreased = QDateTime::currentMSecsSinceEpoch();
+					//qDebug() << "___Maybe I can use more" << _requiredBW_Mbps;
                 }
 
                 //
@@ -316,11 +326,8 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                     // If my currBW is increased as a result of high Dq then my Rq will be adjusted anyway
                     //
                     //_requiredBW_Mbps = _currEffectiveBW_Mbps;
-//                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "Resource Scarce. Let's decrease Rq to obtain high Dq" << _requiredBW_Mbps;
                 }
 
-               // _isRqIncreased = QDateTime::currentMSecsSinceEpoch();
-//                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "There's more resource. Let's INCREASE Rq" << _requiredBW_Mbps;
             }
 
             //
@@ -328,17 +335,25 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
             // so lower the requiredBW a bit
             //
             else {
-                _requiredBW_Mbps = _currEffectiveBW_Mbps;
-				qDebug() << "___Under performing (Oq<Dq): " << _requiredBW_Mbps;
+				++_underPerformCnt;
 
-                //if ( _isRqIncreased > 0 && now - _isRqIncreased > 3000) {
-                    //
-                    //////////////////// DECREASE Rq /////////////////////////////
-                    //
-                    //_requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
-					//qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "!! DECREASE Rq for under-performing" << _requiredBW_Mbps;
-                    //_isRqIncreased = 0;
-                //}
+				if ( _widget->demandedQuality() > 0.95) {
+					if (_underPerformCnt > 3) {
+						_underPerformCnt = 0;
+						qreal delta = _requiredBW_Mbps - _currEffectiveBW_Mbps;
+						_requiredBW_Mbps -= (delta / 2);
+						//_requiredBW_Mbps = _currEffectiveBW_Mbps;
+						//qDebug() << "___Under performing High Dq (Oq<Dq): " << _requiredBW_Mbps;
+					}
+				}
+				else {
+					//
+					// under performing so lower the Rq
+					//
+                	_requiredBW_Mbps = _currEffectiveBW_Mbps;
+					//qDebug() << "___Under performing Low Dq (Oq<Dq): " << _requiredBW_Mbps;
+				}
+
             }
         }
     }
