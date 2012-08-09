@@ -63,7 +63,8 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
     , _targetHitTime(0.0)
 
     , _screenUpdateFlag(0)
-	, _numFramesForScreenUpdate(6)
+	, _numFramesForScreenUpdate(3)
+    , _numFramesForScreenUpdateConfigured(3)
 
     , _isMissClickPenalty(false)
 {
@@ -124,8 +125,11 @@ void SN_SageFittsLawTest::_init() {
     //            SN_FittsLawTest::_streamerIpAddr = QString(streamerip);
     //            SN_SageFittsLawTest::_streamImageSize = QSize(overheadwidth, overheadheight);
 
+                //
+                // read the configured value for NoSched
+                //
                 if (num_frame_for_update > 0)
-                    _numFramesForScreenUpdate = num_frame_for_update;
+                    _numFramesForScreenUpdateConfigured = num_frame_for_update;
             }
 
             f.close();
@@ -138,7 +142,9 @@ void SN_SageFittsLawTest::_init() {
 
     clearTargetPosList();
 
-    qDebug("%s::%s() : %d Subjects, %d Tgts/Rnd, %d Rnds/User, Window %dx%d, %d frame per screen update\n"
+    QObject::connect(_rMonitor, SIGNAL(schedulerStateChanged(bool)), this, SLOT(respondToSchedulerState(bool)));
+
+    qDebug("%s::%s() : %d Subjects, %d Tgts/Rnd, %d Rnds/User, Window %dx%d, %d frame per update (NoSched)\n"
            , metaObject()->className()
            , __FUNCTION__
            , SN_FittsLawTestData::_NUM_SUBJECTS
@@ -308,7 +314,9 @@ void SN_SageFittsLawTest::scheduleDummyUpdate() {
     //
     // multiple frames might be need to be received to update the screen
     //
-    if (_screenUpdateFlag == 0) {
+    if (_screenUpdateFlag <= 0) {
+
+        // reset
         _screenUpdateFlag = _numFramesForScreenUpdate - 1; 
 
 		//
@@ -319,7 +327,6 @@ void SN_SageFittsLawTest::scheduleDummyUpdate() {
         update();
     }
     else {
-        //_screenUpdateFlag = true;
         _screenUpdateFlag--;
     }
 
@@ -996,6 +1003,19 @@ void SN_SageFittsLawTest::startReceivingThread() {
     // thread will start in startRound()
     //
 //    _receiverThread->start();
+}
+
+void SN_SageFittsLawTest::respondToSchedulerState(bool started) {
+    if (started) {
+        if (_numFramesForScreenUpdateConfigured > 0) {
+            _numFramesForScreenUpdate = _numFramesForScreenUpdateConfigured - 1;
+            qDebug() << "The Scheduler has started !!" << _numFramesForScreenUpdate;
+        }
+    }
+    else {
+        _numFramesForScreenUpdate = _numFramesForScreenUpdateConfigured;
+        qDebug() << "The Scheduler has stopped !!" << _numFramesForScreenUpdate;
+    }
 }
 
 

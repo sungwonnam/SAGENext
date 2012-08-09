@@ -250,11 +250,15 @@ private:
 	*/
 	int _numFramesForScreenUpdate;
 
+    /*!
+      Immutable
+      */
+    int _numFramesForScreenUpdateConfigured;
+
 
     /*!
-      Allow / Disallow miss click.
-      Allow : target will remain until successful click
-      Disallow : target will disappear upon click whether or not it's hit
+      true : target will remain until successful click
+      false : target will disappear upon click whether or not it's hit
       */
     bool _isMissClickPenalty;
 
@@ -287,6 +291,8 @@ public slots:
 
 
     inline void setUserID(const QString &str) {_userID = str;}
+
+    void respondToSchedulerState(bool);
 
 
     /*!
@@ -345,6 +351,7 @@ public slots:
     inline void setTargetCursorPixmap(const QString &res = ":/resources/blackarrow_upleft128.png") {
         _cursor->setPixmap(res);
     }
+
 
     inline void setMissClickPenalty(bool b=false) {qDebug() << _userID << "miss click penalty ?" << b;_isMissClickPenalty = b;}
 };
