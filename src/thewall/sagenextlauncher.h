@@ -107,25 +107,35 @@ public slots:
 	inline void resetGlobalAppId() {_globalAppId = 1;}
 
         /**
-          This slot is invoked by the signal fsManager::incomingSail() in fsManager::incomingConnection
+          This slot is invoked by the signal fsManager::incomingSail() in fsManager::incomingConnection().
+
+          When a SAGE application (external process) runs, the sail will connect to SAGENext's fsManager
+          then this function is invoked automatically.
           */
 	SN_BaseWidget * launch(const QString &sageappname, const QString &mediafilepath, fsManagerMsgThread *fsmThread);
 
+    /*!
+      This function is invoked by SN_LayoutWidget::loadSession().
+
+      The SageStreamWidget created in this function is stored in the _sageWidgetQueue first.
+      Then corresponding SAGE application will be launched using (QProcess or system command).
+      If SAGE application runs then launch(.... fsManagerMsgThread *) will be called.
+      */
 	SN_BaseWidget * launchSageApp(int mtype, const QString &filename, const QPointF &scenepos = QPointF(30,30), const QString &senderIP = "127.0.0.1", const QString &args = QString(), const QString &sageappname = QString(), quint64 gaid = 0);
 
         /**
-          this is general launch function
+          This is general launch function
           */
 	SN_BaseWidget * launch(int mediatype, const QString &filename, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
         /**
-          just for VNC widget
+          VNCWidget will be launched by this function.
           */
 	SN_BaseWidget * launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
         /**
-          The widget is added to the scene in here.
-          _globalAppId is incremented by 1 in here
+          The widget is added to the scene in here and the _globalAppId is incremented by 1 in here as well.
+          All the launch() will eventually call this function at the end.
           */
 	SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &scenepos = QPointF(30,30));
 

@@ -149,7 +149,7 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &m
 	QPointF pos;
 
 	//
-	// This means the SAGE application was NOT started by the launcher but manually by running a SAGE application.
+	// This means the SAGE application was NOT started by the launcher but manually by running a SAGE application outside of the SAGENext.
 	// For instance, running a mplayer in console terminal will make the fsManager to emit incomingSail(fsmThread *) before SN_Launcher launches a SageStreamWidget for it.
 	// In this case, fsManagerThread's incomingSail signal will trigger this slot.
 	//
