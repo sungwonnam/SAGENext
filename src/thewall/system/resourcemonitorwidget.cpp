@@ -440,9 +440,11 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 				break;
 			case 4:
 				item->setData(Qt::DisplayRole, rw->observedQuality_Rq());
+				/*
                 if ( rw->observedQuality_Rq() > rw->demandedQuality() ) {
                     item->setBackground(Qt::red);
                 }
+				*/
 				break;
 			case 5:
 				item->setData(Qt::DisplayRole, rw->demandedQuality());
