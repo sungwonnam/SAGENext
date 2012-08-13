@@ -237,6 +237,9 @@ private:
     qreal _sum_norm_latency;
     qreal _sum_latency;
 
+    qreal _sum_Rq;
+    qreal _sum_Rc;
+
     qint64 _targetAppearTime;
     qint64 _targetHitTime;
 
@@ -386,7 +389,7 @@ public:
 
     inline QFrame * getFrame() {return _frame;}
 
-    void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, qint64 latency = -1, qreal distance = -1, int missfortarget = -1, qreal avg_latency=-1, qreal avg_norm_latency = -1, int misscountround = -1);
+    void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, qint64 latency = -1, qreal distance = -1, int missfortarget = -1, qreal avg_latency=-1, qreal avg_norm_latency = -1, int misscountround = -1, qreal Rq = -1, qreal Rc = -1);
 
 //    void writeData(const QString &id, const QString &actionType, int targetcount = -1, const QByteArray &bytearry = QByteArray());
 

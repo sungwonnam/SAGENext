@@ -58,6 +58,8 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
 
     , _sum_norm_latency(0)
     , _sum_latency(0)
+    , _sum_Rq(0)
+    , _sum_Rc(0)
 
     , _targetAppearTime(0.0)
     , _targetHitTime(0.0)
@@ -505,7 +507,11 @@ bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, co
         _sum_norm_latency += (hitlatency / distance);
 
 
-        _dataObject->writeData(_userID, "HIT", SN_SageFittsLawTest::RoundID, _targetHitCount, hitlatency, distance, _missCountPerTarget);
+        qreal Rq = _perfMon->getRequiredBW_Mbps();
+        qreal Rc = _perfMon->getCurrBW_Mbps();
+        _sum_Rq += Rq; // this is reset in finishRound()
+        _sum_Rc += Rc; // this is reset in finishRound()
+        _dataObject->writeData(_userID, "HIT", SN_SageFittsLawTest::RoundID, _targetHitCount, hitlatency, distance, _missCountPerTarget, -1, -1, -1, Rq, Rc);
 
         //
         // reset the miss count upon a successful hit
@@ -793,6 +799,9 @@ void SN_SageFittsLawTest::finishRound() {
                            , _sum_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
                            , _sum_norm_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
                            , _missCountPerRound
+
+                           , _sum_Rq / SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+                           , _sum_Rc / SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
                            );
 
     if (!_isDryRun) {
@@ -827,6 +836,8 @@ void SN_SageFittsLawTest::finishRound() {
     _missCountPerRound = 0;
     _sum_latency = 0;
     _sum_norm_latency = 0;
+    _sum_Rq = 0;
+    _sum_Rc = 0;
 }
 
 void SN_SageFittsLawTest::determineNextTargetPosition(int local_round_count, int next_target_id, bool force_random_determine /* false */) {
@@ -1408,7 +1419,20 @@ void SN_FittsLawTestData::addWidget(SN_SageFittsLawTest *widget, const QChar id)
 //    writeData(id, actionType, targetcount, QString(bytearry));
 //}
 
-void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType, int roundid, int targetcount/*-1*/, qint64 latency /* -1 */, qreal distance /* -1 */, int missfortarget/*-1*/, qreal avg_latency/*-1*/, qreal avg_norm_latency/*-1*/, int misscountround /*-1*/) {
+void SN_FittsLawTestData::writeData(const QString &id
+                                    , const QString &actionType
+                                    , int roundid
+                                    , int targetcount/*-1*/
+                                    , qint64 latency /* -1 */
+                                    , qreal distance /* -1 */
+                                    , int missfortarget/*-1*/
+                                    , qreal avg_latency/*-1*/
+                                    , qreal avg_norm_latency/*-1*/
+                                    , int misscountround /*-1*/
+                                    , qreal Rq /*-1*/
+                                    , qreal Rc /*-1*/
+                                    )
+{
 
     qint64 ts = QDateTime::currentMSecsSinceEpoch();
 
@@ -1460,6 +1484,13 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
                 (*_globalOut) << "," << misscountround;
             }
 
+            if (Rq >=0) {
+                (*_globalOut) << "," << Rq;
+            }
+            if (Rc >=0) {
+                (*_globalOut) << "," << Rc;
+            }
+
             (*_globalOut) << "\n";
         }
 
@@ -1496,6 +1527,13 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
                 if (missfortarget >= 0) {
                     (*appOut) << "," << missfortarget;
                 }
+
+                if (Rq >= 0) {
+                    (*appOut) << "," << Rq;
+                }
+                if (Rc >= 0) {
+                    (*appOut) << "," << Rc;
+                }
             }
             else if (actionType == "FINISH_RND") {
 
@@ -1506,7 +1544,15 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
     //            if (misscountround > 0) {
                     (*appOut) << "," << misscountround;
     //            }
-	//            
+
+                if (Rq >=0) {
+                    (*appOut) << "," << Rq;
+                }
+                if (Rc >=0) {
+                    (*appOut) << "," << Rc;
+                }
+
+
 				if (roundid == 0 || roundid == pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1) {
 					(*appOut) << "\n";
 				}
