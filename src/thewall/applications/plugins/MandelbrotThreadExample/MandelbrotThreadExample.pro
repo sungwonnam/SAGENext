@@ -12,9 +12,11 @@ QT       += core gui
 TARGET = MandelbrotExamplePlugin
 
 SOURCES += \
-mandelbrotwidget.cpp
+mandelbrotwidget.cpp \
+mandelbrotrenderer.cpp
 
 HEADERS  += \
-mandelbrotwidget.h
+mandelbrotwidget.h \
+mandelbrotrenderer.h
 
 
