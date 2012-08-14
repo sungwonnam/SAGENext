@@ -40,7 +40,7 @@ public:
       This function is called by the resource monitor periodically.
       It assumes the widget keeps updating the _cumulativeByteReceived.
 
-      The _currEffectiveBW, _requiredBW, maxBWachieved are updated in this function.
+      This function calculates current BW and calls _updateBWdata() with the value
       */
     void updateDataWithCumulativeByteReceived(qint64 timestamp);
 
@@ -169,6 +169,18 @@ public:
 	inline qreal getAvgDispFps() const {return avgDispFps;}
 
 
+    ///
+    /// Parameters affecting Rw
+    ///
+    inline int wakeUpGuessFps() const {return _wakeUpGuessFps;}
+    inline qreal overPerformMult() const {return _overPerformMultiplier;}
+    inline qreal normPerformMult() const {return _normPerformMultiplier;}
+    inline int underPerformEndur() const {return _underPerformEndurance;}
+
+    inline void setWakeUpGuessFps(int fps) {_wakeUpGuessFps = fps;}
+    inline void setOverPerformMult(qreal m) {_overPerformMultiplier = m;}
+    inline void setNormPerformMult(qreal m) {_normPerformMultiplier = m;}
+    inline void setUnderPerformEndur(int e) {_underPerformEndurance = e;}
 
 
     ///
@@ -247,6 +259,38 @@ private:
 	qreal _overPerformAvg;
 	qreal _overPerformAgg;
 	qreal _overPerformCnt;
+
+    /*!
+      initial frame rate estimated when an application woken up from idling.
+
+      Default 30
+      */
+    int _wakeUpGuessFps;
+
+    /*!
+      When an application over-performing (Rc > Rw), increase Rw
+      Rw = _overPerformMultiplier * Rc
+
+      Default 1.2
+      */
+    qreal _overPerformMultiplier;
+
+    /*!
+      When an application perform normal (Rc <= Rw), and its Dq is 1 then try increase Rw
+      Rw = _normPerformMultiplier * Rc
+
+      Default 1.1
+      */
+    qreal _normPerformMultiplier;
+
+    /*!
+      How many under-performance will be tolerated before lowering its Rw
+      if (_underPerformCnt > _underPerformEndurance) then decrease Rw
+
+      Default 4
+      */
+    int _underPerformEndurance;
+
 
 	int _underPerformCnt;
 

@@ -641,6 +641,20 @@ void SN_SageFittsLawTest::handlePointerPress(SN_PolygonArrowPointer *, const QPo
     }
 }
 
+void SN_SageFittsLawTest::setPerfMonRwParameters(int wakeUpGuessFps, qreal overPerformMult, qreal normPerformMult, int underPerformEndur) {
+    if (!_perfMon) {
+        qDebug() << "SN_SageFittsLawTest::setPerfMonRwParameters() : _perfMon is null";
+        return;
+    }
+
+    _perfMon->setWakeUpGuessFps(wakeUpGuessFps);
+    _perfMon->setOverPerformMult(overPerformMult);
+    _perfMon->setNormPerformMult(normPerformMult);
+    _perfMon->setUnderPerformEndur(underPerformEndur);
+
+    qDebug() << "UserID" << _userID << "Rw params" << _perfMon->wakeUpGuessFps() << _perfMon->overPerformMult() << _perfMon->normPerformMult() << _perfMon->underPerformEndur();
+}
+
 /*!
   This is invoked by the test controller (not a user).
   User will see the green play icon
@@ -672,6 +686,8 @@ void SN_SageFittsLawTest::setReady(bool isDryrun /* false */) {
 
     _startstop->setPixmap(_startPixmap);
     _startstop->show();
+
+    qDebug() << "UserID" << _userID << "Rw params" << _perfMon->wakeUpGuessFps() << _perfMon->overPerformMult() << _perfMon->normPerformMult() << _perfMon->underPerformEndur();
 }
 
 /*!
@@ -1101,14 +1117,14 @@ void SN_FittsLawTestData::m_createGUI() {
         QPushButton *pracRnd = new QPushButton("Practice Round");
         QObject::connect(pracRnd, SIGNAL(clicked()), this, SLOT(practiceRound()));
 
-        QPushButton *finalRnd = new QPushButton("_Final Round_");
-        QObject::connect(finalRnd, SIGNAL(clicked()), this, SLOT(finalRound()));
-
-//        QPushButton *recreateFiles = new QPushButton("RecreateDataFiles");
-//        QObject::connect(recreateFiles, SIGNAL(clicked()), this, SLOT(recreateAllDataFiles()));
+//        QPushButton *finalRnd = new QPushButton("_Final Round_");
+//        QObject::connect(finalRnd, SIGNAL(clicked()), this, SLOT(finalRound()));
 
 //        QPushButton *clearTgtPos = new QPushButton("Clear Saved Tgt Pos");
 //        QObject::connect(clearTgtPos, SIGNAL(clicked()), this, SLOT(clearAllSavedTgtPos()));
+
+        QPushButton *rwparam = new QPushButton("set Rw conservatively");
+        QObject::connect(rwparam, SIGNAL(clicked()), this, SLOT(setRwParamConservatively()));
 
         QPushButton *close = new QPushButton("Finish");
         QObject::connect(close, SIGNAL(clicked()), this, SLOT(closeAll()));
@@ -1120,8 +1136,8 @@ void SN_FittsLawTestData::m_createGUI() {
         QVBoxLayout *hl = new QVBoxLayout;
         hl->addWidget(nextRnd);
         hl->addWidget(pracRnd);
-        hl->addWidget(finalRnd);
-//        hl->addWidget(recreateFiles);
+        hl->addWidget(rwparam);
+//        hl->addWidget(finalRnd);
 //        hl->addWidget(clearTgtPos);
         hl->addWidget(close);
         hl->addWidget(isMissClickPenalty);
@@ -1130,6 +1146,20 @@ void SN_FittsLawTestData::m_createGUI() {
 
     _frame->show();
     _frame->move(QPoint(10,10));
+}
+
+void SN_FittsLawTestData::setRwParamConservatively() {
+    QMap<QChar, SN_SageFittsLawTest *>::iterator it;
+    for (it=_widgetMap.begin(); it!=_widgetMap.end(); it++) {
+        SN_SageFittsLawTest *widget = it.value();
+        if (widget) {
+            // wakeUpGuessFps
+            // overPerformMultiplier
+            // normPerformMultiplier
+            // underPerformEndurance
+            widget->setPerfMonRwParameters(20, 1.05, 1.1, 2);
+        }
+    }
 }
 
 void SN_FittsLawTestData::toggleMissClickPenalty(bool b) {

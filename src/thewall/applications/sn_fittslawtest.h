@@ -336,6 +336,12 @@ public slots:
 
 
     /*!
+      Adjust parameters in PerfMonitor::_updateBWdata()
+      */
+    void setPerfMonRwParameters(int wakeUpGuessFps, qreal overPerformMult, qreal normPerformMult, int underPerformEndur);
+
+
+    /*!
       A test consists of 4 rounds.
       */
 //    void finishTest();
@@ -462,6 +468,8 @@ private slots:
       Practice Round (dryrun)
       */
     void practiceRound();
+
+    void setRwParamConservatively();
 
     /*!
       Immediately execute the final round
