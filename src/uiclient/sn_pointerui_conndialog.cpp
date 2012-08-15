@@ -39,6 +39,7 @@ SN_PointerUI_ConnDialog::SN_PointerUI_ConnDialog(QSettings *s, QWidget *parent)
 
 
 	ui->port->setText( _settings->value("wallport", 30003).toString() );
+    ui->pointerNameLineEdit->setMaxLength(32);
 	ui->pointerNameLineEdit->setText( _settings->value("pointername", "pointerName").toString());
 
 

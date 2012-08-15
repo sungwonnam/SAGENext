@@ -340,6 +340,7 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
     _wallPort = cd.port();
 
 	_pointerName = cd.pointerName();
+    _pointerName.resize(32);
 	_pointerColor = cd.pointerColor();
 //	_myIpAddress = cd.myAddress();
 	_sharingEdge = cd.sharingEdge();
