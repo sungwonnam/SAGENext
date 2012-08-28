@@ -1157,7 +1157,7 @@ void SN_FittsLawTestData::setRwParamConservatively() {
             // overPerformMultiplier
             // normPerformMultiplier
             // underPerformEndurance
-            widget->setPerfMonRwParameters(20, 1.05, 1.1, 2);
+            widget->setPerfMonRwParameters(15, 1.05, 1.1, 2);
         }
     }
 }
