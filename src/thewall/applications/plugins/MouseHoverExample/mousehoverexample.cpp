@@ -12,11 +12,18 @@ TrackerItem::TrackerItem(qreal x, qreal y, qreal w, qreal h, const QColor &c, QG
     , _color(c)
     , _size(QSizeF(w,h))
 {
+    //
+    // If you want to control how this item reacts then set this so that SN_PolygonArrowPointer ignores this
+    //
 	setAcceptedMouseButtons(0);
+
 	_startTime = QTime::currentTime();
 }
 
 QRectF TrackerItem::boundingRect() const {
+    //
+    // Normally, (0,0) is top-left of the item. This makes (0,0) to be the center of the item
+    //
 	return QRectF( -_size.width()/2 , -_size.height()/2, _size.width() , _size.height());
 }
 
@@ -59,6 +66,9 @@ void TrackerItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWi
 
 
 
+
+
+
 MouseHoverExample::MouseHoverExample()
     : SN_BaseWidget(Qt::Window)
 	, _hoverFlag(false)
@@ -69,22 +79,12 @@ MouseHoverExample::MouseHoverExample()
 {
 	setContentsMargins(_marginleft, _margintop, _marginright, _marginbottom);
 
-
 	//
-	// register myself to the hoveraccepting app list of the scene
+	// Register myself to the hoveraccepting application list of the scene
 	//
 	setRegisterForMouseHover(true);
 
-
 	resize(1024, 768);
-}
-
-MouseHoverExample::~MouseHoverExample()
-{
-}
-
-SN_BaseWidget * MouseHoverExample::createInstance() {
-	return new MouseHoverExample;
 }
 
 void MouseHoverExample::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {

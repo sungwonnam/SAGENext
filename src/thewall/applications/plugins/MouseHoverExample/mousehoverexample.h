@@ -7,7 +7,9 @@
 #include "applications/base/basewidget.h"
 
 
-
+/*!
+  This item will be shown when a user's pointer is hovering on the MouseHoverExample widget
+  */
 class TrackerItem : public QGraphicsItem
 {
 public:
@@ -26,6 +28,10 @@ protected:
 
 
 
+
+
+
+
 class MouseHoverExample : public SN_BaseWidget, SN_PluginInterface
 {
     Q_OBJECT
@@ -33,18 +39,18 @@ class MouseHoverExample : public SN_BaseWidget, SN_PluginInterface
 
 public:
     MouseHoverExample();
-    ~MouseHoverExample();
+    ~MouseHoverExample() {}
 
 
 	/**
-	  Implementing pure virtual defined in SN_PluginInterface
+	  Implementing the interface defined in SN_PluginInterface
 	  */
-	SN_BaseWidget * createInstance();
+    SN_BaseWidget * createInstance() {return new MouseHoverExample;}
 
 
 	/**
-	  reimplementing BaseWidget::toggleHover(quint64 pointerid, bool isHovering)
-	  This function is called by pointers in pointerMove() function
+	  Reimplementing SN_BaseWidget::handlePointerHover().
+	  This function is called by sagenextpointers in SN_PolygonArrowPointer::pointerMove() function
 
 	  pointerPosOnMe is in my local coordinate
 	  */

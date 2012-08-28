@@ -1,32 +1,14 @@
 #include "simpleguiexample.h"
 
-//#include "../../../common/commonitem.h"
-//#include "../../base/perfmonitor.h"
-//#include "../../base/appinfo.h"
-
-
 SimpleGUIExample::SimpleGUIExample()
     : SN_BaseWidget(Qt::Window)
     , _label(0)
-    , _labelProxy(0)
-
-    , btn_R(0)
-    , btn_M(0)
-    , btn_Y(0)
-    , proxy_btn_R(0)
-    , proxy_btn_M(0)
-    , proxy_btn_Y(0)
-
-    , _invert(0)
-    , _proxy_invert(0)
-
-    , _btnLayout(0)
-    , _mainLayout(0)
-
-    , _isInvertOn(false)
+    , _btn_R(0)
+    , _btn_M(0)
+    , _btn_Y(0)
 {
 	//
-	// when resized, usually native application will set this
+	// If a widget's size can be changed then set this flag
 	//
 	setWindowFlags(Qt::Window);
 
@@ -44,76 +26,85 @@ SimpleGUIExample::SimpleGUIExample()
 }
 
 void SimpleGUIExample::_createGUIs() {
-
-    // create label
+    //
+    // create the label displaying selected color
+    //
 	_label = new QLabel();
 	_label->setFrameStyle(QFrame::Box);
 	_label->setLineWidth(8);
 
-		//
-        // create proxywidget for label
-		//
-	_labelProxy = new QGraphicsProxyWidget(this, Qt::Widget);
-	_labelProxy->setWidget(_label);
-	_labelProxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Label);
+	//
+    // create a proxywidget for the label.
+    // A widget needs to have a corresponding proxywidget in Qt Graphics Framework.
+    //
+	QGraphicsProxyWidget *labelProxy = new QGraphicsProxyWidget(this, Qt::Widget);
+	labelProxy->setWidget(_label);
+	labelProxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Label);
 
 
-	/*
-	_invert = new QCheckBox("Invert");
-	connect(_invert, SIGNAL(stateChanged(int)), this, SLOT(toggleInvert(int)));
-	_proxy_invert = new QGraphicsProxyWidget(this, Qt::Widget);
-	_proxy_invert->setWidget(_invert);
-	*/
-
-
+    //
+    // use layout widget to juxtapose items.
+    //
 	QGraphicsLinearLayout *toplayout = new QGraphicsLinearLayout(Qt::Horizontal);
-	toplayout->addItem(_labelProxy);
-//	toplayout->addItem(_proxy_invert);
 
+    //
+    // now the toplayout has ownership of the _labelProxy
+    //
+	toplayout->addItem(labelProxy);
 
-	// create buttons and connect to corresponding callback functions
-	btn_R = new QPushButton("Red");
-	btn_Y = new QPushButton("Yellow");
-	btn_M = new QPushButton("Magenta");
-	connect(btn_R, SIGNAL(clicked()), this, SLOT(buttonR()));
-	connect(btn_Y, SIGNAL(clicked()), this, SLOT(buttonY()));
-	connect(btn_M, SIGNAL(clicked()), this, SLOT(buttonM()));
+    //
+	// create the buttons and connect their signals to corresponding callback functions
+    //
+	_btn_R = new QPushButton("Red");
+	_btn_Y = new QPushButton("Yellow");
+	_btn_M = new QPushButton("Magenta");
+	QObject::connect(_btn_R, SIGNAL(clicked()), this, SLOT(buttonR()));
+	QObject::connect(_btn_Y, SIGNAL(clicked()), this, SLOT(buttonY()));
+	QObject::connect(_btn_M, SIGNAL(clicked()), this, SLOT(buttonM()));
+
 		//
-        // create proxywidget for buttons
+        // Again, create proxywidgets for the buttons
 		//
-	proxy_btn_R = new QGraphicsProxyWidget(this, Qt::Widget);
-	proxy_btn_M = new QGraphicsProxyWidget(this, Qt::Widget);
-	proxy_btn_Y = new QGraphicsProxyWidget(this, Qt::Widget);
-	proxy_btn_R->setWidget(btn_R);
-	proxy_btn_M->setWidget(btn_M);
-	proxy_btn_Y->setWidget(btn_Y);
+	QGraphicsProxyWidget *proxy_btn_R = new QGraphicsProxyWidget(this, Qt::Widget);
+	QGraphicsProxyWidget *proxy_btn_M = new QGraphicsProxyWidget(this, Qt::Widget);
+	QGraphicsProxyWidget *proxy_btn_Y = new QGraphicsProxyWidget(this, Qt::Widget);
+	proxy_btn_R->setWidget(_btn_R);
+	proxy_btn_M->setWidget(_btn_M);
+	proxy_btn_Y->setWidget(_btn_Y);
 
-	// create layout for buttons (proxywidgets for buttons more precisely)
-	_btnLayout = new QGraphicsLinearLayout(Qt::Horizontal);
-	_btnLayout->addItem(proxy_btn_R);
-	_btnLayout->addItem(proxy_btn_M);
-	_btnLayout->addItem(proxy_btn_Y);
-	_btnLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::PushButton);
+    //
+	// create another layout for the buttons
+    //
+	QGraphicsLinearLayout *btnLayout = new QGraphicsLinearLayout(Qt::Horizontal);
+	btnLayout->addItem(proxy_btn_R);
+	btnLayout->addItem(proxy_btn_M);
+	btnLayout->addItem(proxy_btn_Y);
+	btnLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::PushButton);
 
 
-	// create main layout
-	_mainLayout = new QGraphicsLinearLayout(Qt::Vertical);
-//	mainLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::DefaultType);
-	_mainLayout->setContentsMargins(0,0,0,0);
+    //
+	// create the main layout that will have toplayout and _btnLayout
+    //
+	QGraphicsLinearLayout *mainLayout = new QGraphicsLinearLayout(Qt::Vertical);
+	mainLayout->setContentsMargins(0,0,0,0);
+	mainLayout->addItem(toplayout);
+	mainLayout->addItem(btnLayout);
 
-	// add GUI components in it
-	_mainLayout->addItem(toplayout);
-	_mainLayout->addItem(_btnLayout);
-//	mainLayout->setItemSpacing(0, 2);
-
+    //
 	// set the main layout to be this application's root layout
-	// previous layout will be deleted by this
-	setLayout(_mainLayout);
+	// previous layout will be deleted by this.
+    // Also the widget takes ownership of layout
+    //
+	setLayout(mainLayout);
 
-	/*!
-      Once you figure out your widget resolution, call this function. This is important.
-      */
-	resize(800, 400);
+	///
+	// Once you figure out your widget resolution, call this function.
+	//
+//	resize(800, 400);
+    //
+    // or just call if it's Qt::Window type and a layout is set for the widget
+    //
+    adjustSize();
 }
 
 
@@ -122,76 +113,61 @@ void SimpleGUIExample::_createGUIs() {
   */
 void SimpleGUIExample::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-//	if (_perfMon)
-//		_perfMon->getDrawTimer().start();
-
+    //
+    // The base implementation draws border around the widget when selected with a sagenextPointer
+    //
 	SN_BaseWidget::paint(painter, option, widget);
 
 	/*************
 	put your drawing code here if needed
       ************/
 //	painter->fillRect(boundingRect(), _currentColor.darker());
-
-
-//	if (_perfMon)
-//		_perfMon->updateDrawLatency();
 }
 
 SimpleGUIExample::~SimpleGUIExample() {
+    //
+    // Any child object of the widget (which is Q_OBJECT) will be deleted automatically
+    //
 }
 
 SN_BaseWidget * SimpleGUIExample::createInstance() {
+    //
+    // Create a new instance
+    //
     SimpleGUIExample *instance = new SimpleGUIExample;
 
+    //
+    // Build child items
+    //
     instance->_createGUIs();
 
 	return instance;
 }
 
 void SimpleGUIExample::buttonR() {
-	btn_M->setDown(false);
-	btn_Y->setDown(false);
-	btn_R->setDown(true);
+	_btn_M->setDown(false);
+	_btn_Y->setDown(false);
+	_btn_R->setDown(true);
 	_updateLabel(QColor(Qt::red));
 }
 void SimpleGUIExample::buttonM() {
-	btn_M->setDown(true);
-	btn_Y->setDown(false);
-	btn_R->setDown(false);
+	_btn_M->setDown(true);
+	_btn_Y->setDown(false);
+	_btn_R->setDown(false);
 	_updateLabel(QColor(Qt::magenta));
 }
 void SimpleGUIExample::buttonY() {
-	btn_M->setDown(false);
-	btn_Y->setDown(true);
-	btn_R->setDown(false);
+	_btn_M->setDown(false);
+	_btn_Y->setDown(true);
+	_btn_R->setDown(false);
 	_updateLabel(QColor(Qt::yellow));
 }
 
-void SimpleGUIExample::toggleInvert(int) {
-	if (_isInvertOn)
-		_isInvertOn = false;
-	else
-		_isInvertOn = true;
-
-	_updateLabel(_currentColor);
-}
 
 void SimpleGUIExample::_updateLabel(const QColor &c) {
 	QPixmap p(size().toSize());
-
-	if (_isInvertOn) {
-		int r,g,b;
-		c.getRgb(&r, &g, &b);
-		r = 255 - r;
-		g = 255 - g;
-		b = 255 - b;
-		p.fill(QColor(r,g,b));
-	}
-	else {
-		p.fill(c);
-	}
+    p.fill(c);
 	_currentColor = c;
-
 	_label->setPixmap(p);
 }
 

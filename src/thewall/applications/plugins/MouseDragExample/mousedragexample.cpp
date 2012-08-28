@@ -7,11 +7,9 @@ TrackerItem::TrackerItem(qreal x, qreal y, qreal w, qreal h, const QBrush &brush
 	: QGraphicsEllipseItem(x,y,w,h,parent)
     , _brush(brush)
 {
-	/**
-	  If this item is not interested in real mouse event.
-	  If only draggin is needed, then set it to 0.
-	  If this item has to receive click, rightclick, and so on. then comment it
-	  */
+    //
+    // If you want to control how this item reacts then set this so that SN_PolygonArrowPointer ignores this
+    //
 	setAcceptedMouseButtons(0);
 
 	/**
@@ -22,11 +20,13 @@ TrackerItem::TrackerItem(qreal x, qreal y, qreal w, qreal h, const QBrush &brush
 	  */
 //	setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 }
-
 void TrackerItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 	painter->setBrush(_brush);
 	painter->drawEllipse(boundingRect());
 }
+
+
+
 
 
 
@@ -39,36 +39,33 @@ MouseDragExample::MouseDragExample()
     , _margintop(40)
     , _marginbottom(10)
 {
-
 	/**
 	  when you set layout on this widget ( QGraphicsWidget::setLayout() ),
 	  The layout will not cover entire window if below is set greater than 0
 	  */
 	setContentsMargins(_marginleft, _margintop, _marginright, _marginbottom);
-
-	resize(1024, 768);
-}
-
-MouseDragExample::~MouseDragExample()
-{
-	// TrackerItem doesn't need to be deleted explicitly because child items will be deleted automatically
 }
 
 /**
-  Don't forget this
+  Implementing the interface.
+  All the child items will be instantiated in here
   */
 SN_BaseWidget * MouseDragExample::createInstance() {
 
     MouseDragExample *instance = new MouseDragExample;
 
     for (int i=0; i<_numItems; i++) {
+        // A color for each tracker item
 		QColor color(128, i * 12, 255 / (i+1));
 
 		// MouseDragExample's child item
 		TrackerItem *ti = new TrackerItem(0,0,128,128, QBrush(color), instance);
 
+        // initial position
 		ti->moveBy(_marginleft + i * 64, _margintop);
 	}
+
+    instance->resize(1280, 1024);
 
 	return instance;
 }
@@ -87,11 +84,14 @@ TrackerItem * MouseDragExample::getTrackerItemUnderPoint(const QPointF &point) {
 }
 
 void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
-	SN_BaseWidget::handlePointerPress(pointer, point, btn);
-
 	qreal maxZ = 0.0;
 	TrackerItem *t = getTrackerItemUnderPoint(point);
+
+    //
+    // If user's pointer is pressed on a tracker item then
+    //
 	if (t) {
+        // widget is not in the "moving" state
         _isMoving = false;
 
 		QMap<SN_PolygonArrowPointer *, TrackerItem *>::const_iterator it;
@@ -104,33 +104,41 @@ void MouseDragExample::handlePointerPress(SN_PolygonArrowPointer *pointer, const
 
 		_dragTrackerMap.insert(pointer, t);
 	}
+
+    //
+    // user's pointer is pressed on a point on which there's no tracker item
+    //
 	else {
 		_dragTrackerMap.erase(_dragTrackerMap.find(pointer));
+
+        //
+        // Do whatever the base implementation does
+        //
+        SN_BaseWidget::handlePointerPress(pointer, point, btn);
 	}
 }
 
 void MouseDragExample::handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
-    Q_UNUSED(point);
-	Q_UNUSED(btn);
 
+    // a user's pointer done interacting (dragging) with a tracker item
 	_dragTrackerMap.erase(_dragTrackerMap.find(pointer));
 
-    _isMoving = false;
-    _isResizing = false;
+    SN_BaseWidget::handlePointerRelease(pointer, point, btn);
 }
 
 void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier) {
 
-	//
-	// If there is a trackeritem under the pointer
-	//
 	TrackerItem *tracker = _dragTrackerMap.value(pointer, 0);
+
+    //
+	// If there is a trackeritem under the pointer then
+	//
 	if (tracker) {
 		if (button == Qt::LeftButton) {
 
 			QPointF trackerCenter = tracker->mapToParent(tracker->boundingRect().center());
 
-			// And the tracker resides inside of this widget
+			// And the tracker resides in this widget
 			if (boundingRect().contains(trackerCenter))
 
 				// then move the tracker

@@ -6,15 +6,14 @@
 
 include(../pluginbase.pri)
 
-QT       += core gui
-
+#
+# Upon build, the binary will be placed in ${HOME}/.sagenext/media/plugins/
+# Run the SAGENext and launch the plugin by choosing the binary in a file open dialog (Ctrl-O)
+#
 TARGET = MouseClickExamplePlugin
-
-
 
 SOURCES += \
 simpleguiexample.cpp
-
 
 HEADERS  += \
 simpleguiexample.h

@@ -88,6 +88,10 @@ qreal SN_Priority::ipm() const {
 }
 
 void SN_Priority::setLastInteraction(SN_Priority::IntrType t /* = NOINTR */, qint64 time /* = 0 */) {
+
+    Q_UNUSED(t);
+    Q_UNUSED(time);
+
 	++_intrCounter;
 
     /*

@@ -15,12 +15,13 @@ PerfMonitor::PerfMonitor(QObject *parent)
 	, _overPerformAvg(0)
 	, _overPerformAgg(0)
 	, _overPerformCnt(0)
-	, _underPerformCnt(0)
+
 
     , _wakeUpGuessFps(30)
     , _overPerformMultiplier(1.2)
     , _normPerformMultiplier(1.1)
     , _underPerformEndurance(4)
+    , _underPerformCnt(0)
 
     , _priori(false)
 

@@ -1032,18 +1032,6 @@ void SN_SageFittsLawTest::startReceivingThread() {
 //    _receiverThread->start();
 }
 
-void SN_SageFittsLawTest::respondToSchedulerState(bool started) {
-    if (started) {
-        if (_numFramesForScreenUpdateConfigured > 0) {
-            _numFramesForScreenUpdate = _numFramesForScreenUpdateConfigured - 1;
-            qDebug() << "The Scheduler has started !!" << _numFramesForScreenUpdate;
-        }
-    }
-    else {
-        _numFramesForScreenUpdate = _numFramesForScreenUpdateConfigured;
-        qDebug() << "The Scheduler has stopped !!" << _numFramesForScreenUpdate;
-    }
-}
 
 
 

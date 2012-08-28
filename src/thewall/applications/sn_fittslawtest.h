@@ -295,7 +295,7 @@ public slots:
 
     inline void setUserID(const QString &str) {_userID = str;}
 
-    void respondToSchedulerState(bool);
+//    void respondToSchedulerState(bool);
 
 
     /*!
