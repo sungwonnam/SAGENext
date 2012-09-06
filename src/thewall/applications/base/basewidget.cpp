@@ -725,10 +725,11 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 	//! optional
 //	appInfo->setRecentScale(currentScale);
 
-// This function will not change widget's size !!
-//	qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
-
-
+    //
+    // Widget's size and boundingRect won't be changed !!
+    // The size of the sceneBoundingRect will reflect the scale !!
+    //
+//    qDebug() <<"scale:" << scale() << "size" << size() << "boundingRect" << boundingRect() << "geometry" << geometry() << "sceneBoundingRect" << sceneBoundingRect();
 }
 
 QRectF SN_BaseWidget::resizeHandleRect() const

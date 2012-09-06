@@ -1,15 +1,19 @@
 #include "sn_priority.h"
+#include "../../system/resourcemonitor.h"
 #include <QGraphicsScene>
 
 SN_Priority::SN_Priority(SN_BaseWidget *w, QObject *parent)
     : QObject(parent)
     , _priority(-1)
-    , _priorityQuantized(0)
+    , _Pvisual(-1)
+    , _Pinteract(-1)
+    , _Ptemp(0)
     , _timeLastIntr(0)
     , _timeFirstIntr(QDateTime::currentMSecsSinceEpoch())
     , _intrCounter(0)
     , _intrCounterPrev(0)
     , _widget(w)
+    , _priorityGrid(0)
 
     , _evr_to_win(0)
     , _evr_to_wall(0)
@@ -18,65 +22,35 @@ SN_Priority::SN_Priority(SN_BaseWidget *w, QObject *parent)
 }
 
 qreal SN_Priority::computePriority(qint64 currTimeEpoch) {
-	//	/*******************
-	//	 size of Effective Visible Region
-	//	 *****************/
-	//	qreal weight1 = 1.0;
-	//	QRegion effectiveRegion = effectiveVisibleRegion();
-
-	//	int effectiveVisibleSize  = 0;
-	//	for (int i=0; i<effectiveRegion.rectCount(); ++i ) {
-	//		QRect rect = effectiveRegion.rects().at(i);
-	//		effectiveVisibleSize += (rect.size().width() * rect.size().height());
-	//	}
-
-	//	if (isObscured()) {
-	//		//_priority = 0;
-	//	}
-	//	else {
-	//		//_priority = ratioToTheWall()  * (1 + zValue()); // ratio is more important
-
-	//		_priority = weight1  *  effectiveVisibleSize / (scene()->width() * scene()->height());
-	//	}
-
-
-	//	/****
-	//	Time passed since last touch
-	//	****/
-	//	qreal weight2 = 0.4;
-	//	qint64 lastTouch = _intMon->timeLastInteracted();
-	//	if ( ctepoch > 0 &&  lastTouch > 0) {
-
-	//		// _lastTouch is updated in mousePressEvent
-	//		qreal T_lt = (qreal)(ctepoch - lastTouch); // msec passed since last touch (current time in epoch - last touched time in epoch)
-	//		T_lt /= 1000.0; // to second
-
-	//		//qDebug() << "[[ Widget" << _globalAppId << weight2 << "/" << T_lt << "=" << weight2/T_lt;
-	//		_priority += (weight2 / T_lt);
-	//	}
-
-	//	//qDebug() << "[[ Widget" << _globalAppId << "priority" << _priority << "]]";
-
     Q_UNUSED(currTimeEpoch);
 
-	computeEvrInfo();
+    //
+    // P visual and P interact
+    //
+	m_computePvisual();
+    m_computePinteract();
+
+    _priority = _Pvisual + 100.0f * _Pinteract;
+
+    //
+    // Update pGrid cell value with my Pvisual and Pinteract
+    //
+    if (_priorityGrid && _priorityGrid->isEnabled()) {
+        _priorityGrid->addPriorityOfApp(_widget->sceneBoundingRect().toRect(), _priority);
+    }
 
     //
     // if app is not revealing itself much
     // then its priority will lowered much
     //
+    /*
     qreal weight_evrwin = 1.0;
     if (_evr_to_win < 40) {
         weight_evrwin = (qreal)_evr_to_win / 100;
     }
-
 	qreal visualfactor =  (qreal)_evr_to_win  +  (qreal)_evr_to_wall;
-
     _priority = weight_evrwin * visualfactor + 100.0f * (_intrCounter - _intrCounterPrev);
-
-//    qDebug() << "computePriority()" << weight_evrwin << visualfactor << ipm();
-
-    _intrCounterPrev = _intrCounter;
+    */
 
 	return _priority;
 }
@@ -119,7 +93,7 @@ void SN_Priority::setLastInteraction(SN_Priority::IntrType t /* = NOINTR */, qin
 }
 
 
-void SN_Priority::computeEvrInfo(void) {
+void SN_Priority::m_computePvisual(void) {
 
 	Q_ASSERT(_widget);
 
@@ -140,6 +114,7 @@ void SN_Priority::computeEvrInfo(void) {
 
 	// ratio of EVR to window size (%)
 //	Q_ASSERT(winsize > 0);
+    /*
 	if (winsize > 0) {
 		_evr_to_win = (100 * _evrsize) / winsize; // quint16 : unsigned short
 	}
@@ -147,4 +122,13 @@ void SN_Priority::computeEvrInfo(void) {
 	if (_widget->scene()) {
 		_evr_to_wall = (100 * _evrsize) / (_widget->scene()->width() * _widget->scene()->height()); // quint16 : unsigned short
 	}
+    */
+
+    _evr_to_win = _evrsize / winsize;
+    _Pvisual = _evrsize * _evr_to_win;
+}
+
+void SN_Priority::m_computePinteract() {
+    _Pinteract = _intrCounter - _intrCounterPrev;
+    _intrCounterPrev = _intrCounter;
 }

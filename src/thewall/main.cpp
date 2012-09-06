@@ -370,10 +370,13 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 		SN_PriorityGrid *pgrid = 0;
 		if (s.value("system/prioritygrid").toBool()) {
+
+            int num_row = s.value("system/prioritygrid_numrow", 3).toInt();
+            int num_col = s.value("system/prioritygrid_numcol", 4).toInt();
 			//
 			// enable priorityGrid
 			//
-			pgrid = new SN_PriorityGrid(QSize(480, 400), scene);
+			pgrid = new SN_PriorityGrid(num_row, num_col, scene);
 
 			//
 			// sets the priority grid
@@ -400,6 +403,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 			qDebug() << "Creating" << s.value("system/scheduler_type").toString() << "Scheduler";
 
 			schedcontrol = new SN_SchedulerControl(resourceMonitor);
+
+            if (pgrid) schedcontrol->setPriorityGrid(pgrid);
 
 			//
 			// scheduler will be killed and deleted in resourceMonitor's destructor

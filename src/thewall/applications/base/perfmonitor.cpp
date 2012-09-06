@@ -103,7 +103,60 @@ void PerfMonitor::printData() const {
 //	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << _avgEffectiveFps << avgDispFps;
 }
 
+void PerfMonitor::_updateBWdata(qreal bwtemp) {
 
+    ///
+    // If app provided resource required (e.g. constant framerate streaming such as Sage app)
+    // then I know current BW is always less than or equal to required BW and
+    // its requiredBW will never change
+    //
+    if (_priori) {
+        if (bwtemp == 0) {
+            _currEffectiveBW_Mbps = bwtemp;
+            // _requiredBW_Mbps = 0; // how to restore this ???
+            _currEffectiveFps = 0;
+        }
+        else if (bwtemp <= _requiredBW_Mbps) {
+            _currEffectiveBW_Mbps = bwtemp;
+        }
+        else {
+            // perhaps measurement error so discard the data measured
+            _currEffectiveBW_Mbps = _requiredBW_Mbps;
+        }
+    }
+
+    //
+    // No priori
+    //
+    else {
+        _currEffectiveBW_Mbps = bwtemp;
+
+        if (_currEffectiveBW_Mbps == 0) {
+            _requiredBW_Mbps = 0;
+            _currEffectiveFps = 0;
+        }
+        else {
+            if ( _currEffectiveBW_Mbps > _requiredBW_Mbps) {
+                if ( _requiredBW_Mbps == 0) {
+                    _requiredBW_Mbps = qMax(_maxBWachieved, (_widget->appInfo()->frameSizeInByte() * 8 * _wakeUpGuessFps) / 1e+6);
+                }
+                else {
+                    _requiredBW_Mbps = _currEffectiveBW_Mbps;
+                }
+            }
+            else if ( _currEffectiveBW_Mbps == _requiredBW_Mbps ) {
+                _requiredBW_Mbps = _overPerformMultiplier * _currEffectiveBW_Mbps;
+            }
+            else {
+                _requiredBW_Mbps = _currEffectiveBW_Mbps;
+            }
+        }
+    }
+
+    _maxBWachieved = qMax(_maxBWachieved, _currEffectiveBW_Mbps);
+}
+
+/*****************************************
 void PerfMonitor::_updateBWdata(qreal bwtemp) {
 
     ///
@@ -178,18 +231,14 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                 // It was set too low..
                 ////////////////////// Over Performing INCREASE Rq /////////////////////////////
                 //
-				/*
-				_overPerformCnt += 1;
-				_overPerformAgg += _currEffectiveBW_Mbps;
-				_overPerformAvg = _overPerformAgg / _overPerformCnt;
-				*/
+				//
+//                _overPerformCnt += 1;
+//				_overPerformAgg += _currEffectiveBW_Mbps;
+//				_overPerformAvg = _overPerformAgg / _overPerformCnt;
 
                 _requiredBW_Mbps = _overPerformMultiplier * _currEffectiveBW_Mbps;
 				//qDebug() << "___Over performing avg BW" << _overPerformAvg << "Rq is now:" << _requiredBW_Mbps;
             }
-
-            /*_isRqIncreased = QDateTime::currentMSecsSinceEpoch();*/
-
         }
 
         //
@@ -232,7 +281,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
                     // Resource is scarce. lower Rq so that app can obtain higher Dq from the scheduler ==> GREEDY !
                     // If my currBW is increased as a result of high Dq then my Rq will be adjusted anyway
                     //
-                    /* _requiredBW_Mbps = _currEffectiveBW_Mbps; */
+                    // _requiredBW_Mbps = _currEffectiveBW_Mbps;
                 }
             }
 
@@ -260,18 +309,17 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
 					//qDebug() << "___Under performing Low Dq (Oq<Dq): " << _requiredBW_Mbps;
 				}
 
-                /*
-                if (_isRqIncreased && now - _isRqIncreased > 3000) {
-                    _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
-                    _isRqIncreased = 0;
-                }
-                */
+//                if (_isRqIncreased && now - _isRqIncreased > 3000) {
+//                    _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
+//                    _isRqIncreased = 0;
+//                }
             }
         }
     }
 
     _maxBWachieved = qMax(_maxBWachieved, _currEffectiveBW_Mbps);
 }
+*/
 
 //
 // Resource monitor 's refresh() calls this function
@@ -399,6 +447,9 @@ qreal PerfMonitor::observedQuality_Rq() const {
     if ( _requiredBW_Mbps > 0) {
         return _currEffectiveBW_Mbps / _requiredBW_Mbps;
     }
+    else if (_requiredBW_Mbps == 0) {
+        return 0;
+    }
     else {
         return -1;
     }
@@ -409,6 +460,10 @@ qreal PerfMonitor::observedQuality_Dq() const {
         qreal demandedBW = _widget->demandedQuality() * _requiredBW_Mbps;
         if (demandedBW > 0) {
             return _currEffectiveBW_Mbps / demandedBW;
+        }
+        else if (demandedBW == 0) {
+//            qDebug() << "PerfMonitor::observedQuality_Dq() : demanded is 0";
+            return 1.0;
         }
     }
     else {

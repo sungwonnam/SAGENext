@@ -11,9 +11,11 @@ class SN_Priority : public QObject
 	Q_OBJECT
 	Q_ENUMS(IntrType)
 public:
-	explicit SN_Priority(SN_BaseWidget *widget, QObject *parent = 0);
+	explicit SN_Priority(SN_BaseWidget *widget, QObject *parent=0);
 
 	enum IntrType {NOINTR, MOVE, RESIZE, CLICK, CONTENTS};
+
+    inline void setPriorityGrid(SN_PriorityGrid *pg) {_priorityGrid = pg;}
 
 	inline qint64 timeLastInteracted() const {return _timeLastIntr;}
 	inline IntrType lastInteractionType() const {return _typeLastIntr;}
@@ -27,11 +29,9 @@ public:
     inline qreal priority() const {return _priority;}
 
 	/*!
-	  All the member variables will be filled in this function.
+	  Increment the _intrCounter
 	  */
 	void setLastInteraction(SN_Priority::IntrType t = SN_Priority::NOINTR, qint64 time = 0);
-
-
 
 	/*!
 	  Returns interactions per minute on this _widget so far (from creation time to until now)
@@ -49,12 +49,11 @@ protected:
       */
     qreal _priority;
 
+    qreal _Pvisual;
 
-    /*!
-      To store _priority * offset (for quantization)
-      Getting this value is much faster
-      */
-    int _priorityQuantized;
+    qreal _Pinteract;
+
+    qreal _Ptemp;
 
 
 	/*!
@@ -88,7 +87,7 @@ protected:
 private:
 	SN_BaseWidget const *_widget;
 
-	static SN_PriorityGrid _priorityGrid;
+    SN_PriorityGrid *_priorityGrid;
 
 	quint64 _evrsize;
 
@@ -106,9 +105,15 @@ private:
     qreal _ipm;
 
 	/*!
-	  _evr_to_win and _evr_to_wall are computed here
+      The Pvisual.
+	  _evr_to_win and _evr_to_wall are also computed here
 	  */
-	void computeEvrInfo(void);
+	void m_computePvisual(void);
+
+    /*!
+      The Pinteract
+      */
+    void m_computePinteract();
 	
 signals:
 	
