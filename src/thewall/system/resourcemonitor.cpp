@@ -539,12 +539,13 @@ void SN_ResourceMonitor::refresh() {
 
         //
         // Aggregate the bandwidth the application is actually achieving at this moment.
+        // The sum of Rcur
         //
         current_TR_observed_Mbps += pm->getCurrBW_Mbps();
 
 
         //
-        // The sum of Re
+        // The sum of Ropt
         //
         _TR_estimated_Mbps += pm->getRequiredBW_Mbps();
 
