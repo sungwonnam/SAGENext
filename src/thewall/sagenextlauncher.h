@@ -151,6 +151,16 @@ public slots:
 
 	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
 
+    /*!
+     * \brief launch SN_MediaBrowser when user double click on an empty space. This is invoked by SN_PolygonArrowPointer::pointerDoubleClick()
+     * \param scenePos where user double clicked
+     * \param uiclientid the unique user id
+     * \param username the username set by user in his/her sagenextPointer
+     * \param defaultDir default directory to look for
+     * \return the SN_BaseWidget pointer that points SN_MediaBrowser instance
+     */
+    SN_BaseWidget * launchMediaBrowser(const QPointF &scenePos, quint32 uiclientid, const QString &username, const QString &defaultDir = QDir::homePath()+"/.sagenext/media");
+
 		/**
 		  Load a saved session
 		  */

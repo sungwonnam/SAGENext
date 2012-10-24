@@ -982,16 +982,6 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 
 
 
-SN_GridLayout::SN_GridLayout(QGraphicsLayoutItem *parent)
-    : QGraphicsGridLayout(parent)
-{
-
-}
-
-void SN_GridLayout::setGeometry(const QRectF &rect) {
-
-}
-
 
 
 
