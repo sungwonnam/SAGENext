@@ -26,12 +26,14 @@ SN_PriorityGrid::SN_PriorityGrid(int numrow, int numcol, QGraphicsScene *scene, 
 }
 
 SN_PriorityGrid::~SN_PriorityGrid() {
+    /*
     qint64 gridDuration = QDateTime::currentMSecsSinceEpoch() - _gridStartTimeSinceEpoch;
     QFile f(QDir::homePath() + "/.sagenext/pGrid_" + QString::number(gridDuration / (1000*60)) +"min_" + QDateTime::currentDateTime().toString(Qt::ISODate));
     if ( !f.open(QIODevice::WriteOnly)) {
         qDebug() << "~SN_PriorityGrid() : failed to open a file" ;
         return;
     }
+
 
     QTextStream ts(&f);
 
@@ -57,6 +59,7 @@ SN_PriorityGrid::~SN_PriorityGrid() {
 
     f.flush();
     f.close();
+    */
 }
 
 void SN_PriorityGrid::buildRectangles() {
