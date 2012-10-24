@@ -23,6 +23,7 @@
 #include "applications/vncwidget.h"
 #include "applications/webwidget.h"
 #include "applications/sn_checker.h"
+#include "applications/mediabrowser.h"
 
 #include "applications/base/SN_plugininterface.h"
 
@@ -735,7 +736,11 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThr
 SN_BaseWidget * SN_Launcher::launchMediaBrowser(const QPointF &scenePos, quint32 uiclientid, const QString &username, const QString &defaultDir) {
 
     qDebug() << "SN_Launcher::launchMediaBrowser() : User " << uiclientid << username << ", dblClicked on" << scenePos;
-    return 0;
+
+    // It might be useful to keep uiclientid and pointername (username) in the SN_MediaBrowser.
+    SN_MediaBrowser *mbrowser = 0; //new SN_MediaBrowser(this, _getUpdatedGlobalAppId(gaid), _settings, .......)
+
+    return launch(mbrowser, scenePos);
 }
 
 void SN_Launcher::launchSavedSession(const QString &sessionfilename) {
