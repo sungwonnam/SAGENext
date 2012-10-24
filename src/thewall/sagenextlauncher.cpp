@@ -708,7 +708,7 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThr
 			sprintf(record, "%lld %d %u %s %s\n",QDateTime::currentMSecsSinceEpoch(), 1, uiclientid, qPrintable(name), qPrintable(color.name()));
 			_scenarioFile->write(record);
 
-			pointer = new SN_PolygonArrowPointer(uiclientid, msgthread, _settings, _scene, name, color, _scenarioFile);
+			pointer = new SN_PolygonArrowPointer(uiclientid, msgthread, _settings, _scene, this, name, color, _scenarioFile);
 		}
 		else {
 			qDebug() << "Launcher::launchPointer() : Can't write";
@@ -718,7 +718,7 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThr
 	///////////////////////////////////////
 
 	else {
-		pointer = new SN_PolygonArrowPointer(uiclientid,msgthread, _settings, _scene, name, color);
+		pointer = new SN_PolygonArrowPointer(uiclientid, msgthread, _settings, _scene, this, name, color);
 	}
 
 	//
@@ -730,6 +730,12 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThr
 	}
 
 	return pointer;
+}
+
+SN_BaseWidget * SN_Launcher::launchMediaBrowser(const QPointF &scenePos, quint32 uiclientid, const QString &username, const QString &defaultDir) {
+
+    qDebug() << "SN_Launcher::launchMediaBrowser() : User " << uiclientid << username << ", dblClicked on" << scenePos;
+    return 0;
 }
 
 void SN_Launcher::launchSavedSession(const QString &sessionfilename) {

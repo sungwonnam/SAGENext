@@ -6,6 +6,8 @@
 #include "../sagenextscene.h"
 #include "../uiserver/uimsgthread.h"
 
+#include "../sagenextlauncher.h"
+
 //#include "sn_drawingwidget.h"
 
 SN_SelectionRectangle::SN_SelectionRectangle(QGraphicsItem *parent)
@@ -28,9 +30,10 @@ SN_SelectionRectangle::SN_SelectionRectangle(QGraphicsItem *parent)
 
 
 
-SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *s, SN_TheScene *scene, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
+SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *s, SN_TheScene *scene, SN_Launcher *l, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
     , _scene(scene)
+    , _theLauncher(l)
     , _uimsgthread(msgthread)
     , _uiclientid(uicid)
     , _settings(s)
@@ -756,12 +759,22 @@ void SN_PolygonArrowPointer::pointerDoubleClick(const QPointF &scenePos, Qt::Mou
 	}
 
 
-    if (!_basewidget) {
-        qDebug("PolygonArrow::%s() : There's no app widget under this pointer", __FUNCTION__);
+    /**
+     * User clicked on an empty space
+     */
+    if (!_basewidget && !_graphicsItem && !_graphicsWidget) {
+
+        if (!_theLauncher) {
+            qDebug() << "SN_PolygonArrowPointer::pointerDoubleClick() SN_Launcher isn't available";
+        }
+        else {
+            _theLauncher->launchMediaBrowser(scenePos, _uiclientid, _textItem->text());
+        }
         return;
     }
 
-    // Generate mouse event directly from here
+
+    // Generate system's mouse double click event directly from here
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
     if (gview) {
@@ -799,7 +812,7 @@ void SN_PolygonArrowPointer::pointerDoubleClick(const QPointF &scenePos, Qt::Mou
 		}
     }
     else {
-        qDebug("PolygonArrow::%s() : there is no viewport on %.1f, %.1f", __FUNCTION__, scenePos.x(), scenePos.y());
+        qDebug("SN_PolygonArrowPointer::%s() : there is no viewport widget on %.1f, %.1f", __FUNCTION__, scenePos.x(), scenePos.y());
     }
 }
 
@@ -869,18 +882,18 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 
             _basewidget = static_cast<SN_BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
-			_graphicsItem = 0;
             return true;
         }
 
         //
         // User application (inherits SN_BaseWidget)
         // But acts differently....
-        // thereby the pointer should operate different on this widget.
+        // thereby the pointer should operate differently on this widget.
         //
 		else if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_NONUSER) {
-			_graphicsItem = 0;
-			_basewidget = 0;
+            //
+            // do nothing for now
+            //
 			return false;
 		}
 
@@ -888,12 +901,12 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
         // A QGraphicsItem type object that doesn't inherit SN_BaseWidget.
         // But still can be interacted with user shared pointers.
         //
-        // SN_PartitionBar
+        // e.g. SN_PartitionBar
         //
 		else if (item->type() >= QGraphicsItem::UserType + INTERACTIVE_ITEM) {
 
 			_graphicsItem = item;
-			_basewidget = 0;
+
 			return true;
 		}
 
