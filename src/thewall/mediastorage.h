@@ -3,8 +3,9 @@
 
 #include <QtGui>
 #include <QtCore>
-
 #include <QObject>
+
+#include <poppler-qt4.h>
 
 class QSettings;
 
@@ -15,6 +16,7 @@ public:
     explicit SN_MediaStorage(const QSettings *s, QObject *parent = 0);
 
     bool insertNewMediaToHash(const QString &key);
+    bool insertNewFolderToHash(const QString &key);
     bool checkForMediaInHash(const QString &key);
 
 	inline QHash<QString, QPixmap> & getMediaHashForRead() const {return mediaHash;}
@@ -23,6 +25,7 @@ private:
 	const QSettings *_settings;
 
     static QHash<QString, QPixmap> mediaHash;
+
     static QReadWriteLock mediaHashRWLock;
     QPixmap readImage(const QString &filename);
 

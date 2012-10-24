@@ -19,6 +19,7 @@ class MediaItem : public QGraphicsWidget
 
 public:
     MediaItem(const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent=0);
+    int getMediaType();
 
 private:
 	SAGENext::MEDIA_TYPE _mediaType;
@@ -26,13 +27,16 @@ private:
     QString _filename;
 
 	QGraphicsPixmapItem *_thumbnail;
+    bool isFolder;
+
+    void setMediaType();
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
 signals:
-	void thumbnailClicked(SAGENext::MEDIA_TYPE mediatype, const QString &filename);
+    void thumbnailClicked(SAGENext::MEDIA_TYPE mediatype, const QString &filename);
 };
 
 
@@ -67,7 +71,9 @@ public:
       */
     static void insertNewMediaToHash(const QString &key, QPixmap &pixmap);
 
+
     inline SN_Launcher * launcher() {return _launcher;}
+    void setDir(const QString &path);
 
 protected:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -75,6 +81,10 @@ protected:
 private:
     static QReadWriteLock mediaHashRWLock;
     static QHash<QString, QPixmap> mediaHash;
+
+    QHash<QString, QPixmap> currentItemsDisplayed;
+
+    void attachItemsInCurrDirectory();
 
     QScrollBar *_HScrollBar;
 
