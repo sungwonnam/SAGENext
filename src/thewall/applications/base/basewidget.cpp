@@ -148,6 +148,12 @@ SN_BaseWidget::~SN_BaseWidget()
 }
 
 
+void SN_BaseWidget::setGlobalAppId(quint64 gaid) {
+    _globalAppId = gaid;
+    if (_appInfo) {
+        _appInfo->setGID(gaid);
+    }
+}
 
 
 void SN_BaseWidget::init()

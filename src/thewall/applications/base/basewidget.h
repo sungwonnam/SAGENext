@@ -4,13 +4,11 @@
 #include <QGraphicsWidget>
 #include "../../common/commondefinitions.h"
 
-/*
-  If you don't make a choice,
-  time will make one instead of you.
-  */
-
-
 class QSettings;
+
+extern QSettings *ptrSettings;
+
+
 class QPropertyAnimation;
 class QParallelAnimationGroup;
 
@@ -23,6 +21,11 @@ class AffinityInfo;
 class SN_SimpleTextItem;
 class SN_PolygonArrowPointer;
 
+/*!
+ * \brief The SN_BaseWidget class is the base class of all user application.
+ *
+ * To define your own custom interaction, reimplement handlePointerXXXX() functions.
+ */
 class SN_BaseWidget : public QGraphicsWidget
 {
         Q_OBJECT
@@ -85,7 +88,7 @@ public:
 		  But for the plugins, this is impossible because the launcher can't call plugins constructor directly.
 		  So plugins are created without globalAppId then assigned one using this function
 		  */
-        inline virtual void setGlobalAppId(quint64 gaid) {_globalAppId=gaid;}
+        virtual void setGlobalAppId(quint64 gaid);
 
         inline quint64 globalAppId() const {return _globalAppId;}
 
