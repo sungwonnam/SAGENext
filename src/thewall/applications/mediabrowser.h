@@ -3,6 +3,7 @@
 
 #include "base/basewidget.h"
 #include "../common/commondefinitions.h"
+#include "../common/commonitem.h"
 
 #include <QtGui>
 #include <QtCore>
@@ -19,6 +20,7 @@ class MediaItem : public QGraphicsWidget
 
 public:
     MediaItem(const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent=0);
+    int getMediaType();
 
 private:
 	SAGENext::MEDIA_TYPE _mediaType;
@@ -26,15 +28,38 @@ private:
     QString _filename;
 
 	QGraphicsPixmapItem *_thumbnail;
+    SN_SimpleTextWidget* _medianameDisplay;
+
+    void setMediaType();
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
 signals:
-	void thumbnailClicked(SAGENext::MEDIA_TYPE mediatype, const QString &filename);
+    void thumbnailClicked(SAGENext::MEDIA_TYPE mediatype, const QString &filename);
 };
 
+class FolderItem : public QGraphicsWidget
+{
+    Q_OBJECT
+
+public:
+    FolderItem(const QString &dirname, const QPixmap &pixmap, QGraphicsItem *parent=0);
+
+private:
+    QString _dirName;
+
+    QGraphicsPixmapItem *_thumbnail;
+    SN_SimpleTextWidget* _dirnameDisplay;
+
+protected:
+    void mousePressEvent(QGraphicsSceneMouseEvent *event);
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+
+signals:
+    void folderClicked(const QString &filename);
+};
 
 
 
@@ -67,7 +92,9 @@ public:
       */
     static void insertNewMediaToHash(const QString &key, QPixmap &pixmap);
 
+
     inline SN_Launcher * launcher() {return _launcher;}
+    void setDir(const QString &path);
 
 protected:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -75,6 +102,10 @@ protected:
 private:
     static QReadWriteLock mediaHashRWLock;
     static QHash<QString, QPixmap> mediaHash;
+
+    QHash<QString, QPixmap> currentItemsDisplayed;
+
+    void attachItemsInCurrDirectory();
 
     QScrollBar *_HScrollBar;
 
@@ -104,7 +135,7 @@ public slots:
     void mediaStorageHasNewMedia();
 
 	void launchMedia(SAGENext::MEDIA_TYPE, const QString &filename);
-
+    void changeDirectory(const QString &dirName);
 };
 
 #endif // MEDIABROWSER_H
