@@ -55,13 +55,30 @@ bool SN_MediaStorage::insertNewMediaToHash(const QString &key) {
     qDebug() << "MediaStorage::insertNewMediaToHash() : " << key;
 
     SN_MediaStorage::mediaHashRWLock.lockForWrite();
-    // Add entry to list, save image as pixmap
-    SN_MediaStorage::mediaHash.insert(key, readImage(key));
+
+    // List of known non-image file types
+    QRegExp rxVideo("avi|mov|mpg|mpeg|mp4|mkv|flv|wmv", Qt::CaseInsensitive); // Is a video with these file extensions?
+    QRegExp rxPDF("pdf", Qt::CaseInsensitive);
+
+    // Get the file extension from the filename
+    QString ext = key;
+    ext.remove(0,key.lastIndexOf("."));
+
+    if( ext.toLower().contains(rxVideo) ){ // Video
+        // Add entry to list, save image as pixmap
+        SN_MediaStorage::mediaHash.insert(key, readVideo(key));
+    }
+    else if( ext.toLower().contains(rxPDF) ){ // PDF
+        // Add entry to list, save image as pixmap
+        SN_MediaStorage::mediaHash.insert(key, readPDF(key));
+    }
+    else{ // Assume image
+        // Add entry to list, save image as pixmap
+        SN_MediaStorage::mediaHash.insert(key, readImage(key));
+    }
+
     SN_MediaStorage::mediaHashRWLock.unlock();
-
     emit SN_MediaStorage::newMediaAdded();
-
-    return true;
 }
 
 bool SN_MediaStorage::checkForMediaInHash(const QString &key) {
@@ -78,60 +95,83 @@ bool SN_MediaStorage::checkForMediaInHash(const QString &key) {
 }
 
 QPixmap SN_MediaStorage::readImage(const QString &filename) {
+    qDebug() << "MediaStorage::readImage() : " << filename;
 //        QImage image;
-
-    // get a image thumbnail for pdf
-    if(filename.endsWith(".pdf")) {
-        QPixmap pixmap;
-        Poppler::Document *_document = Poppler::Document::load(filename);
-        Poppler::Page *p = _document->page(0);
-        if (p) {
-             pixmap = QPixmap::fromImage(p->renderToImage(64, 64));
-        }
-        delete p;
-        delete _document;
-
-
-        if ( ! pixmap.isNull() ) {
-        //
-        // for better drawing performance, thumbnail shouldn't be large
-        //
-            return pixmap.scaled(
-                    _settings->value("gui/mediathumbnailwidth", 256).toInt()
-                    ,_settings->value("gui/mediathumbnailwidth",256).toInt()
-                    ,Qt::IgnoreAspectRatio
-                    ,Qt::FastTransformation);
-        }
-        else {
-            qWarning("%s::%s() : Couldn't create the thumbnail for %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
-            return pixmap;
-        }
-    } else {
-            QPixmap pixmap(filename);
-
-
-            /*
+    QPixmap pixmap(filename);
+        /*
         if (image.load(filename)) {
                 pixmap.convertFromImage(image);
                 return pixmap;
         }
-		*/
-
-            if ( ! pixmap.isNull() ) {
-            //
-            // for better drawing performance, thumbnail shouldn't be large
-            //
-                return pixmap.scaled(
-                        _settings->value("gui/mediathumbnailwidth", 256).toInt()
-                        ,_settings->value("gui/mediathumbnailwidth",256).toInt()
-                        ,Qt::IgnoreAspectRatio
-                        ,Qt::FastTransformation);
-            }
-            else {
-                qWarning("%s::%s() : Couldn't create the thumbnail for %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
-                return pixmap;
-            }
+        */
+    if ( ! pixmap.isNull() ) {
+        //
+        // for better drawing performance, thumbnail shouldn't be large
+        //
+        return pixmap.scaled(
+                    _settings->value("gui/mediathumbnailwidth", 256).toInt()
+                    ,_settings->value("gui/mediathumbnailwidth",256).toInt()
+                    ,Qt::IgnoreAspectRatio
+                    ,Qt::FastTransformation);
     }
+
+    else qWarning("%s::%s() : Couldn't create the thumbnail for %s",metaObject()->className(), __FUNCTION__, qPrintable(filename));
+
+    return pixmap;
+}
+
+QPixmap SN_MediaStorage::readPDF(const QString &filename) {
+    qDebug() << "MediaStorage::readPDF() : " << filename;
+    QPixmap pixmap(filename);
+
+    Poppler::Document *_document;
+    _document = Poppler::Document::load(filename);
+    if (!_document || _document->isLocked()) {
+        qCritical("%s::%s() : Couldn't open pdf file %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
+    } else {
+        Poppler::Page *_currentPage = _document->page(0);
+        pixmap = QPixmap::fromImage(_currentPage->renderToImage(200,200));
+
+        _currentPage->~Page();
+    }
+    _document->~Document();
+
+    if( pixmap.isNull() )
+        pixmap = QPixmap(":/resources/close_over.png");
+
+    return pixmap.scaled(
+                _settings->value("gui/mediathumbnailwidth", 256).toInt()
+                ,_settings->value("gui/mediathumbnailwidth",256).toInt()
+                ,Qt::IgnoreAspectRatio
+                ,Qt::FastTransformation);
+}
+
+QPixmap SN_MediaStorage::readVideo(const QString &filename) {
+    qDebug() << "MediaStorage::readVideo() : " << filename;
+
+    // Generate video thumbnail
+    QString program = "mplayer";
+    QStringList arguments;
+    arguments << "-vo" << "jpeg" << "-quiet" << "-nosound" << "-frames" << "1" << "-ss" << "5" << filename;
+
+    QProcess *myProcess = new QProcess();
+    myProcess->start(program, arguments);
+    while( myProcess->waitForFinished() ){
+        qDebug() << "Waiting for thumb generation for mov";
+    }
+
+    // Apparently running the above command  will create an image called '00000001.jpg' in the build directory
+    QFileInfo thumbLocation = QFileInfo("$${BUILD_DIR}");
+    QPixmap pixmap(thumbLocation.absolutePath() + "/00000001.jpg");
+
+    if( pixmap.isNull() )
+        pixmap = QPixmap(":/resources/close_over.png");
+
+    return pixmap.scaled(
+        _settings->value("gui/mediathumbnailwidth", 256).toInt()
+        ,_settings->value("gui/mediathumbnailwidth",256).toInt()
+        ,Qt::IgnoreAspectRatio
+        ,Qt::FastTransformation);
 }
 
 

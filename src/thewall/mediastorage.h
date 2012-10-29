@@ -28,6 +28,8 @@ private:
 
     static QReadWriteLock mediaHashRWLock;
     QPixmap readImage(const QString &filename);
+    QPixmap readPDF(const QString &filename);
+    QPixmap readVideo(const QString &filename);
 
 	/**
 	  Read media directory recursively and build initial media hash
