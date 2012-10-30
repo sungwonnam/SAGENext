@@ -40,7 +40,7 @@ public:
      * The list contains a COPY of SN_MediaItem (not the pointer to the object)
      * Because there can be multiple media browsers
      */
-    QList<SN_MediaItem> getMediaListInDir(const QDir &dir);
+    QList<SN_MediaItem *> getMediaListInDir(const QDir &dir);
 
 private:
 	const QSettings *_settings;

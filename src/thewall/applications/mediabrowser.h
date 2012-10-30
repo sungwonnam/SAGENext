@@ -71,7 +71,7 @@ private:
     /*!
      * \brief currentItemsDisplayed is the list of SN_MediaItem that need to be displayed.
      */
-    QList<SN_MediaItem> _currItemsDisplayed;
+    QList<SN_MediaItem *> _currItemsDisplayed;
 
     SN_Launcher *_launcher;
 

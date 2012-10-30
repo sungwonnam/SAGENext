@@ -333,7 +333,7 @@ void SN_MediaBrowser::changeDirectory(const QString &dir) {
     //
     // sets the current list of items to be displayed
     //
-    const QList<SN_MediaItem> &itemsInCurrDir = _mediaStorage->getMediaListInDir(_currentDirectory);
+    const QList<SN_MediaItem *> &itemsInCurrDir = _mediaStorage->getMediaListInDir(_currentDirectory);
     if ( ! itemsInCurrDir.empty()) {
 
         _currItemsDisplayed.clear();
@@ -372,9 +372,9 @@ void SN_MediaBrowser::changeDirectory(const QString &dir) {
 
 
     if ( !_currItemsDisplayed.empty()) {
-        foreach(SN_MediaItem item, _currItemsDisplayed) {
+        foreach(SN_MediaItem *item, _currItemsDisplayed) {
 //            gridlayout->addItem(item);
-            ll->addItem(&item);
+            ll->addItem(item);
         }
     }
     setLayout(ll);

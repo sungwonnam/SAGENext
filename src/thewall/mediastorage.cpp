@@ -130,14 +130,14 @@ bool SN_MediaStorage::checkForMediaInList(const QString &path) {
 }
 
 
-QList<SN_MediaItem> SN_MediaStorage::getMediaListInDir(const QDir &dir) {
+QList<SN_MediaItem *> SN_MediaStorage::getMediaListInDir(const QDir &dir) {
     // check the dir recursively and build the list of SN_MediaItem
     // return the list
     // The list will be owned by SN_MediaBrowser so don't delete the list
 
     qDebug() << "SN_MediaStorage::getMediaListInDir()" << dir;
 
-    QList<SN_MediaItem> itemsInDir;
+    QList<SN_MediaItem *> itemsInDir;
 
     foreach (SN_MediaItem *item, SN_MediaStorage::MediaList) {
         // check if the media is under the dir
@@ -145,7 +145,7 @@ QList<SN_MediaItem> SN_MediaStorage::getMediaListInDir(const QDir &dir) {
 
         if (item->absFilePath().startsWith(dir.path(), Qt::CaseSensitive)) {
             qDebug() << "SN_MediaStorage::getMediaListInDir() : " << item->absFilePath();
-            itemsInDir.push_back(*item); // a copy of the item
+            itemsInDir.push_back(item); // a copy of the item
         }
     }
 
