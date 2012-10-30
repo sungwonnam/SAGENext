@@ -23,6 +23,7 @@
 #include "applications/vncwidget.h"
 #include "applications/webwidget.h"
 #include "applications/sn_checker.h"
+#include "applications/mediabrowser.h"
 
 #include "applications/base/SN_plugininterface.h"
 
@@ -149,7 +150,7 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &m
 	QPointF pos;
 
 	//
-	// This means the SAGE application was NOT started by the launcher but manually by running a SAGE application.
+	// This means the SAGE application was NOT started by the launcher but manually by running a SAGE application outside of the SAGENext.
 	// For instance, running a mplayer in console terminal will make the fsManager to emit incomingSail(fsmThread *) before SN_Launcher launches a SageStreamWidget for it.
 	// In this case, fsManagerThread's incomingSail signal will trigger this slot.
 	//
@@ -351,7 +352,8 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 			// conversion at the mplayer is cheaper
 			// and image is converted to RGB using shader program
 			//
-        QString arg = "-vo sage -nosound -loop 0 -sws 4 -framedrop -quiet";
+//        QString arg = "-vo sage -nosound -loop 0 -sws 4 -framedrop -quiet";
+        QString arg = _settings->value("general/mplayercmdargs", "-vo sage -nosound -loop 0 -sws 4 -framedrop -quiet").toString();
         sws->appInfo()->setCmdArgs(arg);
 
         cmd = "mplayer";
@@ -485,8 +487,6 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 //			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			w = new SN_PixmapWidget(filename, GID, _settings);
 
-			if(_mediaStorage)
-				_mediaStorage->insertNewMediaToHash(filename);
 		}
 		else
 			qCritical("%s::%s() : MEDIA_TYPE_IMAGE can't open", metaObject()->className(), __FUNCTION__);
@@ -707,7 +707,7 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThr
 			sprintf(record, "%lld %d %u %s %s\n",QDateTime::currentMSecsSinceEpoch(), 1, uiclientid, qPrintable(name), qPrintable(color.name()));
 			_scenarioFile->write(record);
 
-			pointer = new SN_PolygonArrowPointer(uiclientid, msgthread, _settings, _scene, name, color, _scenarioFile);
+			pointer = new SN_PolygonArrowPointer(uiclientid, msgthread, _settings, _scene, this, name, color, _scenarioFile);
 		}
 		else {
 			qDebug() << "Launcher::launchPointer() : Can't write";
@@ -717,7 +717,7 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThr
 	///////////////////////////////////////
 
 	else {
-		pointer = new SN_PolygonArrowPointer(uiclientid,msgthread, _settings, _scene, name, color);
+		pointer = new SN_PolygonArrowPointer(uiclientid, msgthread, _settings, _scene, this, name, color);
 	}
 
 	//
@@ -729,6 +729,21 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThr
 	}
 
 	return pointer;
+}
+
+SN_BaseWidget * SN_Launcher::launchMediaBrowser(const QPointF &scenePos, quint32 uiclientid, const QString &username, const QString &defaultDir) {
+
+    qDebug() << "SN_Launcher::launchMediaBrowser() : User " << uiclientid << username << ", dblClicked on" << scenePos;
+
+    // It might be useful to keep uiclientid and pointername (username) in the SN_MediaBrowser.
+    SN_MediaBrowser *mbrowser = new SN_MediaBrowser(this, _getUpdatedGlobalAppId(0), _settings, _mediaStorage, 0, Qt::Window);
+
+    //
+    // mediabrowser's top left position is the scenePos
+    // so let's change scenePos to be the center of the mediabrowser
+    //
+
+    return launch(mbrowser, scenePos);
 }
 
 void SN_Launcher::launchSavedSession(const QString &sessionfilename) {

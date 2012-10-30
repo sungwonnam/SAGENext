@@ -100,8 +100,6 @@ private:
     bool _isRMonitor;
     bool _isScheduler;
 
-    bool _fittsLawTestUpdate;
-
 public:
     /*!
       This will close sockets

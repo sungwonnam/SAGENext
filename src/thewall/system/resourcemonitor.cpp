@@ -246,7 +246,9 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
     , _schedcontrol(0)
     , _pGrid(0)
     , numaInfo(0)
-    , _totalBWAchieved_Mbps(0.0)
+    , _effective_TR_Mbps(0.0)
+    , _current_TR_observed_Mbps(0.0)
+    , _TR_estimated_Mbps(0.0)
     , _rMonWidget(0)
     , _printDataFlag(false)
 {
@@ -254,6 +256,11 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
 //	Q_ASSERT(procVec);
 
 	buildSimpleProcList();
+
+    qreal totalR = settings->value("system/manualtotalbw", 0).toDouble();
+	if (totalR > 0) {
+		qDebug() << "SN_ResourceMonitor() : TotalResource is set to" << totalR << "Mbps";
+	}
 
 	if (settings->value("system/numnumanodes").toInt() > 1) {
 		numaInfo = (Numa_Info *)malloc(sizeof(Numa_Info) * settings->value("system/numnumanodes").toInt());
@@ -354,26 +361,10 @@ void SN_ResourceMonitor::setRMonWidget(ResourceMonitorWidget *rmw) {
 }
 
 void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
-	//	qDebug() << "timerEvent at resourceMonitor";
-
     //
     // The priority is computed in here
     //
 	refresh(); // update all data
-
-	//
-	// update priority grid data
-	//
-	if (_pGrid && _pGrid->isEnabled()) {
-		_pGrid->updatePriorities();
-	}
-
-	//
-	// update widget
-	//
-//	if (_rMonWidget && _rMonWidget->isVisible()) {
-//		_rMonWidget->refresh();
-//	}
 
 	//
 	// save data to a file
@@ -388,6 +379,10 @@ void SN_ResourceMonitor::addSchedulableWidget(SN_BaseWidget *bw) {
 	_widgetListRWlock.lockForWrite();
 
 	if (bw) {
+        if (bw->priorityData()) {
+            bw->priorityData()->setPriorityGrid(_pGrid);
+        }
+
 		// shouldn't allow duplicate item
 		if (!widgetList.contains(bw)) {
 			widgetList.push_front(bw);
@@ -460,7 +455,15 @@ void SN_ResourceMonitor::buildSimpleProcList() {
 void SN_ResourceMonitor::setScheduler(SN_SchedulerControl *sc) {
     Q_ASSERT(sc);
     _schedcontrol = sc;
+
+    //
+    // The signal dataRefreshed() is emitted right before ::refresh() returns.
+    // This signal will trigger the schedulerControl to emit readyToSchedule() signal.
+    // which will invoke scheduler::doSchedule()
+    //
     QObject::connect(this, SIGNAL(dataRefreshed()), _schedcontrol, SIGNAL(readyToSchedule()));
+
+    QObject::connect(_schedcontrol, SIGNAL(schedulerStateChanged(bool)), this, SIGNAL(schedulerStateChanged(bool)));
 }
 
 void SN_ResourceMonitor::refresh() {
@@ -496,11 +499,13 @@ void SN_ResourceMonitor::refresh() {
 
 	_widgetListRWlock.lockForRead();
 
-    qreal currentTotalBandwidth = 0.0;
+    qreal current_TR_observed_Mbps = 0.0;
+
+    _TR_estimated_Mbps = 0.0;
 
     qint64 currentMsec = QDateTime::currentMSecsSinceEpoch();
 
-    bool isSystemOverloaded = false; // reset overload status
+    bool isTR_tooHigh = false;
 
 	QMap<quint64, SN_BaseWidget *>::const_iterator it;
 	for (it=_widgetMap.constBegin(); it!=_widgetMap.constEnd(); it++) {
@@ -514,7 +519,9 @@ void SN_ResourceMonitor::refresh() {
 
         //
         // Each app updates its own cumulativeByteReceived in its receiving thread.
-        // rMonitor triggers them to update performance data based only on the cumulativeByteReceived
+        // rMonitor triggers them to update performance data based only on the cumulativeByteReceived.
+        //
+        // The Rcur and Ropt will be updated in this function
         //
         pm->updateDataWithCumulativeByteReceived(currentMsec);
 
@@ -523,17 +530,24 @@ void SN_ResourceMonitor::refresh() {
 
 
         //
-        // Check if the system is currently overloaded
-        // Dq 0 doesn't mean system overloaded !!
+        // If any of the application can't even consume what the scheduler demanded then
+        // TR is set too high
         //
-        if (0 < bw->demandedQuality() && bw->demandedQuality() < 1.0) {
-            isSystemOverloaded = true;
+        if (0 < bw->observedQuality_Dq() && bw->observedQuality_Dq() < 0.95) {
+            isTR_tooHigh = true;
         }
 
         //
         // Aggregate the bandwidth the application is actually achieving at this moment.
+        // The sum of Rcur
         //
-        currentTotalBandwidth += pm->getCurrBW_Mbps();
+        current_TR_observed_Mbps += pm->getCurrBW_Mbps();
+
+
+        //
+        // The sum of Ropt
+        //
+        _TR_estimated_Mbps += pm->getRequiredBW_Mbps();
 
 
 		//
@@ -554,22 +568,31 @@ void SN_ResourceMonitor::refresh() {
 	}
 
     //
-    // this is problematic.
-    // let's say there is a remote streaming app shwoing 100 Mbps
-    // then the total is now 100
-    // now another remote streaming came in showing 90Mbps while forcing the first one to 10 Mbps (link capacity is 100Mbps)
-    // BW of the 2nd app is added to total which is now 190 Mbps !!
+    // Total resource is set manually
     //
-/*
-    if (isSystemOverloaded) {
-        _totalBWAchieved_Mbps = currentTotalBandwidth;
+    qreal totalbw = settings->value("system/manualtotalbw", 0).toDouble();
+    if ( totalbw != 0 ) {
+        _effective_TR_Mbps = totalbw;
     }
-    else {
-        _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
-    }
-*/
-       _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
 
+    //
+    // Total resource will be updated automatically
+    //
+    else {
+        if (isTR_tooHigh) {
+//            qDebug() << "TR too high: TRopt" << _TR_estimated_Mbps << "max_TReffective" << _effective_TR_Mbps << "cur_TRcur" << _current_TR_observed_Mbps;
+            //
+            // the sum of current Rcur would reflect the real TR preciser
+            //
+            _effective_TR_Mbps = qMax(_effective_TR_Mbps, current_TR_observed_Mbps);
+        }
+        else {
+//            qDebug() << "TRe" << _TR_estimated_Mbps << "max_TRo" << _effective_TR_Mbps << "cur_TRo" << _current_TR_observed_Mbps;
+            _effective_TR_Mbps = _TR_estimated_Mbps;
+        }
+    }
+
+    _current_TR_observed_Mbps = current_TR_observed_Mbps;
 
 	_widgetListRWlock.unlock();
 
@@ -961,6 +984,28 @@ bool SN_ResourceMonitor::setPrintFile(const QString &filepath) {
 
 void SN_ResourceMonitor::stopPrintData() {
     _printDataFlag = false;
+
+    _dataTextOut << "# Final Bandwidth\n";
+
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+
+    SN_BaseWidget *bw = 0;
+    QMap<quint64, SN_BaseWidget *>::const_iterator it;
+	for (it = _widgetMap.constBegin(); it != _widgetMap.constEnd(); it++) {
+
+        bw = it.value();
+        if (!bw) continue;
+
+//        qDebug() << bw->globalAppId() << bw->perfMon()->cumulativeByteReceived() << now - bw->perfMon()->measureStartTime();
+
+        qreal final_Mbps = 8.0f * (qreal)bw->perfMon()->cumulativeByteReceived() / (1000.0f * (now - bw->perfMon()->measureStartTime()));
+
+        _dataTextOut << "#," << bw->globalAppId() << "," << final_Mbps << "\n";
+
+    }
+
+
+
     _dataTextOut.flush();
     _dataTextOut.setDevice(0);
 
@@ -1029,9 +1074,9 @@ void SN_ResourceMonitor::printData(QTextStream *out, bool widgetIDasColCount /* 
     //
 	// the wall layout factors
     //
-	(*out) << _widgetMap.size()
+	(*out) << _widgetMap.size();
 //	        << "," << _theScene->getRatioEmptySpace()
-	        << "," << _theScene->getRatioOverlapped();
+//	        << "," << _theScene->getRatioOverlapped();
 
     /*
 	QSize avgqwinsize = _theScene->getAvgWinSize().toSize();

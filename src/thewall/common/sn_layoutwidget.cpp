@@ -154,7 +154,7 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
             QTimer::singleShot(500, this, SLOT(doTile()));
 		}
 		else {
-//		qDebug() << "SN_LayoutWidget::addItem() : bw->setPos() " << pos;
+//            qDebug() << "SN_LayoutWidget::addItem() : adding bw on point" << pos;
 			bw->setPos(pos);
 		}
 	}
@@ -623,7 +623,7 @@ void SN_LayoutWidget::doTile() {
 //	qreal avgWHratio = sumWHratio / itemcount;
 
 
-    qreal layoutWidth = size().width();
+    qreal layoutWidth = size().width() - _tileButton->size().width();
     qreal layoutHeight = size().height();
 
 
@@ -794,10 +794,10 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 				break;
 			}
 			case SAGENext::MEDIA_TYPE_VNC : {
-
+/*
 				out << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
 				qDebug() << "SN_LayoutWidget::saveSession() : " << bw->globalAppId() << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale() << ai->srcAddr() << ai->vncUsername() << ai->vncPassword();
-
+*/
 				break;
 			}
 			case SAGENext::MEDIA_TYPE_SAGE_STREAM : {
@@ -891,11 +891,13 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
             break;
         }
         case SAGENext::MEDIA_TYPE_VNC : {
+            /*
             in >> srcaddr >> user >> pass;
             if (!bw) {
                 qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_VNC" << gaid << srcaddr << user << pass;
-                bw = launcher->launch(user, pass, 0, srcaddr, 10, scenepos, gaid);
+                bw = launcher->launch(user, pass, 0, srcaddr, 0, 10, scenepos, gaid);
             }
+            */
             break;
         }
         case SAGENext::MEDIA_TYPE_LOCAL_VIDEO : {
@@ -965,6 +967,12 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 	else {
         qDebug() << "SN_LayoutWidget::loadSession() : Unknown header" << header;
 	}
+
+
+    int timeout = _settings->value("system/timedsession", 0).toInt();
+    if (timeout > 0) {
+        QTimer::singleShot( timeout * 1000, _theScene, SLOT(closeNow()));
+    }
 }
 
 //QRectF SN_LayoutWidget::boundingRect() const {
@@ -973,16 +981,6 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
 
 
 
-
-SN_GridLayout::SN_GridLayout(QGraphicsLayoutItem *parent)
-    : QGraphicsGridLayout(parent)
-{
-
-}
-
-void SN_GridLayout::setGeometry(const QRectF &rect) {
-
-}
 
 
 
@@ -1002,7 +1000,7 @@ SN_WallPartitionBar::SN_WallPartitionBar(Qt::Orientation ori, SN_LayoutWidget *o
 	QPen pen;
 	pen.setWidth(12);
 	pen.setStyle(Qt::DashLine);
-	pen.setColor(QColor(Qt::lightGray));
+	pen.setColor(QColor(Qt::gray));
 	setPen(pen);
 }
 

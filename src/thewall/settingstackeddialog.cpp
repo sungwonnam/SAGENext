@@ -62,6 +62,11 @@ void GeneralSettingDialog::accept() {
 	_settings->setValue("general/offsetx", ui->offsetx->text().toInt());
 	_settings->setValue("general/offsety", ui->offsety->text().toInt());
 //	_settings->setValue("general/fontpointsize", ui->fontpointsize->text().toInt());
+
+    //
+    // set the mplayer arguments here
+    //
+    _settings->setValue("general/mplayercmdargs", QString("-vo sage -ao pulse -loop 0 -sws 4 -framedrop -quiet"));
 }
 
 GeneralSettingDialog::~GeneralSettingDialog() { delete ui;}

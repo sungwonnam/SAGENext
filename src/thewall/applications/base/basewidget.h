@@ -4,13 +4,11 @@
 #include <QGraphicsWidget>
 #include "../../common/commondefinitions.h"
 
-/*
-  If you don't make a choice,
-  time will make one instead of you.
-  */
-
-
 class QSettings;
+
+extern QSettings *ptrSettings;
+
+
 class QPropertyAnimation;
 class QParallelAnimationGroup;
 
@@ -23,6 +21,11 @@ class AffinityInfo;
 class SN_SimpleTextItem;
 class SN_PolygonArrowPointer;
 
+/*!
+ * \brief The SN_BaseWidget class is the base class of all user application.
+ *
+ * To define your own custom interaction, reimplement handlePointerXXXX() functions.
+ */
 class SN_BaseWidget : public QGraphicsWidget
 {
         Q_OBJECT
@@ -59,7 +62,9 @@ public:
 
 
         enum Window_State { W_NORMAL, W_MINIMIZED, W_MAXIMIZED, W_HIDDEN, W_ICONIZED };
+        Window_State _windowState; /**< app wnidow state */
         inline Window_State windowState() const {return _windowState;}
+		inline void setWindowState(Window_State ws) {_windowState = ws;}
 
 
 
@@ -67,6 +72,12 @@ public:
         inline Widget_Type widgetType() const {return _widgetType;}
 
 
+        bool _isSelectedByPointer;
+        inline void setSelectedByPointer(bool b=true) {_isSelectedByPointer = b;}
+        inline bool selectedByPointer() const {return _isSelectedByPointer;}
+
+        inline bool isMoving() const {return _isMoving;}
+        inline bool isResizing() const {return _isResizing;}
 
         void setSettings(const QSettings *s);
 
@@ -77,7 +88,7 @@ public:
 		  But for the plugins, this is impossible because the launcher can't call plugins constructor directly.
 		  So plugins are created without globalAppId then assigned one using this function
 		  */
-        inline virtual void setGlobalAppId(quint64 gaid) {_globalAppId=gaid;}
+        virtual void setGlobalAppId(quint64 gaid);
 
         inline quint64 globalAppId() const {return _globalAppId;}
 
@@ -329,9 +340,6 @@ protected:
         quint64 _globalAppId; /**< Unique identifier */
 
         const QSettings *_settings; /**< Global configuration parameters */
-
-        Window_State _windowState; /**< app wnidow state */
-		inline void setWindowState(Window_State ws) {_windowState = ws;}
 
 
         Widget_Type _widgetType; /**< widget type */

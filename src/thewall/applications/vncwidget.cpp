@@ -12,9 +12,6 @@
 #include <sys/resource.h>
 
 
-
-
-
 rfbBool SN_VNCClientWidget::got_data = FALSE;
 QString SN_VNCClientWidget::username = "";
 QString SN_VNCClientWidget::vncpasswd = "evl123";
@@ -38,6 +35,10 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 
     , _pbomutex(0)
     , _pbobufferready(0)
+
+    , _initVNCtext(new QGraphicsSimpleTextItem(this))
+
+	, _textureUpdateWidget(0)
 {
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
 
@@ -46,8 +47,26 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	_appInfo->setVncUsername(SN_VNCClientWidget::username);
 	_appInfo->setVncPassword(SN_VNCClientWidget::vncpasswd);
 
+
+    //
+    // initial size.
+    // This will be updated in startImageRecvThread()
+    //
+    resize(1440, 900);
+
+    QString text = "Desktop sharing session for\n" + username + "\nis initializing. Please Wait.";
+    QFont f;
+    f.setPointSize(46);
+    _initVNCtext->setFont(f);
+    _initVNCtext->setText(text);
+    _initVNCtext->setPos( (1440 - _initVNCtext->boundingRect().width())/2 , (900 - _initVNCtext->boundingRect().height())/2);
+
+
+
     SN_VNCClientWidget::username = username;
 	SN_VNCClientWidget::vncpasswd = passwd;
+
+
 
 //	qDebug() << "vnc widget constructor " <<  username << passwd << VNCClientWidget::username << VNCClientWidget::vncpasswd;
 
@@ -68,6 +87,9 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	else {
 		_usePbo = false;
 	}
+    //_usePbo = false;
+
+    QObject::connect(this, SIGNAL(frameReceived()), this, SLOT(scheduleUpdate()), Qt::QueuedConnection);
 
     QObject::connect(&_initVNC_futureWatcher, SIGNAL(finished()), this, SLOT(startImageRecvThread()));
 
@@ -89,7 +111,7 @@ int SN_VNCClientWidget::m_initVNC() {
 	_vncclient = rfbGetClient(8, 3, 4);
 
     if (!_vncclient) {
-        qDebug() << "SN_VNCClientWidget::m_initVNC() : rfbGetClient() failed !!";
+        qDebug() << "SN_VNCClientWidget::m_initVNC() : rfbGetClient() failed for " << SN_VNCClientWidget::username;
         return -1;
     }
 
@@ -115,15 +137,18 @@ int SN_VNCClientWidget::m_initVNC() {
 
 	_vncclient->FinishedFrameBufferUpdate = SN_VNCClientWidget::frame_func;
 
-	int margc = 2;
-	char *margv[2];
-	margv[0] = strdup("vnc");
-	margv[1] = (char *)malloc(256);
-	memset(margv[1], 0, 256);
-	sprintf(margv[1], "%s:%d", qPrintable(_vncServerIpAddr), _displayNumber);
+	int margc = 5;
+	char *margv[5];
+	margv[0] = strdup("-encodings");
+	margv[1] = strdup("tight,ultra,raw");
+	margv[2] = strdup("-compress");
+	margv[3] = strdup("5");
+	margv[4] = (char *)malloc(32);
+	memset(margv[4], 0, 32);
+	sprintf(margv[4], "%s:%d", qPrintable(_vncServerIpAddr), _displayNumber);
 
 	if ( ! rfbInitClient(_vncclient, &margc, margv) ) {
-		qCritical() << "SN_VNCClientWidget::m_initVNC() : rfbInitClient() failed !!!";
+		qCritical() << "SN_VNCClientWidget::m_initVNC() : rfbInitClient() failed for" << SN_VNCClientWidget::username;
         _vncclient = 0;
         return -1;
 	}
@@ -136,9 +161,18 @@ int SN_VNCClientWidget::m_initVNC() {
 }
 
 SN_VNCClientWidget::~SN_VNCClientWidget() {
+    disconnect();
+
 	_end = true;
-	_recvThread_future.cancel();
+
 	_recvThread_future.waitForFinished();
+
+	_initVNC_future.waitForFinished();
+
+	if (_textureUpdateWidget) {
+        _textureUpdateWidget->doneCurrent();
+		_textureUpdateWidget->deleteLater();
+	}
 
 	if (_vncclient) {
 		rfbClientCleanup(_vncclient); // _vncclient will be freed in this function
@@ -183,6 +217,8 @@ void SN_VNCClientWidget::initGL(bool usepbo) {
 	_pboIds[0] = -1;
 	_pboIds[1] = -1;
 
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
 	if (usepbo) {
 //		qDebug() << "VNCWidget : OpenGL pbuffer extension is present. Using PBO";
 		glGenBuffersARB(2, _pboIds);
@@ -197,8 +233,14 @@ void SN_VNCClientWidget::initGL(bool usepbo) {
 
 		initPboMutex();
 	}
+	else {
+		QGLWidget *view = static_cast<QGLWidget *>(scene()->views().front()->viewport());
+		Q_ASSERT(view);
+		_textureUpdateWidget = new QGLWidget(0, view);
+		Q_ASSERT(_textureUpdateWidget);
+        _textureUpdateWidget->hide();
+	}
 
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 void SN_VNCClientWidget::startImageRecvThread() {
@@ -231,6 +273,11 @@ void SN_VNCClientWidget::startImageRecvThread() {
 	_recvThread_future = QtConcurrent::run(this, &SN_VNCClientWidget::receivingThread);
 
 	scheduleUpdate();
+
+    if (_initVNCtext) {
+        _initVNCtext->hide();
+        delete _initVNCtext;
+    }
 }
 
 
@@ -246,6 +293,7 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 
 
 	if (_useOpenGL && painter->paintEngine()->type() == QPaintEngine::OpenGL2 /* || painter->paintEngine()->type() == QPaintEngine::OpenGL */) {
+
 		painter->beginNativePainting();
 
 		glEnable(GL_TEXTURE_2D);
@@ -287,6 +335,20 @@ void SN_VNCClientWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem
 		_perfMon->updateDrawLatency(); // drawTimer.elapsed() will be called.
 }
 
+/*!
+ * Will run in a separate thread
+ */
+void SN_VNCClientWidget::upup() {
+    if (!_textureUpdateWidget) return;
+
+	// this function will run in a outside of the main GUI thread
+	_textureUpdateWidget->makeCurrent();
+
+	glBindTexture(GL_TEXTURE_2D, _texid);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vncclient->width, _vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, _vncclient->frameBuffer);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void SN_VNCClientWidget::scheduleUpdate() {
 	/*
 #if QT_VERSION < 0x040700
@@ -301,30 +363,22 @@ void SN_VNCClientWidget::scheduleUpdate() {
 	_perfMon->getUpdtTimer().start();
 
 	if (_useOpenGL && !_usePbo) {
+        /***
 		// QGLContext::InvertedYBindOption Because In OpenGL 0,0 is bottom left, In Qt 0,0 is top left
-		//
 		// Below is awfully slow. Probably because QImage::scaled() inside qgl.cpp to convert image size near power of two
 		// _textureid = glContext->bindTexture(constImageRef->convertToFormat(QImage::Format_RGB32), GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
-		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		//glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, _texid);
-
-//		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-//		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-//		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 		//
 		// Note that it's QImage::Format_RGB888 we're getting from SAGE app
 		//
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vncclient->width, _vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, _vncclient->frameBuffer);
-		//GLenum error = glGetError();
-		//if(error != GL_NO_ERROR) {
-		//		qCritical("texture upload failed. error code 0x%x\n", error);
-		//}
 
 		glBindTexture(GL_TEXTURE_2D, 0);
+        ***/
+
+        // Do Nothing. Texture uploading is handeled in a recvThread
 	}
 	else if (_useOpenGL && _usePbo) {
 		//
@@ -412,11 +466,8 @@ void SN_VNCClientWidget::receivingThread() {
 
 	while (!_end) {
 
-
         if (_perfMon)
 			gettimeofday(&lats, 0);
-
-
 
         //
         // wait until pbo buffer mapped
@@ -434,7 +485,6 @@ void SN_VNCClientWidget::receivingThread() {
 
 			__bufferMapped = false; // reset the flag
 		}
-
 
 
         //
@@ -518,7 +568,7 @@ void SN_VNCClientWidget::receivingThread() {
 			if (_usePbo) {
 				Q_ASSERT(_mappedBufferPtr);
                 //
-                // copy to GPU memory
+                // copy to GPU memory (DMA write to GPU memory)
                 //
 //				qDebug() << "thread writing pixel to buffer" << _mappedBufferPtr;
 				::memcpy(_mappedBufferPtr, vncpixels, _appInfo->frameSizeInByte());
@@ -526,15 +576,14 @@ void SN_VNCClientWidget::receivingThread() {
 				Q_ASSERT(_pbomutex);
 				pthread_mutex_unlock(_pbomutex);
 			}
+			else {
+				upup();
+			}
 		}
 
 
-
-
-		QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
-
-
-
+		//QMetaObject::invokeMethod(this, "scheduleUpdate", Qt::QueuedConnection);
+        emit frameReceived();
 
 
         if (_perfMon && _settings->value("system/resourcemonitor",false).toBool()) {
@@ -542,12 +591,9 @@ void SN_VNCClientWidget::receivingThread() {
 			qreal actualdelay_sec = ((double)late.tv_sec + (double)late.tv_usec * 1e-6) - ((double)lats.tv_sec + (double)lats.tv_usec * 1e-6); // second
             lats = late;
 
-
 			// calculate
 			_perfMon->addToCumulativeByteReceived(_appInfo->frameSizeInByte(), actualdelay_sec, 0);
 		}
-
-
 	} // end of while (_end)
 
 //	if (_myGlWidget)

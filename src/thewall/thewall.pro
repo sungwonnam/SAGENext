@@ -6,7 +6,6 @@ TARGET = sagenext
 TEMPLATE = app
 
 
-
 #CONFIG += thread
 #CONFIG += copy_dir_files
 
@@ -17,13 +16,35 @@ TEMPLATE = app
 #INCLUDEPATH += $$WEBKITPATH/include/QtWebKit
 #LIBS += -L$$WEBKITPATH/lib -lQtWebKit
 
-LIBS += -lGL -lGLU -lrt
+
+
+#
+# NUMA lib
+#
+linux-g++|linux-g++-64 {
+        message("Linking Linux libnuma library")
+        #LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
+        LIBS += -lnuma
+}
+
+
+
 
 # If unix (linux, mac)
-# use pkg-config
+# unix includes linux-g++  linux-g++-64    macx  macx-g++  symbian ...
 unix {
+    INCLUDEPATH += /usr/include
+
+#
+# OpenGL libs
+#
+    LIBS += -lGL -lGLU -lrt
+
+
+#
+# Use pkg-config
+#
     CONFIG += link_pkgconfig
-}
 
 
 #
@@ -32,22 +53,17 @@ unix {
 # or
 # Add LIBVNCSERVER_INSTALL_PATH/lib/pkgconfig in your PKG_CONFIG_PATH environment variable
 #
-unix {
-# unix includes linux-g++  linux-g++-64    macx   macx-g++   symbian ...
     packagesExist(libvncclient) {
         message("Linking LibVNCServer lib")
     	PKGCONFIG += libvncclient
     }
     else {
-        error("Package LibVNCServer doesn't exist !")
+#        error("Package LibVNCServer doesn't exist !")
+        LIBVNCSERVER_LIBS = $$system(libvncserver-config --libs)
+        message("libvncserver-config --libs =>" $$LIBVNCSERVER_LIBS)
+        LIBS += $${LIBVNCSERVER_LIBS}
     }
-}
-#macx {
-#    LIBVNCSERVER = ${HOME}/Downloads/LibVNCServer
-#    message("Linking with LibVNC lib $$LIBVNCSERVER")
-#    INCLUDEPATH += $$LIBVNCSERVER/include
-#    LIBS += -L$$LIBVNCSERVER/lib -lvncclient
-#}
+
 
 
 #
@@ -57,18 +73,36 @@ unix {
 # configure poppler with --enable-poppler-qt4  (you might need to compile/install openjpeg)
 # Add POPPLER_INSTALL_PATH/lib/pkgconfig in PKG_CONFIG_PATH
 #
-unix {
     packagesExist(poppler-qt4) {
         message("Linking poppler-qt4 lib")
     	PKGCONFIG += poppler-qt4
     }
     else {
         error("Package poppler-qt4 doesn't exist !")
+
     }
+} # end of unix{}
+
+
+
+
+
+
+macx {
+#    LIBVNCSERVER = $$(HOME)/Dev/LibVNCServer
+#    message("Linking with LibVNC lib $$LIBVNCSERVER")
+#    INCLUDEPATH += $$LIBVNCSERVER/include
+#    LIBS += -L$$LIBVNCSERVER/lib -lvncclient
 }
+
+
+
+
+
 
 #
 # Qwt
+# Use $$(..) to obtain contents of an environment variable
 #
 QWT_HOME = $$(HOME)/qwt-6.0.1
 exists( $$QWT_HOME/lib/libqwt.so ) {
@@ -82,18 +116,6 @@ else {
 }
 
 
-#
-# NUMA lib
-#
-linux-g++|linux-g++-64 {
-        message("Linking Linux libnuma library")
-        #LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
-        LIBS += -lnuma
-}
-macx {
-        message("Excluding -lnuma")
-        LIBS -= -lnuma
-}
 
 
 

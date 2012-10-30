@@ -85,6 +85,9 @@ enum EXTUI_MSG_TYPE { MSG_NULL
 	                  , WIDGET_REMOVE
 	                  , WIDGET_CHANGE
 	                  , WIDGET_CLOSEALL
+
+                      , FILESERVER_RECVING_FILE /* FileServer is receiving a file from a uiClient. Msg body contains bytes received so far */
+                      , FILESERVER_SENDING_FILE
                     };
 }
 

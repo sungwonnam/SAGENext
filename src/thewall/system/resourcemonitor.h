@@ -200,6 +200,7 @@ public:
 	void setScheduler(SN_SchedulerControl *sc);
 
 	inline void setPriorityGrid(SN_PriorityGrid *p) {_pGrid = p;}
+    inline SN_PriorityGrid * priorityGrid() {return _pGrid;}
 
 	void setRMonWidget(ResourceMonitorWidget *rmw);
 	inline ResourceMonitorWidget * rMonWidget() {return _rMonWidget;}
@@ -217,8 +218,11 @@ public:
 	inline QReadWriteLock * getWidgetListRWLock() {return &_widgetListRWlock;}
 
 
-    inline qreal totalBandwidthMbps() const {return _totalBWAchieved_Mbps;}
+    inline qreal effective_TR_Mbps() const {return _effective_TR_Mbps;}
+    inline qreal current_TR_observed_Mbps() const {return _current_TR_observed_Mbps;}
 
+
+    inline bool isPrintingData() const {return _printDataFlag;}
 
 
 	/*!
@@ -298,7 +302,11 @@ private:
       The sum of the bandwidth achieved by all the schedulable applications at given time.
       So, this is Max of the sum of the rw->_perfMon->getCurrBandwidthMbps()
       */
-    qreal _totalBWAchieved_Mbps;
+    qreal _effective_TR_Mbps;
+
+	qreal _current_TR_observed_Mbps;
+
+    qreal _TR_estimated_Mbps;
 
 
 	/*!
@@ -355,6 +363,12 @@ signals:
 	void appRemoved(int procid);
 
     void dataRefreshed();
+
+    /*!
+      true : started
+      false : stopped
+      */
+    void schedulerStateChanged(bool);
 
 public slots:
 	/*!

@@ -22,6 +22,7 @@ public:
 	AppInfo(quint64 gaid, int width, int height, int bpp, const QString filename, const QString srcip);
 
 	inline quint64 GID() const {return _GID;}
+    inline void setGID(quint64 gaid) {_GID = gaid;}
 
 	inline void setMediaType(SAGENext::MEDIA_TYPE t) {_mtype = t;}
 	inline SAGENext::MEDIA_TYPE mediaType() const { return _mtype; }

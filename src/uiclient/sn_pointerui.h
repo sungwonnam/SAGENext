@@ -8,10 +8,6 @@
 #include <QTcpSocket>
 #include <QTcpServer>
 
-#include "sn_pointerui_msgthread.h"
-#include "sn_pointerui_sendthread.h"
-
-
 #include "../thewall/common/commondefinitions.h"
 
 
@@ -148,6 +144,8 @@ private:
           This should be map data structure to support multiple wall connections
           */
 	quint32 _uiclientid;
+	
+	QSplashScreen _inSAGEsplash;
 
 	/**
 	  receives this from UiServer upon connection.
@@ -174,7 +172,7 @@ private:
 	QTcpSocket _tcpDataSock;
 
 
-    QUdpSocket _udpSocket;
+//    QUdpSocket _udpSocket;
 
 
 	/**
@@ -229,10 +227,6 @@ private:
 
 	QString _pointerColor;
 
-//	QString _vncUsername;
-
-//	QString _vncPasswd;
-
 	QString _sharingEdge;
 		
 		/**
@@ -256,7 +250,9 @@ private:
 	QProcess *_winCapture;
 
 	/*!
-	  winCapture.exe will connect to localhost:44556 upon starting
+	  winCapture.exe will connect to localhost:44556 upon starting.
+      This is because winCapture binary made by py2exe doesn't support stdout/err outputs.
+      So data from winCapture is sent through TCP socket
 	  */
 	SN_WinCaptureTcpServer *_winCaptureServer;
 
@@ -299,6 +295,12 @@ private:
       the event preceding is sendDblClick
       */
     bool _wasDblClick;
+	
+	/*!
+	  This is for Win32.
+	  winCapture doesn't send DblClick so it's handled in readFromMouseHook
+	  */
+	qint64 _prevClickTime;
 
 
 		/**
@@ -307,6 +309,19 @@ private:
 //	void queueMsgToWall(const QByteArray &msg);
 		
 //	void connectToWall(const char * ipaddr, quint16 port);
+
+    /*!
+      Assuming file transferring is sequential.
+      This is the filename (w/o space characters) currently being transferred
+      */
+    QPair<QString, qint64> _fileBeingSent;
+
+    /*!
+      file sending thread should wait until the SAGENext finishes receiving the file
+      */
+    QSemaphore _fileTransferSemaphore;
+
+    QProgressDialog *_progressDialog;
 
     /*!
       This function calls sendFileToWall() for each item in the QList.
@@ -383,6 +398,18 @@ private slots:
 	void unhookMouse();
 
 
+    /*!
+      The send thread is about to send()
+      */
+    void fileSendingBegins(QString filename, qint64 filesize);
+
+    /*!
+      SAGENext informed me that it received the file _fileBeingSent
+      So this function releases _fileTransferSemaphore for the send thread can return
+      */
+//    void fileSendingCompleted();
+
+
         /**
           shortcut : CTRL(CMD) + O
 		  The action (ui->actionOpen_Media) is defined in the sn_pointer.ui
@@ -419,6 +446,7 @@ private slots:
 	  The action (ui->actionSend_text is defined in the sn_pointerui.ui
 	  */
 	void on_actionSend_text_triggered();
+	
 };
 
 

@@ -7,73 +7,67 @@
 #include <QtGui>
 
 /*!
-  A plugin example that inherits BaseWidget
+  A simple SAGENext plugin example.
+
+  This example shows three buttons and one label.
+  The buttons are used to change the color of the label panel
   */
 class SimpleGUIExample : public SN_BaseWidget, SN_PluginInterface
 {
 	Q_OBJECT
+
+    /*!
+      A macro that tells this is a plugin
+      and will implement interfaces defined in SN_PluginInterface
+      */
 	Q_INTERFACES(SN_PluginInterface)
 
 public:
 	SimpleGUIExample();
 	virtual ~SimpleGUIExample();
 
+    /*!
+      This interface must be reimplemented.
+      The SN_Launcher calls this function to create an instance of this plugin.
+      */
 	SN_BaseWidget * createInstance();
 
-protected:
-
-        /*!
-          You can reimplement QGraphicsWidget::paint().
-          This is where your pixels are drawn on this widget.
-		  This won't affect child items.
-          */
-	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-
-    int test;
-
+    /*!
+      You can reimplement QGraphicsItem::paint() to draw onto this widget.
+      */
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 private:
+    /*!
+      Create the label and buttons
+      */
     void _createGUIs();
 
-        /*!
-          Example GUI components
-          */
-        QLabel *_label;
+    /*!
+      Example GUI components
+      */
+    QLabel *_label;
 
-		QColor _currentColor;
+    /*!
+      The color of the label
+      */
+    QColor _currentColor;
 
-        /*!
-          Every GUI components requires QGraphicsProxyWidget to be functioning on QGraphics framework
-          */
-        QGraphicsProxyWidget *_labelProxy;
+    QPushButton *_btn_R; /**< red (1,0,0) */
+    QPushButton *_btn_M; /**< magenta (1,0,1) */
+    QPushButton *_btn_Y; /**< yellow (1,1,0) */
 
-        QPushButton *btn_R; /**< red (1,0,0) */
-        QPushButton *btn_M; /**< magenta (1,0,1) */
-		QPushButton *btn_Y; /**< yellow (1,1,0) */
-
-        QGraphicsProxyWidget *proxy_btn_R;
-        QGraphicsProxyWidget *proxy_btn_M;
-        QGraphicsProxyWidget *proxy_btn_Y;
-
-		QCheckBox *_invert;
-		QGraphicsProxyWidget *_proxy_invert;
-
-        /*!
-          Layout widget to layout GUI components nicely
-          */
-        QGraphicsLinearLayout *_btnLayout;
-        QGraphicsLinearLayout *_mainLayout;
-
-		bool _isInvertOn;
-
-		void _updateLabel(const QColor &c);
+    void _updateLabel(const QColor &c);
 
 private slots:
-        void buttonR();
-        void buttonM();
-        void buttonY();
+    /*!
+      changes the label color to red
+      */
+    void buttonR();
 
-		void toggleInvert(int state);
+    void buttonM();
+
+    void buttonY();
 };
 
 

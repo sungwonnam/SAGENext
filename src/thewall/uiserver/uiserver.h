@@ -112,6 +112,9 @@ private slots:
           * update uiThreadsMap and remove PolygonArrow from the scene
           */
 	void removeFinishedThread(quint32);
+
+public slots:
+    int sendMsgToUiClient(quint32 uiclientid, const QByteArray &msg);
 };
 
 #endif // UISERVER_H

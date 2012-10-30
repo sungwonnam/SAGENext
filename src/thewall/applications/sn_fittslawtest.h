@@ -237,8 +237,33 @@ private:
     qreal _sum_norm_latency;
     qreal _sum_latency;
 
+    qreal _sum_Rq;
+    qreal _sum_Rc;
+
     qint64 _targetAppearTime;
     qint64 _targetHitTime;
+
+    /*!
+      To enforce two frames to update screen
+      */
+    int _screenUpdateFlag;
+
+	/*!
+	How many frames needed to update the screen
+	*/
+	int _numFramesForScreenUpdate;
+
+    /*!
+      Immutable
+      */
+    int _numFramesForScreenUpdateConfigured;
+
+
+    /*!
+      true : target will remain until successful click
+      false : target will disappear upon click whether or not it's hit
+      */
+    bool _isMissClickPenalty;
 
 
 signals:
@@ -270,6 +295,8 @@ public slots:
 
     inline void setUserID(const QString &str) {_userID = str;}
 
+//    void respondToSchedulerState(bool);
+
 
     /*!
       Upon clicking (with system's mouse not the shared pointer) the ready button.
@@ -295,7 +322,7 @@ public slots:
       If there's no saved position then randomly choose one by calling m_getRandomPos()
       otherwise, use the saved value in the _targetPosList.
       */
-    void determineNextTargetPosition();
+    void determineNextTargetPosition(int local_round_count, int next_target_id, bool force_random_determine=false);
 
     /*!
       reset _roundCount
@@ -307,10 +334,12 @@ public slots:
       */
     void clearTargetPosList();
 
+
     /*!
-      clear all measurement data and populate it with null values
+      Adjust parameters in PerfMonitor::_updateBWdata()
       */
-    void clearData();
+    void setPerfMonRwParameters(int wakeUpGuessFps, qreal overPerformMult, qreal normPerformMult, int underPerformEndur);
+
 
     /*!
       A test consists of 4 rounds.
@@ -327,6 +356,13 @@ public slots:
       This slot will just call update()
       */
     void scheduleDummyUpdate();
+
+    inline void setTargetCursorPixmap(const QString &res = ":/resources/blackarrow_upleft128.png") {
+        _cursor->setPixmap(res);
+    }
+
+
+    inline void setMissClickPenalty(bool b=false) {qDebug() << _userID << "miss click penalty ?" << b;_isMissClickPenalty = b;}
 };
 
 
@@ -359,11 +395,11 @@ public:
 
     inline QFrame * getFrame() {return _frame;}
 
-    void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, qint64 latency = -1, qreal distance = -1, int missfortarget = -1, qreal avg_latency=-1, qreal avg_norm_latency = -1, int misscountround = -1);
+    void writeData(const QString &id, const QString &actionType, int roundid, int targetcount = -1, qint64 latency = -1, qreal distance = -1, int missfortarget = -1, qreal avg_latency=-1, qreal avg_norm_latency = -1, int misscountround = -1, qreal Rq = -1, qreal Rc = -1);
 
 //    void writeData(const QString &id, const QString &actionType, int targetcount = -1, const QByteArray &bytearry = QByteArray());
 
-    void flushCloseAll(const QString &id);
+    void flushAll(const QString &id);
 
 private:
     QString _filenameBase;
@@ -422,8 +458,27 @@ private slots:
       */
     void recreateAllDataFiles();
 
+    /*!
+      There are total 2 to the NUM_SUBJECTS rounds.
+      Round 0 is dry run
+      */
     void advanceRound();
 
+    /*!
+      Practice Round (dryrun)
+      */
+    void practiceRound();
+
+    void setRwParamConservatively();
+
+    /*!
+      Immediately execute the final round
+      */
+    void finalRound();
+
+    void toggleMissClickPenalty(bool b);
+
+    void clearAllSavedTgtPos();
 };
 
 #endif // SN_FITTSLAWTEST_H

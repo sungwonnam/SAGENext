@@ -46,7 +46,6 @@ SN_SagePixelReceiver::SN_SagePixelReceiver(int protocol, int sockfd, DoubleBuffe
     , _pboCond(pboCond)
     , _isRMonitor(false)
     , _isScheduler(false)
-    , _fittsLawTestUpdate(true)
 {
 	QThread::setTerminationEnabled(true);
 
@@ -153,6 +152,8 @@ void SN_SagePixelReceiver::run() {
 	int byteCount = _appInfo->frameSizeInByte();
 	unsigned char *bufptr = 0;
 
+	int userBufferLength = _appInfo->networkUserBufferLength();
+
 	if (!_usePbo) {
 		bufptr = static_cast<QImage *>(_doubleBuffer->getFrontBuffer())->bits();
 		//bufptr = (unsigned char *)malloc(byteCount);
@@ -164,6 +165,11 @@ void SN_SagePixelReceiver::run() {
     //
     qint64 recvDelay = 0;
     qint64 start;
+
+
+    if (_perfMon) {
+        _perfMon->setMeasureStartTime(QDateTime::currentMSecsSinceEpoch());
+    }
 
 	while(! _end ) {
 
@@ -208,6 +214,7 @@ void SN_SagePixelReceiver::run() {
             _pboBufIdx = (_pboBufIdx + 1) % 2;
 
             bufptr = (unsigned char *)_pbobufarray[_pboBufIdx];
+            if (!bufptr) continue;
         }
         else {
             Q_ASSERT(_doubleBuffer);
@@ -220,10 +227,7 @@ void SN_SagePixelReceiver::run() {
 			_doubleBuffer->swapBuffer();
 			//qDebug() << QTime::currentTime().toString("mm:ss.zzz") << "swapBuffer returned";
 
-            if (_fittsLawTestUpdate)
-                emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
-            else
-                _doubleBuffer->releaseBackBuffer();
+			emit frameReceived(); // Queued Connection. Will trigger SageStreamWidget::updateWidget()
 
 			//
 			// getFrontBuffer() will return immediately. There's no mutex waiting in this function
@@ -250,14 +254,6 @@ void SN_SagePixelReceiver::run() {
 
         if (_sageWidget->__sema) {
             _sageWidget->__sema->acquire(1);
-
-            // keep fliping the coin
-            if (_fittsLawTestUpdate) {
-                _fittsLawTestUpdate = false;
-            }
-            else {
-                _fittsLawTestUpdate = true;
-            }
         }
 
         //
@@ -267,12 +263,12 @@ void SN_SagePixelReceiver::run() {
         ssize_t read = 0;
         while (totalread < byteCount ) {
             // If remaining byte is smaller than user buffer length (which is groupSize)
-            if ( byteCount-totalread < _appInfo->networkUserBufferLength() ) {
+            if ( byteCount-totalread < userBufferLength ) {
                 read = recv(_tcpsocket, bufptr, byteCount-totalread , MSG_WAITALL);
             }
             // otherwise, always read groupSize bytes
             else {
-                read = recv(_tcpsocket, bufptr, _appInfo->networkUserBufferLength(), MSG_WAITALL);
+                read = recv(_tcpsocket, bufptr, userBufferLength, MSG_WAITALL);
             }
             if ( read == -1 ) {
                 qDebug("SagePixelReceiver::run() : error while reading.");
@@ -335,6 +331,10 @@ void SN_SagePixelReceiver::run() {
         }
 
 	} /*** end of receiving loop ***/
+
+    if (_perfMon) {
+        _perfMon->setMeasureEndTime(QDateTime::currentMSecsSinceEpoch());
+    }
 
 	/* pixel receiving thread exit */
 //	qDebug("SagePixelReceiver : thread exit");

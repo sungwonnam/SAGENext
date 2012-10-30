@@ -10,6 +10,12 @@ class SN_PixmapButton;
 class SN_BaseWidget;
 class SN_TheScene;
 
+/*!
+ * \brief The line when the wall is partitioned
+ *
+ * This graphics item is a type of QGraphicsItem::UserType + INTERACTIVE_ITEM
+ * The type of an item is used in SN_PolygonArrowPointer::setAppUnderPointer() to distinguish different items
+ */
 class SN_WallPartitionBar : public QGraphicsLineItem {
 public:
 	SN_WallPartitionBar(Qt::Orientation o, SN_LayoutWidget *owner, QGraphicsItem *parent=0);
@@ -18,13 +24,9 @@ public:
 	inline SN_LayoutWidget * ownerNode() {return _ownerNode;}
 
 	/*!
-	  Usually, SN_PolygonArrowPointer will ignore all standard QGraphicsItem.
-	  This means the shared pointer won't be able to interact with the standard QGraphicsItems except ones that inherit SN_BaseWidget.
-	  By settting UserType + 1, this item will be set in SN_PolygonArrowPointer::_item properly in its setAppUnderPointer() function.
-
-	  To be able to be interacted with the shared pointer, a widget needs to set value higher than QGraphicsItem::UserType.
+	  A widget needs to set a specific value in its Type so that it can be interacted by the shared pointer.
 	  Note that values >= UserType + BASEWIDGET_USER are reserved for user applications.
-	  So, choose UserType < value < UserType+BASEWIDGET_USER for common items on the scene.
+      A value >= QGraphicsItem::UserType + INTERACTIVE_ITEM is an item (that inherits QGraphicsItem) which can be interacted with a shared pointer (SN_PolygonArrowPointer).
 	  */
 	enum { Type = QGraphicsItem::UserType + INTERACTIVE_ITEM };
 	virtual int type() const { return Type;}
@@ -42,16 +44,6 @@ private:
 	  Vertical bar divides the section left and right.
 	  */
 	Qt::Orientation _orientation;
-};
-
-
-
-class SN_GridLayout : public QGraphicsGridLayout
-{
-public:
-	SN_GridLayout(QGraphicsLayoutItem *parent = 0);
-
-	void setGeometry(const QRectF &rect);
 };
 
 

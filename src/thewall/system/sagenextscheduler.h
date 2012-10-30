@@ -19,6 +19,7 @@ class QGraphicsScene;
 class SN_ResourceMonitor;
 class SN_ProcessorNode;
 class SN_AbstractScheduler;
+class SN_PriorityGrid;
 
 /*!
   General key concepts in multimedia scheduling includes
@@ -54,6 +55,8 @@ public:
 	inline void setSchedulerType(SN_SchedulerControl::Scheduler_Type st) {schedType = st;}
     inline SN_SchedulerControl::Scheduler_Type schedulerType() const {return schedType;}
 
+    inline void setPriorityGrid(SN_PriorityGrid *pg) {_priorityGrid = pg;}
+
 	int launchScheduler(SN_SchedulerControl::Scheduler_Type st, int msec=1000, bool start = false);
 	int launchScheduler(const QString &str, int msec=1000, bool start = false);
 	int launchScheduler(bool start = false);
@@ -79,6 +82,8 @@ private:
 	  */
 	SN_AbstractScheduler *_scheduler;
 
+    SN_PriorityGrid *_priorityGrid;
+
     /*!
       Is the scheduling thread running?
       */
@@ -98,6 +103,12 @@ signals:
       This signal is invoked (not emitted) by rMonitor::dataRefreshed() signal emitted in the rMonitor::refresh() function
       */
     void readyToSchedule();
+
+    /*!
+      true if started
+      false if stopped
+      */
+    void schedulerStateChanged(bool);
 
 public slots:
     void startScheduler();
@@ -137,7 +148,7 @@ class SN_AbstractScheduler : public QObject {
 //	Q_PROPERTY(bool end READ isEnd WRITE setEnd)
 
 public:
-	explicit SN_AbstractScheduler(SN_ResourceMonitor *rmon, int granularity=2, QObject *parent=0) : QObject(parent), _end(false), proc(0), rMonitor(rmon), _granularity(granularity) {  }
+	explicit SN_AbstractScheduler(SN_ResourceMonitor *rmon, SN_PriorityGrid *pgrid, int granularity=2, QObject *parent=0);
 	virtual ~SN_AbstractScheduler();
 
 	inline bool isEnd() const {return _end;}
@@ -180,6 +191,8 @@ protected:
 	SN_ResourceMonitor *rMonitor;
 //	bool _end;
 
+    SN_PriorityGrid *_pGrid;
+
 	int _granularity; // in millisecond
 
 //	QGraphicsScene *scene;
@@ -210,7 +223,7 @@ class SN_ProportionalShareScheduler : public SN_AbstractScheduler
     Q_OBJECT
 
 public:
-    explicit SN_ProportionalShareScheduler(SN_ResourceMonitor *r, int granularity = 100, QObject *parent=0);
+    explicit SN_ProportionalShareScheduler(SN_ResourceMonitor *r, SN_PriorityGrid *pg, int granularity = 100, QObject *parent=0);
     ~SN_ProportionalShareScheduler() {}
 
     void reset();
@@ -245,7 +258,7 @@ private slots:
 class SN_SelfAdjustingScheduler : public SN_AbstractScheduler {
 	Q_OBJECT
 public:
-	explicit SN_SelfAdjustingScheduler(SN_ResourceMonitor *r, int granularity = 500, QObject *parent=0);
+	explicit SN_SelfAdjustingScheduler(SN_ResourceMonitor *r, SN_PriorityGrid *pg, int granularity = 500, QObject *parent=0);
 
 	inline qreal getQTH() const {return qualityThreshold;}
 	inline qreal getDecF() const {return decreasingFactor;}
@@ -339,7 +352,7 @@ private slots:
 class DividerWidgetScheduler : public SN_AbstractScheduler {
 	Q_OBJECT
 public:
-	explicit DividerWidgetScheduler(SN_ResourceMonitor *r, int granularity = 1000, QObject *parent=0);
+	explicit DividerWidgetScheduler(SN_ResourceMonitor *r, SN_PriorityGrid *pg, int granularity = 1000, QObject *parent=0);
 
 private:
 	/*!

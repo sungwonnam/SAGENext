@@ -74,7 +74,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	_customurlbox = new SN_LineEdit(this);
 	_customurlbox->_lineedit->setText("http://");
 	_customurlbox->_lineedit->setFont(f);
-    _customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed, QSizePolicy::LineEdit);
+	_customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
     _customurlbox->setMinimumHeight(128);
 	QObject::connect(_customurlbox, SIGNAL(textChanged(QString)), this, SLOT(setUrl(QString)));
 

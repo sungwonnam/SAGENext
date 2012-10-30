@@ -380,10 +380,10 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
             item->setData(Qt::DisplayRole, "noop");
             break;
         case 1:
-            item->setData(Qt::DisplayRole, "");
+            item->setData(Qt::DisplayRole, _rMonitor->current_TR_observed_Mbps());
             break;
         case 2:
-            item->setData(Qt::DisplayRole, _rMonitor->totalBandwidthMbps());
+            item->setData(Qt::DisplayRole, _rMonitor->effective_TR_Mbps());
             break;
         case 3:
             item->setData(Qt::DisplayRole, "");
@@ -440,9 +440,11 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 				break;
 			case 4:
 				item->setData(Qt::DisplayRole, rw->observedQuality_Rq());
+				/*
                 if ( rw->observedQuality_Rq() > rw->demandedQuality() ) {
                     item->setBackground(Qt::red);
                 }
+				*/
 				break;
 			case 5:
 				item->setData(Qt::DisplayRole, rw->demandedQuality());

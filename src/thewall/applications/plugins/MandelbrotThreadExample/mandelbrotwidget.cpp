@@ -26,13 +26,7 @@ MandelbrotExample::MandelbrotExample()
 {
     qRegisterMetaType<QImage>("QImage");
 
-    connect(&thread, SIGNAL(renderedImage(QImage,double)), this, SLOT(updatePixmap(QImage,double)));
-
-    /*
-//    _pixmap->setFlag(QGraphicsItem::ItemStacksBehindParent);
-    _pixmap->setFlag(QGraphicsItem::ItemIsMovable, false);
-    _pixmap->moveBy(20,20);
-    */
+    QObject::connect(&thread, SIGNAL(renderedImage(QImage,double)), this, SLOT(updatePixmap(QImage,double)));
 
     setContentsMargins(15, 40, 15, 15);
 
@@ -40,7 +34,6 @@ MandelbrotExample::MandelbrotExample()
 #ifndef QT_NO_CURSOR
     setCursor(Qt::CrossCursor);
 #endif
-    resize(550, 400);
 
 //    qDebug() << "MandelbrotExample::MandelbrotExample() : boundingRect() " << boundingRect();
 }
@@ -55,6 +48,11 @@ void MandelbrotExample::m_init() {
 SN_BaseWidget * MandelbrotExample::createInstance() {
     MandelbrotExample *bw = new MandelbrotExample;
     bw->m_init();
+
+    //
+    // This will make thread starts
+    //
+    bw->resize(550, 400);
     return bw;
 }
 
@@ -240,7 +238,7 @@ void MandelbrotExample::updatePixmap(const QImage &image, double scaleFactor)
 void MandelbrotExample::zoom(double zoomFactor)
 {
     curScale *= zoomFactor;
-    update();
+//    update();
     thread.render(centerX, centerY, curScale, size().toSize() - QSize(30, 55));
 }
 //! [17]

@@ -1,6 +1,7 @@
 #include "sagenextscheduler.h"
 #include "resourcemonitor.h"
 #include "resourcemonitorwidget.h"
+#include "prioritygrid.h"
 
 #include "../applications/base/railawarewidget.h"
 #include "../applications/base/appinfo.h"
@@ -20,6 +21,7 @@ SN_SchedulerControl::SN_SchedulerControl(SN_ResourceMonitor *rm, QObject *parent
     , schedType(SN_SchedulerControl::ProportionalShare)
     , _granularity(1000)
     , _scheduler(0)
+    , _priorityGrid(0)
 //    , _isRunning(false)
     , _controlPanel(0)
     , _lbl_schedStatus(0)
@@ -71,6 +73,8 @@ void SN_SchedulerControl::startScheduler() {
     if (_lbl_schedStatus) {
         _lbl_schedStatus->setText("Scheduling !");
     }
+
+    emit schedulerStateChanged(true);
 }
 
 
@@ -100,6 +104,8 @@ void SN_SchedulerControl::stopScheduler() {
         if (_lbl_schedStatus) {
             _lbl_schedStatus->setText("No Scheduling");
         }
+
+        emit schedulerStateChanged(false);
     }
 }
 
@@ -142,11 +148,25 @@ void SN_SchedulerControl::killScheduler() {
 void SN_SchedulerControl::toggleSchedulerStatus() {
     if (!_scheduler) return;
 
+    bool flag = false;
+    if (_rMonitor && _rMonitor->isPrintingData()) {
+        _rMonitor->stopPrintData();
+        flag = true;
+    }
+
     if (isRunning()) {
         stopScheduler();
     }
     else {
         startScheduler();
+    }
+
+
+    //
+    // resume printing data
+    //
+    if (flag) {
+        _rMonitor->setPrintFile(QDir::homePath() + "/.sagenext/rMon_" + QDateTime::currentDateTime().toString("hh.mm.ss_MM.dd"));
     }
 }
 
@@ -165,7 +185,7 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 
 	switch(st) {
     case SN_SchedulerControl::ProportionalShare : {
-        _scheduler = new SN_ProportionalShareScheduler(_rMonitor, msec);
+        _scheduler = new SN_ProportionalShareScheduler(_rMonitor, _priorityGrid, msec);
 
         QVBoxLayout *vl = new QVBoxLayout;
 
@@ -186,7 +206,7 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 
 	case SN_SchedulerControl::SelfAdjusting : {
 
-		SN_SelfAdjustingScheduler *sas  = new SN_SelfAdjustingScheduler(_rMonitor, msec);
+		SN_SelfAdjustingScheduler *sas  = new SN_SelfAdjustingScheduler(_rMonitor,_priorityGrid, msec);
 		_scheduler = sas;
 
 		QLabel *interval = new QLabel("Frequency");
@@ -264,7 +284,7 @@ int SN_SchedulerControl::launchScheduler(SN_SchedulerControl::Scheduler_Type st,
 
 
 	case SN_SchedulerControl::DividerWidget : {
-		_scheduler = new DividerWidgetScheduler(_rMonitor, msec);
+		_scheduler = new DividerWidgetScheduler(_rMonitor,_priorityGrid, msec);
 		break;
 	}
 	default :
@@ -366,41 +386,34 @@ bool SN_SchedulerControl::eventFilter(QObject *, QEvent *) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 bool SN_AbstractScheduler::IsHittingResourceLimit = false;
 
+SN_AbstractScheduler::SN_AbstractScheduler(SN_ResourceMonitor *rmon, SN_PriorityGrid *pgrid, int granularity/*=2*/, QObject *parent/*=0*/)
+    : QObject(parent)
+    , _end(false)
+    , proc(0)
+    , rMonitor(rmon)
+    , _pGrid(pgrid)
+    , _granularity(granularity)
+{  }
 
-
-
-
-/**************
-  Abstract
-  *************/
 SN_AbstractScheduler::~SN_AbstractScheduler() {
-	qDebug() << "The scheduler deleted";
+    if (_pGrid && _pGrid->isEnabled()) {
+        delete _pGrid;
+    }
+	qDebug() << "The scheduler instance has deleted";
 }
-
-
-/*
-void SN_AbstractScheduler::run() {
-
-//	QTimer timer;
-	timer.setInterval(_granularity);
-
-	connect(&timer, SIGNAL(timeout()), this, SLOT(doSchedule()));
-
-	timer.start();
-	qDebug("%s::%s() : Staring the scheduling thread ! (%d msec)", metaObject()->className(), __FUNCTION__, _granularity);
-
-
-	// Starts independent event loop of this thread. Enter eventloop and waits until exit() is called.
-	// any function in the scheduler must be called by signal-slot queued connection
-	// scheduler calls any function live in GUI eventloop (qApp::exec()) by slots
-	exec();
-
-    qDebug() << "[[ The Scheduling thread has finished ]]";
-}
-*/
-
 
 int SN_AbstractScheduler::configureRail(SN_RailawareWidget *rw, SN_ProcessorNode *pn) {
 	if (!rw || !rw->affInfo()) return -1;
@@ -471,10 +484,24 @@ int SN_AbstractScheduler::configureRail() {
 
 
 
-SN_ProportionalShareScheduler::SN_ProportionalShareScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent)
-    : SN_AbstractScheduler(r, granularity, parent)
-{
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SN_ProportionalShareScheduler::SN_ProportionalShareScheduler(SN_ResourceMonitor *r, SN_PriorityGrid *pg, int granularity, QObject *parent)
+    : SN_AbstractScheduler(r, pg, granularity, parent)
+{}
 
 void SN_ProportionalShareScheduler::reset() {
     QList<SN_BaseWidget *> wlist = rMonitor->getWidgetList();
@@ -505,7 +532,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
 
     qreal TheSizeOfBucket = 0.1; // 10 %
 
-    qreal TotalResource = rMonitor->totalBandwidthMbps(); // aggregate of rw->perfMon()->getCurrBandwidthMbps()
+    qreal TotalResource = rMonitor->effective_TR_Mbps(); // aggregate of rw->perfMon()->getCurrBandwidthMbps()
 
     if (TotalResource <= 0) return;
 
@@ -516,7 +543,6 @@ void SN_ProportionalShareScheduler::doSchedule() {
     //
     rMonitor->getWidgetListRWLock()->lockForRead();
 
-
     QList<SN_BaseWidget *> * wlist = rMonitor->getWidgetListRef();
     QList<SN_BaseWidget *>::const_iterator iter0;
 
@@ -524,38 +550,38 @@ void SN_ProportionalShareScheduler::doSchedule() {
 	//
 	// Copy the list of schedulable widgets to local QMap container
 	// In QMap, items are always sorted by a key when iterating over QMap
-    //
-    // The key is priority !
 	//
 	QMap<qreal, SN_BaseWidget *> widgetMapByPriority;
 
     for (iter0 = wlist->constBegin(); iter0 != wlist->constEnd(); iter0++ ) {
         SN_BaseWidget *rw = (*iter0);
+        qreal priority = 0.0;
+
 		if (!rw || !rw->priorityData()) continue;
 
+        //
+        // get the priority offset from the previous priority grid first
+        //
+        if (_pGrid && _pGrid->isEnabled()) {
+            priority = 100.0f * _pGrid->getPriorityOffset(rw->sceneBoundingRect().toRect());
+//            qDebug() << "widget" << rw->globalAppId() << "Ptemp" << priority;
+        }
+
         /**************
-          *
-          *
-          compute priority !
-          *
-          *
+          Compute priority. The priority value returned doesn't include Ptemp !!
+          The Pvisual, interact value will be added to cells of the priority grid in this function.
           ***************/
-        rw->priorityData()->computePriority(0);
+        priority += rw->priorityData()->computePriority(0); // Pvisual , Pinteract
 
-        if (rw->priority() > 0) {
-            SumPriority += rw->priority();
-
-            //
-            // priority offset based on ROI can be applied here
-            //
-
+        if (priority > 0) {
+            SumPriority += priority;
 
             //
             // The key is widget's priority, the value is the widget itself.
             //
-            widgetMapByPriority.insertMulti(rw->priority(), rw);
+            widgetMapByPriority.insertMulti(priority, rw);
         }
-        else if (rw->priority() == 0) {
+        else if (priority == 0) {
             rw->setQuality(0);
         }
         else {
@@ -563,19 +589,23 @@ void SN_ProportionalShareScheduler::doSchedule() {
         }
 	}
 
+    //
+    // Now the priority grid (for the next iteration) is complete
+    //
+
 
 //    qDebug() << "\n=============================================================================================================";
 //    qDebug() << "Total resource" << TotalResource << "Mbps, SumPriority" << SumPriority << "Num apps" << wmap.size();
 
-
+    // iterator for the widgetMap (key : priority, value : widget)
     QMap<qreal, SN_BaseWidget *>::const_iterator wmap_it;
 
     //
     // will allocate this much
     //
-    qreal resources[widgetMapByPriority.size()];
+    qreal Rsched[widgetMapByPriority.size()];
     for (int i=0; i<widgetMapByPriority.size(); i++) {
-        resources[i] = 0;
+        Rsched[i] = 0;
     }
 
     // resources[] array index
@@ -608,31 +638,36 @@ void SN_ProportionalShareScheduler::doSchedule() {
 
 
         //
-        // For each app
+        // For each application
         //
         for (wmap_it = widgetMapByPriority.constBegin(), index=0; wmap_it != widgetMapByPriority.constEnd(); wmap_it++, index++) {
             SN_BaseWidget *rw = wmap_it.value();
 
             Q_ASSERT(rw);
-            Q_ASSERT(rw->priorityData());
             Q_ASSERT(rw->perfMon());
 
 //            quint64 gaid = rw->globalAppId();
 
-            qreal priority = rw->priority();
+            qreal priority = wmap_it.key();
 
             //
             // This is the amount I need to ensure 100% performance (quality 1.0)
             //
-            qreal rwDesired = rw->perfMon()->getRequiredBW_Mbps();
+            qreal Ropt = rw->perfMon()->getRequiredBW_Mbps();
+
+            //
+            // The amount of resource for THIS app to show X % of quality.
+            // !!! This assumes that an app provides its resource requirement !!!
+            //
+            qreal Ropt_for_quality_X = rw->perfMon()->getRequiredBW_Mbps( TheSizeOfBucket );
 
             //
             // I'm over allocated
             //
-            if ( resources[index] > rwDesired ) {
-                TotalResource += (resources[index] - rwDesired); // return the extra
+            if ( Rsched[index] > Ropt ) {
+                TotalResource += (Rsched[index] - Ropt); // return the extra
 
-                resources[index] = rwDesired; // I'll be allocated the amount I wanted
+                Rsched[index] = Ropt; // I'll be allocated the amount I wanted
 
                 bitarray.setBit(index, true); // I'm done. I don't need further actions
 
@@ -644,7 +679,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
             //
             // Everything is perfect for me. So  I'm done
             //
-            else if (resources[index] == rwDesired) {
+            else if (Rsched[index] == Ropt) {
                 bitarray.setBit(index, true); // I don't need further actions
 
                 AdjustedSumPriority -= priority;
@@ -658,14 +693,14 @@ void SN_ProportionalShareScheduler::doSchedule() {
                 // e.g. When the app window is compeletly obscured by other window
                 //
                 if (priority == 0) {
-                    resources[index] = 0; // cause I don't need it
+                    Rsched[index] = 0; // cause I don't need it
                     bitarray.setBit(index, true); // I don't need further actions. Ensure the terminate condition
                 }
                 //
                 // e.g. Interactive app is not being interacted
                 //
-                else if (rwDesired == 0) {
-                    resources[index] = 0; // cause I don't need it
+                else if (Ropt == 0) {
+                    Rsched[index] = 0; // cause I don't need it
                     bitarray.setBit(index, true); // I don't need further actions. Ensure the terminate condition
                     AdjustedSumPriority -= priority;
                 }
@@ -683,18 +718,12 @@ void SN_ProportionalShareScheduler::doSchedule() {
                     }
 
                     //
-                    // The amount of resource for THIS app to show X % of quality.
-                    // !!! This assumes that an app provides its resource requirement !!!
-                    //
-                    qreal amount_needed_for_quality_X = rw->perfMon()->getRequiredBW_Mbps( TheSizeOfBucket );
-
-                    //
                     // During a single iteration, this app should receive this amount.
                     // This is to ensure fairness based on priority and visual quality
                     //
-                    qreal size_of_single_scoop = priorityProportion * amount_needed_for_quality_X;
+                    qreal size_of_single_scoop = priorityProportion * Ropt_for_quality_X;
 
-                    qreal remainingroom = rwDesired - resources[index];
+                    qreal remainingroom = Ropt - Rsched[index];
 
                     //
                     // I need the amount less than single scoop
@@ -703,7 +732,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
                     if ( size_of_single_scoop >= remainingroom ) {
 
                         TotalResource -= remainingroom; // take resources
-                        resources[index] += remainingroom;
+                        Rsched[index] += remainingroom;
 
                         bitarray.setBit(index, true); // I don't need further actions because I'm getting the amount == Rq
 
@@ -715,7 +744,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
                     //
                     else {
                         TotalResource -= size_of_single_scoop; // take resources
-                        resources[index] += size_of_single_scoop;
+                        Rsched[index] += size_of_single_scoop;
 
                         bitarray.setBit(index, false); // There might be resources that I can get more. So, I'm not done yet.
                     }
@@ -749,7 +778,7 @@ void SN_ProportionalShareScheduler::doSchedule() {
 //        qDebug() << "\t" << rw->globalAppId() << ":" << rw->priority() << ":" << resources[index];
 
         if ( rw->perfMon()->getRequiredBW_Mbps() > 0 ) {
-            rw->setQuality( resources[index] / rw->perfMon()->getRequiredBW_Mbps() );
+            rw->setQuality( Rsched[index] / rw->perfMon()->getRequiredBW_Mbps() );
         }
         else {
             rw->setQuality(0);
@@ -842,9 +871,9 @@ void SN_ProportionalShareScheduler::doSchedule() {
 
 
 
-SN_SelfAdjustingScheduler::SN_SelfAdjustingScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent)
+SN_SelfAdjustingScheduler::SN_SelfAdjustingScheduler(SN_ResourceMonitor *r, SN_PriorityGrid *pg, int granularity, QObject *parent)
 
-    : SN_AbstractScheduler(r, granularity, parent)
+    : SN_AbstractScheduler(r, pg, granularity, parent)
 
     , qualityThreshold(0.96)
     , decreasingFactor(-0.1)
@@ -1403,8 +1432,8 @@ void SelfAdjustingScheduler::doSchedule() {
 
 
 
-DividerWidgetScheduler::DividerWidgetScheduler(SN_ResourceMonitor *r, int granularity, QObject *parent) :
-	SN_AbstractScheduler(r, granularity, parent),
+DividerWidgetScheduler::DividerWidgetScheduler(SN_ResourceMonitor *r, SN_PriorityGrid *pg, int granularity, QObject *parent) :
+	SN_AbstractScheduler(r, pg, granularity, parent),
 	_Q_highest(1.0),
 	_P_fiducial(0.0),
 	_Q_fiducial(1.0),

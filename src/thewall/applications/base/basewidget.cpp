@@ -17,10 +17,12 @@
 
 SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	: QGraphicsWidget(0, wflags)
+    , _windowState(SN_BaseWidget::W_NORMAL)
+    , _isSelectedByPointer(false)
     , _useOpenGL(true)
 	, _globalAppId(0)
 	, _settings(0)
-	, _windowState(SN_BaseWidget::W_NORMAL)
+
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
@@ -62,10 +64,11 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 
 SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent /*0*/, Qt::WindowFlags wflags /*0*/)
 	: QGraphicsWidget(parent, wflags)
+    , _windowState(SN_BaseWidget::W_NORMAL)
+    , _isSelectedByPointer(false)
     , _useOpenGL(true)
 	, _globalAppId(globalappid)
 	, _settings(s)
-	, _windowState(SN_BaseWidget::W_NORMAL)
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
@@ -145,6 +148,12 @@ SN_BaseWidget::~SN_BaseWidget()
 }
 
 
+void SN_BaseWidget::setGlobalAppId(quint64 gaid) {
+    _globalAppId = gaid;
+    if (_appInfo) {
+        _appInfo->setGID(gaid);
+    }
+}
 
 
 void SN_BaseWidget::init()
@@ -407,9 +416,9 @@ void SN_BaseWidget::minimize()
 	// based on this, I could use QGraphicsLayoutItem::setMinimumWidth/Height
 
 	// before minimizing, widget's bounding rectangle must be saved.
-	_appInfo->setRecentPos(pos());
-	_appInfo->setRecentSize(size());
-	_appInfo->setRecentScale(scale());
+//	_appInfo->setRecentPos(pos());
+//	_appInfo->setRecentSize(size());
+//	_appInfo->setRecentScale(scale());
 	//	QPointF pos = mapToScene(boundingRect().topLeft());
 	//	qDebug("BaseGraphicsWidget::%s() : Pos (%.1f, %.1f) on the scene", __FUNCTION__, pos.x(), pos.y());
 
@@ -470,13 +479,14 @@ void SN_BaseWidget::maximize()
 	_maximizeAction->setEnabled(false);
 	_restoreAction->setEnabled(true);
 
-	//
-	// record current position and scale
-	//
-	Q_ASSERT(_appInfo);
-	_appInfo->setRecentPos(pos());
-	_appInfo->setRecentSize(size());
-	_appInfo->setRecentScale(scale());
+
+    //
+    // widget shouldn't obstruct layout buttons (tile, horizontal, vertical,..) on the left side of the layout
+    //
+    int layoutButtonWidth = 0;
+    if (parentWidget()) {
+        layoutButtonWidth = _settings->value("gui/iconwidth").toInt();
+    }
 
 
 	if ( isWindow() ) {
@@ -493,7 +503,7 @@ void SN_BaseWidget::maximize()
 		}
 		else {
 			if (parentWidget()) {
-				resize(parentWidget()->size() - QSizeF(40, 60));
+				resize(parentWidget()->size() - QSizeF(40 + layoutButtonWidth, 60));
 				setPos(parentWidget()->boundingRect().topLeft() + QPointF(20,40));
 			}
 			else {
@@ -514,7 +524,7 @@ void SN_BaseWidget::maximize()
 
 		if (parentWidget()) {
 			// SN_LayoutWidget is the parent widget
-			scaleFactorW = parentWidget()->size().width() / s.width();
+			scaleFactorW = (parentWidget()->size().width() - layoutButtonWidth) / s.width();
 			scaleFactorH = parentWidget()->size().height() / s.height();
 		}
 		else {
@@ -522,6 +532,10 @@ void SN_BaseWidget::maximize()
 			scaleFactorW = scene()->width() / s.width();
 			scaleFactorH = scene()->height() / s.height();
 		}
+
+        //
+        // How much should I scale up (or down) to fit in the SN_LayoutWidget or Scene
+        //
 		qreal scaleFactor = 1.0;
 		(scaleFactorW < scaleFactorH) ? scaleFactor = scaleFactorW : scaleFactor = scaleFactorH;
 
@@ -539,8 +553,13 @@ void SN_BaseWidget::maximize()
 		}
 		else {
 			if (parentWidget()) { // could be the SN_LayoutWidget or 0
-				qreal xoffset = (parentWidget()->size().width() - s.width() * scaleFactor)/2;
+                //
+                // My aspect ratio can be different from the SN_LayoutWidget's aspect ratio
+                // So below determine offsets when placing my 0,0 position on the layout widget
+                //
+				qreal xoffset = (parentWidget()->size().width() - layoutButtonWidth - s.width() * scaleFactor)/2;
 				qreal yoffset = (parentWidget()->size().height() - s.height() * scaleFactor)/2;
+
 				setPos( parentWidget()->boundingRect().left() + xoffset , parentWidget()->boundingRect().top() + yoffset);
 			}
 			else {
@@ -712,15 +731,23 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 	//! optional
 //	appInfo->setRecentScale(currentScale);
 
-// This function will not change widget's size !!
-//	qDebug() << "size: " << size() << "boundingRect" << boundingRect() << "geometry" << geometry();
-
-
+    //
+    // Widget's size and boundingRect won't be changed !!
+    // The size of the sceneBoundingRect will reflect the scale !!
+    //
+//    qDebug() <<"scale:" << scale() << "size" << size() << "boundingRect" << boundingRect() << "geometry" << geometry() << "sceneBoundingRect" << sceneBoundingRect();
 }
 
 QRectF SN_BaseWidget::resizeHandleRect() const
 {
 	QSizeF size(128, 128);
+
+    if (boundingRect().width() <= size.width()) {
+        size.rwidth() = boundingRect().width() / 2;
+    }
+    if (boundingRect().height() <= size.height()) {
+        size.rheight() = boundingRect().height() / 2;
+    }
 
     //
     // bottom right corner of the window
@@ -751,6 +778,12 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
             _isResizing = false;
             _isMoving = true;
         }
+        
+        if (_windowState == SN_BaseWidget::W_NORMAL) {
+            _appInfo->setRecentPos(scenePos());
+            _appInfo->setRecentSize(size());
+            _appInfo->setRecentScale(scale());
+        }
     }
 }
 
@@ -779,8 +812,8 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
             setScale(se);
         }
 
-        _resizeRectangle->hide();
     }
+    _resizeRectangle->hide();
     _isResizing = false;
 
     // base implementation does nothing
@@ -832,7 +865,7 @@ void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QP
 }
 
 
-void SN_BaseWidget::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *) {
+void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 	/**
 	  changing painter state will hurt performance
 	  */
@@ -847,7 +880,7 @@ void SN_BaseWidget::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget 
 //	painter->setPen(pen);
 //	painter->drawRect(windowFrameRect());
 	
-	if (! isWindow()) {
+	if (! isWindow()  &&  selectedByPointer() ) {
 /*
 		QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
 		if (isSelected()) {
@@ -865,14 +898,13 @@ void SN_BaseWidget::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget 
 //		  Below draws rectangle around widget's content (using boundingRect)
 //		  Because of this, it has to set Pen (which chagens painter state)
 //		  And this can be called anytime because it's not filling the rectangle
-		/*
 		QPen pen;
 		pen.setWidth( _bordersize );
-		pen.setBrush(brush);
+        pen.setColor(QColor(170, 170, 5, 200));
+//		pen.setBrush(brush);
 
 		painter->setPen(pen);
 		painter->drawRect(boundingRect());
-		*/
 
 //		  Below fills rectangle (works as background) so it has to be called BEFORE any drawing code
 //		painter->fillRect(boundingRect(), brush);
@@ -894,7 +926,7 @@ void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphi
 //    qDebug() << "size" << size() << "boundingrect" << boundingRect() << "geometry" << geometry();
 
     QLinearGradient lg(boundingRect().topLeft(), boundingRect().bottomLeft());
-	if (isSelected()) {
+	if (selectedByPointer()) {
 		lg.setColorAt(0, QColor(250, 250, 0, 164));
 		lg.setColorAt(1, QColor(200, 0, 0, 164));
 	}

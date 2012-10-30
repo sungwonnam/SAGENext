@@ -9,6 +9,7 @@
 class SN_BaseWidget;
 class SN_TheScene;
 class UiMsgThread;
+class SN_Launcher;
 
 class QSettings;
 class QGraphicsView;
@@ -17,11 +18,15 @@ class QFile;
 /**
   A selection rectangle when the pointer selects a set of basewidget with dragging (Right button)
   */
-class SelectionRectangle : public QGraphicsWidget
+class SN_SelectionRectangle : public QGraphicsWidget
 {
 	Q_OBJECT
 public:
-	explicit SelectionRectangle(QGraphicsItem *parent = 0);
+	explicit SN_SelectionRectangle(QGraphicsItem *parent = 0);
+
+    QSet<SN_BaseWidget *> _selectedWidgetList;
+
+    bool isMoving;
 };
 
 
@@ -47,7 +52,7 @@ public:
 class SN_PolygonArrowPointer : public QGraphicsPolygonItem
 {
 public:
-	SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *, SN_TheScene *scene, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
+	SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *, SN_TheScene *scene, SN_Launcher *l, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
 	~SN_PolygonArrowPointer();
 
 	void setPointerName(const QString &text);
@@ -66,6 +71,14 @@ public:
 	void pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags);
 
 
+    /*!
+      This is only for the SN_FittsLawTest.
+
+      If the pointer is moving on the _trapWidget then
+      _trapWidget->handlePointerDrag() is called by the pointer.
+
+
+      */
     inline void setTrapWidget(SN_BaseWidget *w) {_trapWidget = w;}
 
 
@@ -126,7 +139,6 @@ public:
 		   press
 		   release
 		   doubleclick
-		   release
 
           */
 	virtual void pointerDoubleClick(const QPointF &scenePos, Qt::MouseButton button,  Qt::KeyboardModifier modifier = Qt::NoModifier);
@@ -139,6 +151,8 @@ public:
 
 private:
 	SN_TheScene *_scene;
+
+    SN_Launcher *_theLauncher;
 
 	/*!
 	  Pointer to my UiMsgThread
@@ -171,31 +185,31 @@ private:
     SN_BaseWidget *_trapWidget;
 
         /**
-          The app widget under this pointer
+          The graphics widget, that inherits SN_BaseWidget, under this pointer.
           This is set when pointerPress (left button) is called
           */
 	SN_BaseWidget *_basewidget;
 
 	/**
-	  The graphics item under this pointer. This is to keep track general items on the scene that can be interacted with shared pointer
+	  The graphics item under this pointer.
+      This is to keep track general items on the scene that can be interacted with shared pointer
 	  Such as SN_PartitonBar
       */
-	QGraphicsItem *_specialItem;
+	QGraphicsItem *_graphicsItem;
 
 
-	QGraphicsWidget *_guiItem;
+    /**
+      same for the graphics widget
+      */
+	QGraphicsWidget *_graphicsWidget;
 
 		
 		/**
 		  A rectangle when mouse draggin on empty space
 		  */
-	SelectionRectangle *_selectionRect;
-		
-		/**
-		  a set of basewidgtes selected by selection rectangle
-		  */
-	QGraphicsItemGroup *_selectedApps;
+	SN_SelectionRectangle *_selectionRect;
 
+		
 		/**
 		  To record all the actions that users gave
 		  */

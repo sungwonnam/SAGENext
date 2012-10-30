@@ -58,11 +58,27 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
 
     , _sum_norm_latency(0)
     , _sum_latency(0)
+    , _sum_Rq(0)
+    , _sum_Rc(0)
 
     , _targetAppearTime(0.0)
     , _targetHitTime(0.0)
+
+    , _screenUpdateFlag(0)
+	, _numFramesForScreenUpdate(3)
+    , _numFramesForScreenUpdateConfigured(3)
+
+    , _isMissClickPenalty(false)
 {
+    //
+    // sagepixelreceiver will wait for the sema
+    //
     __sema = new QSemaphore;
+
+    _useOpenGL = false;
+    _useShader = false;
+    _usePbo = false;
+
 
     //
     // set Schedulable widget
@@ -75,6 +91,7 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
 
     _startPixmap = QPixmap(":/resources/greenplay128.png");
     _stopPixmap = QPixmap(":/resources/stopsign48.png").scaledToWidth(128);
+//    _cursorPixmap = QPixmap(":/resources/cursor_arrow_48x48.png");
     _cursorPixmap = QPixmap(":/resources/blackarrow_upleft128.png");
 
     _init();
@@ -92,20 +109,33 @@ void SN_SageFittsLawTest::_init() {
             qDebug() << "SN_FittsLawTest::_init() : failed to open a config file";
         }
         else {
-            QByteArray line = f.readLine();
-            int num_subject, num_targets_per_round;
-//            QByteArray streamerip(64, '\0');
+            forever {
+                QByteArray line = f.readLine();
+                if (line.isEmpty()) break;
+                if (line.at(0) == '#') continue;
 
-            sscanf(line.data(), "%d %d %d %d", &num_subject, &num_targets_per_round, &winwidth, &winheight);
+                int num_subject, num_targets_per_round;
+    //            QByteArray streamerip(64, '\0');
+                int num_frame_for_update = 0;
 
-            SN_FittsLawTestData::_NUM_SUBJECTS = num_subject;
-            SN_SageFittsLawTest::_NUM_ROUND_PER_USER = pow(2, num_subject - 1);
-            SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND = num_targets_per_round;
+                sscanf(line.data(), "%d %d %d %d %d", &num_subject, &num_targets_per_round, &winwidth, &winheight, &num_frame_for_update);
 
-//            SN_FittsLawTest::_streamerIpAddr = QString(streamerip);
-//            SN_SageFittsLawTest::_streamImageSize = QSize(overheadwidth, overheadheight);
+                SN_FittsLawTestData::_NUM_SUBJECTS = num_subject;
+                SN_SageFittsLawTest::_NUM_ROUND_PER_USER = pow(2, num_subject - 1); // not including the dry round
+                SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND = num_targets_per_round;
+
+    //            SN_FittsLawTest::_streamerIpAddr = QString(streamerip);
+    //            SN_SageFittsLawTest::_streamImageSize = QSize(overheadwidth, overheadheight);
+
+                //
+                // read the configured value for NoSched
+                //
+                if (num_frame_for_update > 0)
+                    _numFramesForScreenUpdateConfigured = num_frame_for_update;
+            }
 
             f.close();
+//            qDebug() << SN_FittsLawTestData::_NUM_SUBJECTS << SN_SageFittsLawTest::_NUM_ROUND_PER_USER << SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND << _numFramesForScreenUpdate;
         }
     }
     else {
@@ -113,9 +143,10 @@ void SN_SageFittsLawTest::_init() {
     }
 
     clearTargetPosList();
-    clearData();
 
-    qDebug("%s::%s() : %d Subjects, %d Tgts/Rnd, %d Rnds/User, Window %dx%d\n"
+    QObject::connect(_rMonitor, SIGNAL(schedulerStateChanged(bool)), this, SLOT(respondToSchedulerState(bool)));
+
+    qDebug("%s::%s() : %d Subjects, %d Tgts/Rnd, %d Rnds/User, Window %dx%d, %d frame per update (NoSched)\n"
            , metaObject()->className()
            , __FUNCTION__
            , SN_FittsLawTestData::_NUM_SUBJECTS
@@ -124,6 +155,7 @@ void SN_SageFittsLawTest::_init() {
 //           , SN_SageFittsLawTest::_streamImageSize.width()
 //           , SN_SageFittsLawTest::_streamImageSize.height()
            , winwidth, winheight
+           , _numFramesForScreenUpdate
            );
 
 
@@ -280,7 +312,26 @@ SN_SageFittsLawTest::~SN_SageFittsLawTest() {
 void SN_SageFittsLawTest::scheduleDummyUpdate() {
     if (doubleBuffer)
         doubleBuffer->releaseBackBuffer();
-    update();
+
+    //
+    // multiple frames might be need to be received to update the screen
+    //
+    if (_screenUpdateFlag <= 0) {
+
+        // reset
+        _screenUpdateFlag = _numFramesForScreenUpdate - 1; 
+
+		//
+		// This shouldn't be in the paint() function !
+		// Because if any widget calls update(), all widgets' paint() will be called.
+		//
+        _cursor->setPos( mapToItem(_contentWidget, _cursorPoint) );
+        update();
+    }
+    else {
+        _screenUpdateFlag--;
+    }
+
 }
 
 
@@ -309,6 +360,7 @@ int SN_SageFittsLawTest::setQuality(qreal newQuality) {
         // because the widget set its required BW 0
         // meaning it's not consuming resource
         //
+        _quality = 0;
         return -1;
     }
     else if ( newQuality >= 1.0 ) {
@@ -356,19 +408,18 @@ void SN_SageFittsLawTest::resizeEvent(QGraphicsSceneResizeEvent *event) {
 
 void SN_SageFittsLawTest::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *) {
     // do nothing
+//    qDebug() << "DBL CLICK";
 }
 
+/*!
+ * THis function will be called whenever ANY widget issues the update()
+ */
 void SN_SageFittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *w) {
 
     if (_isRunning) {
-//        qDebug() << "FittsLawTest::paint()";
-        // draw cursor
-//        painter->drawPixmap(_cursorPoint, _cursorPixmap);
-
-        _cursor->setPos( mapToItem(_contentWidget, _cursorPoint) );
-
         if (_isDryRun) {
             painter->drawText( _contentWidget->geometry(), Qt::AlignCenter, "PRACTICE RUN");
+            _cursor->setPos( mapToItem(_contentWidget, _cursorPoint) );
         }
     }
 
@@ -378,90 +429,7 @@ void SN_SageFittsLawTest::paint(QPainter *painter, const QStyleOptionGraphicsIte
 bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
     Q_UNUSED(btn);
 
-    if (_isRunning) {
-        //
-        // see if the click cocurred on the target (hit)
-        // then show next target
-        //
-        if ( _myPointer == pointer && _target->contains( _target->mapFromItem(this, point).toPoint() )) {
-
-//            qDebug() << "FittsLawTest::handlePointerClick() : hit";
-
-            //
-            // hit latency
-            //
-            _targetHitTime = QDateTime::currentMSecsSinceEpoch(); // msec
-
-//            (_data.misscount)[ _roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount] = _missCountPerTarget;
-//            (_data.hitlatency)[_roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount] = _targetHitTime - _targetAppearTime;
-
-            qint64 hitlatency = _targetHitTime - _targetAppearTime;
-            _sum_latency += hitlatency;
-
-
-            //
-            // The distance from the previous target
-            // if it's the first target then distance from the startstop button
-            //
-            qreal distance = qSqrt( qPow(_target->x() - _prevTargetPosition.x(), 2) + qPow(_target->y()-_prevTargetPosition.y() ,2) );
-            _prevTargetPosition = _target->pos();
-//            _lbl_distance->setText(QString::number(distance));
-
-//            qDebug() << "ID" << _globalAppId << "R#" << _roundCount << "T#" << _targetHitCount << "miss" << _data.misscount.at(_roundCount *10 + _targetHitCount) << "delay" << _data.hitlatency.at(_roundCount *10 + _targetHitCount) << "msec";
-
-            _sum_norm_latency += (hitlatency / distance);
-
-
-            if (!_isDryRun) {
-                _dataObject->writeData(_userID, "HIT", SN_SageFittsLawTest::RoundID, _targetHitCount, hitlatency, distance, _missCountPerTarget);
-            }
-
-            //
-            // reset the miss count upon a successful hit
-            //
-            _missCountPerTarget = 0;
-
-            _targetHitCount++; // increment for next target
-
-
-            //
-            // if current round is compeleted
-            //
-            if (_targetHitCount == SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND) {
-//                qDebug() << "FittsLawTest::handlePointerClick() : round #" << _roundCount << "finished";
-                pointer->setOpacity(1);
-                finishRound();
-            }
-
-            //
-            // otherwise, show next target
-            //
-            else {
-                determineNextTargetPosition();
-            }
-        }
-
-        //
-        // otherwise it's miss
-        //
-        else {
-//            qDebug() << "FittsLawTest::handlePointerClick() : missed  !";
-            if (!_isDryRun) {
-                _missCountPerTarget++;
-
-                _dataObject->writeData(_userID, "MISS", SN_SageFittsLawTest::RoundID, _targetHitCount);
-
-                _missCountPerRound += _missCountPerTarget;
-                _missCountTotal += _missCountPerTarget;
-            }
-        }
-    }
-
-    //
-    // Test is not running then
-    //
-    else {
-
+    if (!_isRunning) {
         //
         // User need to click the green triangle to start a round
         //
@@ -494,13 +462,108 @@ bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, co
                 //
                 // the first target
                 //
-                determineNextTargetPosition();
+                determineNextTargetPosition(_roundCount, _targetHitCount);
 
                 _target->show();
             }
         }
 
-        // otherwise do nothing
+        //
+        // prevent shared pointer from generating real mouse events
+        //
+        return true;
+    }
+
+    //
+    // see if the click cocurred on the target (HIT)
+    // then show next target
+    //
+    if ( _myPointer == pointer && _target->contains( _target->mapFromItem(this, point).toPoint() )) {
+
+        //            qDebug() << "FittsLawTest::handlePointerClick() : hit";
+
+        //
+        // hit latency
+        //
+        _targetHitTime = QDateTime::currentMSecsSinceEpoch(); // msec
+
+        //            (_data.misscount)[ _roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount] = _missCountPerTarget;
+        //            (_data.hitlatency)[_roundCount * FittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount] = _targetHitTime - _targetAppearTime;
+
+        qint64 hitlatency = _targetHitTime - _targetAppearTime;
+        _sum_latency += hitlatency;
+
+
+        //
+        // The distance from the previous target
+        // if it's the first target then distance from the startstop button
+        //
+        qreal distance = qSqrt( qPow(_target->x() - _prevTargetPosition.x(), 2) + qPow(_target->y()-_prevTargetPosition.y() ,2) );
+        _prevTargetPosition = _target->pos();
+        //            _lbl_distance->setText(QString::number(distance));
+
+        //            qDebug() << "ID" << _globalAppId << "R#" << _roundCount << "T#" << _targetHitCount << "miss" << _data.misscount.at(_roundCount *10 + _targetHitCount) << "delay" << _data.hitlatency.at(_roundCount *10 + _targetHitCount) << "msec";
+
+        _sum_norm_latency += (hitlatency / distance);
+
+
+        qreal Rq = _perfMon->getRequiredBW_Mbps();
+        qreal Rc = _perfMon->getCurrBW_Mbps();
+        _sum_Rq += Rq; // this is reset in finishRound()
+        _sum_Rc += Rc; // this is reset in finishRound()
+        _dataObject->writeData(_userID, "HIT", SN_SageFittsLawTest::RoundID, _targetHitCount, hitlatency, distance, _missCountPerTarget, -1, -1, -1, Rq, Rc);
+
+        //
+        // reset the miss count upon a successful hit
+        //
+        _missCountPerTarget = 0;
+
+        _targetHitCount++; // increment for next target
+
+
+        //
+        // if current round is compeleted
+        //
+        if (_targetHitCount == SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND) {
+            //                qDebug() << "FittsLawTest::handlePointerClick() : round #" << _roundCount << "finished";
+            pointer->setOpacity(1);
+            finishRound();
+        }
+
+        //
+        // otherwise, show next target
+        //
+        else {
+//            qDebug() << "HIT" << _roundCount << _targetHitCount - 1 << _target->pos();
+            determineNextTargetPosition(_roundCount, _targetHitCount);
+        }
+    }
+
+    //
+    // otherwise it's MISS
+    //
+    else {
+        setTargetCursorPixmap(":/resources/redarrow_missed_upleft128.png");
+        QTimer::singleShot(500, this, SLOT(setTargetCursorPixmap()));
+
+        _missCountPerTarget++;
+
+        _dataObject->writeData(_userID, "MISS", SN_SageFittsLawTest::RoundID, _targetHitCount);
+
+        _missCountPerRound += _missCountPerTarget;
+        _missCountTotal += _missCountPerTarget;
+
+        if (_isMissClickPenalty) {
+
+            //
+            // save current missed target's position
+            //
+            _prevTargetPosition = _target->pos();
+
+            // show another target
+            // target count shouldn't be increased
+            determineNextTargetPosition(_roundCount, _targetHitCount, true);
+        }
     }
 
 
@@ -509,6 +572,8 @@ bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, co
     //
     return true;
 }
+
+
 
 void SN_SageFittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal dx, qreal dy, Qt::MouseButton btn, Qt::KeyboardModifier mod) {
     if (_isRunning) {
@@ -530,7 +595,7 @@ void SN_SageFittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, con
                 // which is connected up scheduleUpdate()
                 //
 				if (__sema && __sema->available() < 1)
-                	__sema->release(2);
+                	__sema->release(1);
             }
             else {
                 update();
@@ -544,7 +609,6 @@ void SN_SageFittsLawTest::handlePointerDrag(SN_PolygonArrowPointer *pointer, con
                 }
             }
             */
-
             _cursorPoint = point;
         }
     }
@@ -575,6 +639,20 @@ void SN_SageFittsLawTest::handlePointerPress(SN_PolygonArrowPointer *, const QPo
                 _isMoving = true;
         }
     }
+}
+
+void SN_SageFittsLawTest::setPerfMonRwParameters(int wakeUpGuessFps, qreal overPerformMult, qreal normPerformMult, int underPerformEndur) {
+    if (!_perfMon) {
+        qDebug() << "SN_SageFittsLawTest::setPerfMonRwParameters() : _perfMon is null";
+        return;
+    }
+
+    _perfMon->setWakeUpGuessFps(wakeUpGuessFps);
+    _perfMon->setOverPerformMult(overPerformMult);
+    _perfMon->setNormPerformMult(normPerformMult);
+    _perfMon->setUnderPerformEndur(underPerformEndur);
+
+    qDebug() << "UserID" << _userID << "Rw params" << _perfMon->wakeUpGuessFps() << _perfMon->overPerformMult() << _perfMon->normPerformMult() << _perfMon->underPerformEndur();
 }
 
 /*!
@@ -608,6 +686,8 @@ void SN_SageFittsLawTest::setReady(bool isDryrun /* false */) {
 
     _startstop->setPixmap(_startPixmap);
     _startstop->show();
+
+    qDebug() << "UserID" << _userID << "Rw params" << _perfMon->wakeUpGuessFps() << _perfMon->overPerformMult() << _perfMon->normPerformMult() << _perfMon->underPerformEndur();
 }
 
 /*!
@@ -621,7 +701,10 @@ void SN_SageFittsLawTest::startRound() {
     _startstop->hide();
     _target->show();
 
-    if (!_isDryRun) {
+    if (_isDryRun) {
+        _dataObject->writeData(_userID, "DRY_RND", SN_SageFittsLawTest::RoundID);
+    }
+    else {
         _dataObject->writeData(_userID, "START_RND", SN_SageFittsLawTest::RoundID);
 
         //
@@ -697,6 +780,8 @@ void SN_SageFittsLawTest::finishRound() {
 
     _cursor->hide();
 
+	_screenUpdateFlag = 0;
+
     _lbl_rndcount->setText("Round Count");
     _lbl_tgtcount->setText("Target Count");
 
@@ -724,17 +809,19 @@ void SN_SageFittsLawTest::finishRound() {
     _startstop->setPixmap(_stopPixmap);
     _startstop->show();
 
-    //
-    // increment round count
-    //
+
+
+    _dataObject->writeData(_userID, "FINISH_RND", SN_SageFittsLawTest::RoundID, -1, -1, -1, -1
+                           , _sum_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+                           , _sum_norm_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+                           , _missCountPerRound
+
+                           , _sum_Rq / SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+                           , _sum_Rc / SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
+                           );
+
     if (!_isDryRun) {
         _roundCount++;
-
-        _dataObject->writeData(_userID, "FINISH_RND", SN_SageFittsLawTest::RoundID, -1, -1, -1, -1
-                               , _sum_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
-                               , _sum_norm_latency/SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND
-                               , _missCountPerRound
-                               );
 
         if (_roundCount >= SN_SageFittsLawTest::_NUM_ROUND_PER_USER) {
             qDebug() << "FittsLawTest::finishRound() : A test has completed for user" << _userID;
@@ -747,30 +834,43 @@ void SN_SageFittsLawTest::finishRound() {
             //
             // close files
             //
-            _dataObject->flushCloseAll(_userID);
+            _dataObject->flushAll(_userID);
+        }
+        else {
+            qDebug() << "FittsLawTest::finishRound() : A round" << _roundCount - 1 << "has completed for user" << _userID;
         }
     }
+
+    //
+    // dry run doesn't increment local round count
+    //
     else {
-        qDebug() << "FittsLawTest::finishRound() : A DRY round finished for user" << _userID;
+        qDebug() << "FittsLawTest::finishRound() : A DRY round (round 0) has finished for user" << _userID;
     }
 
     _missCountPerTarget = 0;
     _missCountPerRound = 0;
     _sum_latency = 0;
     _sum_norm_latency = 0;
+    _sum_Rq = 0;
+    _sum_Rc = 0;
 }
 
-void SN_SageFittsLawTest::determineNextTargetPosition() {
+void SN_SageFittsLawTest::determineNextTargetPosition(int local_round_count, int next_target_id, bool force_random_determine /* false */) {
 
-    int idx = _roundCount * SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND + _targetHitCount;
+    int idx = local_round_count * SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND + next_target_id;
 
-    QPointF nextPos = _targetPosList.value(idx);
+    QPointF nextPos;
+    if (!force_random_determine) {
+        nextPos = _targetPosList.value(idx);
+    }
 
     //
     // there's saved value
     //
     if (! nextPos.isNull() ) {
 //        qDebug() << "determineNextTargetPosition()" << _roundCount << _targetHitCount << "has point data" << nextPos;
+//        qDebug() << _userID << "Round" << SN_SageFittsLawTest::RoundID << "(" << _roundCount << "," << _targetHitCount << ") has saved pos data";
     }
 
     //
@@ -778,6 +878,7 @@ void SN_SageFittsLawTest::determineNextTargetPosition() {
     //
     else {
         nextPos = m_getRandomPos();
+//        qDebug() << "determineNextTargetPosition() : determined target pos for" << local_round_count << next_target_id;
 
         //
         // Assumes the list is already filled with null data (call clearTargetPosList() !!)
@@ -814,10 +915,10 @@ void SN_SageFittsLawTest::clearTargetPosList() {
     for (int i=0; i< SN_SageFittsLawTest::_NUM_ROUND_PER_USER * SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND; i++) {
         _targetPosList.append( QPointF() ); // init with null point
     }
+
+    qDebug() << _userID << "cleared Tgt position data";
 }
 
-void SN_SageFittsLawTest::clearData() {
-}
 
 QPointF SN_SageFittsLawTest::m_getRandomPos() {
     Q_ASSERT(_contentWidget);
@@ -871,9 +972,11 @@ void SN_SageFittsLawTest::startReceivingThread() {
     //
     // initialize OpenGL
     //
+    /*
 	if (_useOpenGL) {
         m_initOpenGL();
 	}
+    */
 
     //
     // create the recv thread
@@ -887,7 +990,7 @@ void SN_SageFittsLawTest::startReceivingThread() {
     //
 
 //    QObject::connect(_receiverThread, SIGNAL(finished()), this, SLOT(close())); // WA_Delete_on_close is defined
-
+    /***
     if (!_blameXinerama) {
         if (_usePbo) {
             if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(schedulePboUpdate())) ) {
@@ -904,10 +1007,17 @@ void SN_SageFittsLawTest::startReceivingThread() {
     }
     else {
         // I think Xinerama makes graphics performance bad..
-        // On venom, five 1080p videos can't sustain 24 fps..
-        qDebug() << "SN_SageFittsLawTest::startReceivingThread() : BLAME_XINERAMA defined. no frameReceived/scheduleUpdate connection";
+        // On venom, five 1080p videos can't sustain 24 fps.. So reboot the machine
+//        qDebug() << "SN_SageFittsLawTest::startReceivingThread() : BLAME_XINERAMA defined. no frameReceived/scheduleUpdate connection";
         QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleDummyUpdate()));
     }
+    ***/
+
+    if ( ! QObject::connect(_receiverThread, SIGNAL(frameReceived()), this, SLOT(scheduleDummyUpdate())) ) {
+        qCritical("%s::%s() : Failed to connect frameReceived() signal and scheduleDummyUpdate() slot", metaObject()->className(), __FUNCTION__);
+        return;
+    }
+
 
     qDebug() << "SN_SageFittsLawTest (" << _globalAppId << _sageAppId << ") ready for streaming.";
 	qDebug() << "\t" << "app name" << _appInfo->executableName() << ",media file" << _appInfo->fileInfo().fileName() << "from" << _appInfo->srcAddr();
@@ -916,8 +1026,12 @@ void SN_SageFittsLawTest::startReceivingThread() {
 	qDebug() << "\t" << "GL pixel format" << _pixelFormat << ",use SHADER (for YUV format)" << _useShader << ",use OpenGL PBO" << _usePbo;
 
 
+    //
+    // thread will start in startRound()
+    //
 //    _receiverThread->start();
 }
+
 
 
 
@@ -956,6 +1070,7 @@ SN_FittsLawTestData::SN_FittsLawTestData(QObject *parent)
     , _isDryRun(true)
 {
 
+    SN_SageFittsLawTest::RoundID = -1;
     _filenameBase = QDir::homePath().append("/.sagenext/FLTdata_");
     qDebug() << "SN_FittsLawTestData::SN_FittsLawTestData() : # subjects" << SN_FittsLawTestData::_NUM_SUBJECTS;
 }
@@ -973,6 +1088,10 @@ SN_FittsLawTestData::~SN_FittsLawTestData() {
     qDebug() << "SN_FittsLawTestData::~SN_FittsLawTestData()";
 }
 
+/*!
+  This function is called after
+  all the test widgets are added
+  */
 void SN_FittsLawTestData::m_createGUI() {
 
     if (!_frame) {
@@ -980,24 +1099,80 @@ void SN_FittsLawTestData::m_createGUI() {
 
         _frame->setWindowTitle("FittsLawTest Controller");
 
-        QPushButton *nextRnd = new QPushButton("NextRound");
+        QPushButton *nextRnd = new QPushButton("Next Round");
         QObject::connect(nextRnd, SIGNAL(clicked()), this, SLOT(advanceRound()));
 
-        QPushButton *recreateFiles = new QPushButton("RecreateDataFiles");
-        QObject::connect(recreateFiles, SIGNAL(clicked()), this, SLOT(recreateAllDataFiles()));
+        QPushButton *pracRnd = new QPushButton("Practice Round");
+        QObject::connect(pracRnd, SIGNAL(clicked()), this, SLOT(practiceRound()));
+
+//        QPushButton *finalRnd = new QPushButton("_Final Round_");
+//        QObject::connect(finalRnd, SIGNAL(clicked()), this, SLOT(finalRound()));
+
+//        QPushButton *clearTgtPos = new QPushButton("Clear Saved Tgt Pos");
+//        QObject::connect(clearTgtPos, SIGNAL(clicked()), this, SLOT(clearAllSavedTgtPos()));
+
+        QPushButton *rwparam = new QPushButton("set Rw conservatively");
+        QObject::connect(rwparam, SIGNAL(clicked()), this, SLOT(setRwParamConservatively()));
 
         QPushButton *close = new QPushButton("Finish");
         QObject::connect(close, SIGNAL(clicked()), this, SLOT(closeAll()));
 
+        QCheckBox *isMissClickPenalty = new QCheckBox("MissClick Penalty");
+        isMissClickPenalty->setChecked(false);
+        QObject::connect(isMissClickPenalty, SIGNAL(toggled(bool)), this, SLOT(toggleMissClickPenalty(bool)));
+
         QVBoxLayout *hl = new QVBoxLayout;
         hl->addWidget(nextRnd);
-        hl->addWidget(recreateFiles);
+        hl->addWidget(pracRnd);
+        hl->addWidget(rwparam);
+//        hl->addWidget(finalRnd);
+//        hl->addWidget(clearTgtPos);
         hl->addWidget(close);
+        hl->addWidget(isMissClickPenalty);
         _frame->setLayout(hl);
     }
 
     _frame->show();
     _frame->move(QPoint(10,10));
+}
+
+void SN_FittsLawTestData::setRwParamConservatively() {
+    QMap<QChar, SN_SageFittsLawTest *>::iterator it;
+    for (it=_widgetMap.begin(); it!=_widgetMap.end(); it++) {
+        SN_SageFittsLawTest *widget = it.value();
+        if (widget) {
+            // wakeUpGuessFps
+            // overPerformMultiplier
+            // normPerformMultiplier
+            // underPerformEndurance
+            widget->setPerfMonRwParameters(15, 1.05, 1.1, 2);
+        }
+    }
+}
+
+void SN_FittsLawTestData::toggleMissClickPenalty(bool b) {
+    QMap<QChar, SN_SageFittsLawTest *>::iterator it;
+    for (it=_widgetMap.begin(); it!=_widgetMap.end(); it++) {
+        SN_SageFittsLawTest *widget = it.value();
+        if (widget) {
+
+            //
+            // if b is true then
+            // No missclick penalty (target will stay even if user miss clicked)
+            //
+            widget->setMissClickPenalty(b);
+        }
+    }
+}
+
+void SN_FittsLawTestData::clearAllSavedTgtPos() {
+    QMap<QChar, SN_SageFittsLawTest *>::iterator it;
+    for (it=_widgetMap.begin(); it!=_widgetMap.end(); it++) {
+        SN_SageFittsLawTest *widget = it.value();
+        if (widget) {
+            widget->clearTargetPosList();
+        }
+    }
 }
 
 void SN_FittsLawTestData::closeAll() {
@@ -1043,6 +1218,14 @@ void SN_FittsLawTestData::advanceRound() {
 
     if (_globalOut) _globalOut->flush();
 
+    QTextStream *ts = 0;
+    ts = _perAppOuts.value('A', 0);
+    if (ts) ts->flush();
+    ts = _perAppOuts.value('B', 0);
+    if (ts) ts->flush();
+    ts = _perAppOuts.value('C', 0);
+    if (ts) ts->flush();
+
     //
     // increment the RoundID, it's initialized with -1
     //
@@ -1050,6 +1233,7 @@ void SN_FittsLawTestData::advanceRound() {
 
     if ( SN_SageFittsLawTest::RoundID > (pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1) ) {
         qDebug() << "advanceRound() : reset RoundID";
+
         SN_SageFittsLawTest::RoundID = 1; // no more dry run is needed.
     }
     qDebug() << "\nSN_FittsLawTestData::advanceRound() : Ready for Round ID" << SN_SageFittsLawTest::RoundID;
@@ -1075,25 +1259,47 @@ void SN_FittsLawTestData::advanceRound() {
         }
         break;
     }
+
+        //
+        // Final round if _NUM_SUBJECTS == 1
+        //
     case 1: {
         Q_ASSERT(_widgetMap.value('A', 0));
         (_widgetMap['A'])->setReady();
+
+
         break;
     }
     case 2: {
         Q_ASSERT(_widgetMap.value('B', 0));
-
         (_widgetMap['B'])->setReady();
+
         break;
     }
+
+        //
+        // Final round if _NUM_SUBJECTS == 2
+        //
     case 3: {
-        (_widgetMap['B'])->setReady();
-        (_widgetMap['A'])->setReady();
+        if (SN_FittsLawTestData::_NUM_SUBJECTS == 3) {
+            (_widgetMap['C'])->setReady();
+        }
+        else if (SN_FittsLawTestData::_NUM_SUBJECTS == 2) {
+            //
+            // the final round
+            //
+            (_widgetMap['B'])->setReady();
+            (_widgetMap['A'])->setReady();
+        }
+
         break;
     }
     case 4: {
-        Q_ASSERT(_widgetMap.value('C', 0));
-        (_widgetMap['C'])->setReady();
+//        (_widgetMap['C'])->setReady();
+
+        (_widgetMap['B'])->setReady();
+        (_widgetMap['A'])->setReady();
+
         break;
     }
     case 5: {
@@ -1106,6 +1312,10 @@ void SN_FittsLawTestData::advanceRound() {
         (_widgetMap['B'])->setReady();
         break;
     }
+
+        //
+        // Final round if _NUM_SUBJECTS == 3
+        //
     case 7: {
         (_widgetMap['C'])->setReady();
         (_widgetMap['B'])->setReady();
@@ -1113,6 +1323,40 @@ void SN_FittsLawTestData::advanceRound() {
         break;
     }
     }
+}
+
+void SN_FittsLawTestData::practiceRound() {
+    if (_globalOut) _globalOut->flush();
+
+    _isDryRun = true;
+
+    //
+    // Set it to the practice Round
+    //
+    SN_SageFittsLawTest::RoundID = -1;
+
+    advanceRound();
+}
+
+void SN_FittsLawTestData::finalRound() {
+    if (_globalOut) _globalOut->flush();
+
+    _isDryRun = false;
+
+    //
+    // Set it to the final Round
+    //
+    SN_SageFittsLawTest::RoundID = (pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1);
+
+    SN_SageFittsLawTest *widget = 0;
+    widget = _widgetMap.value('A',0);
+    if (widget) widget->setReady();
+
+    widget = _widgetMap.value('B',0);
+    if (widget) widget->setReady();
+
+    widget = _widgetMap.value('C',0);
+    if (widget) widget->setReady();
 }
 
 bool SN_FittsLawTestData::_openGlobalDataFile() {
@@ -1125,7 +1369,7 @@ bool SN_FittsLawTestData::_openGlobalDataFile() {
     _globalOut = new QTextStream(_globalDataFile);
 
 //    (*_globalOut) << "# users" << FittsLawTestData::_NUM_SUBJECTS << "StreamerIP" << FittsLawTest::_streamerIpAddr << "Overhead" << FittsLawTest::_streamImageSize;
-    (*_globalOut) << "# TimeStamp, ActionType, UserID, RoundID, TargetCount, HitLatency, Distance\n";
+//    (*_globalOut) << "# TimeStamp, ActionType, UserID, RoundID, TargetCount, HitLatency, NormalizedHitsLatency\n";
 
     return true;
 }
@@ -1193,7 +1437,20 @@ void SN_FittsLawTestData::addWidget(SN_SageFittsLawTest *widget, const QChar id)
 //    writeData(id, actionType, targetcount, QString(bytearry));
 //}
 
-void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType, int roundid, int targetcount/*-1*/, qint64 latency /* -1 */, qreal distance /* -1 */, int missfortarget/*-1*/, qreal avg_latency/*-1*/, qreal avg_norm_latency/*-1*/, int misscountround /*-1*/) {
+void SN_FittsLawTestData::writeData(const QString &id
+                                    , const QString &actionType
+                                    , int roundid
+                                    , int targetcount/*-1*/
+                                    , qint64 latency /* -1 */
+                                    , qreal distance /* -1 */
+                                    , int missfortarget/*-1*/
+                                    , qreal avg_latency/*-1*/
+                                    , qreal avg_norm_latency/*-1*/
+                                    , int misscountround /*-1*/
+                                    , qreal Rq /*-1*/
+                                    , qreal Rc /*-1*/
+                                    )
+{
 
     qint64 ts = QDateTime::currentMSecsSinceEpoch();
 
@@ -1206,33 +1463,54 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
 
         _rwlock.lockForWrite();
 
-//        (*_globalOut) << "TimeStamp, ActionType, UserID, RoundID [,TargetCount, HitLatency]\n";
-        (*_globalOut) << ts << "," << actionType << "," << id << "," << roundid;
-        if (targetcount >= 0) {
-            (*_globalOut) << "," << targetcount;
-        }
-        if (latency > 0) {
-            (*_globalOut) << "," << latency;
-        }
-        if (distance > 0) {
-            (*_globalOut) << "," << distance;
-            (*_globalOut) << "," << latency/distance;
-        }
-        if (missfortarget >= 0) {
-            (*_globalOut) << "," << missfortarget;
-        }
+//        (*_globalOut) << "TimeStamp, ActionType, UserID, RoundID [,TargetCount, HitLatency, Normalized HitLatency, Miss count]\n";
 
-        if (avg_latency > 0) {
-            (*_globalOut) << ",,," << avg_latency;
-        }
-        if (avg_norm_latency > 0) {
-            (*_globalOut) << "," << avg_norm_latency;
-        }
-        if (misscountround >= 0) {
-            (*_globalOut) << "," << misscountround;
-        }
+        //
+        // save only the final results
+        //
+        if (actionType == "FINISH_RND") {
+            (*_globalOut) << ts << "," << actionType << "," << id << "," << roundid;
 
-        (*_globalOut) << "\n";
+
+            if (targetcount >= 0) {
+                (*_globalOut) << "," << targetcount;
+            }
+            if (latency > 0) {
+                (*_globalOut) << "," << latency;
+            }
+            if (distance > 0) {
+//                (*_globalOut) << "," << distance;
+                (*_globalOut) << "," << latency/distance; // normalized latency
+            }
+            if (missfortarget >= 0) {
+                (*_globalOut) << "," << missfortarget;
+            }
+
+
+
+
+            //
+            // The final results
+            //
+            if (avg_latency > 0) {
+                (*_globalOut) << ",," << avg_latency;
+            }
+            if (avg_norm_latency > 0) {
+                (*_globalOut) << "," << avg_norm_latency;
+            }
+            if (misscountround >= 0) {
+                (*_globalOut) << "," << misscountround;
+            }
+
+            if (Rq >=0) {
+                (*_globalOut) << "," << Rq;
+            }
+            if (Rc >=0) {
+                (*_globalOut) << "," << Rc;
+            }
+
+            (*_globalOut) << "\n";
+        }
 
         _rwlock.unlock();
     }
@@ -1261,23 +1539,41 @@ void SN_FittsLawTestData::writeData(const QString &id, const QString &actionType
                     (*appOut) << "," << latency;
                 }
                 if (distance > 0) {
-                    (*appOut) << "," << distance;
-
+//                    (*appOut) << "," << distance;
                     (*appOut) << "," << latency/distance;
                 }
                 if (missfortarget >= 0) {
                     (*appOut) << "," << missfortarget;
                 }
+
+                if (Rq >= 0) {
+                    (*appOut) << "," << Rq;
+                }
+                if (Rc >= 0) {
+                    (*appOut) << "," << Rc;
+                }
             }
             else if (actionType == "FINISH_RND") {
 
-                (*appOut) << ",,," << avg_latency;
+                (*appOut) << ",," << avg_latency;
     //            if (avg_norm_latency > 0) {
                     (*appOut) << "," << avg_norm_latency;
     //            }
     //            if (misscountround > 0) {
                     (*appOut) << "," << misscountround;
     //            }
+
+                if (Rq >=0) {
+                    (*appOut) << "," << Rq;
+                }
+                if (Rc >=0) {
+                    (*appOut) << "," << Rc;
+                }
+
+
+				if (roundid == 0 || roundid == pow(2, SN_FittsLawTestData::_NUM_SUBJECTS) - 1) {
+					(*appOut) << "\n";
+				}
             }
             (*appOut) << "\n";
         }
@@ -1330,7 +1626,7 @@ void SN_FittsLawTestData::_deleteFileAndStreamObjects() {
 /*!
   This is called by each user whenever a test finished for the user
   */
-void SN_FittsLawTestData::flushCloseAll(const QString &id) {
+void SN_FittsLawTestData::flushAll(const QString &id) {
     static int count = 0;
 
     count += 1;
@@ -1339,11 +1635,11 @@ void SN_FittsLawTestData::flushCloseAll(const QString &id) {
         count = 0; // reset
 
         qDebug() << "\n===============================================================================";
-        qDebug() << "FittsLawTestData::flushCloseAll() : The test finished for all subjects !";
-        qDebug() << "===============================================================================";
+        qDebug() << "FittsLawTestData::flushAll() : The test finished for all subjects !";
+        qDebug() << "===============================================================================\n";
 
         if (_globalOut) _globalOut->flush();
-        if (_globalDataFile) _globalDataFile->close();
+//        if (_globalDataFile) _globalDataFile->close();
 
         QMap<QChar, QTextStream *>::iterator itt;
         for (itt=_perAppOuts.begin(); itt!=_perAppOuts.end(); itt++) {
@@ -1354,7 +1650,8 @@ void SN_FittsLawTestData::flushCloseAll(const QString &id) {
         QMap<QChar, QFile *>::iterator itf;
         for (itf = _perAppDataFiles.begin(); itf!=_perAppDataFiles.end(); itf++) {
             QFile *f = itf.value();
-            f->close();
+            f->flush();
+//            f->close();
         }
     }
 }

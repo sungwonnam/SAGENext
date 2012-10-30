@@ -39,13 +39,10 @@ macx {
 			error(macCapture failed to compiple)
 		}
 	}
-}
 
-macx {
 # append & at the end of each command if you want multiple command
 QMAKE_POST_LINK = cp macCapture ../../sagenextpointer.app/Contents/MacOS/
 }
-
 
 win32 {
 	message("Building winCapture with py2exe")
@@ -59,13 +56,11 @@ SOURCES += \
     sn_pointerui.cpp \
     sn_pointerui_vncdialog.cpp \
     sn_pointerui_conndialog.cpp
-#	sn_pointerui_sendthread.cpp
 
 HEADERS  += \
     sn_pointerui.h \
     sn_pointerui_vncdialog.h \
     sn_pointerui_conndialog.h
-#	sn_pointerui_sendthread.h
 
 FORMS    += \
 	sn_pointerui.ui \

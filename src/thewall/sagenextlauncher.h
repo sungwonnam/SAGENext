@@ -107,25 +107,35 @@ public slots:
 	inline void resetGlobalAppId() {_globalAppId = 1;}
 
         /**
-          This slot is invoked by the signal fsManager::incomingSail() in fsManager::incomingConnection
+          This slot is invoked by the signal fsManager::incomingSail() in fsManager::incomingConnection().
+
+          When a SAGE application (external process) runs, the sail will connect to SAGENext's fsManager
+          then this function is invoked automatically.
           */
 	SN_BaseWidget * launch(const QString &sageappname, const QString &mediafilepath, fsManagerMsgThread *fsmThread);
 
+    /*!
+      This function is invoked by SN_LayoutWidget::loadSession().
+
+      The SageStreamWidget created in this function is stored in the _sageWidgetQueue first.
+      Then corresponding SAGE application will be launched using (QProcess or system command).
+      If SAGE application runs then launch(.... fsManagerMsgThread *) will be called.
+      */
 	SN_BaseWidget * launchSageApp(int mtype, const QString &filename, const QPointF &scenepos = QPointF(30,30), const QString &senderIP = "127.0.0.1", const QString &args = QString(), const QString &sageappname = QString(), quint64 gaid = 0);
 
         /**
-          this is general launch function
+          This is general launch function
           */
 	SN_BaseWidget * launch(int mediatype, const QString &filename, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
         /**
-          just for VNC widget
+          VNCWidget will be launched by this function.
           */
 	SN_BaseWidget * launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
         /**
-          The widget is added to the scene in here.
-          _globalAppId is incremented by 1 in here
+          The widget is added to the scene in here and the _globalAppId is incremented by 1 in here as well.
+          All the launch() will eventually call this function at the end.
           */
 	SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &scenepos = QPointF(30,30));
 
@@ -140,6 +150,16 @@ public slots:
 
 
 	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
+
+    /*!
+     * \brief launch SN_MediaBrowser when user double click on an empty space. This is invoked by SN_PolygonArrowPointer::pointerDoubleClick()
+     * \param scenePos where user double clicked
+     * \param uiclientid the unique user id
+     * \param username the username set by user in his/her sagenextPointer
+     * \param defaultDir default directory to look for
+     * \return the SN_BaseWidget pointer that points SN_MediaBrowser instance
+     */
+    SN_BaseWidget * launchMediaBrowser(const QPointF &scenePos, quint32 uiclientid, const QString &username, const QString &defaultDir = QDir::homePath()+"/.sagenext/media");
 
 		/**
 		  Load a saved session

@@ -2,8 +2,9 @@
 //#include "common/perfmonitor.h"
 
 AppInfo::AppInfo(quint64 gaid)
-	: _fileinfo(QFileInfo())
-	, _GID(gaid)
+    : _GID(gaid)
+	, _fileinfo(QFileInfo())
+
 	, _webUrl(QUrl())
 	, _nativeSize(QSize())
 	, _srcaddr(QString())
@@ -30,8 +31,8 @@ AppInfo::AppInfo(quint64 gaid, int width, int height, int bpp)
 }
 
 AppInfo::AppInfo(quint64 gaid, int width, int height, int bpp, QString file, QString srcip)
-	: _fileinfo(QFileInfo(file))
-	, _GID(gaid)
+	: _GID(gaid)
+    , _fileinfo(QFileInfo(file))
 	, _webUrl(QUrl()),
 		_nativeSize(QSize(width, height)),
 		_srcaddr(srcip),

@@ -41,6 +41,8 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 
 	, mouseBtnPressed(0)
     , _wasDblClick(false)
+	, _prevClickTime(0)
+    , _progressDialog(0)
 
 {
 	ui->setupUi(this);
@@ -52,9 +54,9 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 #endif
 
 	ui->mainToolBar->addAction(ui->actionNew_Connection);
-	ui->mainToolBar->addAction(ui->actionOpen_Media);
+//	ui->mainToolBar->addAction(ui->actionOpen_Media);
 	ui->mainToolBar->addAction(ui->actionShare_desktop);
-	ui->mainToolBar->addAction(ui->actionSend_text);
+//	ui->mainToolBar->addAction(ui->actionSend_text);
 
 
 	_settings = new QSettings("EVL", "SAGENextPointer", this);
@@ -114,6 +116,25 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 	QObject::connect(fdialog, SIGNAL(filesSelected(QStringList)), this, SLOT(readLocalFiles(QStringList)));
 
 
+    //
+    // progress dialog
+    //
+    _progressDialog = new QProgressDialog(this);
+    _progressDialog->setWindowModality(Qt::WindowModal);
+    _progressDialog->setAutoClose(true); // will be hidden when reset() is called
+    _progressDialog->setAutoReset(true); // will call reset() automatically as soon as value() equals maximum()
+    _progressDialog->setMinimumDuration(0);
+//    QObject::connect(_progressDialog, SIGNAL(accepted()), this, SLOT(fileSendingCompleted()));
+
+	
+	//
+	// in SAGE image
+	//
+	QPixmap splashsmall(":/images/splash_small.png");
+	_inSAGEsplash.setPixmap(splashsmall);
+	_inSAGEsplash.setGeometry(0, 0, splashsmall.width(), splashsmall.height());
+//	_inSAGEsplash.setFrameShape(QFrame::NoFrame);
+	_inSAGEsplash.hide();
 
 
 
@@ -147,6 +168,8 @@ SN_PointerUI::SN_PointerUI(QWidget *parent)
 SN_PointerUI::~SN_PointerUI()
 {
     _tcpMsgSock.disconnect(); // disconnect all signal/slot connections
+
+    _fileTransferSemaphore.release(100);
 
 	delete ui;
 	if (fdialog) delete fdialog;
@@ -184,6 +207,8 @@ SN_PointerUI::~SN_PointerUI()
 }
 
 void SN_PointerUI::m_deleteMouseHookProcess() {
+    unhookMouse();
+
 	if (macCapture) {
         macCapture->kill();
         macCapture->waitForFinished(-1);
@@ -216,7 +241,7 @@ void SN_PointerUI::handleSocketError(QAbstractSocket::SocketError error) {
         if (ui && ui->isConnectedLabel)
             ui->isConnectedLabel->setText("The Wall closed");
 
-       m_deleteMouseHookProcess();
+        m_deleteMouseHookProcess();
 
         QMetaObject::invokeMethod(this, "on_actionNew_Connection_triggered", Qt::QueuedConnection);
     }
@@ -238,6 +263,9 @@ void SN_PointerUI::handleSocketStateChange(QAbstractSocket::SocketState newstate
     switch (newstate) {
     case QAbstractSocket::UnconnectedState : {
         ui->isConnectedLabel->setText("Not Connected");
+        
+        // change icon
+        ui->actionNew_Connection->setIcon(QIcon(":/images/powerbutton_off.med.png"));
 
         //
         // Maybe schedule connection in 1 sec here ?
@@ -280,7 +308,7 @@ void SN_PointerUI::on_actionNew_Connection_triggered()
     if (_tcpMsgSock.state() == QAbstractSocket::ConnectingState) {
         _tcpMsgSock.abort();
     }
-
+    
     //
     // disconnect first
     //
@@ -415,7 +443,10 @@ void SN_PointerUI::on_actionSend_text_triggered()
   This is called upon receiving ACK_FROM_WALL
   */
 void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight, int ftpPort) {
-
+    
+    // change icon
+    ui->actionNew_Connection->setIcon(QIcon(":/images/powerbutton_on.med.png"));
+    
 	_uiclientid = uiclientid;
 	fileTransferPort = ftpPort;
 
@@ -517,6 +548,7 @@ void SN_PointerUI::initialize(quint32 uiclientid, int wallwidth, int wallheight,
     */
 }
 
+
 void SN_PointerUI::readFromWinCapture() {
 	Q_ASSERT(_winCapturePipe.isOpen());
 	Q_ASSERT(_winCapturePipe.isReadable());
@@ -549,6 +581,8 @@ void SN_PointerUI::hookMouse() {
 			// set the flag
 			//
 			isMouseCapturing = true;
+			
+			_inSAGEsplash.show();
 
 			//
 			// change cursor shape
@@ -583,6 +617,7 @@ void SN_PointerUI::hookMouse() {
 }
 
 void SN_PointerUI::unhookMouse() {
+	_inSAGEsplash.hide();
 	isMouseCapturing = false;
 	unsetCursor();
 
@@ -608,6 +643,7 @@ void SN_PointerUI::sendMessage(const QByteArray &msg) {
 			qDebug() << "QTcpSocket::write() error";
 		}
 		else {
+//			qDebug() << "sendMessage() :" << msg;
 			_tcpMsgSock.flush();
 		}
 	}
@@ -635,62 +671,91 @@ void SN_PointerUI::sendMessage(const QByteArray &msg) {
 }
 
 void SN_PointerUI::readMessage() {
+    /*
 	if (_tcpMsgSock.bytesAvailable() < EXTUI_MSG_SIZE) {
 		qDebug() << "SN_PointerUI::readMessage()" << _tcpMsgSock.bytesAvailable() << "Bytes available to read";
 		return;
 	}
+    */
 
-	QByteArray msg(EXTUI_MSG_SIZE, '\0');
+    while (_tcpMsgSock.bytesAvailable() >= EXTUI_MSG_SIZE) {
 
-	qint64 r = _tcpMsgSock.read(msg.data(), EXTUI_MSG_SIZE);
-	Q_UNUSED(r);
+        QByteArray msg(EXTUI_MSG_SIZE, '\0');
 
-	int msgType = 0;
-	int msgCode = 0;
-	sscanf(msg.constData(), "%d", &msgType);
+        qint64 r = _tcpMsgSock.read(msg.data(), EXTUI_MSG_SIZE);
+        Q_UNUSED(r);
 
-	switch(msgType) {
-	case SAGENext::ACK_FROM_WALL: {
-		quint32 uiclientid;
-		int wallwidth, wallheight, ftpport;
-		sscanf(msg.constData(), "%d %u %d %d %d", &msgCode, &uiclientid, &wallwidth, &wallheight, &ftpport);
-		_uiclientid = uiclientid;
+        int msgType = 0;
+        int msgCode = 0;
+        sscanf(msg.constData(), "%d", &msgType);
 
-		initialize(uiclientid, wallwidth, wallheight, ftpport);
+        switch(msgType) {
+        case SAGENext::ACK_FROM_WALL: {
+            quint32 uiclientid;
+            int wallwidth, wallheight, ftpport;
+            sscanf(msg.constData(), "%d %u %d %d %d", &msgCode, &uiclientid, &wallwidth, &wallheight, &ftpport);
+            _uiclientid = uiclientid;
 
-		// Now I can connect to the file server
-		if (ftpport > 0) {
-			_tcpDataSock.connectToHost(_wallAddress, ftpport);
-			if ( _tcpDataSock.waitForConnected() ) {
-				QByteArray msg(EXTUI_MSG_SIZE, 0);
-				::sprintf(msg.data(), "%u", _uiclientid);
-				_tcpDataSock.write(msg.constData(), msg.size());
-			}
-			else {
-				qDebug() << "Failed to connect to file server";
-			}
-		}
+            initialize(uiclientid, wallwidth, wallheight, ftpport);
 
-		break;
-	}
-	case SAGENext::RESPOND_FILEINFO: {
-//		sprintf(msg.data(), "%d %d %s %lld", SAGENext::RESPOND_FILEINFO, mtype, qPrintable(bw->appInfo()->fileInfo().fileName()), filesize);
+            // Now I can connect to the file server
+            if (ftpport > 0) {
+                _tcpDataSock.connectToHost(_wallAddress, ftpport);
+                if ( _tcpDataSock.waitForConnected() ) {
+                    QByteArray msg(EXTUI_MSG_SIZE, 0);
+                    ::sprintf(msg.data(), "%u", _uiclientid);
+                    _tcpDataSock.write(msg.constData(), msg.size());
+                }
+                else {
+                    qDebug() << "Failed to connect to file server";
+                }
+            }
 
-		SAGENext::MEDIA_TYPE mtype;
-		char filepath[512];
-		qint64 filesize;
-		sscanf(msg.constData(), "%d %d %s %lld", &msgCode, &mtype, filepath, &filesize);
+            break;
+        }
+        case SAGENext::RESPOND_FILEINFO: {
+            //		sprintf(msg.data(), "%d %d %s %lld", SAGENext::RESPOND_FILEINFO, mtype, qPrintable(bw->appInfo()->fileInfo().fileName()), filesize);
 
-		qDebug() << "RESPOND_FILEINFO" << filepath << filesize;
+            SAGENext::MEDIA_TYPE mtype;
+            char filepath[512];
+            qint64 filesize;
+            sscanf(msg.constData(), "%d %d %s %lld", &msgCode, &mtype, filepath, &filesize);
 
-		runRecvFileThread(QString(filepath), filesize);
+            qDebug() << "RESPOND_FILEINFO" << filepath << filesize;
 
-		break;
-	}
-	}
+            runRecvFileThread(QString(filepath), filesize);
+
+            break;
+        }
+
+            //
+            // fileServer is receiving a file from me
+            //
+        case SAGENext::FILESERVER_RECVING_FILE: {
+            qint64 bytes;
+            char filename[512];
+            sscanf(msg.constData(), "%d %s %lld", &msgCode, filename, &bytes);
+
+//            qDebug() << "FILESERVER_RECEIVING_FILE" << bytes;
+
+            if (bytes > 0) {
+                if (_progressDialog) {
+                    _progressDialog->setValue((int)bytes);
+                }
+            }
+
+            //
+            // This is to ensure sequential file transferring
+            //
+            if (filename == _fileBeingSent.first  &&  (bytes == _fileBeingSent.second  ||  bytes <= 0) ) {
+                _fileTransferSemaphore.release(1);
+            }
+
+            break;
+        }
+        }
+    }
 }
-
-
 
 
 void SN_PointerUI::runSendFileThread(const QList<QUrl> &list) {
@@ -725,6 +790,8 @@ void SN_PointerUI::runRecvFileThread(const QString &filepath, qint64 filesize) {
 	//
 	QtConcurrent::run(this, &SN_PointerUI::recvFileFromWall, filepath, filesize);
 }
+
+
 
 void SN_PointerUI::sendFilesToWall(const QList<QUrl> &list) {
 	foreach(QUrl url, list) {
@@ -767,7 +834,7 @@ void SN_PointerUI::sendFileToWall(const QUrl &url) {
 			qDebug() << "SendThread::sendMedia : filesize 0 for" << fi.absoluteFilePath();
 			return;
 		}
-		qDebug() << "sendMedia() : filePath" << fi.filePath() << "fileName" << fi.fileName();
+        qDebug() << "SN_PointerUI::sendFileToWall() : filePath" << fi.filePath() << "fileName" << fi.fileName() << "filesize" << fi.size();
 
 		if (fi.suffix().contains(_rxImage)) {
 			mediatype = (int)SAGENext::MEDIA_TYPE_IMAGE;
@@ -784,10 +851,18 @@ void SN_PointerUI::sendFileToWall(const QUrl &url) {
 
 		QString noSpaceFilename = fi.fileName().replace(QChar(' '), QChar('_'), Qt::CaseInsensitive);
 
+        QMetaObject::invokeMethod(this, "fileSendingBegins", Qt::QueuedConnection
+                                  , Q_ARG(QString, noSpaceFilename)
+                                  , Q_ARG(qint64, fi.size())
+                                  );
+        QApplication::sendPostedEvents();
+
+
+
 		//
 		// 0 for uploading to wall
 		//
-		::sprintf(header, "%d %d %s %lld", 0, mediatype, qPrintable(noSpaceFilename), fi.size());
+        ::sprintf(header, "%d %d %s %lld", 0, mediatype, qPrintable(noSpaceFilename), fi.size());
 
 		//
 		// send the header first
@@ -804,8 +879,26 @@ void SN_PointerUI::sendFileToWall(const QUrl &url) {
 			qDebug() << "SendThread::sendMedia() : error while sending the file";
 		}
 		file.close();
+
+
+        _fileTransferSemaphore.acquire(1);
 	}
 }
+
+void SN_PointerUI::fileSendingBegins(QString filename, qint64 filesize) {
+    _fileBeingSent = qMakePair(filename, filesize);
+
+    if (_progressDialog) {
+        _progressDialog->setLabelText(filename);
+        _progressDialog->setRange(0, (int)filesize);
+        _progressDialog->setValue(0);
+        _progressDialog->open();
+    }
+}
+
+//void SN_PointerUI::fileSendingCompleted() {
+//    _fileTransferSemaphore.release(1);
+//}
 
 void SN_PointerUI::recvFileFromWall(const QString &filepath, qint64 filesize) {
 	//
@@ -974,9 +1067,22 @@ void SN_PointerUI::readFromMouseHook() {
 			if ( button == 1 && state == 1 ) {
 				mouseBtnPressed = 1;
 				mousePressedPos = currentGlobalPos;
-
+#ifdef Q_OS_WIN32
+				qint64 now = QDateTime::currentMSecsSinceEpoch();
+				
+				// if this click is occurred pretty quickly (250 msec)
+				// then it's dbl click
+				if (now - _prevClickTime < 250) {
+					sendMouseDblClick(currentGlobalPos);
+					_wasDblClick = true;
+				}
+				else
+					sendMousePress(currentGlobalPos); // normal left press
+#else
+				
 				// send left press
 				sendMousePress(currentGlobalPos); // setAppUnderApp()
+#endif
 			}
 
 			//
@@ -996,23 +1102,32 @@ void SN_PointerUI::readFromMouseHook() {
 			else if ( button == 1 && state == 0 && mouseBtnPressed == 1) {
 				// mouse left click
 				mouseBtnPressed = 0;
-
-				int ml = (currentGlobalPos - mousePressedPos).manhattanLength();
-
-				//
-				// pointerClick() won't be generated as a result of mouseDragging
-				//
-				if ( ml <= 3 ) {
-					sendMouseClick(currentGlobalPos); // left click
+				
+				if (_wasDblClick) {
+					_wasDblClick = false;
 				}
-
-				//
-				// pointerRelease() at the end of mouse dragging
-				//
 				else {
-
-					// send left release (after dragging)
-					sendMouseRelease(currentGlobalPos); // left release
+					
+					int ml = (currentGlobalPos - mousePressedPos).manhattanLength();
+					
+					//
+					// pointerClick() won't be generated as a result of mouseDragging
+					//
+					if ( ml <= 3 ) {
+#if defined(Q_OS_WIN32)
+						_prevClickTime = QDateTime::currentMSecsSinceEpoch();
+#endif
+						sendMouseClick(currentGlobalPos); // left click
+					}
+					
+					//
+					// pointerRelease() at the end of mouse dragging
+					//
+					else {
+						
+						// send left release (after dragging)
+						sendMouseRelease(currentGlobalPos); // left release
+					}
 				}
 			}
 
@@ -1045,6 +1160,7 @@ void SN_PointerUI::readFromMouseHook() {
 			in >> button >> state;
 //			qDebug() << "dbl click from macCapture" << currentGlobalPos;
 			sendMouseDblClick(currentGlobalPos);
+			break;
 		}
 			
 		// WHEEL, scroll up(-1), down(1)
@@ -1204,7 +1320,7 @@ void SN_PointerUI::mousePressEvent(QMouseEvent *e) {
 	mousePressedPos = e->globalPos();
 
 	if ( isMouseCapturing ) {
-		qDebug() << "mousePressEvent()" << e->button() << "sending mouse PRESS";
+//		qDebug() << "mousePressEvent()" << e->button() << "sending mouse PRESS";
 		sendMousePress(e->globalPos());
 		e->accept();
 	}
@@ -1226,7 +1342,7 @@ void SN_PointerUI::mouseReleaseEvent(QMouseEvent *e) {
                 _wasDblClick = false; // reset the flag
             }
             else {
-                qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse CLICK";
+//                qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse CLICK";
                 sendMouseClick(e->globalPos(), e->button() | Qt::NoButton);
             }
 		}
@@ -1234,7 +1350,7 @@ void SN_PointerUI::mouseReleaseEvent(QMouseEvent *e) {
 			//
 			// this is to know when dragging has finished
 			//
-			qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse RELEASE";
+//			qDebug() << "mouseReleaseEvent()" << e->button() << "sending mouse RELEASE";
 			sendMouseRelease(e->globalPos(), e->button() | Qt::NoButton);
 		}
 		e->accept();
@@ -1257,7 +1373,7 @@ void SN_PointerUI::contextMenuEvent(QContextMenuEvent *e) {
 
 void SN_PointerUI::mouseDoubleClickEvent(QMouseEvent *e) {
 	if ( isMouseCapturing ) {
-		qDebug() << "mouseDoubleClickEvent()" << e->button() << "sending mouse DBLCLICK";
+//		qDebug() << "mouseDoubleClickEvent()" << e->button() << "sending mouse DBLCLICK";
 		sendMouseDblClick(e->globalPos()); // Left double click
 
         _wasDblClick = true;

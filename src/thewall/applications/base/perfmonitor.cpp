@@ -11,7 +11,22 @@
 PerfMonitor::PerfMonitor(QObject *parent)
     : QObject(parent)
     , _widget(static_cast<SN_BaseWidget *>(parent))
+
+	, _overPerformAvg(0)
+	, _overPerformAgg(0)
+	, _overPerformCnt(0)
+
+
+    , _wakeUpGuessFps(30)
+    , _overPerformMultiplier(1.2)
+    , _normPerformMultiplier(1.1)
+    , _underPerformEndurance(4)
+    , _underPerformCnt(0)
+
     , _priori(false)
+
+    , _measureStartTime(0)
+    , _measureEndTime(0)
 
 	, _recvFrameCount(0)
     , currRecvLatency(-1)
@@ -88,8 +103,8 @@ void PerfMonitor::printData() const {
 //	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << _avgEffectiveFps << avgDispFps;
 }
 
-/**
 void PerfMonitor::_updateBWdata(qreal bwtemp) {
+
     ///
     // If app provided resource required (e.g. constant framerate streaming such as Sage app)
     // then I know current BW is always less than or equal to required BW and
@@ -114,82 +129,34 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
     // No priori
     //
     else {
-        _currEffectiveBW_Mbps = bwtemp; // have to believe current measurement
+        _currEffectiveBW_Mbps = bwtemp;
 
-        //
-        // the widget isn't consuming resource, so update requiredBW so that scheduler won't count this widget
-        //
-        if ( _currEffectiveBW_Mbps == 0 ) {
-            //
-            ////////////////// DECREASE Rq immediately
-            //
+        if (_currEffectiveBW_Mbps == 0) {
             _requiredBW_Mbps = 0;
             _currEffectiveFps = 0;
         }
-
-        //
-        // The observedQ_Rq > 1
-        // This can happen when the app kept decreasing its Rq (to get higher Dq from the scheduler) because there's no more resource available
-        // Note that a non-periodic widget's required BW starts with 0
-        //
-        else if (_currEffectiveBW_Mbps > _requiredBW_Mbps) {
-            //
-            // my Rq set too small. Increase !
-            //
-            _requiredBW_Mbps = _currEffectiveBW_Mbps;
-            qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "Reset Rq for over performing" << _requiredBW_Mbps;
-        }
-
-        //
-        // The observedQ_Rq <= 1
-        //
-        else if (_currEffectiveBW_Mbps <= _requiredBW_Mbps) {
-
-            //
-            // When there's no more resource seen by the scheduler,
-            // if an app increase its Rq then,
-            // its quality will be decreased as a result
-            //
-            if (SN_AbstractScheduler::IsHittingResourceLimit) {
-                // So it's better to Decrease Rq to obtain higher Dq from the scheduler
-                _requiredBW_Mbps = _currEffectiveBW_Mbps;
-                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "NO MORE Res!! Decrease Rq to receive Dq 1" << _requiredBW_Mbps;
+        else {
+            if ( _currEffectiveBW_Mbps > _requiredBW_Mbps) {
+                if ( _requiredBW_Mbps == 0) {
+                    _requiredBW_Mbps = qMax(_maxBWachieved, (_widget->appInfo()->frameSizeInByte() * 8 * _wakeUpGuessFps) / 1e+6);
+                }
+                else {
+                    _requiredBW_Mbps = _currEffectiveBW_Mbps;
+                }
+            }
+            else if ( _currEffectiveBW_Mbps == _requiredBW_Mbps ) {
+                _requiredBW_Mbps = _overPerformMultiplier * _currEffectiveBW_Mbps;
             }
             else {
-                //
-                ///////////////// INCREASE Rq /////////////////////////////
-                //
-
-                //
-                // If this is high priority app then demandedQuality could be closer to 1.0
-                // (Even if this is low priority app, with high TotalResource demandedQuality could be closer to 1.0)
-                // This means observedQ_Rq ~= observedQ_Dq ~= 1.0
-                // Then let's increase Rq and see what happens !
-                // because it may be able to consume more
-                //
-                if ( _widget->demandedQuality() >= 0.9) {
-
-                    _requiredBW_Mbps = qMax(_maxBWachieved, 1.2f * _requiredBW_Mbps); // the max or 150% of current Rq
-//                    _requiredBW_Mbps = 1.2f * _maxBWachieved;
-                }
-
-                //
-                // The low demandedQuality means
-                // The TotalResource is low enough and this app is somewhat low priority
-                //
-                else {
-                    _requiredBW_Mbps = qMin(_maxBWachieved, 1.2f * _requiredBW_Mbps);
-                }
-                _isRqIncreased = QDateTime::currentMSecsSinceEpoch();
-                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "There're more resource. Let's INCREASE Rq" << _requiredBW_Mbps;
+                _requiredBW_Mbps = _currEffectiveBW_Mbps;
             }
         }
     }
 
     _maxBWachieved = qMax(_maxBWachieved, _currEffectiveBW_Mbps);
 }
-**/
 
+/*****************************************
 void PerfMonitor::_updateBWdata(qreal bwtemp) {
 
     ///
@@ -216,7 +183,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
     // No priori
     //
     else {
-        qint64 now = QDateTime::currentMSecsSinceEpoch();
+//        qint64 now = QDateTime::currentMSecsSinceEpoch();
 
         _currEffectiveBW_Mbps = bwtemp; // have to believe current measurement
 
@@ -253,22 +220,25 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
             //
             if ( _requiredBW_Mbps == 0) {
                 //
-                /////////////////////// GUESS Rq /////////////////////////////
+                /////////////////////// Woken up : GUESS Rq /////////////////////////////
                 //
-                _requiredBW_Mbps = qMax(_maxBWachieved, (_widget->appInfo()->frameSizeInByte() * 8 * 30) / 1e+6);
+                _requiredBW_Mbps = qMax(_maxBWachieved, (_widget->appInfo()->frameSizeInByte() * 8 * _wakeUpGuessFps) / 1e+6);
 
-                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "GUESS Rq when woken up" << _requiredBW_Mbps;
+                //qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "GUESS Rq when woken up" << _requiredBW_Mbps;
+				//qDebug() << "___Woken up:" << _requiredBW_Mbps;
             }
             else {
                 // It was set too low..
-                ////////////////////// INCREASE Rq /////////////////////////////
+                ////////////////////// Over Performing INCREASE Rq /////////////////////////////
                 //
-                _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
+				//
+//                _overPerformCnt += 1;
+//				_overPerformAgg += _currEffectiveBW_Mbps;
+//				_overPerformAvg = _overPerformAgg / _overPerformCnt;
 
-                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "INCREASE Rq for over performing" << _requiredBW_Mbps;
+                _requiredBW_Mbps = _overPerformMultiplier * _currEffectiveBW_Mbps;
+				//qDebug() << "___Over performing avg BW" << _overPerformAvg << "Rq is now:" << _requiredBW_Mbps;
             }
-
-            _isRqIncreased = QDateTime::currentMSecsSinceEpoch();
         }
 
         //
@@ -280,73 +250,76 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
             // Oq ~= Dq
             //
             if ( observedQuality_Dq() >= 0.9 ) {
-
                 //
                 // If this is high priority app then demandedQuality could be closer to 1.0
                 // (Even if this is low priority app, with high enough TotalResource demandedQuality could be closer to 1.0)
-                // This means observedQ_Rq ~= observedQ_Dq ~= 1.0
-                // Then let's increase Rq and see what happens !
-                // because it may be able to consume more
-                //
                 //
                 // This could mean
-                // - High priority, low resource
-                // OR
+                // - High priority, low resource OR
                 // - Low priority, high enough TotalResource
+				// So by increasing Rq, Maybe I can steal more from other lower priority widgets
                 //
                 if ( _widget->demandedQuality() >= 1.0) {
 
-                   // nothing I could do. just update Rq
-                    // because it's extra delay is already 0
-                    // no one's stealing from this app !
-                    _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
+					//
+                	// Then let's increase Rq and see what happens because it may be able to consume more
+					//
+                    _requiredBW_Mbps = _normPerformMultiplier * _currEffectiveBW_Mbps;
 
+					//qDebug() << "___Maybe I can use more" << _requiredBW_Mbps;
                 }
 
                 //
-                // This GUARANTEES the TotalResource is not enough -> SYSTEM OVERLOADED
+				// I can consume most of what Scheduler demands
+				// But scheduler demands my quality be lower than 1.0
+				//
                 // Why would scheduler demand lower quality if there's enough resource ?
+                // So, this GUARANTEES the TotalResource is not enough -> SYSTEM OVERLOADED => no more Pareto improvement can be made
                 //
                 else {
-
                     //
                     // Resource is scarce. lower Rq so that app can obtain higher Dq from the scheduler ==> GREEDY !
+                    // If my currBW is increased as a result of high Dq then my Rq will be adjusted anyway
                     //
-                    // If my currBW is increased as a result of high Dq then
-                    // my Rq will be adjusted anyway
-                    //
-                    _requiredBW_Mbps = _currEffectiveBW_Mbps;
-                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "Resource Scarce. Let's decrease Rq to obtain high Dq" << _requiredBW_Mbps;
+                    // _requiredBW_Mbps = _currEffectiveBW_Mbps;
                 }
-
-               // _isRqIncreased = QDateTime::currentMSecsSinceEpoch();
-
-//                qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "There's more resource. Let's INCREASE Rq" << _requiredBW_Mbps;
             }
 
             //
-            // It's not even consuming the amount the scheduler allowed
+            // It's not even consuming the amount the scheduler allowed. ObservedQ < DemandedQ
             // so lower the requiredBW a bit
             //
             else {
+				++_underPerformCnt;
 
-                if ( _isRqIncreased > 0 && now - _isRqIncreased > 3000) {
+				if ( _widget->demandedQuality() > 0.95) {
+					if (_underPerformCnt > _underPerformEndurance) {
+						_underPerformCnt = 0;
+						qreal delta = _requiredBW_Mbps - _currEffectiveBW_Mbps;
+						_requiredBW_Mbps -= (delta / 2);
+						//_requiredBW_Mbps = _currEffectiveBW_Mbps;
+						//qDebug() << "___Under performing High Dq (Oq<Dq): " << _requiredBW_Mbps;
+					}
+				}
+				else {
+					//
+					// under performing so lower the Rq
+					//
+                	_requiredBW_Mbps = _currEffectiveBW_Mbps;
+					//qDebug() << "___Under performing Low Dq (Oq<Dq): " << _requiredBW_Mbps;
+				}
 
-                    //
-                    //////////////////// DECREASE Rq /////////////////////////////
-                    //
-                    _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
-
-                    qDebug() << "PerfMonitor::_updateBWdata() :" << _widget->globalAppId() << "!! DECREASE Rq for under-performing" << _requiredBW_Mbps;
-
-                    _isRqIncreased = 0;
-                }
+//                if (_isRqIncreased && now - _isRqIncreased > 3000) {
+//                    _requiredBW_Mbps = 1.2 * _currEffectiveBW_Mbps;
+//                    _isRqIncreased = 0;
+//                }
             }
         }
     }
 
     _maxBWachieved = qMax(_maxBWachieved, _currEffectiveBW_Mbps);
 }
+*/
 
 //
 // Resource monitor 's refresh() calls this function
@@ -474,6 +447,9 @@ qreal PerfMonitor::observedQuality_Rq() const {
     if ( _requiredBW_Mbps > 0) {
         return _currEffectiveBW_Mbps / _requiredBW_Mbps;
     }
+    else if (_requiredBW_Mbps == 0) {
+        return 0;
+    }
     else {
         return -1;
     }
@@ -484,6 +460,10 @@ qreal PerfMonitor::observedQuality_Dq() const {
         qreal demandedBW = _widget->demandedQuality() * _requiredBW_Mbps;
         if (demandedBW > 0) {
             return _currEffectiveBW_Mbps / demandedBW;
+        }
+        else if (demandedBW == 0) {
+//            qDebug() << "PerfMonitor::observedQuality_Dq() : demanded is 0";
+            return 1.0;
         }
     }
     else {

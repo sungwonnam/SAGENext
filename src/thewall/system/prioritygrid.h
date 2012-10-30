@@ -3,6 +3,7 @@
 
 #include <QtGui>
 
+
 /*!
   Rectangle represents region of interest.
   */
@@ -35,6 +36,7 @@ protected:
 
 
 
+class SN_BaseWidget;
 
 class SN_PriorityGrid : public QObject
 {
@@ -43,9 +45,13 @@ public:
 //	explicit SN_PriorityGrid(QObject *parent=0) : QObject(parent), _thescene(0), _isEnabled(false) {}
 
 	/*!
-	  rectSize defines the size of each rectangle in the grid
+	  rectSize defines the size of each cell in the grid
 	  */
 	explicit SN_PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject *parent = 0);
+
+    explicit SN_PriorityGrid(int numrow, int numcol, QGraphicsScene *scene, QObject *parent = 0);
+
+    ~SN_PriorityGrid();
 
 	inline int dimx() const {return _dimx;}
 	inline int dimy() const {return _dimy;}
@@ -57,6 +63,13 @@ public:
 
 	inline bool isEnabled() const {return _isEnabled;}
 
+    inline qint64 gridStartTimeSinceEpoch() const {return _gridStartTimeSinceEpoch;}
+
+    /*!
+      An application can call this function to add its priority value
+      to the cells under its window
+      */
+    void addPriorityOfApp(const QRect &windowRect_sceneCoord, qreal priority);
 
 
 	/*!
@@ -73,9 +86,18 @@ public:
 	  returns the priority value of the grid item at row, col
 	  */
 	qreal getPriorityOffset(int row, int col);
+
+    qreal getPriorityOffset(const SN_BaseWidget *widget);
 	
 private:
+    /*!
+      num cells in a row
+      */
 	int _dimx;
+
+    /*!
+      num cells in a column
+      */
 	int _dimy;
 
 	/*!
@@ -103,17 +125,32 @@ private:
 	  */
 	bool _isEnabled;
 
+    /*!
+      The sum of the all the priority value of cells
+      */
+    qreal _theTotalPriority;
+
+    /*!
+      msec
+      */
+    qint64 _gridStartTimeSinceEpoch;
+
 	void buildRectangles();
+
+    qreal m_getTotalPriority();
 
 signals:
 	
 public slots:
 
 	/*!
-	  finds out app rects above each rect in the region
-	  and updates values accordingly
+      All the cell value needs to be updated in a bundle.
+
+	  finds out app rects above each cell and updates values accordingly
 	  */
 	void updatePriorities();
+
+    void printTheGrid();
 	
 };
 
