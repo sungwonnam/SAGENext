@@ -5,6 +5,7 @@
 
 QReadWriteLock SN_MediaStorage::MediaListRWLock;
 QList<SN_MediaItem *> SN_MediaStorage::MediaList;
+QMap<const QString, MediaMetaData*> SN_MediaStorage::GlobalMediaList;
 
 SN_MediaStorage::SN_MediaStorage(const QSettings *s, QObject *parent)
     : QObject(parent)
@@ -14,6 +15,12 @@ SN_MediaStorage::SN_MediaStorage(const QSettings *s, QObject *parent)
 	qWarning() << "SN_MediaStorage : initialized" << nummedia << "items";
 }
 
+SN_MediaStorage::~SN_MediaStorage() {
+    QMap<const QString, MediaMetaData*>::iterator iter;
+    for (iter=SN_MediaStorage::GlobalMediaList.begin(); iter!=SN_MediaStorage::GlobalMediaList.end(); iter++) {
+        delete iter.value();
+    }
+}
 
 int SN_MediaStorage::_initMediaList() {
     QRegExp rxVideo("\\.(avi|mov|mpg|mpeg|mp4|mkv|flv|wmv)$", Qt::CaseInsensitive, QRegExp::RegExp);
@@ -37,16 +44,21 @@ int SN_MediaStorage::_initMediaList() {
         if(iter.fileInfo().isFile()) {
             numread++;
 
-            SN_MediaItem* item =  0;
-
+            MediaMetaData *mediameta = 0;
             if (iter.filePath().contains(rxVideo)) {
-                item = new SN_MediaItem(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, iter.filePath(), _readVideo(iter.filePath()));
+                mediameta = new MediaMetaData;
+                mediameta->pixmap = _readVideo(iter.filePath());
+                mediameta->type = SAGENext::MEDIA_TYPE_LOCAL_VIDEO;
             }
             else if (iter.filePath().contains(rxImage)) {
-                item = new SN_MediaItem(SAGENext::MEDIA_TYPE_IMAGE, iter.filePath(), _readImage(iter.filePath()));
+                mediameta = new MediaMetaData;
+                mediameta->pixmap = _readImage(iter.filePath());
+                mediameta->type = SAGENext::MEDIA_TYPE_IMAGE;
             }
             else if (iter.filePath().contains(rxPdf)) {
-                item = new SN_MediaItem(SAGENext::MEDIA_TYPE_PDF, iter.filePath(), _readPDF(iter.filePath()));
+                mediameta = new MediaMetaData;
+                mediameta->pixmap = _readPDF(iter.filePath());
+                mediameta->type = SAGENext::MEDIA_TYPE_PDF;
             }
             else if (iter.filePath().contains(rxPlugin)) {
                 // do nothing for now
@@ -55,15 +67,18 @@ int SN_MediaStorage::_initMediaList() {
                 // error
             }
 
-            if (item)
-                addNewMedia(item);
+            if (mediameta) {
+                SN_MediaStorage::GlobalMediaList.insert(iter.filePath(), mediameta);
+            }
         }
         // build a list of directories too
         else if(iter.fileInfo().isDir()) {
             numread++;
 
-            SN_MediaItem* item = new SN_MediaItem(SAGENext::MEDIA_TYPE_UNKNOWN, iter.filePath(), QPixmap(":/resources/dir.png"));
-            addNewMedia(item);
+            MediaMetaData *meta = new MediaMetaData;
+            meta->type = SAGENext::MEDIA_TYPE_UNKNOWN;
+            meta->pixmap = QPixmap(":/resources/dir.png");
+            SN_MediaStorage::GlobalMediaList.insert(iter.filePath(), meta);
         }
     }
 
@@ -75,92 +90,61 @@ int SN_MediaStorage::_initMediaList() {
 	return numread;
 }
 
-
-bool SN_MediaStorage::addNewMedia(SN_MediaItem* mediaitem) {
-    if (!mediaitem) return false;
-
-    QObject::connect(mediaitem, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SIGNAL(mediaItemClicked(SAGENext::MEDIA_TYPE,QString)));
-
-    SN_MediaStorage::MediaListRWLock.lockForWrite();
-    // Add entry to list, save image as pixmap
-    SN_MediaStorage::MediaList.push_back(mediaitem);
-    SN_MediaStorage::MediaListRWLock.unlock();
-
-    emit SN_MediaStorage::newMediaAdded();
-
-    return true;
-}
-
-bool SN_MediaStorage::addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &filepath) {
+void SN_MediaStorage::addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &filepath) {
 
     //
     // Check if this media is already exist in the storage
     //
+    if ( SN_MediaStorage::GlobalMediaList.find(filepath) == SN_MediaStorage::GlobalMediaList.end()) {
+        qDebug() << "SN_MediaStorage::addNewMedia() : " << filepath << "already exist in the list";
+        return;
+    }
 
-    SN_MediaItem *newitem =  0;
+    MediaMetaData* meta = new MediaMetaData;
+    meta->type = mtype;
     if (mtype == SAGENext::MEDIA_TYPE_IMAGE) {
-        newitem = new SN_MediaItem(mtype, filepath, _readImage(filepath));
+        meta->pixmap = _readImage(iter.filePath());
     }
     else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
-        newitem = new SN_MediaItem(mtype, filepath, _readVideo(filepath));
+        meta->pixmap = _readVideo(iter.filePath());
     }
     else if (mtype == SAGENext::MEDIA_TYPE_PDF) {
-        newitem = new SN_MediaItem(mtype, filepath, _readPDF(filepath));
+        meta->pixmap = _readPDF(iter.filePath());
     }
 
-    return addNewMedia(newitem);
-}
-
-bool SN_MediaStorage::checkForMediaInList(const QString &path) {
-
-    bool result = false;
-
-    SN_MediaStorage::MediaListRWLock.lockForRead();
-
-    foreach (SN_MediaItem *item, SN_MediaStorage::MediaList) {
-
-        // check if there's SN_MediaItem with its filename == path
-        // If so, then return false
-    }
-
+    SN_MediaStorage::MediaListRWLock.lockForWrite();
+    SN_MediaStorage::GlobalMediaList.insert(filepath, meta);
     SN_MediaStorage::MediaListRWLock.unlock();
-
-    qDebug() << "SN_MediaStorage::checkForMediaInHash() : " << path << " " << result;
-    return result;
 }
 
 
-QList<SN_MediaItem> SN_MediaStorage::getMediaListInDir(const QDir &dir) {
+QMap<const QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir) {
     // check the dir recursively and build the list of SN_MediaItem
     // return the list
     // The list will be owned by SN_MediaBrowser so don't delete the list
 
     qDebug() << "SN_MediaStorage::getMediaListInDir()" << dir;
 
-    QList<SN_MediaItem> itemsInDir;
+    QMap<const QString, MediaMetaData*> itemsInDir;
 
-    foreach (SN_MediaItem *item, SN_MediaStorage::MediaList) {
-        // check if the media is under the dir
-        Q_ASSERT(item);
-
-        if (item->absFilePath().startsWith(dir.path(), Qt::CaseSensitive)) {
-            qDebug() << "SN_MediaStorage::getMediaListInDir() : " << item->absFilePath();
-            itemsInDir.push_back(*item); // a copy of the item
+    QMap<const QString, MediaMetaData*>::iterator iter = SN_MediaStorage::GlobalMediaList.begin();
+    
+    SN_MediaStorage::MediaListRWLock.lockForRead();
+    
+    // for each item in the global list
+    for (iter; iter!=SN_MediaStorage.end(); iter++) {
+        
+        // if the item is in the dir
+        if ( iter.key().startsWith(dir.path(), Qt::CaseSensitive) ) {
+            qDebug() << "SN_MediaStorage::getMediaListInDir() : " << iter.key();
+            itemsInDir.insert(iter.key(), iter.value());
         }
     }
 
+    SN_MediaStorage::MediaListRWLock.unlock();
+    
     return itemsInDir;
 }
-
-SAGENext::MEDIA_TYPE SN_MediaStorage::_findMediaType(const QString &filepath) {
-    // use regular expression
-
-    // if it's directory then return SAGENext::MEDIA_TYPE_UNKNOWN
-}
-
-
-
-
 
 
 
