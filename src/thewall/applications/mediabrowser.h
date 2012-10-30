@@ -20,7 +20,10 @@ class SN_MediaItem : public SN_PixmapButton
 
 public:
     SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, QPixmap pixmap, QGraphicsItem *parent=0);
-    inline int mediaType() {return _mediaType;}
+
+    inline SAGENext::MEDIA_TYPE mediaType() {return _mediaType;}
+
+    inline QString absFilePath() const {return _filename;}
 
 private:
 	SAGENext::MEDIA_TYPE _mediaType;
@@ -62,21 +65,13 @@ public:
     explicit SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, const QSettings *s, SN_MediaStorage* mediaStorage, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = Qt::Window);
     ~SN_MediaBrowser();
 
-	/**
-	  This is to distinguish user application from other items in the scene.
-	  User applications have UserType + BASEWIDGET_USER
-
-	  Items reside between UserType + BASEWIDGET_NONUSER <= x < UserType + BASEWIDGET_USER are items that inherits SN_BaseWidget but should not be regarded as a user application.
-	  meaning that the widget shouldn't be affected by the scheduler.
-	  */
-	enum { Type = QGraphicsItem::UserType + BASEWIDGET_NONUSER };
-    virtual int type() const { return Type;}
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
 private:
     /*!
      * \brief currentItemsDisplayed is the list of SN_MediaItem that need to be displayed.
      */
-    QList<SN_MediaItem *> * _currItemsDisplayed;
+    QList<SN_MediaItem> _currItemsDisplayed;
 
     SN_Launcher *_launcher;
 

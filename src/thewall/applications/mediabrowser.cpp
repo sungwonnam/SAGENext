@@ -47,7 +47,6 @@ SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, con
 
     : SN_BaseWidget(globalappid, s, parent, wflags)
 
-    , _currItemsDisplayed(0)
     , _launcher(launcher)
     , _mediaStorage(mediaStorage)
     , _rootWindowLayout(0)
@@ -69,18 +68,26 @@ SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, con
     _rootWindowLayout->addItem(_attachRootIconsForApps());
 
     displayRootWindow();
-
-    qDebug("%s::%s() : called.", metaObject()->className(), __FUNCTION__);
 }
 
 SN_MediaBrowser::~SN_MediaBrowser() {
-    if (_currItemsDisplayed) delete _currItemsDisplayed;
+//    qDebug() << "SN_MediaBrowser::~SN_MediaBrowser()" << childItems();
+
+    foreach(QGraphicsItem *item, childItems()) {
+        SN_MediaItem *mitem = dynamic_cast<SN_MediaItem *>(item);
+        if (mitem) {
+            mitem->setParentItem(0);
+        }
+    }
 }
+
 
 QGraphicsLinearLayout* SN_MediaBrowser::_attachRootIconsForMedia() {
     // video
     SN_PixmapButton *videobutton = new SN_PixmapButton(":/resources/video.png", 128, QString(), this);
     QObject::connect(videobutton, SIGNAL(clicked(int)), this, SLOT(videoIconClicked()));
+
+    videobutton->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
     // image
     SN_PixmapButton *imagebutton = new SN_PixmapButton(":/resources/image.png", 128, QString(), this);
@@ -92,7 +99,7 @@ QGraphicsLinearLayout* SN_MediaBrowser::_attachRootIconsForMedia() {
 
     // do linear layout or something to arrange them
     QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Horizontal);
-    layout->setSpacing(16);
+    layout->setSpacing(64);
     layout->addItem(videobutton);
     layout->addItem(imagebutton);
     layout->addItem(pdfbutton);
@@ -129,6 +136,7 @@ QGraphicsLinearLayout* SN_MediaBrowser::_attachRootIconsForApps() {
 
     // do linear layout or something to arrange them
     QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Horizontal);
+    layout->setSpacing(64);
     layout->addItem(webbrowser);
     layout->addItem(googlemap);
     layout->addItem(mandelbrot);
@@ -292,6 +300,7 @@ void SN_MediaBrowser::launchMedia(SAGENext::MEDIA_TYPE mtype, const QString &fil
     //
     // Where the widget should be opened ?
     //
+    qDebug() << "SN_MediaBrowser::launchMedia() : " << filename;
     _launcher->launch(mtype, filename /* , scenePos */);
 }
 
@@ -299,10 +308,7 @@ void SN_MediaBrowser::displayRootWindow() {
 
     // delete the list of currently displayed
     // actual items are not deleted.
-    if (_currItemsDisplayed) {
-        delete _currItemsDisplayed;
-        _currItemsDisplayed = 0;
-    }
+    _currItemsDisplayed.clear();
 
     //
     // show all the root icons
@@ -327,14 +333,13 @@ void SN_MediaBrowser::changeDirectory(const QString &dir) {
     //
     // sets the current list of items to be displayed
     //
-    QList<SN_MediaItem *> * itemsInCurrDir = _mediaStorage->getMediaListInDir(_currentDirectory);
-    if (itemsInCurrDir && ! itemsInCurrDir->empty()) {
+    const QList<SN_MediaItem> &itemsInCurrDir = _mediaStorage->getMediaListInDir(_currentDirectory);
+    if ( ! itemsInCurrDir.empty()) {
 
-        if (_currItemsDisplayed) {
-            delete _currItemsDisplayed;
-        }
+        _currItemsDisplayed.clear();
         _currItemsDisplayed = itemsInCurrDir;
-        qDebug() << "SN_MediaBrowser::changeDirectory() : " << _currItemsDisplayed->size() << "items in" << dir;
+
+        qDebug() << "SN_MediaBrowser::changeDirectory() : " << itemsInCurrDir.size() << "items in" << dir;
     }
 
     SN_MediaStorage::MediaListRWLock.unlock();
@@ -360,11 +365,25 @@ void SN_MediaBrowser::changeDirectory(const QString &dir) {
 
     QGraphicsGridLayout *gridlayout = new QGraphicsGridLayout;
 
-    if (_currItemsDisplayed && !_currItemsDisplayed->empty()) {
-        foreach(SN_MediaItem *item, *_currItemsDisplayed) {
-            //        gridlayout->addItem(item);
+    // this is just temporary. Use grid layout
+    QGraphicsLinearLayout *ll = new QGraphicsLinearLayout(Qt::Horizontal);
+    ll->setSpacing(64);
+    ll->setContentsMargins(32, 32, 32, 32);
+
+
+    if ( !_currItemsDisplayed.empty()) {
+        foreach(SN_MediaItem item, _currItemsDisplayed) {
+//            gridlayout->addItem(item);
+            ll->addItem(&item);
         }
     }
-    setLayout(gridlayout);
+    setLayout(ll);
     adjustSize();
+}
+
+
+void SN_MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
+
+    painter->setBrush(Qt::gray);
+    painter->drawRect(boundingRect());
 }

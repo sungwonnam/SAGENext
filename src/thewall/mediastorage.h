@@ -32,14 +32,15 @@ public:
 
     bool checkForMediaInList(const QString &path);
 
-	inline QList<SN_MediaItem *> getMediaListForRead() const {return MediaList;}
-
     /*!
      * \brief getMediaListInDir
      * \param dir
      * \return the list of media items in a directory dir
+     *
+     * The list contains a COPY of SN_MediaItem (not the pointer to the object)
+     * Because there can be multiple media browsers
      */
-    QList<SN_MediaItem *> * getMediaListInDir(const QDir &dir);
+    QList<SN_MediaItem> getMediaListInDir(const QDir &dir);
 
 private:
 	const QSettings *_settings;

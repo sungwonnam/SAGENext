@@ -31,7 +31,7 @@ int SN_MediaStorage::_initMediaList() {
 #endif
 
 	int numread = 0;
-    QDirIterator iter(QDir::homePath() + "/.sagenext/", QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator iter(QDir::homePath() + "/.sagenext/media", QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Files, QDirIterator::Subdirectories);
     while (iter.hasNext()) {
         iter.next();
         if(iter.fileInfo().isFile()) {
@@ -40,13 +40,13 @@ int SN_MediaStorage::_initMediaList() {
             SN_MediaItem* item =  0;
 
             if (iter.filePath().contains(rxVideo)) {
-                item = new SN_MediaItem(_findMediaType(iter.filePath()), iter.filePath(), _readVideo(iter.filePath()));
+                item = new SN_MediaItem(SAGENext::MEDIA_TYPE_LOCAL_VIDEO, iter.filePath(), _readVideo(iter.filePath()));
             }
             else if (iter.filePath().contains(rxImage)) {
-                item = new SN_MediaItem(_findMediaType(iter.filePath()), iter.filePath(), _readImage(iter.filePath()));
+                item = new SN_MediaItem(SAGENext::MEDIA_TYPE_IMAGE, iter.filePath(), _readImage(iter.filePath()));
             }
             else if (iter.filePath().contains(rxPdf)) {
-                item = new SN_MediaItem(_findMediaType(iter.filePath()), iter.filePath(), _readPDF(iter.filePath()));
+                item = new SN_MediaItem(SAGENext::MEDIA_TYPE_PDF, iter.filePath(), _readPDF(iter.filePath()));
             }
             else if (iter.filePath().contains(rxPlugin)) {
                 // do nothing for now
@@ -130,13 +130,26 @@ bool SN_MediaStorage::checkForMediaInList(const QString &path) {
 }
 
 
-QList<SN_MediaItem *> * SN_MediaStorage::getMediaListInDir(const QDir &dir) {
-    // check the dir and build the list of SN_MediaItem
+QList<SN_MediaItem> SN_MediaStorage::getMediaListInDir(const QDir &dir) {
+    // check the dir recursively and build the list of SN_MediaItem
     // return the list
     // The list will be owned by SN_MediaBrowser so don't delete the list
 
     qDebug() << "SN_MediaStorage::getMediaListInDir()" << dir;
-    return 0;
+
+    QList<SN_MediaItem> itemsInDir;
+
+    foreach (SN_MediaItem *item, SN_MediaStorage::MediaList) {
+        // check if the media is under the dir
+        Q_ASSERT(item);
+
+        if (item->absFilePath().startsWith(dir.path(), Qt::CaseSensitive)) {
+            qDebug() << "SN_MediaStorage::getMediaListInDir() : " << item->absFilePath();
+            itemsInDir.push_back(*item); // a copy of the item
+        }
+    }
+
+    return itemsInDir;
 }
 
 SAGENext::MEDIA_TYPE SN_MediaStorage::_findMediaType(const QString &filepath) {

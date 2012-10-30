@@ -735,8 +735,10 @@ SN_BaseWidget * SN_Launcher::launchMediaBrowser(const QPointF &scenePos, quint32
 
     qDebug() << "SN_Launcher::launchMediaBrowser() : User " << uiclientid << username << ", dblClicked on" << scenePos;
 
+    Q_UNUSED(defaultDir);
+
     // It might be useful to keep uiclientid and pointername (username) in the SN_MediaBrowser.
-    SN_MediaBrowser *mbrowser = new SN_MediaBrowser(this, _getUpdatedGlobalAppId(0), _settings, _mediaStorage, 0, Qt::Window);
+    SN_MediaBrowser *mbrowser = new SN_MediaBrowser(this, _getUpdatedGlobalAppId(0), _settings, _mediaStorage, 0, Qt::Widget);
 
     //
     // mediabrowser's top left position is the scenePos
@@ -1197,7 +1199,7 @@ void ScenarioThread::run() {
 
 	// the very first line contains start time
 	char line[64];
-	qint64 read = _scenarioFile.readLine(line, 64);
+	_scenarioFile.readLine(line, 64);
 	qint64 starttime;
 	sscanf(line, "%lld", &starttime);
 
