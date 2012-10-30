@@ -9,6 +9,7 @@
 class SN_BaseWidget;
 class SN_TheScene;
 class UiMsgThread;
+class SN_Launcher;
 
 class QSettings;
 class QGraphicsView;
@@ -51,7 +52,7 @@ public:
 class SN_PolygonArrowPointer : public QGraphicsPolygonItem
 {
 public:
-	SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *, SN_TheScene *scene, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
+	SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *, SN_TheScene *scene, SN_Launcher *l, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
 	~SN_PolygonArrowPointer();
 
 	void setPointerName(const QString &text);
@@ -151,6 +152,8 @@ public:
 private:
 	SN_TheScene *_scene;
 
+    SN_Launcher *_theLauncher;
+
 	/*!
 	  Pointer to my UiMsgThread
 	  */
@@ -205,6 +208,7 @@ private:
 		  A rectangle when mouse draggin on empty space
 		  */
 	SN_SelectionRectangle *_selectionRect;
+
 		
 		/**
 		  To record all the actions that users gave

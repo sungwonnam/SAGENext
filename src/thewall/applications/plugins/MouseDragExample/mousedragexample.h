@@ -3,14 +3,11 @@
 
 #include <QtGui>
 
-/**
-  If INCLUDEPATH is set correctly in the .pro file, I can include header files like this
-  */
 #include <applications/base/basewidget.h>
 #include <applications/base/SN_plugininterface.h>
 
 /**
-  A draggable item
+  A mouse draggable item on the MouseDragExample widget
   */
 class TrackerItem : public QGraphicsEllipseItem
 {
@@ -34,28 +31,37 @@ class MouseDragExample : public SN_BaseWidget, SN_PluginInterface
 
 public:
     MouseDragExample();
-    ~MouseDragExample();
+
+    /*!
+      TrackerItem doesn't need to be deleted explicitly because child items will be deleted automatically by Qt
+      */
+    ~MouseDragExample() {}
 
 
 	/**
-	  Implementing pure virtual defined in SN_PluginInterface
+	  Implementing the interface of the SN_PluginInterface
 	  */
 	SN_BaseWidget * createInstance();
 
 
+    /*!
+      Reimplementing the SN_BaseWidget::handlePointerPress()
+      */
 	void handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
 
+    /*!
+      Reimplementing the SN_BaseWidget::handlePointerRelease()
+      */
 	void handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
 
 	/**
-	  Reimplementing SN_BaseWidget::handlePointerDrag()
+	  Reimplementing the SN_BaseWidget::handlePointerDrag()
 	  */
 	void handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
 
-protected:
 	/**
-	  I have nothing to draw.
-	  But let's just draw bg color in the content area
+	  I have nothing to draw on the widget's surface.
+	  But let's just draw background color in the content area
 	  */
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
@@ -77,10 +83,14 @@ private:
 	int _margintop;
 	int _marginbottom;
 
+    /*!
+      The tracker items that are currently being dragged by users are stored in here
+      */
 	QMap<SN_PolygonArrowPointer *, TrackerItem *> _dragTrackerMap;
 
 	/**
-	  point is in this example's local coordinate
+	  Returns the tracker item under the point.
+      point is in this widget's local coordinate.
 	  */
 	TrackerItem * getTrackerItemUnderPoint(const QPointF &point);
 };

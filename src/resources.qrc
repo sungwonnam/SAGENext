@@ -36,5 +36,6 @@
         <file>resources/stopsign48.png</file>
         <file>resources/redarrow_missed_upleft128.png</file>
         <file>resources/evl-logo-sagenext.png</file>
+        <file>resources/pdf.png</file>
     </qresource>
 </RCC>

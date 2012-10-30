@@ -3,10 +3,10 @@
 
 #include <QtGui>
 
-/**
-  * The general button pixmap that emits signal when clicked.
+/*!
+  \brief A QGraphicsWidget type widget that shows pixmap and function as a button (emits signal when clicked).
   This item reacts to the system mouse event (press/release)
-  So, this item can be interacted with SN_PolygonArrowPointer because the Pointer generates system mouse event(press/release) upon receiving mouseClick event from uiclient
+  So, this item can be interacted with SN_PolygonArrowPointer because it generates system mouse event(press/release) in pointerClick()
   */
 class SN_PixmapButton : public QGraphicsWidget
 {
@@ -28,13 +28,19 @@ public:
 	  */
 	explicit SN_PixmapButton(const QString &res_normal, const QSize &size = QSize(), const QString &label = QString(), QGraphicsItem *parent=0);
 
+    explicit SN_PixmapButton(QGraphicsItem *parent=0) : QGraphicsWidget(parent, Qt::Widget) {}
+
+    void setPrimaryPixmap(const QString &resource, const QSize &size);
+    void setPrimaryPixmap(const QPixmap &pixmap, const QSize &size);
+    void setPrimaryPixmap(const QString &resource, int width);
+    void setPrimaryPixmap(QPixmap pixmap, int width);
+    void setSecondaryPixmap(const QString &resource);
+    void setSecondaryPixmap(const QPixmap &pixmap);
+
 	~SN_PixmapButton();
 
 	inline void setPriorityOverride(int v) {_priorityOverride = v;}
 	inline int priorityOverride() const {return _priorityOverride;}
-
-    void setSecondaryPixmap(const QString &resource);
-    void setSecondaryPixmap(const QPixmap &pixmap);
 
     /*!
       toggles pixmap for the button
@@ -61,11 +67,15 @@ private:
 	int _priorityOverride;
 
 protected:
-	void mousePressEvent(QGraphicsSceneMouseEvent *event);
-	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+	virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
+	virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
 signals:
 	void clicked(int);
+    void clicked();
+
+public slots:
+    inline virtual void handlePointerClick() {emit clicked(0);}
 };
 
 

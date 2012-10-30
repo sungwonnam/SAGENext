@@ -246,8 +246,9 @@ SN_ResourceMonitor::SN_ResourceMonitor(const QSettings *s, SN_TheScene *scene, Q
     , _schedcontrol(0)
     , _pGrid(0)
     , numaInfo(0)
-    , _totalBWAchieved_Mbps(0.0)
-, _currentTotalBW_Mbps(0.0)
+    , _effective_TR_Mbps(0.0)
+    , _current_TR_observed_Mbps(0.0)
+    , _TR_estimated_Mbps(0.0)
     , _rMonWidget(0)
     , _printDataFlag(false)
 {
@@ -360,26 +361,10 @@ void SN_ResourceMonitor::setRMonWidget(ResourceMonitorWidget *rmw) {
 }
 
 void SN_ResourceMonitor::timerEvent(QTimerEvent *) {
-	//	qDebug() << "timerEvent at resourceMonitor";
-
     //
     // The priority is computed in here
     //
 	refresh(); // update all data
-
-	//
-	// update priority grid data
-	//
-	if (_pGrid && _pGrid->isEnabled()) {
-		_pGrid->updatePriorities();
-	}
-
-	//
-	// update widget
-	//
-//	if (_rMonWidget && _rMonWidget->isVisible()) {
-//		_rMonWidget->refresh();
-//	}
 
 	//
 	// save data to a file
@@ -394,6 +379,10 @@ void SN_ResourceMonitor::addSchedulableWidget(SN_BaseWidget *bw) {
 	_widgetListRWlock.lockForWrite();
 
 	if (bw) {
+        if (bw->priorityData()) {
+            bw->priorityData()->setPriorityGrid(_pGrid);
+        }
+
 		// shouldn't allow duplicate item
 		if (!widgetList.contains(bw)) {
 			widgetList.push_front(bw);
@@ -510,11 +499,13 @@ void SN_ResourceMonitor::refresh() {
 
 	_widgetListRWlock.lockForRead();
 
-    qreal currentTotalBandwidth = 0.0;
+    qreal current_TR_observed_Mbps = 0.0;
+
+    _TR_estimated_Mbps = 0.0;
 
     qint64 currentMsec = QDateTime::currentMSecsSinceEpoch();
 
-    bool isSystemOverloaded = false; // reset overload status
+    bool isTR_tooHigh = false;
 
 	QMap<quint64, SN_BaseWidget *>::const_iterator it;
 	for (it=_widgetMap.constBegin(); it!=_widgetMap.constEnd(); it++) {
@@ -528,7 +519,9 @@ void SN_ResourceMonitor::refresh() {
 
         //
         // Each app updates its own cumulativeByteReceived in its receiving thread.
-        // rMonitor triggers them to update performance data based only on the cumulativeByteReceived
+        // rMonitor triggers them to update performance data based only on the cumulativeByteReceived.
+        //
+        // The Rcur and Ropt will be updated in this function
         //
         pm->updateDataWithCumulativeByteReceived(currentMsec);
 
@@ -537,17 +530,24 @@ void SN_ResourceMonitor::refresh() {
 
 
         //
-        // Check if the system is currently overloaded
-        // Dq 0 doesn't mean system overloaded !!
+        // If any of the application can't even consume what the scheduler demanded then
+        // TR is set too high
         //
-        if (0 < bw->demandedQuality() && bw->demandedQuality() < 1.0) {
-            isSystemOverloaded = true;
+        if (0 < bw->observedQuality_Dq() && bw->observedQuality_Dq() < 0.95) {
+            isTR_tooHigh = true;
         }
 
         //
         // Aggregate the bandwidth the application is actually achieving at this moment.
+        // The sum of Rcur
         //
-        currentTotalBandwidth += pm->getCurrBW_Mbps();
+        current_TR_observed_Mbps += pm->getCurrBW_Mbps();
+
+
+        //
+        // The sum of Ropt
+        //
+        _TR_estimated_Mbps += pm->getRequiredBW_Mbps();
 
 
 		//
@@ -568,37 +568,31 @@ void SN_ResourceMonitor::refresh() {
 	}
 
     //
-    // this is problematic.
-    // let's say there is a remote streaming app shwoing 100 Mbps
-    // then the total is now 100
-    // now another remote streaming came in showing 90Mbps while forcing the first one to 10 Mbps (link capacity is 100Mbps)
-    // BW of the 2nd app is added to total which is now 190 Mbps !!
-    //
-/*
-    if (isSystemOverloaded) {
-        _totalBWAchieved_Mbps = currentTotalBandwidth;
-    }
-    else {
-        _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
-    }
-*/
-
-    //
     // Total resource is set manually
     //
     qreal totalbw = settings->value("system/manualtotalbw", 0).toDouble();
     if ( totalbw != 0 ) {
-        _totalBWAchieved_Mbps = totalbw;
+        _effective_TR_Mbps = totalbw;
     }
 
     //
     // Total resource will be updated automatically
     //
     else {
-        _totalBWAchieved_Mbps = qMax(_totalBWAchieved_Mbps, currentTotalBandwidth);
+        if (isTR_tooHigh) {
+//            qDebug() << "TR too high: TRopt" << _TR_estimated_Mbps << "max_TReffective" << _effective_TR_Mbps << "cur_TRcur" << _current_TR_observed_Mbps;
+            //
+            // the sum of current Rcur would reflect the real TR preciser
+            //
+            _effective_TR_Mbps = qMax(_effective_TR_Mbps, current_TR_observed_Mbps);
+        }
+        else {
+//            qDebug() << "TRe" << _TR_estimated_Mbps << "max_TRo" << _effective_TR_Mbps << "cur_TRo" << _current_TR_observed_Mbps;
+            _effective_TR_Mbps = _TR_estimated_Mbps;
+        }
     }
 
-    _currentTotalBW_Mbps = currentTotalBandwidth;
+    _current_TR_observed_Mbps = current_TR_observed_Mbps;
 
 	_widgetListRWlock.unlock();
 

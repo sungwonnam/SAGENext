@@ -6,6 +6,8 @@
 #include "../sagenextscene.h"
 #include "../uiserver/uimsgthread.h"
 
+#include "../sagenextlauncher.h"
+
 //#include "sn_drawingwidget.h"
 
 SN_SelectionRectangle::SN_SelectionRectangle(QGraphicsItem *parent)
@@ -28,9 +30,10 @@ SN_SelectionRectangle::SN_SelectionRectangle(QGraphicsItem *parent)
 
 
 
-SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *s, SN_TheScene *scene, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
+SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *s, SN_TheScene *scene, SN_Launcher *l, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
     , _scene(scene)
+    , _theLauncher(l)
     , _uimsgthread(msgthread)
     , _uiclientid(uicid)
     , _settings(s)
@@ -163,10 +166,8 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 
 
     //
-    // If _trapWidget then the widget wants to trap the pointer
-    // within its window
-    //
-    // FittsLawTest plugin for example
+    // If _trapWidget then the widget wants to trap the pointer within its window
+    // This is for SN_FittsLawTest to draw its own cursor in its application window
     //
     if (_trapWidget) {
         QPointF localPoint = _trapWidget->mapFromScene(_scenePos);
@@ -182,16 +183,12 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
         else {
             setOpacity(1.0);
         }
-
-        // return w/o moving pointer and further actions
-//        return;
     }
 
 
 
     //
-    // move pointer itself
-    // Sets the position of the item to pos, which is in parent coordinates. For items with no parent, pos is in scene coordinates.
+    // move the pointer itself.
 	//
     setPos(_scenePos);
 
@@ -204,12 +201,12 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 	//////
 	if (btnFlags == 0 || btnFlags & Qt::NoButton) {
 		//
-		// iterate over items in the container maintained by the scene
-		// if pointer is on one of them
+		// iterate over items in the list of widgets that registered for hover
+		// if the pointer is hovering one of them
 		// set hover flag for the item
-		// else
-		// unset hover flag
+		// otherwise unset hover flag
 		//
+		/*
 		QList<QGraphicsItem *> collidingapps = _scene->collidingItems(this);
 		SN_BaseWidget *firstUnderPointer = 0;
 		for (int i=collidingapps.size()-1; i>=0; i--) {
@@ -222,17 +219,24 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 //			qDebug() << "shared pointer collides with basewidget" << firstUnderPointer;
 			break;
 		}
+		*/
 
+		/* get the topmost item on the cursor's position */
+		QGraphicsItem *topmost = _scene->itemAt(_scenePos);
+		SN_BaseWidget *topmost_bw = dynamic_cast<SN_BaseWidget *>(topmost); // QGraphicsItem is polymorphic class so dynamic cast from Base to Derived is ok
+
+		/* For each SN_BaseWidget that registered for hovering */
 		foreach(SN_BaseWidget *bw, _scene->hoverAcceptingApps) {
 			if (!bw) {
 				_scene->hoverAcceptingApps.removeOne(bw);
 				continue;
 			}
 	
-			if (bw == firstUnderPointer && bw->contains(bw->mapFromScene(_scenePos)) ) {
+			if (bw == topmost_bw/* && bw->contains(bw->mapFromScene(_scenePos))*/ ) {
 				bw->handlePointerHover(this, bw->mapFromScene(_scenePos), true);
 			}
 			else {
+				// Hover has left
 				bw->handlePointerHover(this, QPointF(), false);
 			}
 		}
@@ -293,11 +297,14 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
         }
 
 		//
-		// If the SN_PartitionBar item (== UserType + INTERACTIVE_ITEM) is under the pointer
-		// User is dragging a partitionBar
+        // if _graphicsItem != 0 then the QGraphicsItem under the pointer is interactable
 		//
 		else if (_graphicsItem) {
 //			QGraphicsLineItem *l = qgraphicsitem_cast<QGraphicsLineItem *>(_item);
+
+            //
+            // dynamic_cast from Base to Derived is not allowed (compile error) unless the Base class is polymorphic (A class that declares or inherits virtual functions).
+            //
 			SN_WallPartitionBar *bar = dynamic_cast<SN_WallPartitionBar *>(_graphicsItem);
 			if (bar) {
 //				qDebug() << "pointerMove bar" << deltax << deltay;
@@ -338,7 +345,6 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 			}
 		}
 		else {
-			// then it's either BASEWIDGET_NONUSER or normal QGraphicsItem/Widget
 			// do nothing
 		}
 
@@ -688,9 +694,18 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
         // SN_PartitionBar
         //
         else if (_graphicsItem) {
-            // SN_PartitionBar doesn't need a real mouse click event
+            // SN_PartitionBar doesn't need a real mouse click event so return here
             setBrush(_color);
             return;
+        }
+
+        else if (_graphicsWidget) {
+            SN_PixmapButton *btn = dynamic_cast<SN_PixmapButton *>(_graphicsWidget);
+            if (btn) {
+                qDebug() << "handlePointerClick() : graphicsWidget under the pointer. calling handlePointerClick()";
+                btn->handlePointerClick();
+                return;
+            }
         }
 
 
@@ -700,7 +715,7 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 
         //
         //
-        // Generate system's mouse events
+        // Generate system's mouse events for standard Qt widgets..
         // Press -> Relese
         //
         //
@@ -756,12 +771,22 @@ void SN_PolygonArrowPointer::pointerDoubleClick(const QPointF &scenePos, Qt::Mou
 	}
 
 
-    if (!_basewidget) {
-        qDebug("PolygonArrow::%s() : There's no app widget under this pointer", __FUNCTION__);
+    /**
+     * User clicked on an empty space
+     */
+    if (!_basewidget && !_graphicsItem && !_graphicsWidget) {
+
+        if (!_theLauncher) {
+            qDebug() << "SN_PolygonArrowPointer::pointerDoubleClick() SN_Launcher isn't available";
+        }
+        else {
+            _theLauncher->launchMediaBrowser(scenePos, _uiclientid, _textItem->text());
+        }
         return;
     }
 
-    // Generate mouse event directly from here
+
+    // Generate system's mouse double click event directly from here
     QGraphicsView *gview = eventReceivingViewport(scenePos);
 
     if (gview) {
@@ -799,7 +824,7 @@ void SN_PolygonArrowPointer::pointerDoubleClick(const QPointF &scenePos, Qt::Mou
 		}
     }
     else {
-        qDebug("PolygonArrow::%s() : there is no viewport on %.1f, %.1f", __FUNCTION__, scenePos.x(), scenePos.y());
+        qDebug("SN_PolygonArrowPointer::%s() : there is no viewport widget on %.1f, %.1f", __FUNCTION__, scenePos.x(), scenePos.y());
     }
 }
 
@@ -850,71 +875,65 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
     QList<QGraphicsItem *> list = scene()->items(scenePos, Qt::ContainsItemBoundingRect, Qt::DescendingOrder);
     //app = static_cast<BaseGraphicsWidget *>(scene()->itemAt(scenePosOfPointer, QTransform()));
 
-	_basewidget = 0; // reset
-	_graphicsItem = 0;
-	_graphicsWidget = 0;
+	_basewidget = 0;
+	_graphicsItem = 0; // QGraphicsItem type
+	_graphicsWidget = 0; // QGraphicsWidget type
 
-    //qDebug() << "\nPolygonArrow::setAppUnderPointer() :" << list.size() << " items";
     foreach (QGraphicsItem *item, list) {
-        if ( item == this ) continue;
-
-		if ( item->acceptedMouseButtons() == 0 ) continue;
-
-		QGraphicsObject *object = item->toGraphicsObject();
 
         //
-        // User application (inherits SN_BaseWidget)
+        // this will ignore any widget that sets setAcceptedMouseButtons(0)
+        // e.g. SN_LayoutWidget, SN_PolygonArrowPointer, SN_FittsLawTest, SN_SimpleTextWidget
+        //
+		if ( item->acceptedMouseButtons() == 0 ) continue;
+
+        //
+        // User application (any widget that inherits SN_BaseWidget)
         //
         if ( item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
 
             _basewidget = static_cast<SN_BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
-			_graphicsItem = 0;
             return true;
         }
 
         //
-        // User application (inherits SN_BaseWidget)
-        // But acts differently....
-        // thereby the pointer should operate different on this widget.
+        // Not used
         //
 		else if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_NONUSER) {
-			_graphicsItem = 0;
-			_basewidget = 0;
-			return false;
+            //
+            // do nothing for now
+            //
 		}
 
         //
-        // A QGraphicsItem type object that doesn't inherit SN_BaseWidget.
-        // But still can be interacted with user shared pointers.
+        // A QGraphicsItem type that doesn't inherit SN_BaseWidget.
+        // But still can be interacted with users' shared pointers.
         //
         // SN_PartitionBar
         //
 		else if (item->type() >= QGraphicsItem::UserType + INTERACTIVE_ITEM) {
 
 			_graphicsItem = item;
-			_basewidget = 0;
+
 			return true;
 		}
 
         //
-        // regualar graphics items or items that inherit QGraphicsItem/Widget
+        // A QGraphicsWidget type that is interatable with pointer
+        // SN_PixmapWidget, SN_LineEdit
         //
 		else {
+            _graphicsWidget = dynamic_cast<QGraphicsWidget *>(item);
+//            if (_graphicsWidget)
+//                qDebug() << _graphicsWidget;
 
-            _graphicsWidget = item->topLevelWidget();
-
-			if(object) {
-				if ( ::strcmp(object->metaObject()->className(), "SN_LineEdit") == 0 ) {
-					SN_LineEdit *sle = static_cast<SN_LineEdit *>(object);
-					sle->setThePointer(this);
-					_graphicsWidget = sle;
-				}
-
-                else if (::strcmp(object->metaObject()->className(), "SN_MinimizeBar") == 0) {
-                    _graphicsWidget = static_cast<SN_MinimizeBar *>(object);
-                }
-			}
+//                if ( ::strcmp(_graphicsWidget->metaObject()->className(), "SN_LineEdit") == 0 ) {
+//                    SN_LineEdit *sle = dynamic_cast<SN_LineEdit *>(_graphicsWidget);
+//                    if (sle) sle->setThePointer(this);
+//                }
+//            }
+            return true;
 		}
     }
 
@@ -927,11 +946,11 @@ void SN_PolygonArrowPointer::injectStringToItem(const QString &str) {
 	if (_graphicsWidget) {
 		qDebug() << "SN_PolygonArrowPointer::injectStringToItem()" << str;
 
-		qDebug() << "current gui item is a type of" << _graphicsWidget->metaObject()->className();
+//		qDebug() << "current gui item is a type of" << _graphicsWidget->metaObject()->className();
 
-		SN_LineEdit *sle = static_cast<SN_LineEdit *>(_graphicsWidget);
-		Q_ASSERT(sle);
-		sle->setText(str);
+		SN_LineEdit *sle = dynamic_cast<SN_LineEdit *>(_graphicsWidget);
+		if(sle)
+            sle->setText(str); // this will trigger textChanged() signal
 	}
 }
 

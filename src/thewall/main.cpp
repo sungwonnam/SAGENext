@@ -370,10 +370,13 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 		SN_PriorityGrid *pgrid = 0;
 		if (s.value("system/prioritygrid").toBool()) {
+
+            int num_row = s.value("system/prioritygrid_numrow", 3).toInt();
+            int num_col = s.value("system/prioritygrid_numcol", 4).toInt();
 			//
 			// enable priorityGrid
 			//
-			pgrid = new SN_PriorityGrid(QSize(480, 400), scene);
+			pgrid = new SN_PriorityGrid(num_row, num_col, scene);
 
 			//
 			// sets the priority grid
@@ -400,6 +403,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 			qDebug() << "Creating" << s.value("system/scheduler_type").toString() << "Scheduler";
 
 			schedcontrol = new SN_SchedulerControl(resourceMonitor);
+
+            if (pgrid) schedcontrol->setPriorityGrid(pgrid);
 
 			//
 			// scheduler will be killed and deleted in resourceMonitor's destructor
@@ -435,8 +440,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	/**
 	  create the MediaStorage
 	*/
-	SN_MediaStorage *mediaStorage = 0;
-//	SN_MediaStorage *mediaStorage = new SN_MediaStorage(&s);
+//	SN_MediaStorage *mediaStorage = 0;
+    SN_MediaStorage *mediaStorage = new SN_MediaStorage(&s);
 
 
 	/**
@@ -478,8 +483,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	/**
 	  create the initial MediaBrowser.
 	*/
-//	SN_MediaBrowser *mediaBrowser = new SN_MediaBrowser(launcher, 0, &s, mediaStorage);
-//	launcher->launch(mediaBrowser);
+//    SN_MediaBrowser *mediaBrowser = new SN_MediaBrowser(launcher, 0, &s, mediaStorage,0, Qt::Widget);
+//    launcher->launch(mediaBrowser);
 
 
 	/**
@@ -581,9 +586,11 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 	/* to test Java Applet */
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processing.org/learning/topics/flocking.html");
-//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "file:///home/evl/snam5/.sagenext/flocking.html");
+//    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processingjs.org/exhibition");
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://youtube.com");
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
+//    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://www.khronos.org/webgl/wiki/Demo_Repository");
+//    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://helloracer.com/webgl/");
 
 //	launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
 //	launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
