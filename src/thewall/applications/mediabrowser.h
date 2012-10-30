@@ -76,9 +76,9 @@ protected:
 
 private:
     /*!
-     * \brief currentItemsDisplayed is the list of SN_MediaItem thumbnails that are being displayed.
+     * \brief currentMediaItems is the list of SN_MediaItem thumbnails that are being displayed.
      */
-    QList<SN_MediaItem *> _currItemsDisplayed;
+    QList<SN_MediaItem *> _currMediaItems;
 
     SN_Launcher* _launcher;
 

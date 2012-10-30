@@ -294,11 +294,11 @@ void SN_MediaBrowser::displayRootWindow() {
 
     // delete the list of currently displayed
     // actual items are not deleted.
-    foreach (SN_MediaItem* item, _currItemsDisplayed) {
+    foreach (SN_MediaItem* item, _currMediaItems) {
         item->close();
         delete item; // comment this out if WA_DeleteOnClose is defined in SN_MediaItem
     }
-    _currItemsDisplayed.clear();
+    _currMediaItems.clear();
 
     
     if (_goBackToRootWindowBtn) {
@@ -325,15 +325,28 @@ void SN_MediaBrowser::changeDirectory(const QString &dir) {
     //
     // sets the current list of items to be displayed
     //
-    QMap<const QString, MediaMetaData*> &itemsInCurrDir = _mediaStorage->getMediaListInDir(dir);
+
+    const QMap<QString, MediaMetaData*> &itemsInCurrDir = _mediaStorage->getMediaListInDir(dir);
     if ( ! itemsInCurrDir.empty()) {
+
         // clear previous SN_MediaItems
-        _currItemsDisplayed.clear();
-        
-        QMap<const QString, MediaMetaData*>::iterator iter = itemsInCurrDir.begin();
+        // delete the list of currently displayed
+        // actual items are not deleted.
+        foreach (SN_MediaItem* item, _currMediaItems) {
+            item->close();
+            delete item; // comment this out if WA_DeleteOnClose is defined in SN_MediaItem
+        }
+        _currMediaItems.clear();
+
+
+
+        //
+        // re-populate the _currItemDisplayed
+        //
+        QMap<QString, MediaMetaData*>::const_iterator iter = itemsInCurrDir.begin();
         
         // for each item in the dir
-        for (iter; iter!=itemsInCurrDir.end(); iter++) {
+        for (; iter!=itemsInCurrDir.end(); iter++) {
             //
             // create new SN_MediaItem object
             //
@@ -341,7 +354,7 @@ void SN_MediaBrowser::changeDirectory(const QString &dir) {
             
             QObject::connect(mitem, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
             
-            _currItemsDisplayed.push_back(mitem);
+            _currMediaItems.push_back(mitem);
         }
 
         qDebug() << "SN_MediaBrowser::changeDirectory() : " << itemsInCurrDir.size() << "items in" << dir;
@@ -382,8 +395,8 @@ void SN_MediaBrowser::changeDirectory(const QString &dir) {
     ll->setSpacing(64);
     ll->setContentsMargins(32, 32, 32, 32);
 
-    if ( !_currItemsDisplayed.empty()) {
-        foreach(SN_MediaItem *item, _currItemsDisplayed) {
+    if ( !_currMediaItems.empty()) {
+        foreach(SN_MediaItem *item, _currMediaItems) {
 //            gridlayout->addItem(item);
             ll->addItem(item);
         }

@@ -1,11 +1,11 @@
 #include "mediastorage.h"
 
-#include <QSettings>
 #include "applications/mediabrowser.h"
 
+#include <poppler-qt4.h>
+
 QReadWriteLock SN_MediaStorage::MediaListRWLock;
-QList<SN_MediaItem *> SN_MediaStorage::MediaList;
-QMap<const QString, MediaMetaData*> SN_MediaStorage::GlobalMediaList;
+QMap<QString, MediaMetaData*> SN_MediaStorage::GlobalMediaList;
 
 SN_MediaStorage::SN_MediaStorage(const QSettings *s, QObject *parent)
     : QObject(parent)
@@ -16,7 +16,7 @@ SN_MediaStorage::SN_MediaStorage(const QSettings *s, QObject *parent)
 }
 
 SN_MediaStorage::~SN_MediaStorage() {
-    QMap<const QString, MediaMetaData*>::iterator iter;
+    QMap<QString, MediaMetaData*>::iterator iter;
     for (iter=SN_MediaStorage::GlobalMediaList.begin(); iter!=SN_MediaStorage::GlobalMediaList.end(); iter++) {
         delete iter.value();
     }
@@ -103,13 +103,13 @@ void SN_MediaStorage::addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &fil
     MediaMetaData* meta = new MediaMetaData;
     meta->type = mtype;
     if (mtype == SAGENext::MEDIA_TYPE_IMAGE) {
-        meta->pixmap = _readImage(iter.filePath());
+        meta->pixmap = _readImage(filepath);
     }
     else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
-        meta->pixmap = _readVideo(iter.filePath());
+        meta->pixmap = _readVideo(filepath);
     }
     else if (mtype == SAGENext::MEDIA_TYPE_PDF) {
-        meta->pixmap = _readPDF(iter.filePath());
+        meta->pixmap = _readPDF(filepath);
     }
 
     SN_MediaStorage::MediaListRWLock.lockForWrite();
@@ -118,21 +118,21 @@ void SN_MediaStorage::addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &fil
 }
 
 
-QMap<const QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir) {
+QMap<QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir) {
     // check the dir recursively and build the list of SN_MediaItem
     // return the list
     // The list will be owned by SN_MediaBrowser so don't delete the list
 
     qDebug() << "SN_MediaStorage::getMediaListInDir()" << dir;
 
-    QMap<const QString, MediaMetaData*> itemsInDir;
+    QMap<QString, MediaMetaData*> itemsInDir;
 
-    QMap<const QString, MediaMetaData*>::iterator iter = SN_MediaStorage::GlobalMediaList.begin();
+    QMap<QString, MediaMetaData*>::iterator iter = SN_MediaStorage::GlobalMediaList.begin();
     
     SN_MediaStorage::MediaListRWLock.lockForRead();
     
     // for each item in the global list
-    for (iter; iter!=SN_MediaStorage.end(); iter++) {
+    for (; iter!=SN_MediaStorage::GlobalMediaList.end(); iter++) {
         
         // if the item is in the dir
         if ( iter.key().startsWith(dir.path(), Qt::CaseSensitive) ) {

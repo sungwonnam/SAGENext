@@ -4,8 +4,6 @@
 #include <QtGui>
 #include <QtCore>
 
-#include <poppler-qt4.h>
-
 #include "common/commondefinitions.h"
 
 typedef struct MediaMetaT {
@@ -13,7 +11,11 @@ typedef struct MediaMetaT {
     QPixmap pixmap;
 } MediaMetaData;
 
+
+
 class SN_MediaItem;
+
+
 
 class SN_MediaStorage : public QObject
 {
@@ -23,7 +25,11 @@ public:
 
     ~SN_MediaStorage();
     
-    static QMap<const QString, MediaMetaData *> GlobalMediaList;
+    /*!
+     * \brief GlobalMediaList contains all the media item
+     * Key is absolute file path to the media item (or folder)
+     */
+    static QMap<QString, MediaMetaData *> GlobalMediaList;
 
     static QReadWriteLock MediaListRWLock;
 
@@ -40,7 +46,7 @@ public:
      * The list contains a COPY of SN_MediaItem (not the pointer to the object)
      * Because there can be multiple media browsers
      */
-    QMap<const QString, MediaMetaData *> getMediaListInDir(const QDir &dir);
+    QMap<QString, MediaMetaData *> getMediaListInDir(const QDir &dir);
 
 private:
 	const QSettings *_settings;
