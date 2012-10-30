@@ -738,7 +738,7 @@ SN_BaseWidget * SN_Launcher::launchMediaBrowser(const QPointF &scenePos, quint32
     Q_UNUSED(defaultDir);
 
     // It might be useful to keep uiclientid and pointername (username) in the SN_MediaBrowser.
-    SN_MediaBrowser *mbrowser = new SN_MediaBrowser(this, _getUpdatedGlobalAppId(0), _settings, _mediaStorage, 0, Qt::Widget);
+    SN_MediaBrowser *mbrowser = new SN_MediaBrowser(this, _getUpdatedGlobalAppId(0), _settings, _mediaStorage, 0, Qt::Window);
 
     //
     // mediabrowser's top left position is the scenePos
