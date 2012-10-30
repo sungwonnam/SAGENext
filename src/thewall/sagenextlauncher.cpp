@@ -487,8 +487,6 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 //			qDebug("%s::%s() : MEDIA_TYPE_IMAGE %s", metaObject()->className(), __FUNCTION__, qPrintable(filename));
 			w = new SN_PixmapWidget(filename, GID, _settings);
 
-			if(_mediaStorage)
-				_mediaStorage->insertNewMediaToHash(filename);
 		}
 		else
 			qCritical("%s::%s() : MEDIA_TYPE_IMAGE can't open", metaObject()->className(), __FUNCTION__);
@@ -738,7 +736,12 @@ SN_BaseWidget * SN_Launcher::launchMediaBrowser(const QPointF &scenePos, quint32
     qDebug() << "SN_Launcher::launchMediaBrowser() : User " << uiclientid << username << ", dblClicked on" << scenePos;
 
     // It might be useful to keep uiclientid and pointername (username) in the SN_MediaBrowser.
-    SN_MediaBrowser *mbrowser = 0; //new SN_MediaBrowser(this, _getUpdatedGlobalAppId(gaid), _settings, .......)
+    SN_MediaBrowser *mbrowser = new SN_MediaBrowser(this, _getUpdatedGlobalAppId(0), _settings, _mediaStorage, 0, Qt::Window);
+
+    //
+    // mediabrowser's top left position is the scenePos
+    // so let's change scenePos to be the center of the mediabrowser
+    //
 
     return launch(mbrowser, scenePos);
 }

@@ -483,8 +483,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	/**
 	  create the initial MediaBrowser.
 	*/
-    SN_MediaBrowser *mediaBrowser = new SN_MediaBrowser(launcher, 0, &s, mediaStorage,0, Qt::Widget);
-    launcher->launch(mediaBrowser);
+//    SN_MediaBrowser *mediaBrowser = new SN_MediaBrowser(launcher, 0, &s, mediaStorage,0, Qt::Widget);
+//    launcher->launch(mediaBrowser);
 
 
 	/**

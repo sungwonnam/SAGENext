@@ -1,178 +1,196 @@
 #include "mediabrowser.h"
 #include "mediastorage.h"
 #include "../sagenextlauncher.h"
+#include "../common/commonitem.h"
 
 
-QReadWriteLock SN_MediaBrowser::mediaHashRWLock;
-QHash<QString,QPixmap> SN_MediaBrowser::mediaHash;
+//QReadWriteLock SN_MediaBrowser::mediaHashRWLock;
+//QHash<QString,QPixmap> SN_MediaBrowser::mediaHash;
 
 
-MediaItem::MediaItem(const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent)
-    : QGraphicsWidget(parent)
+SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent)
+    : SN_PixmapButton(parent)
+    , _mediaType(mtype)
     , _filename(filename)
-    , _thumbnail(0)
 {
     setFlag(QGraphicsItem::ItemIsSelectable, false);
     setFlag(QGraphicsItem::ItemIsMovable, false);
 
-    _thumbnail = new QGraphicsPixmapItem(pixmap, this);
+    //
+    // resize() will be called here.
+    // for now it's 128 pixel wide
+    //
+    setPrimaryPixmap(pixmap, 128);
+
+    /*
     _medianameDisplay = new SN_SimpleTextWidget(12, QColor(Qt::white), QColor(Qt::transparent), this);
 
     QFileInfo f(_filename);
     _medianameDisplay->setText(f.fileName());
     _medianameDisplay->setX(parent->x());
-
-    Q_ASSERT(_thumbnail);
-    Q_ASSERT(_medianameDisplay);
+    */
 
     //
     // because MediaItem should receive mouse event not the thumbnail
     //
-    _thumbnail->setFlag(QGraphicsItem::ItemStacksBehindParent);
-    setMediaType();
-    resize(_thumbnail->boundingRect().size());
+//    _setMediaType();
 }
 
-void MediaItem::mousePressEvent(QGraphicsSceneMouseEvent *) {
-}
+void SN_MediaItem::_setMediaType() {
 
-void MediaItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
-    /*
-    SN_MediaBrowser *browser = static_cast<SN_MediaBrowser *>(parentWidget());
-    Q_ASSERT(browser);
-    Q_ASSERT(browser->launcher());
-    browser->launcher()->launch(SAGENext::MEDIA_TYPE_IMAGE, _filename);
-    */
-    emit thumbnailClicked(_mediaType, _filename);
-}
+    if (_filename.isEmpty()) return;
 
-void MediaItem::setMediaType() {
-    // prob not the best way to do this
-    if(_filename.endsWith(".pdf")) {
-        _mediaType = SAGENext::MEDIA_TYPE_PDF;
+    QFileInfo f(_filename);
+    if (f.isDir()) {
+        _mediaType = SAGENext::MEDIA_TYPE_UNKNOWN;
     }
-    else if(_filename.endsWith(".so")) {
-        _mediaType = SAGENext::MEDIA_TYPE_PLUGIN;
-    }
-    else if(_filename.endsWith(".mp4") || _filename.endsWith(".avi")) {
-        _mediaType = SAGENext::MEDIA_TYPE_VIDEO;
-    }
-    else { // Else it's a picture
-        _mediaType = SAGENext::MEDIA_TYPE_IMAGE;
+    else {
+        // Use regular expression instead of below....
+
+        // prob not the best way to do this
+        if(_filename.endsWith(".pdf")) {
+            _mediaType = SAGENext::MEDIA_TYPE_PDF;
+        }
+        else if(_filename.endsWith(".so")) {
+            _mediaType = SAGENext::MEDIA_TYPE_PLUGIN;
+        }
+        else if(_filename.endsWith(".mp4") || _filename.endsWith(".avi")) {
+            _mediaType = SAGENext::MEDIA_TYPE_VIDEO;
+        }
+        else { // Else it's a picture
+            _mediaType = SAGENext::MEDIA_TYPE_IMAGE;
+        }
     }
 }
 
-int MediaItem::getMediaType() {
-    return _mediaType;
-}
 
-FolderItem::FolderItem(const QString &dirname, const QPixmap &pixmap, QGraphicsItem *parent)
-    : QGraphicsWidget(parent)
-    ,_dirName(dirname)
-    , _thumbnail(0)
-{
-    setFlag(QGraphicsItem::ItemIsSelectable, false);
-    setFlag(QGraphicsItem::ItemIsMovable, false);
 
-    _thumbnail = new QGraphicsPixmapItem(pixmap, this);
-    _dirnameDisplay = new SN_SimpleTextWidget(12, QColor(Qt::white), QColor(Qt::transparent), this);
 
-    QDir f(_dirName);
-    _dirnameDisplay->setX(parent->x());
-    _dirnameDisplay->setText(f.dirName());
 
-    Q_ASSERT(_thumbnail);
-    Q_ASSERT(_dirnameDisplay);
-    //
-    // because MediaItem should receive mouse event not the thumbnail
-    //
-    _thumbnail->setFlag(QGraphicsItem::ItemStacksBehindParent);
-    resize(_thumbnail->boundingRect().size());
-}
 
-void FolderItem::mousePressEvent(QGraphicsSceneMouseEvent *) {
-}
-
-void FolderItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
-    /*
-    SN_MediaBrowser *browser = static_cast<SN_MediaBrowser *>(parentWidget());
-    Q_ASSERT(browser);
-    Q_ASSERT(browser->launcher());
-    browser->launcher()->launch(SAGENext::MEDIA_TYPE_IMAGE, _filename);
-    */
-    emit folderClicked(_dirName);
-}
 
 SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, const QSettings *s, SN_MediaStorage* mediaStorage, QGraphicsItem *parent, Qt::WindowFlags wflags)
 
     : SN_BaseWidget(globalappid, s, parent, wflags)
-    , _HScrollBar(new QScrollBar(Qt::Horizontal))
-    , _VScrollBar(new QScrollBar(Qt::Vertical))
+
+    , _currItemsDisplayed(0)
     , _launcher(launcher)
     , _mediaStorage(mediaStorage)
-    , _numRow(4)
+    , _rootWindowLayout(0)
 {
+    QObject::connect(_mediaStorage, SIGNAL(mediaItemClicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+
+    QObject::connect(_mediaStorage, SIGNAL(newMediaAdded()), this, SLOT(mediaStorageHasNewMedia()) );
+
     setWidgetType(SN_BaseWidget::Widget_GUI);
+
+
+    _currentDirectory.setPath(QDir::homePath().append("/.sagenext/media"));
+
+    _rootWindowLayout = new QGraphicsLinearLayout(Qt::Vertical);
+    _rootWindowLayout->setItemSpacing(0, 10);
+
+    _rootWindowLayout->addItem(_attachRootIconsForMedia());
+
+    _rootWindowLayout->addItem(_attachRootIconsForApps());
+
+    displayRootWindow();
+
     qDebug("%s::%s() : called.", metaObject()->className(), __FUNCTION__);
-
-    _currentDirectory.setPath(QDir::homePath().append("/.sagenext"));
-
-    connect( _mediaStorage, SIGNAL(newMediaAdded()), this, SLOT(mediaStorageHasNewMedia()) );
-
-    attachItems();
-
-    _numCol = mediaHash.size();
-    //resize to number of media items
-    resize(256 * 10 ,256);
-
-    setContentsMargins(1,1,1,1);
 }
 
 SN_MediaBrowser::~SN_MediaBrowser() {
-
+    if (_currItemsDisplayed) delete _currItemsDisplayed;
 }
 
-void SN_MediaBrowser::insertNewMediaToHash(const QString &key, QPixmap &pixmap) {
-    SN_MediaBrowser::mediaHashRWLock.lockForWrite();
-    SN_MediaBrowser::mediaHash.insert(key, pixmap);
-    SN_MediaBrowser::mediaHashRWLock.unlock();
+QGraphicsLinearLayout* SN_MediaBrowser::_attachRootIconsForMedia() {
+    // video
+    SN_PixmapButton *videobutton = new SN_PixmapButton(":/resources/video.png", 128, QString(), this);
+    QObject::connect(videobutton, SIGNAL(clicked(int)), this, SLOT(videoIconClicked()));
+
+    // image
+    SN_PixmapButton *imagebutton = new SN_PixmapButton(":/resources/image.png", 128, QString(), this);
+    QObject::connect(imagebutton, SIGNAL(clicked(int)), this, SLOT(imageIconClicked()));
+
+    // pdf
+    SN_PixmapButton *pdfbutton = new SN_PixmapButton(":/resources/pdf.png", 128, QString(), this);
+    QObject::connect(pdfbutton, SIGNAL(clicked(int)), this, SLOT(pdfIconClicked()));
+
+    // do linear layout or something to arrange them
+    QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Horizontal);
+    layout->setSpacing(16);
+    layout->addItem(videobutton);
+    layout->addItem(imagebutton);
+    layout->addItem(pdfbutton);
+
+    _rootIcons.push_back(videobutton);
+    _rootIcons.push_back(imagebutton);
+    _rootIcons.push_back(pdfbutton);
+
+    return layout;
 }
 
-void SN_MediaBrowser::attachItemsInCurrDirectory() {
-    QFileInfoList list = _currentDirectory.entryInfoList(QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Files);
-    QListIterator<QFileInfo> i(list);
-    QString path;
+QGraphicsLinearLayout* SN_MediaBrowser::_attachRootIconsForApps() {
+    // get the list of plugins from the SN_Launcher
+    // and get the icon for each plugin (the icon has to be provided by plugin)
 
-    currentItemsDisplayed.clear();
 
-    SN_MediaBrowser::mediaHashRWLock.lockForRead();
-    mediaHash = _mediaStorage->getMediaHashForRead();
+    // But for now (for the SC12)
+    // Attach them manually
+    SN_MediaItem* webbrowser = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu", QPixmap(":/resources/webkit_128x128.png"), this);
 
-    while (i.hasNext()) {
-        path = i.next().absoluteFilePath();
-        currentItemsDisplayed.insert(path, mediaHash.value(path));
+    // clicking an app icon will launch the application directly
+    QObject::connect(webbrowser, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+
+
+    // do the same for
+    // google maps, google docs, MandelBrot
+    SN_MediaItem* googlemap = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com", QPixmap(":/resources/webkit_128x128.png"), this);
+    QObject::connect(googlemap, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+
+
+    SN_MediaItem* mandelbrot = new SN_MediaItem(SAGENext::MEDIA_TYPE_PLUGIN, QDir::homePath()+"/.sagenext/media/plugins/libMandelbrotExamplePlugin.so", QPixmap(":/resources/group_data_128.png"),this);
+    QObject::connect(mandelbrot, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+
+
+    // do linear layout or something to arrange them
+    QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Horizontal);
+    layout->addItem(webbrowser);
+    layout->addItem(googlemap);
+    layout->addItem(mandelbrot);
+
+    _rootIcons.push_back(webbrowser);
+    _rootIcons.push_back(googlemap);
+    _rootIcons.push_back(mandelbrot);
+
+    return layout;
+}
+
+
+/*
+bool SN_MediaBrowser::insertNewMediaToHash(const QString &key, QPixmap &pixmap) {
+    if (_mediaStorage) {
+        return insertNewMediaToHash(key, pixmap);
     }
-    SN_MediaBrowser::mediaHashRWLock.unlock();
-
+    return false;
 }
+*/
 
+
+/*
 void SN_MediaBrowser::attachItems() {
     attachItemsInCurrDirectory();
     // detach all media items
     foreach (QGraphicsItem *item, childItems()) {
         // cast item both as folder and a media item
-        MediaItem *mitem = dynamic_cast<MediaItem *>(item);
-        FolderItem* fitem = dynamic_cast<FolderItem *>(item);
+        SN_MediaItem *mitem = dynamic_cast<SN_MediaItem *>(item);
 
         if (mitem) {
             delete mitem;
         }
-        else if(fitem) {
-            delete fitem;
-        }
     }
 
-    QHashIterator<QString, QPixmap> i(currentItemsDisplayed);
+    QHashIterator<QString, QPixmap> i(_currItemsDisplayed);
     int itemCount = 0;
     while (i.hasNext()) {
         i.next();
@@ -181,7 +199,7 @@ void SN_MediaBrowser::attachItems() {
         // TODO: Change logic to change it so it changes dir when a folder is clicked vs. thumbnail clicked
         QFileInfo p(i.key());
         if(p.isFile()) {
-            MediaItem *item = new MediaItem(i.key(), pm, this);
+            SN_MediaItem *item = new SN_MediaItem(i.key(), pm, this);
 
             if ( ! QObject::connect(item, SIGNAL(thumbnailClicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString))) ) {
                 qCritical("\n%s::%s() : signal thumbnailClicked is not connected to the slot launchMedia\n", metaObject()->className(), __FUNCTION__);
@@ -216,6 +234,7 @@ void SN_MediaBrowser::attachItems() {
             item->moveBy(pm.size().width() * itemCount,0);
         }
     }
+    */
 
 /*
     SN_MediaBrowser::mediaHashRWLock.lockForRead();
@@ -270,17 +289,7 @@ void SN_MediaBrowser::attachItems() {
     SN_MediaBrowser::mediaHashRWLock.unlock();
 */
 
-}
-
-void SN_MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-
-    // paint will just draw windows border for users to move/resize window
-
-    // To be able to do that, resize() must be called with correct value
-
-    SN_BaseWidget::paint(painter, option, widget);
-
-}
+//}
 
 /*!
   Slot called when MediaStorage has new media.
@@ -289,15 +298,99 @@ void SN_MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
  */
 void SN_MediaBrowser::mediaStorageHasNewMedia(){
     qDebug() << "MediaBrowser has been informed of changes to MediaStorage";
-    attachItems();
 }
 
 void SN_MediaBrowser::launchMedia(SAGENext::MEDIA_TYPE mtype, const QString &filename) {
     Q_ASSERT(_launcher);
-    _launcher->launch(mtype, filename);
+
+    //
+    // this is folder
+    //
+    if (mtype == SAGENext::MEDIA_TYPE_UNKNOWN) {
+
+        //
+        // call changeDirectory() with new directory
+        //
+
+        return;
+    }
+
+    //
+    // Where the widget should be opened ?
+    //
+    _launcher->launch(mtype, filename /* , scenePos */);
 }
 
-void SN_MediaBrowser::changeDirectory(const QString &dirName) {
-    _currentDirectory.setPath(dirName);
-    attachItems();
+void SN_MediaBrowser::displayRootWindow() {
+
+    // delete the list of currently displayed
+    // actual items are not deleted.
+    if (_currItemsDisplayed) {
+        delete _currItemsDisplayed;
+        _currItemsDisplayed = 0;
+    }
+
+    //
+    // show all the root icons
+    //
+    foreach(SN_PixmapButton* icon, _rootIcons) {
+        icon->show();
+    }
+
+    // unset the rootWindowLayout
+    setLayout(_rootWindowLayout);
+
+    adjustSize();
+}
+
+void SN_MediaBrowser::changeDirectory(const QString &dir) {
+    _currentDirectory.setPath(dir);
+
+    qDebug() << "SN_MediaBrowser::changeDirectory() " << dir;
+
+    SN_MediaStorage::MediaListRWLock.lockForRead();
+
+    //
+    // sets the current list of items to be displayed
+    //
+    QList<SN_MediaItem *> * itemsInCurrDir = _mediaStorage->getMediaListInDir(_currentDirectory);
+    if (itemsInCurrDir && ! itemsInCurrDir->empty()) {
+
+        if (_currItemsDisplayed) {
+            delete _currItemsDisplayed;
+        }
+        _currItemsDisplayed = itemsInCurrDir;
+        qDebug() << "SN_MediaBrowser::changeDirectory() : " << _currItemsDisplayed->size() << "items in" << dir;
+    }
+
+    SN_MediaStorage::MediaListRWLock.unlock();
+
+
+    //
+    // Hide all the root icons
+    //
+    foreach(SN_PixmapButton* icon, _rootIcons)
+        icon->hide();
+
+    // unset the rootWindowLayout
+    setLayout(0);
+
+    //
+    // Given the # of items and the size of the thumbnail
+    // determine the size of the panel.
+    //
+    // Organize items in a grid
+    //
+
+    // Also attach an icon (to go back to the rootWindow) on the left
+
+    QGraphicsGridLayout *gridlayout = new QGraphicsGridLayout;
+
+    if (_currItemsDisplayed && !_currItemsDisplayed->empty()) {
+        foreach(SN_MediaItem *item, *_currItemsDisplayed) {
+            //        gridlayout->addItem(item);
+        }
+    }
+    setLayout(gridlayout);
+    adjustSize();
 }
