@@ -61,7 +61,9 @@ int SN_MediaStorage::_initMediaList() {
                 mediameta->type = SAGENext::MEDIA_TYPE_PDF;
             }
             else if (iter.filePath().contains(rxPlugin)) {
-                // do nothing for now
+                mediameta = new MediaMetaData;
+                mediameta->pixmap = _readPlugin(iter.filePath());
+                mediameta->type = SAGENext::MEDIA_TYPE_PLUGIN;
             }
             else {
                 // error
@@ -141,7 +143,7 @@ QMap<QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir)
         
         // if the item is in the dir
         if ( iter.key().startsWith(dir.path(), Qt::CaseSensitive) ) {
-//            qDebug() << "SN_MediaStorage::getMediaListInDir() : " << iter.key();
+            qDebug() << "SN_MediaStorage::getMediaListInDir() : " << iter.key();
             itemsInDir.insert(iter.key(), iter.value());
         }
     }
@@ -152,7 +154,7 @@ QMap<QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir)
 }
 
 
-
+/*
 QPixmap SN_MediaStorage::_createThumbnail(SAGENext::MEDIA_TYPE mtype, const QString &filename) {
 
     if (mtype == SAGENext::MEDIA_TYPE_UNKNOWN) {
@@ -180,7 +182,22 @@ QPixmap SN_MediaStorage::_createThumbnail(SAGENext::MEDIA_TYPE mtype, const QStr
             return _readPDF(filename);
         }
         else if (filename.contains(rxPlugin)) {
-            // do nothing
+            // Assumes that the icon for the plugin is provided by the developer
+            // and is located where the binary is
+            // and the filename of the icon is binary name + png
+            // e.g.) libTestPlugin.so -> libTestPlugin.so.png
+            QPixmap pixmap(filename + ".png");
+            if (!pixmap.isNull()) {
+                if ( pixmap.width() != _settings->value("gui/mediathumbnailwidth", 256).toInt())
+                    return pixmap.scaledToWidth(_settings->value("gui/mediathumbnailwidth", 256).toInt());
+                else
+                    return pixmap;
+            }
+            else {
+                // default icon for plugin
+                pixmap = QPixmap(":/resources/plugin_200x200.png").scaledToWidth(_settings->value("gui/mediathumbnailwidth", 256).toInt());
+                return pixmap;
+            }
         }
         else {
             // error
@@ -197,13 +214,26 @@ QPixmap SN_MediaStorage::_createThumbnail(SAGENext::MEDIA_TYPE mtype, const QStr
     }
     return QPixmap();
 }
+*/
 
 
 
 
 
+QPixmap SN_MediaStorage::_readPlugin(const QString &filename) {
+    QPixmap pixmap;
 
+    if ( ! pixmap.load(filename + ".picon") ) {
+        pixmap.load(":/resources/plugin_200x200.png");
+    }
 
+    if (!pixmap.isNull() && pixmap.width() != _settings->value("gui/mediathumbnailwidth", 256).toInt()) {
+        return pixmap.scaledToWidth(_settings->value("gui/mediathumbnailwidth", 256).toInt());
+    }
+    else
+        return pixmap;
+
+}
 
 
 QPixmap SN_MediaStorage::_readImage(const QString &filename) {

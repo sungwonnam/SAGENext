@@ -130,10 +130,14 @@ void SN_MediaBrowser::_createRootIcons() {
     SN_PixmapButton *pdfbutton = new SN_PixmapButton(":/resources/pdf.png", 128, QString(), this);
     QObject::connect(pdfbutton, SIGNAL(clicked()), this, SLOT(pdfIconClicked()));
 
+    // plugins
+    SN_PixmapButton* plugin = new SN_PixmapButton(":/resources/dir_plugin_128.png", 128, QString(), this);
+    QObject::connect(plugin, SIGNAL(clicked()), this, SLOT(pluginIconClicked()));
+
     _rootMediaIcons.push_back(videobutton);
     _rootMediaIcons.push_back(imagebutton);
     _rootMediaIcons.push_back(pdfbutton);
-
+    _rootMediaIcons.push_back(plugin);
 
 
 

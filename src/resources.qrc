@@ -42,5 +42,6 @@
         <file>resources/googleMaps_128.png</file>
         <file>resources/mandelbrot_128.png</file>
         <file>resources/dotdotslash_128.png</file>
+        <file>resources/dir_plugin_128.png</file>
     </qresource>
 </RCC>

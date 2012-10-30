@@ -189,10 +189,9 @@ public slots:
      * A user clickec the video icon on the root window
      */
     inline void videoIconClicked() {_populateMediaItems(QDir::homePath() + "/.sagenext/media/video");}
-
     inline void imageIconClicked() {_populateMediaItems(QDir::homePath() + "/.sagenext/media/image");}
-
     inline void pdfIconClicked() {_populateMediaItems(QDir::homePath() + "/.sagenext/media/pdf");}
+    inline void pluginIconClicked() {_populateMediaItems(QDir::homePath() + "/.sagenext/media/plugins");}
 
 
     void getParentDir();

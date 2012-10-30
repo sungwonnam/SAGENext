@@ -51,7 +51,7 @@ public:
 private:
 	const QSettings *_settings;
 
-    QPixmap _createThumbnail(SAGENext::MEDIA_TYPE mtype, const QString &filename);
+//    QPixmap _createThumbnail(SAGENext::MEDIA_TYPE mtype, const QString &filename);
 
     /*!
       creates thumbnail of the media file
@@ -59,6 +59,7 @@ private:
     QPixmap _readImage(const QString &filename);
     QPixmap _readPDF(const QString &filename);
     QPixmap _readVideo(const QString &filename);
+    QPixmap _readPlugin(const QString &filename);
 
 
 	/**
