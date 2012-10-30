@@ -37,5 +37,10 @@
         <file>resources/redarrow_missed_upleft128.png</file>
         <file>resources/evl-logo-sagenext.png</file>
         <file>resources/pdf.png</file>
+        <file>resources/mediaBrowserRoot.png</file>
+        <file>resources/google_128.png</file>
+        <file>resources/googleMaps_128.png</file>
+        <file>resources/mandelbrot_128.png</file>
+        <file>resources/dotdotslash_128.png</file>
     </qresource>
 </RCC>

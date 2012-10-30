@@ -38,7 +38,9 @@ public:
     void setSecondaryPixmap(const QString &resource);
     void setSecondaryPixmap(const QPixmap &pixmap);
 
-	~SN_PixmapButton();
+	virtual ~SN_PixmapButton();
+
+    void setLabel(const QString &label);
 
 	inline void setPriorityOverride(int v) {_priorityOverride = v;}
 	inline int priorityOverride() const {return _priorityOverride;}
@@ -76,7 +78,7 @@ signals:
     void clicked();
 
 public slots:
-    inline virtual void handlePointerClick() {emit clicked(0);}
+    virtual void handlePointerClick();
 };
 
 

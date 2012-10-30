@@ -77,7 +77,7 @@ int SN_MediaStorage::_initMediaList() {
 
             MediaMetaData *meta = new MediaMetaData;
             meta->type = SAGENext::MEDIA_TYPE_UNKNOWN;
-            meta->pixmap = QPixmap(":/resources/dir.png");
+            meta->pixmap = QPixmap(":/resources/dir.png").scaledToWidth(_settings->value("gui/mediathumbnailwidth", 256).toInt());
             SN_MediaStorage::GlobalMediaList.insert(iter.filePath(), meta);
         }
     }
@@ -123,7 +123,7 @@ QMap<QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir)
     // return the list
     // The list will be owned by SN_MediaBrowser so don't delete the list
 
-    qDebug() << "SN_MediaStorage::getMediaListInDir()" << dir;
+//    qDebug() << "SN_MediaStorage::getMediaListInDir()" << dir;
 
     QMap<QString, MediaMetaData*> itemsInDir;
 
@@ -133,10 +133,15 @@ QMap<QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir)
     
     // for each item in the global list
     for (; iter!=SN_MediaStorage::GlobalMediaList.end(); iter++) {
+
+        // skip the dir
+        if (iter.key() == dir.path()) {
+            continue;
+        }
         
         // if the item is in the dir
         if ( iter.key().startsWith(dir.path(), Qt::CaseSensitive) ) {
-            qDebug() << "SN_MediaStorage::getMediaListInDir() : " << iter.key();
+//            qDebug() << "SN_MediaStorage::getMediaListInDir() : " << iter.key();
             itemsInDir.insert(iter.key(), iter.value());
         }
     }

@@ -702,8 +702,9 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
         else if (_graphicsWidget) {
             SN_PixmapButton *btn = dynamic_cast<SN_PixmapButton *>(_graphicsWidget);
             if (btn) {
-                qDebug() << "handlePointerClick() : graphicsWidget under the pointer. calling handlePointerClick()";
+//                qDebug() << "SN_PolygonArrowPointer::pointerClick() : SN_PixmapButton under the pointer. calling its handlePointerClick()";
                 btn->handlePointerClick();
+                setBrush(_color);
                 return;
             }
         }

@@ -10,9 +10,9 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const Q
 	setFlag(QGraphicsItem::ItemIgnoresTransformations);
 
 	QPixmap orgPixmap(res);
-	if (desiredWidth) {
-		orgPixmap = orgPixmap.scaledToWidth(desiredWidth);
-	}
+    if (desiredWidth > 0 && orgPixmap.width() != desiredWidth)
+        orgPixmap = orgPixmap.scaledToWidth(desiredWidth);
+
 	_primary = new QGraphicsPixmapItem(orgPixmap, this);
     _primary->setAcceptedMouseButtons(0);
 
@@ -22,9 +22,7 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const Q
 //    qDebug() << "SN_PixmapButton::SN_PixmapButton() : resize to" << _primary->pixmap().size();
 //	setOpacity(0.5);
 
-	if (!label.isNull() && !label.isEmpty()) {
-		_attachLabel(label, _primary);
-	}
+	setLabel(label);
 
     setMinimumSize(_primary->pixmap().size());
     setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum, QSizePolicy::Frame);
@@ -38,25 +36,25 @@ SN_PixmapButton::SN_PixmapButton(const QPixmap &pixmap, qreal desiredWidth, cons
 {
 	setFlag(QGraphicsItem::ItemIgnoresTransformations);
 
-	if ( desiredWidth ) {
+    Q_ASSERT(!pixmap.isNull());
+
+	if (desiredWidth > 0 && pixmap.width() != desiredWidth) {
 		_primary = new QGraphicsPixmapItem(pixmap.scaledToWidth(desiredWidth), this);
 	}
 	else {
 		_primary = new QGraphicsPixmapItem(pixmap, this);
 	}
-
+    // Because this widget (SN_PixmapButton) has to receive mouse events
     _primary->setAcceptedMouseButtons(0);
-	// This widget (PixmapButton) has to receive mouse event
 	_primary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+
 	resize(_primary->pixmap().size());
 //	setOpacity(0.5);
 
     setMinimumSize(_primary->pixmap().size());
     setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum, QSizePolicy::Frame);
 
-	if (!label.isNull() && !label.isEmpty()) {
-		_attachLabel(label, _primary);
-	}
+    setLabel(label);
 }
 
 SN_PixmapButton::SN_PixmapButton(const QString &res, const QSize &size, const QString &label, QGraphicsItem *parent)
@@ -68,7 +66,10 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, const QSize &size, const QS
 	setFlag(QGraphicsItem::ItemIgnoresTransformations);
 
 	QPixmap pixmap(res);
-	_primary = new QGraphicsPixmapItem(pixmap.scaled(size), this);
+    if ( size.isValid() && pixmap.size() != size)
+        _primary = new QGraphicsPixmapItem(pixmap.scaled(size), this);
+    else
+        _primary = new QGraphicsPixmapItem(pixmap, this);
 
     _primary->setAcceptedMouseButtons(0);
 	_primary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
@@ -77,12 +78,16 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, const QSize &size, const QS
     setMinimumSize(_primary->pixmap().size());
     setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum, QSizePolicy::Frame);
 
-	if (!label.isNull() && !label.isEmpty()) {
-		_attachLabel(label, _primary);
-	}
+    setLabel(label);
 }
 
 SN_PixmapButton::~SN_PixmapButton() {
+}
+
+void SN_PixmapButton::setLabel(const QString &label) {
+    if (_primary && !label.isNull() && !label.isEmpty()) {
+		_attachLabel(label, _primary);
+	}
 }
 
 void SN_PixmapButton::setPrimaryPixmap(const QString &resource, const QSize &size) {
@@ -91,7 +96,11 @@ void SN_PixmapButton::setPrimaryPixmap(const QString &resource, const QSize &siz
 }
 
 void SN_PixmapButton::setPrimaryPixmap(const QPixmap &pixmap, const QSize &size) {
-    _primary = new QGraphicsPixmapItem(pixmap.scaled(size), this);
+    if (size.isValid() && pixmap.size() != size)
+        _primary = new QGraphicsPixmapItem(pixmap.scaled(size), this);
+    else
+        _primary = new QGraphicsPixmapItem(pixmap, this);
+
     _primary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
     _primary->setAcceptedMouseButtons(0);
 
@@ -111,7 +120,7 @@ void SN_PixmapButton::setPrimaryPixmap(const QPixmap &pixmap, int width/*=0*/) {
         qDebug() << "SN_PixmapButton::setPrimaryPixmap() : null pixmap";
         return;
     }
-    if (width > 0)
+    if (width > 0 && pixmap.width() != width)
         _primary = new QGraphicsPixmapItem(pixmap.scaledToWidth(width), this);
     else 
         _primary = new QGraphicsPixmapItem(pixmap, this);
@@ -171,6 +180,12 @@ void SN_PixmapButton::_attachLabel(const QString &labeltext, QGraphicsItem *pare
 
 	QPointF center_delat = boundingRect().center() - t->mapRectToParent(t->boundingRect()).center();
 	t->moveBy(center_delat.x(), center_delat.y());
+}
+
+void SN_PixmapButton::handlePointerClick() {
+     emit clicked(0);
+     emit clicked();
+//     qDebug() << "SN_PixmapButton::handlePointerClick() : signal emitted";
 }
 
 void SN_PixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {

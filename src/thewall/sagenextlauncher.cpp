@@ -733,7 +733,7 @@ SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThr
 
 SN_BaseWidget * SN_Launcher::launchMediaBrowser(const QPointF &scenePos, quint32 uiclientid, const QString &username, const QString &defaultDir) {
 
-    qDebug() << "SN_Launcher::launchMediaBrowser() : User " << uiclientid << username << ", dblClicked on" << scenePos;
+//    qDebug() << "SN_Launcher::launchMediaBrowser() : User " << uiclientid << username << ", dblClicked on" << scenePos;
 
     Q_UNUSED(defaultDir);
 
