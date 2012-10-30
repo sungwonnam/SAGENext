@@ -95,7 +95,11 @@ void SN_PixmapButton::setPrimaryPixmap(const QString &resource, int width) {
     setPrimaryPixmap(p, width);
 }
 
-void SN_PixmapButton::setPrimaryPixmap(const QPixmap &pixmap, int width) {
+void SN_PixmapButton::setPrimaryPixmap(QPixmap pixmap, int width) {
+    if (pixmap.isNull()) {
+        qDebug() << "SN_PixmapButton::setPrimaryPixmap() : null pixmap";
+        return;
+    }
     _primary = new QGraphicsPixmapItem(pixmap.scaledToWidth(width), this);
     _primary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
     _primary->setAcceptedMouseButtons(0);

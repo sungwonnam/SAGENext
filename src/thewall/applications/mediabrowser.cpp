@@ -8,7 +8,7 @@
 //QHash<QString,QPixmap> SN_MediaBrowser::mediaHash;
 
 
-SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent)
+SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename,  QPixmap pixmap, QGraphicsItem *parent)
     : SN_PixmapButton(parent)
     , _mediaType(mtype)
     , _filename(filename)
@@ -16,11 +16,16 @@ SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, 
     setFlag(QGraphicsItem::ItemIsSelectable, false);
     setFlag(QGraphicsItem::ItemIsMovable, false);
 
-    //
-    // resize() will be called here.
-    // for now it's 128 pixel wide
-    //
-    setPrimaryPixmap(pixmap, 128);
+    if (!pixmap.isNull()) {
+        //
+        // resize() will be called here.
+        // for now it's 128 pixel wide
+        //
+        setPrimaryPixmap(pixmap, 128);
+    }
+    else {
+        qDebug() << "SN_MediaItem::SN_MediaItem() : Null pixmap";
+    }
 
     /*
     _medianameDisplay = new SN_SimpleTextWidget(12, QColor(Qt::white), QColor(Qt::transparent), this);
@@ -29,39 +34,8 @@ SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, 
     _medianameDisplay->setText(f.fileName());
     _medianameDisplay->setX(parent->x());
     */
-
-    //
-    // because MediaItem should receive mouse event not the thumbnail
-    //
-//    _setMediaType();
 }
 
-void SN_MediaItem::_setMediaType() {
-
-    if (_filename.isEmpty()) return;
-
-    QFileInfo f(_filename);
-    if (f.isDir()) {
-        _mediaType = SAGENext::MEDIA_TYPE_UNKNOWN;
-    }
-    else {
-        // Use regular expression instead of below....
-
-        // prob not the best way to do this
-        if(_filename.endsWith(".pdf")) {
-            _mediaType = SAGENext::MEDIA_TYPE_PDF;
-        }
-        else if(_filename.endsWith(".so")) {
-            _mediaType = SAGENext::MEDIA_TYPE_PLUGIN;
-        }
-        else if(_filename.endsWith(".mp4") || _filename.endsWith(".avi")) {
-            _mediaType = SAGENext::MEDIA_TYPE_VIDEO;
-        }
-        else { // Else it's a picture
-            _mediaType = SAGENext::MEDIA_TYPE_IMAGE;
-        }
-    }
-}
 
 
 

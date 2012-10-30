@@ -19,7 +19,7 @@ class SN_MediaItem : public SN_PixmapButton
 	Q_OBJECT
 
 public:
-    SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent=0);
+    SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, QPixmap pixmap, QGraphicsItem *parent=0);
     inline int mediaType() {return _mediaType;}
 
 private:
@@ -31,8 +31,6 @@ private:
     QString _filename;
 
     SN_SimpleTextWidget* _medianameDisplay;
-
-    void _setMediaType();
 
 signals:
     /*!

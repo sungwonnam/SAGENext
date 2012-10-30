@@ -33,7 +33,7 @@ public:
     void setPrimaryPixmap(const QString &resource, const QSize &size);
     void setPrimaryPixmap(const QPixmap &pixmap, const QSize &size);
     void setPrimaryPixmap(const QString &resource, int width);
-    void setPrimaryPixmap(const QPixmap &pixmap, int width);
+    void setPrimaryPixmap(QPixmap pixmap, int width);
     void setSecondaryPixmap(const QString &resource);
     void setSecondaryPixmap(const QPixmap &pixmap);
 
