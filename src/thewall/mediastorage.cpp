@@ -16,6 +16,20 @@ SN_MediaStorage::SN_MediaStorage(const QSettings *s, QObject *parent)
 
 
 int SN_MediaStorage::_initMediaList() {
+    QRegExp rxVideo("\\.(avi|mov|mpg|mpeg|mp4|mkv|flv|wmv)$", Qt::CaseInsensitive, QRegExp::RegExp);
+    QRegExp rxImage("\\.(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
+    QRegExp rxPdf("\\.(pdf)$", Qt::CaseInsensitive, QRegExp::RegExp);
+    QRegExp rxPlugin;
+    rxPlugin.setCaseSensitivity(Qt::CaseInsensitive);
+    rxPlugin.setPatternSyntax(QRegExp::RegExp);
+#if defined(Q_OS_LINUX)
+    rxPlugin.setPattern("\\.so$");
+#elif defined(Q_OS_WIN32)
+    rxPlugin.setPattern("\\.dll$");
+#elif defined(Q_OS_DARWIN)
+    rxPlugin.setPattern("\\.dylib$");
+#endif
+
 	int numread = 0;
     QDirIterator iter(QDir::homePath() + "/.sagenext/", QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Files, QDirIterator::Subdirectories);
     while (iter.hasNext()) {
@@ -24,15 +38,25 @@ int SN_MediaStorage::_initMediaList() {
             numread++;
 
             SN_MediaItem* item =  0;
-            QPixmap p = _createThumbnail(SAGENext::MEDIA_TYPE_UNKNOWN, iter.filePath());
-            if (p.isNull()) {
-                qDebug() << "SN_MediaStorage::_initMediaList() : failed to create thumbnail for" << iter.filePath();
-                item = new SN_MediaItem(_findMediaType(iter.filePath()), iter.filePath(), QPixmap(":/resources/x_circle_gray.png"));
+
+            if (iter.filePath().contains(rxVideo)) {
+                item = new SN_MediaItem(_findMediaType(iter.filePath()), iter.filePath(), _readVideo(iter.filePath()));
+            }
+            else if (iter.filePath().contains(rxImage)) {
+                item = new SN_MediaItem(_findMediaType(iter.filePath()), iter.filePath(), _readImage(iter.filePath()));
+            }
+            else if (iter.filePath().contains(rxPdf)) {
+                item = new SN_MediaItem(_findMediaType(iter.filePath()), iter.filePath(), _readPDF(iter.filePath()));
+            }
+            else if (iter.filePath().contains(rxPlugin)) {
+                // do nothing for now
             }
             else {
-                item = new SN_MediaItem(_findMediaType(iter.filePath()), iter.filePath(), p);
+                // error
             }
-            addNewMedia(item);
+
+            if (item)
+                addNewMedia(item);
         }
         // build a list of directories too
         else if(iter.fileInfo().isDir()) {
@@ -53,6 +77,9 @@ int SN_MediaStorage::_initMediaList() {
 
 
 bool SN_MediaStorage::addNewMedia(SN_MediaItem* mediaitem) {
+    if (!mediaitem) return false;
+
+    QObject::connect(mediaitem, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SIGNAL(mediaItemClicked(SAGENext::MEDIA_TYPE,QString)));
 
     SN_MediaStorage::MediaListRWLock.lockForWrite();
     // Add entry to list, save image as pixmap
@@ -70,10 +97,16 @@ bool SN_MediaStorage::addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &fil
     // Check if this media is already exist in the storage
     //
 
-    SN_MediaItem *newitem = new SN_MediaItem(mtype, filepath, _createThumbnail(mtype, filepath));
-
-    QObject::connect(newitem, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SIGNAL(mediaItemClicked(SAGENext::MEDIA_TYPE,QString)));
-
+    SN_MediaItem *newitem =  0;
+    if (mtype == SAGENext::MEDIA_TYPE_IMAGE) {
+        newitem = new SN_MediaItem(mtype, filepath, _readImage(filepath));
+    }
+    else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
+        newitem = new SN_MediaItem(mtype, filepath, _readVideo(filepath));
+    }
+    else if (mtype == SAGENext::MEDIA_TYPE_PDF) {
+        newitem = new SN_MediaItem(mtype, filepath, _readPDF(filepath));
+    }
 
     return addNewMedia(newitem);
 }
@@ -154,12 +187,13 @@ QPixmap SN_MediaStorage::_createThumbnail(SAGENext::MEDIA_TYPE mtype, const QStr
     else if (mtype == SAGENext::MEDIA_TYPE_IMAGE) {
         return _readImage(filename);
     }
-    else if(mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
+    else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
         return _readVideo(filename);
     }
-    else if (mtype== SAGENext::MEDIA_TYPE_PDF) {
+    else if (mtype == SAGENext::MEDIA_TYPE_PDF) {
         return _readPDF(filename);
     }
+    return QPixmap();
 }
 
 
@@ -235,15 +269,17 @@ QPixmap SN_MediaStorage::_readVideo(const QString &filename) {
     QProcess *myProcess = new QProcess();
     myProcess->start(program, arguments);
     while( myProcess->waitForFinished() ){
-        qDebug() << "SN_MediaStorage::_readVideo() : Block Waiting for thumb generation for mov";
+//        qDebug() << "SN_MediaStorage::_readVideo() : Block Waiting for thumb generation for mov";
     }
 
     // Apparently running the above command  will create an image called '00000001.jpg' in the build directory
     QFileInfo thumbLocation = QFileInfo("$${BUILD_DIR}");
     QPixmap pixmap(thumbLocation.absolutePath() + "/00000001.jpg");
 
-    if( pixmap.isNull() )
+    if( pixmap.isNull() ) {
+        qDebug() << "SN_MediaStorage::_readVideo() : failed to create thumbnail for" << filename;
         return pixmap;
+    }
 
     else
         return pixmap.scaled(

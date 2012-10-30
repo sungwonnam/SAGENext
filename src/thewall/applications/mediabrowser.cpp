@@ -8,7 +8,7 @@
 //QHash<QString,QPixmap> SN_MediaBrowser::mediaHash;
 
 
-SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename,  QPixmap pixmap, QGraphicsItem *parent)
+SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, QPixmap pixmap, QGraphicsItem *parent)
     : SN_PixmapButton(parent)
     , _mediaType(mtype)
     , _filename(filename)
@@ -286,7 +286,7 @@ void SN_MediaBrowser::launchMedia(SAGENext::MEDIA_TYPE mtype, const QString &fil
         // call changeDirectory() with new directory
         //
 
-        return;
+        return changeDirectory(filename);
     }
 
     //
