@@ -19,7 +19,7 @@ class SN_MediaItem : public SN_PixmapButton
 	Q_OBJECT
 
 public:
-    SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, QPixmap pixmap, QGraphicsItem *parent=0);
+    SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent=0);
 
     inline SAGENext::MEDIA_TYPE mediaType() {return _mediaType;}
 
@@ -66,31 +66,40 @@ public:
     ~SN_MediaBrowser();
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+    
+protected:
+    /*!
+      reimplementing SN_BaseWidget::mouseDoubleClickEvent() 
+      in order to prevent SN_MediaBrowser to be maximized accidently
+      */
+    inline void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *) {/* do nothing */}
 
 private:
     /*!
-     * \brief currentItemsDisplayed is the list of SN_MediaItem that need to be displayed.
+     * \brief currentMediaItems is the list of SN_MediaItem thumbnails that are being displayed.
      */
-    QList<SN_MediaItem *> _currItemsDisplayed;
+    QList<SN_MediaItem *> _currMediaItems;
 
-    SN_Launcher *_launcher;
+    SN_Launcher* _launcher;
 
     SN_MediaStorage* _mediaStorage;
-
-
-    /**
-      current directory where mediabrowser is in
-      */
-    QDir _currentDirectory;
-
 
     /*!
      * \brief _rootIcons is a list of icons on the root window
      */
     QList<SN_PixmapButton *> _rootIcons;
 
+    /*!
+      This layout contains the rootIcons
+      */
     QGraphicsLinearLayout* _rootWindowLayout;
 
+    /*!
+      When a media thumbnail panel is displaying (not the rootWindow)
+      This icon should be displayed on the left of the panel.
+      Upon clicking, rootWindow will show
+      */
+    SN_PixmapButton* _goBackToRootWindowBtn;
 
     /**
       draw thumbnails of media in the currentDirectory
@@ -121,8 +130,9 @@ public slots:
      * \brief changeDirectory
      * \param dirName
      *
-     * Hide root window (or root icons)
+     * Hide root icons,
      * Display thumbnails of the media in the dir
+     * Show _goBackToRootWindowBtn
      */
     void changeDirectory(const QString &dir);
 

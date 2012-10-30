@@ -4,11 +4,18 @@
 #include <QtGui>
 #include <QtCore>
 
-#include <poppler-qt4.h>
-
 #include "common/commondefinitions.h"
 
+typedef struct MediaMetaT {
+    SAGENext::MEDIA_TYPE type;
+    QPixmap pixmap;
+} MediaMetaData;
+
+
+
 class SN_MediaItem;
+
+
 
 class SN_MediaStorage : public QObject
 {
@@ -16,21 +23,20 @@ class SN_MediaStorage : public QObject
 public:
     explicit SN_MediaStorage(const QSettings *s, QObject *parent = 0);
 
-    static QList<SN_MediaItem *> MediaList;
+    ~SN_MediaStorage();
+    
+    /*!
+     * \brief GlobalMediaList contains all the media item
+     * Key is absolute file path to the media item (or folder)
+     */
+    static QMap<QString, MediaMetaData *> GlobalMediaList;
 
     static QReadWriteLock MediaListRWLock;
 
     /*!
-     * \brief insertNewMediaToHash
-     * \param filepath is an absolute path to the media
-     * \return
-     * This function will emit newMediaAdded()
-     */
-    bool addNewMedia(SN_MediaItem *mediaitem);
-
-    bool addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &filepath);
-
-    bool checkForMediaInList(const QString &path);
+      \brief This function add a media to the GlobalMediaList
+      */
+    void addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &filepath);
 
     /*!
      * \brief getMediaListInDir
@@ -40,17 +46,16 @@ public:
      * The list contains a COPY of SN_MediaItem (not the pointer to the object)
      * Because there can be multiple media browsers
      */
-    QList<SN_MediaItem *> getMediaListInDir(const QDir &dir);
+    QMap<QString, MediaMetaData *> getMediaListInDir(const QDir &dir);
 
 private:
 	const QSettings *_settings;
 
     QPixmap _createThumbnail(SAGENext::MEDIA_TYPE mtype, const QString &filename);
 
-
-    SAGENext::MEDIA_TYPE _findMediaType(const QString &filepath);
-
-
+    /*!
+      creates thumbnail of the media file
+      */
     QPixmap _readImage(const QString &filename);
     QPixmap _readPDF(const QString &filename);
     QPixmap _readVideo(const QString &filename);

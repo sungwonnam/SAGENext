@@ -106,12 +106,16 @@ void SN_PixmapButton::setPrimaryPixmap(const QString &resource, int width) {
     setPrimaryPixmap(p, width);
 }
 
-void SN_PixmapButton::setPrimaryPixmap(QPixmap pixmap, int width) {
+void SN_PixmapButton::setPrimaryPixmap(const QPixmap &pixmap, int width/*=0*/) {
     if (pixmap.isNull()) {
         qDebug() << "SN_PixmapButton::setPrimaryPixmap() : null pixmap";
         return;
     }
-    _primary = new QGraphicsPixmapItem(pixmap.scaledToWidth(width), this);
+    if (width > 0)
+        _primary = new QGraphicsPixmapItem(pixmap.scaledToWidth(width), this);
+    else 
+        _primary = new QGraphicsPixmapItem(pixmap, this);
+    
     _primary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
     _primary->setAcceptedMouseButtons(0);
 
