@@ -13,9 +13,9 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const Q
 
 	_primary = new QGraphicsPixmapItem(orgPixmap, this);
 
-	setLabel(label);
-    
     _init();
+
+    setLabel(label);
 }
 
 SN_PixmapButton::SN_PixmapButton(const QPixmap &pixmap, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
@@ -32,9 +32,9 @@ SN_PixmapButton::SN_PixmapButton(const QPixmap &pixmap, qreal desiredWidth, cons
 	else {
 		_primary = new QGraphicsPixmapItem(pixmap, this);
 	}
-    setLabel(label);
-    
     _init();
+
+    setLabel(label);
 }
 
 SN_PixmapButton::SN_PixmapButton(const QString &res, const QSize &size, const QString &label, QGraphicsItem *parent)
@@ -49,9 +49,9 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, const QSize &size, const QS
     else
         _primary = new QGraphicsPixmapItem(pixmap, this);
 
-    setLabel(label);
-    
     _init();
+
+     setLabel(label);
 }
 
 SN_PixmapButton::~SN_PixmapButton() {

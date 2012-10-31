@@ -14,8 +14,8 @@
 //#include "common/sn_drawingwidget.h"
 
 #include "applications/base/affinityinfo.h"
-#include "applications/mediabrowser.h"
-#include "applications/sn_checker.h"
+//#include "applications/sn_mediabrowser.h"
+//#include "applications/sn_checker.h"
 //#include "applications/sn_pboexample.h"
 //#include "applications/vncwidget.h"
 

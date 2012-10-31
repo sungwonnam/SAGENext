@@ -207,7 +207,7 @@ SOURCES += \
         sage/sageLegacy.cpp \
         applications/webwidget.cpp \
         applications/pixmapwidget.cpp \
-        applications/mediabrowser.cpp \
+        applications/sn_mediabrowser.cpp \
         applications/vncwidget.cpp \
 		applications/pdfviewerwidget.cpp \
         applications/base/perfmonitor.cpp \
@@ -255,7 +255,7 @@ system/prioritygrid.h \
         applications/pixmapwidget.h \
         applications/vncwidget.h \
 		applications/pdfviewerwidget.h \
-applications/mediabrowser.h \
+applications/sn_mediabrowser.h \
 applications/sn_checker.h \
         applications/base/appinfo.h \
         applications/base/perfmonitor.h \

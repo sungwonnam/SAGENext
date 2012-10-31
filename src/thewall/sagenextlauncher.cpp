@@ -23,7 +23,7 @@
 #include "applications/vncwidget.h"
 #include "applications/webwidget.h"
 #include "applications/sn_checker.h"
-#include "applications/mediabrowser.h"
+#include "applications/sn_mediabrowser.h"
 
 #include "applications/base/SN_plugininterface.h"
 
