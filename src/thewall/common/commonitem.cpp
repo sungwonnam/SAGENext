@@ -304,9 +304,10 @@ SN_LineEdit::SN_LineEdit(QGraphicsItem *parent)
     , _proxywidget(new QGraphicsProxyWidget(this))
     , _pointer(0)
 {
-	_lineedit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+	_lineedit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    _lineedit->setMinimumHeight(128);
 	_proxywidget->setWidget(_lineedit);
-	_proxywidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
+	_proxywidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed, QSizePolicy::LineEdit);
 
 	QGraphicsLinearLayout *ll = new QGraphicsLinearLayout;
 	ll->addItem(_proxywidget);

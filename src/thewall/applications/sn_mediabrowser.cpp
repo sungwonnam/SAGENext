@@ -50,8 +50,8 @@ SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, con
     , _goBackToParentDirBtn(0)
     , _leftBtn(0)
     , _rightBtn(0)
-    , _numItemsHorizontal(8)
-    , _numItemsVertical(8)
+    , _numItemsHorizontal(2)
+    , _numItemsVertical(2)
     , _currPage(0)
     , _isRootWindow(true)
 {
@@ -61,7 +61,7 @@ SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, con
     _goBackToRootWindowBtn->hide();
     QObject::connect(_goBackToRootWindowBtn, SIGNAL(clicked()), this, SLOT(displayRootWindow()));
 
-    _closeButton = new SN_PixmapButton(":/resources/close_over.png", 128, QString(), this);
+    _closeButton = new SN_PixmapButton(":/resources/close_over.png", 64, QString(), this);
     _closeButton->hide();
     QObject::connect(_closeButton, SIGNAL(clicked()), this, SLOT(close()));
 
@@ -99,7 +99,7 @@ SN_MediaBrowser::~SN_MediaBrowser() {
 QGraphicsLinearLayout* SN_MediaBrowser::_getRootMediaIconsLayout() {
     // do linear layout or something to arrange them
     QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Horizontal);
-    layout->setSpacing(64);
+    layout->setSpacing(_settings->value("gui/mediathumbnailwidth", 256).toInt() / 4);
 
     foreach (SN_PixmapButton* icon, _rootMediaIcons)
         layout->addItem(icon);
@@ -110,7 +110,7 @@ QGraphicsLinearLayout* SN_MediaBrowser::_getRootMediaIconsLayout() {
 QGraphicsLinearLayout* SN_MediaBrowser::_getRootAppIconsLayout() {
     // do linear layout or something to arrange them
     QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Horizontal);
-    layout->setSpacing(64);
+    layout->setSpacing(_settings->value("gui/mediathumbnailwidth", 256).toInt() / 4);
 
     foreach (SN_PixmapButton* icon, _rootAppIcons) {
         layout->addItem(icon);
@@ -167,14 +167,13 @@ void SN_MediaBrowser::_createRootIcons() {
 }
 
 void SN_MediaBrowser::resizeEvent(QGraphicsSceneResizeEvent *event) {
+    _goBackToRootWindowBtn->setPos(0, size().height() - _goBackToRootWindowBtn->size().height());
+    _closeButton->setPos(_goBackToRootWindowBtn->geometry().x(), _goBackToRootWindowBtn->geometry().y() - _closeButton->size().height());
 
     // recalculate the number of items displayed
-    event->newSize();
+//    event->newSize();
 
-    _settings->value("gui/mediathumbnailwidth", 256).toInt();
-
-    // update numItemsHorizontal, numItemsVertical
-
+//    _settings->value("gui/mediathumbnailwidth", 256).toInt();
 }
 
 /*
@@ -439,6 +438,7 @@ void SN_MediaBrowser::displayRootWindow() {
     }
 
     QGraphicsLinearLayout* ll = new QGraphicsLinearLayout(Qt::Vertical);
+    ll->setSpacing(_settings->value("gui/mediathumbnailwidth", 256).toInt() / 2);
     ll->addItem(_getRootMediaIconsLayout());
     ll->addItem(_getRootAppIconsLayout());
 
@@ -462,8 +462,6 @@ void SN_MediaBrowser::updateThumbnailPanel() {
     _goBackToRootWindowBtn->show();
     _closeButton->show();
 
-    _goBackToRootWindowBtn->setPos(0, size().height() - _goBackToRootWindowBtn->size().height());
-    _closeButton->setPos(_goBackToRootWindowBtn->geometry().x(), _goBackToRootWindowBtn->geometry().y() - _closeButton->size().height());
 
     // unset the rootWindowLayout
     // This will delete the layout item the widget had set.

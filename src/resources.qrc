@@ -43,5 +43,7 @@
         <file>resources/mandelbrot_128.png</file>
         <file>resources/dotdotslash_128.png</file>
         <file>resources/dir_plugin_128.png</file>
+        <file>resources/black_arrow_left_48x48.png</file>
+        <file>resources/processing_512x512.png</file>
     </qresource>
 </RCC>

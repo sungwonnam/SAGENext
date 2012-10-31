@@ -80,7 +80,7 @@
    <item row="2" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
-      <string>Pointer font size (point)</string>
+      <string>Pointer name font size (point)</string>
      </property>
     </widget>
    </item>

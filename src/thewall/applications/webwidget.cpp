@@ -53,7 +53,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
 
 	QFont f;
-	f.setPointSize( setting->value("gui/fontpointsize", 18).toInt() );
+	f.setPointSize( setting->value("gui/fontpointsize", 32).toInt() );
 
 
 	/********
@@ -78,7 +78,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	_customurlbox = new SN_LineEdit(this);
 	_customurlbox->_lineedit->setText("http://");
 	_customurlbox->_lineedit->setFont(f);
-	_customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
+	_customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed, QSizePolicy::LineEdit);
     _customurlbox->setMinimumHeight(128);
 	QObject::connect(_customurlbox, SIGNAL(textChanged(QString)), this, SLOT(setUrl(QString)));
 
@@ -112,7 +112,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
 	ws->setAttribute(QWebSettings::AcceleratedCompositingEnabled, true);
 #if QT_VERSION >= 0x040800
-	qDebug() << "SN_WebWidget() : Using Qt 4.8.0.. Enabling WebGL";
+//	qDebug() << "SN_WebWidget() : Using Qt 4.8.0.. Enabling WebGL";
 	ws->setAttribute(QWebSettings::WebGLEnabled, true);
 #endif
 
@@ -136,6 +136,17 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	QObject::connect(gwebview, SIGNAL(urlChanged(QUrl)), this, SLOT(urlChanged(QUrl)));
 
 
+
+    SN_PixmapButton* backHistoryButton = new SN_PixmapButton(":/resources/black_arrow_left_48x48", 128, QString(), this);
+    backHistoryButton->addAction(gwebview->pageAction(QWebPage::Back));
+    connect(backHistoryButton, SIGNAL(clicked()), gwebview->pageAction(QWebPage::Back), SLOT(trigger()));
+
+
+    QGraphicsLinearLayout* toplayout = new QGraphicsLinearLayout(Qt::Horizontal);
+    toplayout->addItem(backHistoryButton);
+    toplayout->addItem(_customurlbox);
+
+
 	linearLayout = new QGraphicsLinearLayout(Qt::Vertical, this);
 	linearLayout->setSpacing(4);
 	linearLayout->setContentsMargins(20,20,20,40);
@@ -143,7 +154,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
 	// The layout takes ownership of these items.
 //	linearLayout->addItem(urlboxproxy);
-	linearLayout->addItem(_customurlbox);
+	linearLayout->addItem(toplayout);
 
 	linearLayout->addItem(gwebview);
 
@@ -431,6 +442,8 @@ void SN_WebWidget::pageLoaded() {
 void SN_WebWidget::setUrl(const QString &u) {
 	QUrl url;
 
+    qDebug() << "SN_WebWidget::setUrl() " << u;
+
 	if ( u.startsWith("http://", Qt::CaseInsensitive)
 	     || u.startsWith("https://", Qt::CaseInsensitive)
 	     || u.startsWith("file://", Qt::CaseInsensitive))
@@ -447,6 +460,8 @@ void SN_WebWidget::setUrl(const QString &u) {
 		appInfo()->setWebUrl( url );
 		//	gwebview->setUrl(url);
 		gwebview->load(url);
+
+//        qDebug() << gwebview->page()->pluginFactory();
 
 		_appInfo->setWebUrl(url);
 
