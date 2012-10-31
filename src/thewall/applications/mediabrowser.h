@@ -99,13 +99,6 @@ private:
     QList<SN_PixmapButton *> _rootAppIcons;
 
     /*!
-      This layout contains the rootIcons
-      */
-//    QGraphicsLinearLayout* _rootWindowLayout;
-
-//    QGraphicsLinearLayout* _thumbnailWindowLayout;
-
-    /*!
       When a media thumbnail panel is displaying (not the rootWindow)
       This icon should be displayed on the left of the panel.
       Upon clicking, rootWindow will show
@@ -118,17 +111,25 @@ private:
 
     SN_PixmapButton* _rightBtn;
 
-    /**
-      draw thumbnails of media in the currentDirectory
+    /*!
+      How many columns in the grid layout for the thumbnail view
       */
-//    void attachItems();
-
     int _numItemsHorizontal;
 
+    /*!
+      How many row in the grid layout for the thumbnail view
+      */
     int _numItemsVertical;
 
+    /*!
+      The grid thumbnail view may not show all the items in the _currMediaItems
+      meaning the thumbnail window can have multiple pages
+      */
     int _currPage;
 
+    /*!
+      true if I'm displaying root icons (no thumbnail view)
+      */
     bool _isRootWindow;
 
     QDir _currentDir;
@@ -193,8 +194,15 @@ public slots:
     inline void pdfIconClicked() {_populateMediaItems(QDir::homePath() + "/.sagenext/media/pdf");}
     inline void pluginIconClicked() {_populateMediaItems(QDir::homePath() + "/.sagenext/media/plugins");}
 
-
+    /*!
+      This function is called upon clicking the dotdotslash icon in a thumbnail view
+      */
     void getParentDir();
+    
+    /*!
+      sort the media item in the _currMediaItem list
+      */
+    void sort(int sortmode);
 };
 
 #endif // MEDIABROWSER_H

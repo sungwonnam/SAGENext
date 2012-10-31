@@ -54,6 +54,8 @@ private:
     QGraphicsPixmapItem *_primary;
 
     QGraphicsPixmapItem *_secondary;
+    
+    void _init();
 
 	void _attachLabel(const QString &labeltext, QGraphicsItem *parent);
 

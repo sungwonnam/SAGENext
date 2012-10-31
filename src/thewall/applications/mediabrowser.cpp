@@ -455,24 +455,19 @@ void SN_MediaBrowser::displayRootWindow() {
 void SN_MediaBrowser::updateThumbnailPanel() {
     if (_isRootWindow) return;
     _isRootWindow = false;
-
+    
     if (_goBackToRootWindowBtn) {
         _goBackToRootWindowBtn->show();
     }
 
     // unset the rootWindowLayout
-    // _rootWindowLayout will be a dangling pointer
+    // This will delete the layout item the widget had set.
     setLayout(0);
 
     //
-    // Given the # of items and the size of the thumbnail
-    // determine the size of the panel.
+    // keep recreating layout object
+    // because displayRootWindow() called setLayout(0)
     //
-    // Organize items in a grid
-    //
-
-    // Also attach an icon (to go back to the rootWindow) on the left
-
     QGraphicsLinearLayout* ll = new QGraphicsLinearLayout(Qt::Vertical);
     QGraphicsLinearLayout *buttonlayout = 0;
     QGraphicsGridLayout *gridlayout = new QGraphicsGridLayout;
@@ -501,12 +496,12 @@ void SN_MediaBrowser::updateThumbnailPanel() {
 
         QList<SN_MediaItem*>::iterator it = _currMediaItems.begin();
         for (;it!=_currMediaItems.end();it++) {
-            (*it)->hide();
+            (*it)->hide(); // hide all the item initially
         }
-        it = _currMediaItems.begin();
+        it = _currMediaItems.begin(); // reset the iterator
 
         // currPage starts with 0
-        // skip items based on _currPage
+        // skip some items based on _currPage * numItemsPerPages
         if (_currPage > 0) {
 //            qDebug() << "_currPage" << _currPage << "skipping" << _currPage * numItemsPerPages << "items";
             it += (_currPage * numItemsPerPages);
@@ -517,11 +512,13 @@ void SN_MediaBrowser::updateThumbnailPanel() {
             mitem = (*it);
 //            qDebug() << "adding item at" << i << j;
             gridlayout->addItem(mitem, i, j);
-            mitem->show();
+            mitem->show(); // Only this item should be visible
 
+            // finished adding items for this page
             if (gridlayout->count() == numItemsPerPages)
                 break;
 
+            // update row, column index
             ++j;
             if (j == _numItemsHorizontal) {
                 ++i;
@@ -530,13 +527,9 @@ void SN_MediaBrowser::updateThumbnailPanel() {
         }
 //        qDebug() << "updateThumbnail() : " << gridlayout->count();
     }
-    else {
-        // nothing to display
-        // display goBackToRoot and goBackToParent button
-    }
 
     //
-    // cd..  button
+    // cd..  button to go to parent directory
     //
     _goBackToParentDirBtn->show();
     if (gridlayout->columnCount() == _numItemsHorizontal)
@@ -573,6 +566,12 @@ void SN_MediaBrowser::getParentDir() {
     if (_currentDir.cdUp()) {
         _populateMediaItems(_currentDir);
     }
+}
+
+void SN_MediaBrowser::sort(int sortmode) {
+    // do sort
+    
+    updateThumbnailPanel();
 }
 
 void SN_MediaBrowser::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
