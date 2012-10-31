@@ -1,6 +1,6 @@
 #include "mediastorage.h"
 
-#include "applications/mediabrowser.h"
+#include "applications/sn_mediabrowser.h"
 
 #include <poppler-qt4.h>
 
