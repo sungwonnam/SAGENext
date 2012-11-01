@@ -104,7 +104,7 @@ macx {
 # Qwt
 # Use $$(..) to obtain contents of an environment variable
 #
-QWT_HOME = $$(HOME)/qwt-6.0.1
+QWT_HOME = $$(HOME)/Dev/qwt-6.0.1
 exists( $$QWT_HOME/lib/libqwt.so ) {
     message("Package Qwt is available")
     INCLUDEPATH += $${QWT_HOME}/include
