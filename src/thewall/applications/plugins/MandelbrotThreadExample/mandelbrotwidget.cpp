@@ -15,34 +15,65 @@ const int ScrollStep = 20;
 
 //! [1]
 MandelbrotExample::MandelbrotExample()
-    : SN_BaseWidget(Qt::Window)
 
-//    , _pixmap(new QGraphicsPixmapItem(this))
+    : SN_BaseWidget(Qt::Window)
 
     , centerX(-0.637011f)
     , centerY(-0.0395159f)
     , pixmapScale(0.00403897f)
     , curScale(0.00403897f)
+
+    , _resetBtn(0)
+    , _zoomInBtn(0)
+    , _zoomOutBtn(0)
+    , _closeBtn(0)
 {
+}
+//! [1]
+
+void MandelbrotExample::m_init() {
     qRegisterMetaType<QImage>("QImage");
 
     QObject::connect(&thread, SIGNAL(renderedImage(QImage,double)), this, SLOT(updatePixmap(QImage,double)));
 
     setContentsMargins(15, 40, 15, 15);
 
-    setWindowTitle(tr("Mandelbrot"));
-#ifndef QT_NO_CURSOR
-    setCursor(Qt::CrossCursor);
-#endif
+    _resetBtn = new QPushButton("Reset");
+    QObject::connect(_resetBtn, SIGNAL(clicked()), this, SLOT(reset()));
 
-//    qDebug() << "MandelbrotExample::MandelbrotExample() : boundingRect() " << boundingRect();
+    _zoomInBtn = new QPushButton("Zoom In");
+    QObject::connect(_zoomInBtn, SIGNAL(clicked()), this, SLOT(zoomIn()));
+
+    _zoomOutBtn = new QPushButton("Zoom Out");
+    QObject::connect(_zoomOutBtn, SIGNAL(clicked()), this, SLOT(zoomOut()));
+
+    _closeBtn = new QPushButton("Close");
+    QObject::connect(_closeBtn, SIGNAL(clicked()), this, SLOT(close()));
+
+    QGraphicsProxyWidget* resetProxy = new QGraphicsProxyWidget(this);
+    resetProxy->setWidget(_resetBtn);
+    resetProxy->setPos(15, 40);
+
+    QGraphicsProxyWidget* ziProxy = new QGraphicsProxyWidget(this);
+    ziProxy->setWidget(_zoomInBtn);
+    ziProxy->setPos(resetProxy->pos() + QPointF(resetProxy->size().width(), 0));
+
+    QGraphicsProxyWidget* zoProxy = new QGraphicsProxyWidget(this);
+    zoProxy->setWidget(_zoomOutBtn);
+    zoProxy->setPos(ziProxy->pos() + QPointF(ziProxy->size().width(), 0));
+
+    QGraphicsProxyWidget* closeProxy = new QGraphicsProxyWidget(this);
+    closeProxy->setWidget(_closeBtn);
+    closeProxy->setPos(zoProxy->pos() + QPointF(zoProxy->size().width(), 0));
 }
-//! [1]
 
-void MandelbrotExample::m_init() {
-    QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Vertical, this);
+void MandelbrotExample::reset() {
+    centerX= -0.637011f;
+    centerY= -0.0395159f;
+    pixmapScale = 0.00403897f;
+    curScale = 0.00403897f;
 
-    setLayout(layout);
+    thread.render(centerX, centerY, curScale, size().toSize() - QSize(30, 55));
 }
 
 SN_BaseWidget * MandelbrotExample::createInstance() {
@@ -52,7 +83,7 @@ SN_BaseWidget * MandelbrotExample::createInstance() {
     //
     // This will make thread starts
     //
-    bw->resize(550, 400);
+    bw->resize(800, 600);
     return bw;
 }
 
@@ -155,7 +186,7 @@ void MandelbrotExample::handlePointerPress(SN_PolygonArrowPointer *pointer, cons
         // then this interaction isn't for window moving
         //
         if (content.contains(point)) {
-            lastDragPos = point.toPoint();
+            lastDragPos = point.toPoint(); // is about to start dragging from this pressed point
 
             //
             // It's for interaction. Not for window moving
@@ -184,9 +215,11 @@ void MandelbrotExample::handlePointerDrag(SN_PolygonArrowPointer *pointer, const
     if (!_isMoving && !_isResizing) {
 
         if (button == Qt::LeftButton) {
-            pixmapOffset += point.toPoint() - lastDragPos;
-            lastDragPos = point.toPoint();
-            update();
+
+            pixmapOffset = lastDragPos - point.toPoint();
+            lastDragPos = point.toPoint(); // the pointer's last position
+
+            scroll(pixmapOffset);
         }
     }
     else {
@@ -194,39 +227,14 @@ void MandelbrotExample::handlePointerDrag(SN_PolygonArrowPointer *pointer, const
     }
 }
 
-void MandelbrotExample::handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn)
-{
-    if (btn == Qt::LeftButton) {
-
-        if (!_isMoving && !_isResizing) {
-
-            pixmapOffset += point.toPoint() - lastDragPos;
-            lastDragPos = QPoint();
-
-            int deltaX = (size().width() - pixmap.width()) / 2 - pixmapOffset.x();
-            int deltaY = (size().height() - pixmap.height()) / 2 - pixmapOffset.y();
-            scroll(deltaX, deltaY);
-        }
-    }
-
-    //
-    // _isMoving , _isResizing will be reset here
-    //
-    SN_BaseWidget::handlePointerRelease(pointer, point, btn);
-}
 
 //! [16]
 void MandelbrotExample::updatePixmap(const QImage &image, double scaleFactor)
 {
-    if (!lastDragPos.isNull())
-        return;
-
 //    _pixmap->setPixmap(QPixmap::fromImage(image));
 //    _pixmap->setOffset(QPointF());
 
     pixmap = QPixmap::fromImage(image);
-    pixmapOffset = QPoint();
-    lastDragPos = QPoint();
 
     pixmapScale = scaleFactor;
 
@@ -238,17 +246,22 @@ void MandelbrotExample::updatePixmap(const QImage &image, double scaleFactor)
 void MandelbrotExample::zoom(double zoomFactor)
 {
     curScale *= zoomFactor;
-//    update();
+
+    // compute again
     thread.render(centerX, centerY, curScale, size().toSize() - QSize(30, 55));
 }
 //! [17]
 
+void MandelbrotExample::scroll(const QPoint &delta) {
+    scroll(delta.x(), delta.y());
+}
+
 //! [18]
 void MandelbrotExample::scroll(int deltaX, int deltaY)
 {
-    centerX += deltaX * curScale;
-    centerY += deltaY * curScale;
-    update();
+    centerX += (deltaX * curScale);
+    centerY += (deltaY * curScale);
+
     thread.render(centerX, centerY, curScale, size().toSize() - QSize(30, 55));
 }
 //! [18]
