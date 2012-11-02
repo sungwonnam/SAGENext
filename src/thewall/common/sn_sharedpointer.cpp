@@ -8,6 +8,8 @@
 
 #include "../sagenextlauncher.h"
 
+#include <QGraphicsWebView>
+
 //#include "sn_drawingwidget.h"
 
 SN_SelectionRectangle::SN_SelectionRectangle(QGraphicsItem *parent)
@@ -574,40 +576,8 @@ void SN_PolygonArrowPointer::pointerRelease(const QPointF &scenePos, Qt::MouseBu
 
 
 void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButton btn, Qt::KeyboardModifier modifier) {
-    /**
-      Instead of generating mouse event,
-      I can let each widget implement BaseWidget::mouseClick()
-      **/
-//	if (app) {
-//		if (btn == Qt::RightButton) {
-//			if ( app->isSelected() ) {
-//				app->setSelected(false);
-//				// to be effective, turn off WA_OpaquePaintEvent or set setAutoFillBackground(true)
-//				app->palette().setColor(QPalette::Window, QColor(100, 100, 100, 128));
-//			}
-//			else {
-//				app->setSelected(true);
-//				app->palette().setColor(QPalette::Window, QColor(170, 170, 5, 164));
-//			}
-//		}
-
-//		// Reimplement this for your app's specific needs
-
-//		/**
-//		Pointer can't know (in here) which widget is going to receive this event
-//		because it depends on how child widgets are attached to the parent widget.
-
-//		For example, gwebview of WebWidget will receive mouse event and gwebview isn't pointed by app. It's gwebview's parent (which is WebWidget) that is pointed by the app.
-//	 So, app->grabMouse() is not a good idea especially when WebWidget installs eventFilter for its children
-//		**/
-
-//		app->mouseClick(scenePos, btn);
-//	}
-
-
-
 	//
-	// Record
+	// If Recording is set
 	//
 	if (_scenarioFile && _scenarioFile->isOpen() && _scenarioFile->isWritable() && _settings->value("misc/record_pointer", false).toBool()) {
 		char record[64];
@@ -616,9 +586,9 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 	}
 
 
-
-
 	//
+    // mouse Right click
+    //
 	// if there's app under pointer, toggle selected state with mouse Right click
 	// and DON'T send mouse right click event
 	//
@@ -646,7 +616,7 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 	}
 
 	//
-	// mouse left click
+	// mouse Left click
 	//
 	else if (btn == Qt::LeftButton) {
 		if (_basewidget) {
@@ -710,11 +680,9 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
         }
 
 
-
-
-
-
         //
+        //
+        // If control reaches here, then I have no idea what the item under the pointer is..
         //
         // Generate system's mouse events for standard Qt widgets..
         // Press -> Relese
@@ -888,6 +856,8 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
         //
 		if ( item->acceptedMouseButtons() == 0 ) continue;
 
+//        qDebug() << item;
+
         //
         // User application (any widget that inherits SN_BaseWidget)
         //
@@ -902,10 +872,15 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
         // Not used
         //
 		else if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_NONUSER) {
-            //
             // do nothing for now
-            //
 		}
+
+        //
+        // SN_PixmapButton, SN_LineEdit
+        //
+//        else if (item->type() >= QGraphicsItem::UserType + INTERACTIVE_WIDGET_GUI) {
+
+//        }
 
         //
         // A QGraphicsItem type that doesn't inherit SN_BaseWidget.
@@ -926,14 +901,23 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
         //
 		else {
             _graphicsWidget = dynamic_cast<QGraphicsWidget *>(item);
-//            if (_graphicsWidget)
+            if (_graphicsWidget) {
 //                qDebug() << _graphicsWidget;
+//                qDebug() << _graphicsWidget->parentWidget();
 
-//                if ( ::strcmp(_graphicsWidget->metaObject()->className(), "SN_LineEdit") == 0 ) {
-//                    SN_LineEdit *sle = dynamic_cast<SN_LineEdit *>(_graphicsWidget);
-//                    if (sle) sle->setThePointer(this);
-//                }
-//            }
+                //
+                // check if this is QGraphicsView
+                // QGraphicsView of SN_WebWidget should be on top of its parent (SN_WebWidget) in order to receive real mouse events
+                //
+                // cast from Parent to Child isn't usually allowed unless Parent is polymorphic class
+                QGraphicsWebView* webview = dynamic_cast<QGraphicsWebView*>(_graphicsWidget);
+                if (webview) {
+//                    _basewidget = dynamic_cast<SN_BaseWidget*>(webview->parentWidget());
+                    _basewidget = _getBaseWidgetFromChildWidget(webview->parentWidget());
+                    if (_basewidget) qDebug() << _basewidget;
+                }
+
+            }
             return true;
 		}
     }
@@ -946,8 +930,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 void SN_PolygonArrowPointer::injectStringToItem(const QString &str) {
 	if (_graphicsWidget) {
 		qDebug() << "SN_PolygonArrowPointer::injectStringToItem()" << str;
-
-//		qDebug() << "current gui item is a type of" << _graphicsWidget->metaObject()->className();
+		qDebug() << "And the current gui item is a type of" << _graphicsWidget->metaObject()->className();
 
 		SN_LineEdit *sle = dynamic_cast<SN_LineEdit *>(_graphicsWidget);
 		if(sle)
@@ -972,6 +955,21 @@ QGraphicsView * SN_PolygonArrowPointer::eventReceivingViewport(const QPointF sce
         }
     }
 	return 0;
+}
+
+SN_BaseWidget* SN_PolygonArrowPointer::_getBaseWidgetFromChildWidget( QGraphicsWidget *childwidget) {
+    if (!childwidget) return 0;
+
+    if (!childwidget->parentWidget()) return 0;
+
+    SN_BaseWidget* basewidget = dynamic_cast<SN_BaseWidget*>(childwidget);
+
+    if (basewidget) {
+        return basewidget;
+    }
+    else {
+        return _getBaseWidgetFromChildWidget(childwidget->parentWidget());
+    }
 }
 
 void SN_PolygonArrowPointer::pointerOperation(int opcode, const QPointF &scenepos, Qt::MouseButton btn, int delta, Qt::MouseButtons btnflags) {

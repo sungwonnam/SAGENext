@@ -149,7 +149,7 @@ public:
           */
 	virtual void pointerWheel(const QPointF &scenePos, int delta = 120, Qt::KeyboardModifier modifier = Qt::NoModifier);
 
-private:
+protected:
 	SN_TheScene *_scene;
 
     SN_Launcher *_theLauncher;
@@ -224,6 +224,8 @@ private:
 		  pos is on the scene coordinate
 		  */
 	QGraphicsView * eventReceivingViewport(const QPointF scenePos);
+
+    SN_BaseWidget* _getBaseWidgetFromChildWidget(QGraphicsWidget *childwidget);
 };
 
 
