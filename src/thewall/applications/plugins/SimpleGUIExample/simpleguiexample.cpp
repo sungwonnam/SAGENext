@@ -72,6 +72,16 @@ void SimpleGUIExample::_createGUIs() {
 	proxy_btn_M->setWidget(_btn_M);
 	proxy_btn_Y->setWidget(_btn_Y);
 
+
+    //
+    // do the same for the scrollbar
+    //
+    _scrollbar = new SN_ProxyScrollBar(Qt::Horizontal, this);
+    _scrollbar->setRange(0, 255);
+    _scrollbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding, QSizePolicy::Slider);
+    QObject::connect(_scrollbar, SIGNAL(valueChanged(int)), this, SLOT(scrollbarmoved(int)));
+
+
     //
 	// create another layout for the buttons
     //
@@ -87,8 +97,9 @@ void SimpleGUIExample::_createGUIs() {
     //
 	QGraphicsLinearLayout *mainLayout = new QGraphicsLinearLayout(Qt::Vertical);
 	mainLayout->setContentsMargins(0,0,0,0);
-	mainLayout->addItem(toplayout);
-	mainLayout->addItem(btnLayout);
+	mainLayout->addItem(toplayout); // label
+	mainLayout->addItem(btnLayout); // buttons
+    mainLayout->addItem(_scrollbar); // horizontal scroll bar
 
     //
 	// set the main layout to be this application's root layout
@@ -165,10 +176,16 @@ void SimpleGUIExample::buttonY() {
 
 
 void SimpleGUIExample::_updateLabel(const QColor &c) {
+    if ( ! c.isValid() ) return;
+
 	QPixmap p(size().toSize());
     p.fill(c);
 	_currentColor = c;
 	_label->setPixmap(p);
+}
+
+void SimpleGUIExample::scrollbarmoved(int val) {
+    _updateLabel(QColor(val,val,val));
 }
 
 
@@ -177,112 +194,3 @@ Q_EXPORT_PLUGIN2(MouseClickExamplePlugin, SimpleGUIExample)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-void ExamplePlugin::mouseClick(const QPointF &clickedScenePos, Qt::MouseButton btn) {
-	QGraphicsView *view = 0;
-	Q_ASSERT(scene());
-	foreach(QGraphicsView *v, scene()->views()) {
-
-		// geometry of widget relative to its parent
-		//        v->geometry();
-
-		// internal geometry of widget
-		//        v->rect();
-
-		// Figure out which viewport will receive the mouse event
-		if ( v->rect().contains( v->mapFromScene(clickedScenePos) ) ) {
-			// mouse click position is within this view's bounding rectangle
-			view = v;
-			break;
-		}
-	}
-
-	if (!view) {
-		qDebug() << "ExamplePlugin::mouseClick() : Couldn't find the viewport with clickedScenePos" << clickedScenePos;
-		return;
-	}
-
-
-	// The event will be sent to the viewport so the pos should be translated
-	QPointF clickedViewPos = view->mapFromScene( clickedScenePos );
-	QPointF pos = mapFromScene(clickedScenePos);
-	qDebug() << "ExamplePlugin::mouseClick on this item's coordinate" << pos << " scene coord" << clickedScenePos << " viewport coord" << clickedViewPos;
-
-	// create event objects
-	QMouseEvent *press = new QMouseEvent(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-	QMouseEvent *release = new QMouseEvent(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, Qt::NoButton | Qt::LeftButton, Qt::NoModifier);
-
-
-	// figure out which button should receive the mouse event based on the clicked position
-	QGraphicsItem *mouseGrabItem = 0;
-	if ( proxy_btn_R->boundingRect().contains( proxy_btn_R->mapFromScene(clickedScenePos) ) ) {
-		qDebug() << "R";
-
-		// GUI components should be mouseGrabItem to be able to respond to mouse interaction
-		mouseGrabItem = proxy_btn_R;
-	}
-	else if (proxy_btn_G->boundingRect().contains( proxy_btn_G->mapFromScene(clickedScenePos) )) {
-		qDebug() << "G";
-		mouseGrabItem = proxy_btn_G;
-	}
-	else if (proxy_btn_B->boundingRect().contains( proxy_btn_B->mapFromScene(clickedScenePos) )) {
-		qDebug() << "btn 3 will become mouseGrabber";
-		mouseGrabItem = proxy_btn_B;
-	}
-	else if (! mainLayout->geometry().contains( pos ) ) {
-		qDebug() << "hitting outside of mainLayout";
-		mouseGrabItem = this;
-	}
-	else {
-	}
-
-
-	if (mouseGrabItem) mouseGrabItem->grabMouse();
-	qDebug() << "mouse grabbed";
-
-	// Mouse events must be posted to the viewport widget
-
-	// sendEvent BLOCKS and thus it doesn't delete event object,
-	// so events can be created in stack (local to this function) when using sendEvent
-	if ( ! QApplication::sendEvent(view->viewport(), press) ) {
-		qDebug("ExamplePlugin::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-	}
-	else {
-		if ( ! QApplication::sendEvent(view->viewport(), release) ) {
-			qDebug("ExamplePlugin::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-		}
-	}
-	if(mouseGrabItem) mouseGrabItem->ungrabMouse();
-	qDebug() << "mouse ungrabbed";
-
-	// sendEvent doesn't delete the event object
-	if (press) delete press;
-	if (release) delete release;
-}
-*/

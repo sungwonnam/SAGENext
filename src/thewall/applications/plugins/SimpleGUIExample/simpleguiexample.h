@@ -3,6 +3,7 @@
 
 #include "applications/base/SN_plugininterface.h"
 #include "applications/base/basewidget.h"
+#include "common/commonitem.h"
 
 #include <QtGui>
 
@@ -57,6 +58,11 @@ private:
     QPushButton *_btn_M; /**< magenta (1,0,1) */
     QPushButton *_btn_Y; /**< yellow (1,1,0) */
 
+    /*!
+     * \brief _scrollbar on the bottom of the widget
+     */
+    SN_ProxyScrollBar* _scrollbar;
+
     void _updateLabel(const QColor &c);
 
 private slots:
@@ -68,6 +74,8 @@ private slots:
     void buttonM();
 
     void buttonY();
+
+    void scrollbarmoved(int);
 };
 
 

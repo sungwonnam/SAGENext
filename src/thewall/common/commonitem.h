@@ -50,6 +50,7 @@ public:
       */
     void togglePixmap();
 
+
 private:
     QGraphicsPixmapItem *_primary;
 
@@ -82,6 +83,31 @@ signals:
 public slots:
     virtual void handlePointerClick();
 };
+
+
+
+
+
+
+class SN_ProxyScrollBar : public QGraphicsProxyWidget {
+    Q_OBJECT
+public:
+    SN_ProxyScrollBar(Qt::Orientation, QGraphicsItem *parent=0);
+
+    inline void setOrientation(Qt::Orientation o) {_scrollbar->setOrientation(o);}
+    inline void setRange(int min, int max) {_scrollbar->setRange(min,max);}
+
+    void handlePointerDrag(const QPointF &pos);
+
+protected:
+    QScrollBar* _scrollbar;
+
+signals:
+    void valueChanged(int value);
+};
+
+
+
 
 
 

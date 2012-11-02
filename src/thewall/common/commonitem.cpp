@@ -199,7 +199,40 @@ void SN_PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 
 
 
+SN_ProxyScrollBar::SN_ProxyScrollBar(Qt::Orientation o, QGraphicsItem *parent)
+    : QGraphicsProxyWidget(parent)
+    , _scrollbar(new QScrollBar(o))
+{
+    setWidget(_scrollbar);
+}
+void SN_ProxyScrollBar::handlePointerDrag(const QPointF &pos) {
+    qreal handlePosNorm = -1;
 
+    //
+    // calculate scroll bar's handle position based on the pointer position on the scrollbar
+    //
+    if (_scrollbar->orientation() == Qt::Horizontal) {
+        handlePosNorm = pos.x() / boundingRect().width(); // 0 ~ 1
+    }
+    else if (_scrollbar->orientation() == Qt::Vertical) {
+        handlePosNorm = pos.y() / boundingRect().height(); // 0 ~ 1
+    }
+
+    if (handlePosNorm < 0) return;
+
+    // scroll bar's maximum value calculated from 0
+    qreal scrollbar_max_from_zero = _scrollbar->maximum() - _scrollbar->minimum();
+
+    // new value and new handle position
+    int newpos = handlePosNorm * scrollbar_max_from_zero;
+
+    // calculate back so that the value is correct in scroll bar's original range
+    newpos += _scrollbar->minimum();
+
+    _scrollbar->setValue(newpos); // this will change the sliderPosition !!
+
+    emit valueChanged(newpos);
+}
 
 
 

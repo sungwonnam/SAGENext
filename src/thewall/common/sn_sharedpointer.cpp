@@ -346,6 +346,16 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 				}
 			}
 		}
+        else if (_graphicsWidget) {
+
+            QGraphicsProxyWidget* pw = dynamic_cast<QGraphicsProxyWidget*>(_graphicsWidget);
+            if (pw) {
+                SN_ProxyScrollBar* psb = dynamic_cast<SN_ProxyScrollBar*>(pw);
+                if (psb) {
+                    psb->handlePointerDrag(psb->mapFromScene(_scenePos));
+                }
+            }
+        }
 		else {
 			// do nothing
 		}
