@@ -81,47 +81,17 @@ SN_BaseWidget * MandelbrotExample::createInstance() {
     bw->m_init();
 
     //
-    // This will make thread starts
+    // This will make the render thread starts
     //
-    bw->resize(800, 600);
+    bw->resize(1024, 768);
     return bw;
 }
 
 //! [2]
 void MandelbrotExample::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
-//    painter->fillRect(rect(), Qt::black);
-//    if (pixmap.isNull()) {
-//        painter->setPen(Qt::white);
-//        painter->drawText(rect(), Qt::AlignCenter, tr("Rendering initial image, please wait..."));
-//        return;
-//    }
-
-    QRectF target(15, 40, size().width() - 30, size().height() -55);
-
-    if (curScale == pixmapScale) {
-        painter->drawPixmap(15, 40, /*pixmapOffset*/ pixmap);
-    }
-
-    else {
-        double scaleFactor = pixmapScale / curScale;
-        int newWidth = int(pixmap.width() * scaleFactor);
-        int newHeight = int(pixmap.height() * scaleFactor);
-        int newX = pixmapOffset.x() + (pixmap.width() - newWidth) / 2;
-        int newY = pixmapOffset.y() + (pixmap.height() - newHeight) / 2;
-
-        painter->save();
-        painter->translate(newX, newY);
-        painter->scale(scaleFactor, scaleFactor);
-
-        QRectF exposed = painter->matrix().inverted().mapRect(rect()).adjusted(-1, -1, 1, 1);
-
-//        qDebug() << "exposed" << exposed;
-
-        painter->drawPixmap(target, pixmap, exposed);
-
-        painter->restore();
-    }
+    // offset content margin left and top
+    painter->drawPixmap(15, 40, pixmap);
 }
 //! [9]
 
