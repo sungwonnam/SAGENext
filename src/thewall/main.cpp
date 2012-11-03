@@ -584,6 +584,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	/* to test WebGL */
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://helloracer.com");  // works fine. no interaction
 //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://webglmol.sourceforge.jp/glmol/viewer.html");  // works fine. no interaction
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://zygotebody.com");  // works fine. no interaction
 //    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://www.khronos.org/webgl/wiki/Demo_Repository");
 //    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://haptic-data.com/toxiclibsjs/examples/SphericalHarmonics_threejs.html"); // Random mesh but mouse draggin doesn't work
 //    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "https://www.khronos.org/registry/webgl/sdk/demos/webkit/"); // All of these work. There's no interaction involved.
