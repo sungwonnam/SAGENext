@@ -70,7 +70,6 @@ This will in effect make Xlib thread-safe.
 	//
 //	qt_x11_set_global_double_buffer(true);
 #endif
-
 	int errflag = 0;
 	int c;
 	QString configFile(QDir::homePath() + "/.sagenext/sagenext.ini");
@@ -105,7 +104,6 @@ This will in effect make Xlib thread-safe.
 		fprintf(stderr, "usage: %s\n", argv[0]);
 		fprintf(stderr, "\t -c <config file>: Optional config file name. default is ~/.sagenext/sagenext.ini\n");
 		fprintf(stderr, "\t -r <recording filename>: Turn on recording. Recording file is created in ~/.sagenext\n");
-		fprintf(stderr, "\t -g <opengl | raster>: graphics backend. opengl backend is still experimental\n");
 		fprintf(stderr, "\n");
 		fprintf(stderr, "Examples\n");
 		fprintf(stderr, "./sagenext  (Run sagenext without recording. Configuration dialog will pop up with the default config file\n");
@@ -116,10 +114,7 @@ This will in effect make Xlib thread-safe.
 	}
 
 
-
-
 //	QApplication::setGraphicsSystem("opengl"); // this is Qt's experimental feature
-
 
 	/***
 	  When using raster backend, For optimal performance only use the format types
@@ -129,7 +124,6 @@ This will in effect make Xlib thread-safe.
 	  On Linux/X11 this performs very bad
 	***/
 //	QApplication::setGraphicsSystem( "raster" );
-
 
 	/***
 	  On Linux/X11 platforms which support it, Qt will use glX/EGL texture-from-pixmap extension.
@@ -581,28 +575,37 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		}
 	}
 
+    /* google */
+//    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com"); // mouse draggin works
+
+    /* youtube */
+    //	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://youtube.com");
+
 	/* to test WebGL */
-//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://helloracer.com");
-
-	/* to test Java Applet */
-//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processing.org/learning/topics/flocking.html");
-//    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processingjs.org/exhibition");
-//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://youtube.com");
-//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com");
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://helloracer.com");  // works fine. no interaction
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://webglmol.sourceforge.jp/glmol/viewer.html");  // works fine. no interaction
 //    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://www.khronos.org/webgl/wiki/Demo_Repository");
-//    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://helloracer.com/webgl/");
+//    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://haptic-data.com/toxiclibsjs/examples/SphericalHarmonics_threejs.html"); // Random mesh but mouse draggin doesn't work
+//    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "https://www.khronos.org/registry/webgl/sdk/demos/webkit/"); // All of these work. There's no interaction involved.
+//    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "https://www.khronos.org/registry/webgl/sdk/demos/google/"); // No good.
 
-//	launcher->launch(MEDIA_TYPE_PLUGIN, "/home/sungwon/.sagenext/plugins/libImageWidgetPlugin.so");
-//	launcher->launch(MEDIA_TYPE_IMAGE, "/home/sungwon/.sagenext/media/image/DR_map.jpg");
-//	launcher->launch(MEDIA_TYPE_PDF, "/home/sungwon/.sagenext/media/pdf/oecc_iocc_2007.pdf");
+	/* Processing */
+//	launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processing.org/learning/topics/flocking.html");
+//  launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processingjs.org/exhibition");
+    //    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "file:///home/snam5/Downloads/CholeraVis_Khairi/index.html"); // doesn't work
+
+
+
+
 
 //	launcher->launchScenario( QDir::homePath() + "/.sagenext/test.scenario" );
-
 //	launcher->launch(new SN_CheckerGL_Old(true, QSize(1920,1080), 24, 0, &s, resourceMonitor));
 //	launcher->launch(new SN_CheckerGLPBO(GL_RGB, QSize(1920,1080), 24, 0, &s, resourceMonitor));
 
-//	launcher->launch("user", "evl123", 0, "131.193.77.191", 24);
-//	launcher->launch(new SN_VNCClientWidget(0, "131.193.77.191", 0, "user", "evl123", 24, &s));
+
+
+
+
 
 
 //	SN_DrawingTool *dt = new SN_DrawingTool(0, &s);
