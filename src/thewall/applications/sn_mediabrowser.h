@@ -25,6 +25,9 @@ public:
 
     inline QString absFilePath() const {return _filename;}
 
+
+    inline void click() {emit clicked(_mediaType, _filename);}
+
 private:
 	SAGENext::MEDIA_TYPE _mediaType;
 
@@ -42,9 +45,6 @@ signals:
      */
     void clicked(SAGENext::MEDIA_TYPE mtype, const QString &filename);
 
-
-public slots:
-    inline void handlePointerClick() {emit clicked(_mediaType, _filename);}
 };
 
 

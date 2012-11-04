@@ -50,6 +50,7 @@ public:
       */
     void togglePixmap();
 
+    inline virtual void click() {emit clicked();}
 
 private:
     QGraphicsPixmapItem *_primary;
@@ -77,11 +78,8 @@ protected:
 	virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
 signals:
-	void clicked(int);
     void clicked();
 
-public slots:
-    virtual void handlePointerClick();
 };
 
 
@@ -89,22 +87,75 @@ public slots:
 
 
 
-class SN_ProxyScrollBar : public QGraphicsProxyWidget {
+
+
+
+
+
+
+
+
+/*!
+  Base class of all GUI components
+  */
+class SN_ProxyGUIBase : public QGraphicsProxyWidget {
+    Q_OBJECT
+public:
+    SN_ProxyGUIBase(QGraphicsItem* parent=0, Qt::WindowFlags wf=0) : QGraphicsProxyWidget(parent,wf) {}
+    virtual ~SN_ProxyGUIBase() {}
+
+    inline virtual void click(const QPoint & = QPoint()) {emit clicked();}
+
+signals:
+    void clicked();
+};
+
+class SN_ProxyScrollBar : public SN_ProxyGUIBase {
     Q_OBJECT
 public:
     SN_ProxyScrollBar(Qt::Orientation, QGraphicsItem *parent=0);
 
-    inline void setOrientation(Qt::Orientation o) {_scrollbar->setOrientation(o);}
-    inline void setRange(int min, int max) {_scrollbar->setRange(min,max);}
+    inline void setOrientation(Qt::Orientation o) {_scrollbar.setOrientation(o);}
+    inline void setRange(int min, int max) {_scrollbar.setRange(min,max);}
 
-    void handlePointerDrag(const QPointF &pos);
+    inline void click(const QPoint &clickedpos = QPoint()) {drag(clickedpos);}
+    void drag(const QPointF &pos);
 
 protected:
-    QScrollBar* _scrollbar;
+    QScrollBar _scrollbar;
 
 signals:
     void valueChanged(int value);
 };
+
+class SN_ProxyPushButton : public SN_ProxyGUIBase {
+    Q_OBJECT
+public:
+    SN_ProxyPushButton(QGraphicsItem* parent=0);
+    SN_ProxyPushButton(const QString& text, QGraphicsItem* parent=0);
+
+    inline void setDown(bool b) {_button.setDown(b);}
+
+protected:
+    QPushButton _button;
+};
+
+class SN_ProxyRadioButton : public SN_ProxyGUIBase {
+    Q_OBJECT
+public:
+    SN_ProxyRadioButton(QGraphicsItem* parent=0);
+    SN_ProxyRadioButton(const QString& text, QGraphicsItem* parent=0);
+
+protected:
+    QRadioButton _radiobtn;
+};
+
+
+
+
+
+
+
 
 
 

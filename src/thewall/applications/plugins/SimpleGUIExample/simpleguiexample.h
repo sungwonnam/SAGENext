@@ -3,9 +3,11 @@
 
 #include "applications/base/SN_plugininterface.h"
 #include "applications/base/basewidget.h"
-#include "common/commonitem.h"
 
 #include <QtGui>
+
+class SN_ProxyPushButton;
+class SN_ProxyScrollBar;
 
 /*!
   A simple SAGENext plugin example.
@@ -54,9 +56,13 @@ private:
       */
     QColor _currentColor;
 
-    QPushButton *_btn_R; /**< red (1,0,0) */
-    QPushButton *_btn_M; /**< magenta (1,0,1) */
-    QPushButton *_btn_Y; /**< yellow (1,1,0) */
+//    QPushButton *_btn_R; /**< red (1,0,0) */
+//    QPushButton *_btn_M; /**< magenta (1,0,1) */
+//    QPushButton *_btn_Y; /**< yellow (1,1,0) */
+
+    SN_ProxyPushButton* _btn_R;
+    SN_ProxyPushButton* _btn_M;
+    SN_ProxyPushButton* _btn_Y;
 
     /*!
      * \brief _scrollbar on the bottom of the widget

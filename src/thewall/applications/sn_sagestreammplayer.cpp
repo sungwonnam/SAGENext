@@ -21,10 +21,10 @@ SN_SageStreamMplayer::SN_SageStreamMplayer(const quint64 globalappid, const QSet
 	_pauseButton->setPriorityOverride(-1);
 	_fforwardButton->setPriorityOverride(1);
 
-	connect(_rewindButton, SIGNAL(clicked(int)), this, SLOT(rewindMplayer()));
-	connect(_pauseButton, SIGNAL(clicked(int)), this, SLOT(pauseMplayer()));
-	connect(_playButton, SIGNAL(clicked(int)), this, SLOT(playMplayer()));
-	connect(_fforwardButton, SIGNAL(clicked(int)), this, SLOT(fforwardMplayer()));
+	connect(_rewindButton, SIGNAL(clicked()), this, SLOT(rewindMplayer()));
+	connect(_pauseButton, SIGNAL(clicked()), this, SLOT(pauseMplayer()));
+	connect(_playButton, SIGNAL(clicked()), this, SLOT(playMplayer()));
+	connect(_fforwardButton, SIGNAL(clicked()), this, SLOT(fforwardMplayer()));
 }
 
 

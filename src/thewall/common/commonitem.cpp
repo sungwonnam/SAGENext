@@ -173,12 +173,6 @@ void SN_PixmapButton::_attachLabel(const QString &labeltext, QGraphicsItem *pare
 	t->moveBy(center_delat.x(), center_delat.y());
 }
 
-void SN_PixmapButton::handlePointerClick() {
-     emit clicked(0);
-     emit clicked();
-//     qDebug() << "SN_PixmapButton::handlePointerClick() : signal emitted";
-}
-
 void SN_PixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {
 //	setOpacity(1);
 	// this isn't perfect solution
@@ -190,7 +184,7 @@ void SN_PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 //	setOpacity(0.5);
 //	qDebug() << "pixmapbutton emitting signal";
     if (_mousePressFlag) {
-		emit clicked(_priorityOverride);
+		emit clicked();
     }
 }
 
@@ -200,39 +194,71 @@ void SN_PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 
 
 SN_ProxyScrollBar::SN_ProxyScrollBar(Qt::Orientation o, QGraphicsItem *parent)
-    : QGraphicsProxyWidget(parent)
-    , _scrollbar(new QScrollBar(o))
+    : SN_ProxyGUIBase(parent)
 {
-    setWidget(_scrollbar);
+    _scrollbar.setOrientation(o);
+    setWidget(&_scrollbar);
 }
-void SN_ProxyScrollBar::handlePointerDrag(const QPointF &pos) {
+void SN_ProxyScrollBar::drag(const QPointF &pos) {
     qreal handlePosNorm = -1;
 
     //
     // calculate scroll bar's handle position based on the pointer position on the scrollbar
     //
-    if (_scrollbar->orientation() == Qt::Horizontal) {
+    if (_scrollbar.orientation() == Qt::Horizontal) {
         handlePosNorm = pos.x() / boundingRect().width(); // 0 ~ 1
     }
-    else if (_scrollbar->orientation() == Qt::Vertical) {
+    else if (_scrollbar.orientation() == Qt::Vertical) {
         handlePosNorm = pos.y() / boundingRect().height(); // 0 ~ 1
     }
 
     if (handlePosNorm < 0) return;
 
     // scroll bar's maximum value calculated from 0
-    qreal scrollbar_max_from_zero = _scrollbar->maximum() - _scrollbar->minimum();
+    qreal scrollbar_max_from_zero = _scrollbar.maximum() - _scrollbar.minimum();
 
     // new value and new handle position
     int newpos = handlePosNorm * scrollbar_max_from_zero;
 
     // calculate back so that the value is correct in scroll bar's original range
-    newpos += _scrollbar->minimum();
+    newpos += _scrollbar.minimum();
 
-    _scrollbar->setValue(newpos); // this will change the sliderPosition !!
+    _scrollbar.setValue(newpos); // this will change the sliderPosition !!
 
     emit valueChanged(newpos);
 }
+
+
+
+
+
+
+SN_ProxyPushButton::SN_ProxyPushButton(QGraphicsItem *parent)
+    : SN_ProxyGUIBase(parent)
+{
+    setWidget(&_button);
+}
+
+SN_ProxyPushButton::SN_ProxyPushButton(const QString &text, QGraphicsItem *parent)
+    : SN_ProxyGUIBase(parent)
+{
+    _button.setText(text);
+    setWidget(&_button);
+}
+
+
+
+SN_ProxyRadioButton::SN_ProxyRadioButton(QGraphicsItem *parent) : SN_ProxyGUIBase(parent) {
+    setWidget(&_radiobtn);
+}
+SN_ProxyRadioButton::SN_ProxyRadioButton(const QString &text, QGraphicsItem *parent)
+    : SN_ProxyGUIBase(parent)
+{
+    _radiobtn.setText(text);
+    setWidget(&_radiobtn);
+}
+
+
 
 
 

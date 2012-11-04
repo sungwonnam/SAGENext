@@ -44,6 +44,7 @@ SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread 
     , _trapWidget(0)
     , _basewidget(0)
     , _graphicsItem(0)
+    , _graphicsWidget(0)
     , _selectionRect(new SN_SelectionRectangle)
 	, _scenarioFile(scenarioFile)
 	, _isDrawing(false)
@@ -347,12 +348,11 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 			}
 		}
         else if (_graphicsWidget) {
-
             QGraphicsProxyWidget* pw = dynamic_cast<QGraphicsProxyWidget*>(_graphicsWidget);
             if (pw) {
                 SN_ProxyScrollBar* psb = dynamic_cast<SN_ProxyScrollBar*>(pw);
                 if (psb) {
-                    psb->handlePointerDrag(psb->mapFromScene(_scenePos));
+                    psb->drag(psb->mapFromScene(_scenePos));
                 }
             }
         }
@@ -596,6 +596,8 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 	}
 
 
+    bool realMouseEventFlag = true;
+
 	//
     // mouse Right click
     //
@@ -647,7 +649,8 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 
                 _scene->restoreWidgetFromTheBar(_basewidget);
 
-                return;
+                // no more action is needed
+                realMouseEventFlag = false;
             }
 
             //
@@ -655,18 +658,11 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
             // no system's click event will be generated
             //
             if (_basewidget->handlePointerClick(this, _basewidget->mapFromScene(scenePos), btn)) {
-
-                //
-                // no mouse event will be generated
-                // if an application returns true in that function
-                //
-                setBrush(_color);
-
                 //
                 // if the function returns true then
                 // return without generating system's mouse event
                 //
-                return;
+                realMouseEventFlag = false;
             }
 		}
 
@@ -675,57 +671,66 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
         //
         else if (_graphicsItem) {
             // SN_PartitionBar doesn't need a real mouse click event so return here
-            setBrush(_color);
-            return;
+            realMouseEventFlag = false;
         }
 
+        //
+        // Pretty much everything else (mostly GUI components)
+        //
         else if (_graphicsWidget) {
-            SN_PixmapButton *btn = dynamic_cast<SN_PixmapButton *>(_graphicsWidget);
-            if (btn) {
+            SN_PixmapButton *btn = 0;
+            SN_ProxyGUIBase *pbtn = 0;
+            if ( btn = dynamic_cast<SN_PixmapButton *>(_graphicsWidget) ) {
                 //qDebug() << "SN_PolygonArrowPointer::pointerClick() : SN_PixmapButton under the pointer. calling its handlePointerClick()";
-                btn->handlePointerClick();
-                setBrush(_color);
-                return;
+                btn->click();
+                realMouseEventFlag = false;
+            }
+            else if (pbtn = dynamic_cast<SN_ProxyGUIBase*>(_graphicsWidget)) {
+                pbtn->click( pbtn->mapFromScene(scenePos).toPoint() );
+                realMouseEventFlag = false;
             }
         }
 
 
         //
+        // Everything has handled so no mouse event will be generated.
         //
-        // If control reaches here, then I have no idea what the item under the pointer is..
-        //
-        // Generate system's mouse events for standard Qt widgets..
-        // Press -> Relese
-        //
-        //
-		QGraphicsView *view = eventReceivingViewport(scenePos);
-		if ( !view ) {
-			qDebug() << "pointerClick: no view is available";
-			return;
-		}
-		QPointF clickedViewPos = view->mapFromScene( scenePos );
+        if (realMouseEventFlag) {
+            //
+            // If control reaches here, then I have no idea what the item under the pointer is..
+            //
+            // Generate system's mouse events for standard Qt widgets..
+            // Press -> Relese
+            //
+            QGraphicsView *view = eventReceivingViewport(scenePos);
+            if ( !view ) {
+                qDebug() << "pointerClick: no view is available";
+                return;
+            }
+            QPointF clickedViewPos = view->mapFromScene( scenePos );
 
-		QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
-		QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
+            QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
+            QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
 
-		if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
-			// Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
-//			qDebug("SN_PolygonArrowPointer::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
-//			qDebug() << "\tcurrent mouse grabber:" << _scene->mouseGrabberItem();
-		}
-		else {
-//			qDebug() << "press delievered";
-			if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
-//				qDebug("SN_PolygonArrowPointer::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
-			}
-			else {
-//				qDebug() << "release delievered";
-				// who should ungrabmouse() ??
-				QGraphicsItem *mouseGrabberItem = _scene->mouseGrabberItem();
-				if (mouseGrabberItem) mouseGrabberItem->ungrabMouse();
+            if ( ! QApplication::sendEvent(view->viewport(), &mpe) ) {
+                // Upon receiving mousePressEvent, the item will become mouseGrabber if the item reimplement mousePressEvent
+                //qDebug("SN_PolygonArrowPointer::%s() : sendEvent MouseButtonPress failed", __FUNCTION__);
+                //qDebug() << "\tcurrent mouse grabber:" << _scene->mouseGrabberItem();
+            }
+            else {
+                //qDebug() << "press delievered";
+                if ( ! QApplication::sendEvent(view->viewport(), &mre) ) {
+                    //qDebug("SN_PolygonArrowPointer::%s() : sendEvent MouseButtonRelease failed", __FUNCTION__);
+                }
+                else {
+                    //qDebug() << "release delievered";
+                    // who should ungrabmouse() ??
+                    QGraphicsItem *mouseGrabberItem = _scene->mouseGrabberItem();
+                    if (mouseGrabberItem) mouseGrabberItem->ungrabMouse();
 
-			}
-		}
+                }
+            }
+        }
 	}
 
 
@@ -866,8 +871,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
         //
 		if ( item->acceptedMouseButtons() == 0 ) continue;
 
-        //qDebug() << item;
-        
+//        qDebug() << item;
 
         /*!
          * There can be a child QGraphicsObject attached to the QGraphicsWebView.
@@ -894,12 +898,10 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
         }
 
 
-
         //
         // User application (any widget that inherits SN_BaseWidget)
         //
         if ( item->type() >= QGraphicsItem::UserType + BASEWIDGET_USER) {
-
             _basewidget = static_cast<SN_BaseWidget *>(item);
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
             return true;
@@ -912,9 +914,7 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
         // SN_PartitionBar
         //
 		else if (item->type() >= QGraphicsItem::UserType + INTERACTIVE_ITEM) {
-
 			_graphicsItem = item;
-
 			return true;
 		}
 
@@ -922,11 +922,11 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
         // A QGraphicsWidget type that is interatable with pointer
         // SN_PixmapWidget, SN_LineEdit
         //
+        // QGraphicsProxyWidget , QGraphicsWebView types are belong to this block too.
+        //
 		else {
             _graphicsWidget = dynamic_cast<QGraphicsWidget *>(item);
             if (_graphicsWidget) {
-//                qDebug() << _graphicsWidget;
-//                qDebug() << _graphicsWidget->parentWidget();
 
                 //
                 // check if this is QGraphicsView
@@ -935,18 +935,21 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
                 // cast from Parent to Child isn't usually allowed unless Parent is polymorphic class
                 QGraphicsWebView* webview = dynamic_cast<QGraphicsWebView*>(_graphicsWidget);
                 if (webview) {
-//                    _basewidget = dynamic_cast<SN_BaseWidget*>(webview->parentWidget());
                     _basewidget = _getBaseWidgetFromChildWidget(webview->parentWidget());
-                    if (_basewidget) return true;
+                    _graphicsWidget = 0;
+                    if (!_basewidget) return false;
                 }
 
 
                 // A item under the pointer could be a GUI component that uses proxy widget.
                 QGraphicsProxyWidget* pwidget = dynamic_cast<QGraphicsProxyWidget*>(_graphicsWidget);
                 if (pwidget) {
-                    _graphicsWidget = pwidget->parentWidget();
-                    if(_graphicsWidget) return true;
+                    // SN_ProxyScrollBar, SN_ProxyPushButton
+                    // Because the proxyWidget is implementing handlePointerClick()/Drag()....
+                    _graphicsWidget = pwidget;
+                    return true;
                 }
+
 
                 return true;
             }

@@ -1,4 +1,5 @@
 #include "simpleguiexample.h"
+#include "common/commonitem.h"
 
 SimpleGUIExample::SimpleGUIExample()
     : SN_BaseWidget(Qt::Window)
@@ -49,28 +50,20 @@ void SimpleGUIExample::_createGUIs() {
 
     //
     // now the toplayout has ownership of the _labelProxy
+    // and _labelProxy's size will be handled by the layout
     //
 	toplayout->addItem(labelProxy);
 
     //
 	// create the buttons and connect their signals to corresponding callback functions
     //
-	_btn_R = new QPushButton("Red");
-	_btn_Y = new QPushButton("Yellow");
-	_btn_M = new QPushButton("Magenta");
-	QObject::connect(_btn_R, SIGNAL(clicked()), this, SLOT(buttonR()));
+    _btn_R = new SN_ProxyPushButton("Red", this);
+    _btn_M = new SN_ProxyPushButton("Magenta", this);
+    _btn_Y = new SN_ProxyPushButton("Yellow", this);
+
+    QObject::connect(_btn_R, SIGNAL(clicked()), this, SLOT(buttonR()));
 	QObject::connect(_btn_Y, SIGNAL(clicked()), this, SLOT(buttonY()));
 	QObject::connect(_btn_M, SIGNAL(clicked()), this, SLOT(buttonM()));
-
-		//
-        // Again, create proxywidgets for the buttons
-		//
-	QGraphicsProxyWidget *proxy_btn_R = new QGraphicsProxyWidget(this, Qt::Widget);
-	QGraphicsProxyWidget *proxy_btn_M = new QGraphicsProxyWidget(this, Qt::Widget);
-	QGraphicsProxyWidget *proxy_btn_Y = new QGraphicsProxyWidget(this, Qt::Widget);
-	proxy_btn_R->setWidget(_btn_R);
-	proxy_btn_M->setWidget(_btn_M);
-	proxy_btn_Y->setWidget(_btn_Y);
 
 
     //
@@ -78,7 +71,8 @@ void SimpleGUIExample::_createGUIs() {
     //
     _scrollbar = new SN_ProxyScrollBar(Qt::Horizontal, this);
     _scrollbar->setRange(0, 255);
-    _scrollbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding, QSizePolicy::Slider);
+    _scrollbar->setMinimumHeight(32);
+    _scrollbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum, QSizePolicy::Slider);
     QObject::connect(_scrollbar, SIGNAL(valueChanged(int)), this, SLOT(scrollbarmoved(int)));
 
 
@@ -86,9 +80,9 @@ void SimpleGUIExample::_createGUIs() {
 	// create another layout for the buttons
     //
 	QGraphicsLinearLayout *btnLayout = new QGraphicsLinearLayout(Qt::Horizontal);
-	btnLayout->addItem(proxy_btn_R);
-	btnLayout->addItem(proxy_btn_M);
-	btnLayout->addItem(proxy_btn_Y);
+	btnLayout->addItem(_btn_R);
+	btnLayout->addItem(_btn_M);
+	btnLayout->addItem(_btn_Y);
 	btnLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::PushButton);
 
 
@@ -111,11 +105,11 @@ void SimpleGUIExample::_createGUIs() {
 	///
 	// Once you figure out your widget resolution, call this function.
 	//
-//	resize(800, 400);
+	resize(800, 600);
     //
     // or just call if it's Qt::Window type and a layout is set for the widget
     //
-    adjustSize();
+//    adjustSize();
 }
 
 

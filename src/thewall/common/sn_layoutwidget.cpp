@@ -49,11 +49,11 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 	/*
 	  The signature of a signal must match the signature of the receiving slot. (In fact a slot may have a shorter signature than the signal it receives because it can ignore extra arguments.)
 	  */
-	connect(_tileButton, SIGNAL(clicked(int)), this, SLOT(toggleTile()));
+	connect(_tileButton, SIGNAL(clicked()), this, SLOT(toggleTile()));
 	// horizontal button will divide the widget vertically
-	connect(_hButton, SIGNAL(clicked(int)), this, SLOT(createHBar()));
+	connect(_hButton, SIGNAL(clicked()), this, SLOT(createHBar()));
 	// vertical button will divide the widget horizontally
-	connect(_vButton, SIGNAL(clicked(int)), this, SLOT(createVBar()));
+	connect(_vButton, SIGNAL(clicked()), this, SLOT(createVBar()));
 
 //	_buttonGrp = new QGraphicsItemGroup(this);
 //	_buttonGrp->addToGroup(_vButton);
@@ -61,7 +61,7 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 
 	if (parentWidget) {
 		_xButton = new SN_PixmapButton(":/resources/close_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
-		connect(_xButton, SIGNAL(clicked(int)), _parentLayoutWidget, SLOT(deleteChildPartitions()));
+		connect(_xButton, SIGNAL(clicked()), _parentLayoutWidget, SLOT(deleteChildPartitions()));
 //		connect(_xButton, SIGNAL(clicked()), this, SLOT(deleteMyself()));
 
 //		_buttonGrp->addToGroup(_xButton);
