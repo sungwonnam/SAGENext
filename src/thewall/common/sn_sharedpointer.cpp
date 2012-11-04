@@ -867,6 +867,30 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 		if ( item->acceptedMouseButtons() == 0 ) continue;
 
 //        qDebug() << item;
+//
+
+
+        QGraphicsObject *go = item->toGraphicsObject();
+        if (go) {
+            /*
+            qDebug() << go;
+            if (go->parentObject()) qDebug() << "parentObject" << go->parentObject();
+            if (go->parentWidget()) qDebug() << "parentWidget" << go->parentWidget();
+            if (go->parentItem()) qDebug() << "parentItem" << go->parentItem();
+            if (go->parent()) qDebug() << "parent" << go->parent();
+                */
+            if (go->parentWidget() )  {
+                QGraphicsWebView *gwv = dynamic_cast<QGraphicsWebView *>(go->parentWidget());
+                if (gwv) {
+                    Q_ASSERT(gwv->parentWidget()); // SN_WebWidget
+                    _basewidget = dynamic_cast<SN_BaseWidget*>(gwv->parentWidget());
+                    return true;
+                }
+            }
+        }
+
+
+
 
         //
         // User application (any widget that inherits SN_BaseWidget)
