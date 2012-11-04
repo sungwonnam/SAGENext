@@ -40,10 +40,11 @@
         <file>resources/mediaBrowserRoot.png</file>
         <file>resources/google_128.png</file>
         <file>resources/googleMaps_128.png</file>
-        <file>resources/mandelbrot_128.png</file>
         <file>resources/dotdotslash_128.png</file>
         <file>resources/dir_plugin_128.png</file>
         <file>resources/black_arrow_left_48x48.png</file>
-        <file>resources/processing_512x512.png</file>
+        <file>resources/mandelbrot_128.jpg</file>
+        <file>resources/Homo_sapiens_CD8_molecule_webgl_128.jpg</file>
+        <file>resources/evl-logo-sagenext-blur.jpg</file>
     </qresource>
 </RCC>
