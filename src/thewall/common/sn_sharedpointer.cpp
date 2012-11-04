@@ -682,7 +682,7 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
         else if (_graphicsWidget) {
             SN_PixmapButton *btn = dynamic_cast<SN_PixmapButton *>(_graphicsWidget);
             if (btn) {
-//                qDebug() << "SN_PolygonArrowPointer::pointerClick() : SN_PixmapButton under the pointer. calling its handlePointerClick()";
+                //qDebug() << "SN_PolygonArrowPointer::pointerClick() : SN_PixmapButton under the pointer. calling its handlePointerClick()";
                 btn->handlePointerClick();
                 setBrush(_color);
                 return;
@@ -866,10 +866,14 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
         //
 		if ( item->acceptedMouseButtons() == 0 ) continue;
 
-//        qDebug() << item;
-//
+        //qDebug() << item;
+        
 
-
+        /*!
+         * There can be a child QGraphicsObject attached to the QGraphicsWebView.
+         * WebGL is a such example.
+         * This is to make SN_WebWidget's handlePointerDrag() can be alled in such case.
+         */
         QGraphicsObject *go = item->toGraphicsObject();
         if (go) {
             /*
@@ -891,7 +895,6 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 
 
 
-
         //
         // User application (any widget that inherits SN_BaseWidget)
         //
@@ -901,20 +904,6 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
             //qDebug("PolygonArrow::%s() : uiclientid %u, appid %llu", __FUNCTION__, uiclientid, app->globalAppId());
             return true;
         }
-
-        //
-        // Not used
-        //
-		else if (item->type() >= QGraphicsItem::UserType + BASEWIDGET_NONUSER) {
-            // do nothing for now
-		}
-
-        //
-        // SN_PixmapButton, SN_LineEdit
-        //
-//        else if (item->type() >= QGraphicsItem::UserType + INTERACTIVE_WIDGET_GUI) {
-
-//        }
 
         //
         // A QGraphicsItem type that doesn't inherit SN_BaseWidget.
@@ -948,14 +937,21 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
                 if (webview) {
 //                    _basewidget = dynamic_cast<SN_BaseWidget*>(webview->parentWidget());
                     _basewidget = _getBaseWidgetFromChildWidget(webview->parentWidget());
-                    if (_basewidget) qDebug() << _basewidget;
+                    if (_basewidget) return true;
                 }
 
+
+                // A item under the pointer could be a GUI component that uses proxy widget.
+                QGraphicsProxyWidget* pwidget = dynamic_cast<QGraphicsProxyWidget*>(_graphicsWidget);
+                if (pwidget) {
+                    _graphicsWidget = pwidget->parentWidget();
+                    if(_graphicsWidget) return true;
+                }
+
+                return true;
             }
-            return true;
 		}
     }
-
 
     //qDebug("PolygonArrow::%s() : uiclientid %u, There's BaseGraphicsWidget type under pointer", __FUNCTION__, uiclientid);
     return false;
