@@ -8,7 +8,7 @@
 //QHash<QString,QPixmap> SN_MediaBrowser::mediaHash;
 
 
-SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent)
+SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, const QSize &thumbsize, QGraphicsItem *parent)
     : SN_PixmapButton(parent)
     , _mediaType(mtype)
     , _filename(filename)
@@ -17,7 +17,7 @@ SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, 
     setFlag(QGraphicsItem::ItemIsMovable, false);
 
     if (!pixmap.isNull()) {
-        setPrimaryPixmap(pixmap);
+        setPrimaryPixmap(pixmap, thumbsize);
     }
     else {
         qDebug() << "SN_MediaItem::SN_MediaItem() : Null pixmap";
@@ -50,29 +50,33 @@ SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, con
     , _goBackToParentDirBtn(0)
     , _leftBtn(0)
     , _rightBtn(0)
-    , _numItemsHorizontal(2)
-    , _numItemsVertical(2)
+    , _numItemsHorizontal(3)
+    , _numItemsVertical(3)
     , _currPage(0)
     , _isRootWindow(true)
 {
     setWidgetType(SN_BaseWidget::Widget_GUI);
 
-    _goBackToRootWindowBtn = new SN_PixmapButton(":/resources/mediaBrowserRoot.png", 128, QString(), this);
+    // Assumes square thumbnail
+    _thumbSize = QSize(_settings->value("gui/mediathumbnailwidth", 128).toInt(), _settings->value("gui/mediathumbnailwidth", 128).toInt());
+
+
+    _goBackToRootWindowBtn = new SN_PixmapButton(":/resources/mediaBrowserRoot.png", _thumbSize, QString(), this);
     _goBackToRootWindowBtn->hide();
     QObject::connect(_goBackToRootWindowBtn, SIGNAL(clicked()), this, SLOT(displayRootWindow()));
 
-    _closeButton = new SN_PixmapButton(":/resources/close_over.png", 64, QString(), this);
+    _closeButton = new SN_PixmapButton(":/resources/close_over.png", _thumbSize, QString(), this);
     _closeButton->hide();
     QObject::connect(_closeButton, SIGNAL(clicked()), this, SLOT(close()));
 
-    _goBackToParentDirBtn = new SN_PixmapButton(":/resources/dotdotslash_128.png", _settings->value("gui/mediathumbnailwidth", 256).toInt(), QString(), this);
+    _goBackToParentDirBtn = new SN_PixmapButton(":/resources/dotdotslash_128.png", _thumbSize, QString(), this);
     _goBackToParentDirBtn->hide();
     QObject::connect(_goBackToParentDirBtn, SIGNAL(clicked()), this, SLOT(getParentDir()));
 
 
 
-    _leftBtn = new SN_PixmapButton(":/resources/arrow-left-64x64.png", _settings->value("gui/mediathumbnailwidth", 256).toInt(), QString(), this);
-    _rightBtn = new SN_PixmapButton(":/resources/arrow-right-64x64.png", _settings->value("gui/mediathumbnailwidth", 256).toInt(), QString(), this);
+    _leftBtn = new SN_PixmapButton(":/resources/arrow-left-64x64.png", _thumbSize / 2, QString(), this);
+    _rightBtn = new SN_PixmapButton(":/resources/arrow-right-64x64.png", _thumbSize / 2, QString(), this);
     QObject::connect(_leftBtn, SIGNAL(clicked()), this, SLOT(prevPage()));
     QObject::connect(_rightBtn, SIGNAL(clicked()), this, SLOT(nextPage()));
     _leftBtn->hide();
@@ -99,7 +103,7 @@ SN_MediaBrowser::~SN_MediaBrowser() {
 QGraphicsLinearLayout* SN_MediaBrowser::_getRootMediaIconsLayout() {
     // do linear layout or something to arrange them
     QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Horizontal);
-    layout->setSpacing(_settings->value("gui/mediathumbnailwidth", 256).toInt() / 4);
+    layout->setSpacing(_thumbSize.width() / 4);
 
     foreach (SN_PixmapButton* icon, _rootMediaIcons)
         layout->addItem(icon);
@@ -110,7 +114,7 @@ QGraphicsLinearLayout* SN_MediaBrowser::_getRootMediaIconsLayout() {
 QGraphicsLinearLayout* SN_MediaBrowser::_getRootAppIconsLayout() {
     // do linear layout or something to arrange them
     QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Horizontal);
-    layout->setSpacing(_settings->value("gui/mediathumbnailwidth", 256).toInt() / 4);
+    layout->setSpacing(_thumbSize.width() / 4);
 
     foreach (SN_PixmapButton* icon, _rootAppIcons) {
         layout->addItem(icon);
@@ -120,19 +124,19 @@ QGraphicsLinearLayout* SN_MediaBrowser::_getRootAppIconsLayout() {
 
 void SN_MediaBrowser::_createRootIcons() {
     // video
-    SN_PixmapButton *videobutton = new SN_PixmapButton(":/resources/video.png", 128, QString(), this);
+    SN_PixmapButton *videobutton = new SN_PixmapButton(":/resources/video.png", _thumbSize, QString(), this);
     QObject::connect(videobutton, SIGNAL(clicked()), this, SLOT(videoIconClicked()));
 
     // image
-    SN_PixmapButton *imagebutton = new SN_PixmapButton(":/resources/image.png", 128, QString(), this);
+    SN_PixmapButton *imagebutton = new SN_PixmapButton(":/resources/image.png", _thumbSize, QString(), this);
     QObject::connect(imagebutton, SIGNAL(clicked()), this, SLOT(imageIconClicked()));
 
     // pdf
-    SN_PixmapButton *pdfbutton = new SN_PixmapButton(":/resources/pdf.png", 128, QString(), this);
+    SN_PixmapButton *pdfbutton = new SN_PixmapButton(":/resources/pdf.png", _thumbSize, QString(), this);
     QObject::connect(pdfbutton, SIGNAL(clicked()), this, SLOT(pdfIconClicked()));
 
     // plugins
-    SN_PixmapButton* plugin = new SN_PixmapButton(":/resources/dir_plugin_128.png", 128, QString(), this);
+    SN_PixmapButton* plugin = new SN_PixmapButton(":/resources/dir_plugin_128.png", _thumbSize, QString(), this);
     QObject::connect(plugin, SIGNAL(clicked()), this, SLOT(pluginIconClicked()));
 
     _rootMediaIcons.push_back(videobutton);
@@ -148,22 +152,27 @@ void SN_MediaBrowser::_createRootIcons() {
 
     // But for now (for the SC12)
     // Attach them manually
-    SN_MediaItem* webbrowser = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu", QPixmap(":/resources/webkit_128x128.png"), this);
+    SN_MediaItem* webbrowser = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu", QPixmap(":/resources/webkit_128x128.png"), _thumbSize, this);
 
     // clicking an app icon will launch the application directly
     QObject::connect(webbrowser, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
 
     // do the same for
     // google maps, google docs, MandelBrot
-    SN_MediaItem* googlemap = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com", QPixmap(":/resources/googleMaps_128.png"), this);
+    SN_MediaItem* googlemap = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com", QPixmap(":/resources/googleMaps_128.png"), _thumbSize, this);
     QObject::connect(googlemap, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
 
-    SN_MediaItem* mandelbrot = new SN_MediaItem(SAGENext::MEDIA_TYPE_PLUGIN, QDir::homePath()+"/.sagenext/media/plugins/libMandelbrotExamplePlugin.so", QPixmap(":/resources/mandelbrot_128.jpg"),this);
-    QObject::connect(mandelbrot, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+
+    SN_MediaItem* webgl = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://webglmol.sourceforge.jp/glmol/viewer.html", QPixmap(":/resources/Homo_sapiens_CD8_molecule_webgl_128.jpg"), _thumbSize,this);
+    QObject::connect(webgl, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+
+
+//    SN_MediaItem* mandelbrot = new SN_MediaItem(SAGENext::MEDIA_TYPE_PLUGIN, QDir::homePath()+"/.sagenext/media/plugins/libMandelbrotExamplePlugin.so", QPixmap(":/resources/mandelbrot_128.jpg"),this);
+//    QObject::connect(mandelbrot, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
 
     _rootAppIcons.push_back(webbrowser);
     _rootAppIcons.push_back(googlemap);
-    _rootAppIcons.push_back(mandelbrot);
+    _rootAppIcons.push_back(webgl);
 }
 
 void SN_MediaBrowser::resizeEvent(QGraphicsSceneResizeEvent *event) {
@@ -371,7 +380,7 @@ void SN_MediaBrowser::_populateMediaItems(const QDir &dir) {
             //
             // create new SN_MediaItem object
             //
-            SN_MediaItem *mitem = new SN_MediaItem(iter.value()->type, iter.key(), iter.value()->pixmap, this); // is a child of SN_MediaBrowser
+            SN_MediaItem *mitem = new SN_MediaItem(iter.value()->type, iter.key(), iter.value()->pixmap, _thumbSize, this); // is a child of SN_MediaBrowser
             mitem->hide();
 
             // if it's folder
@@ -475,7 +484,7 @@ void SN_MediaBrowser::updateThumbnailPanel() {
     QGraphicsLinearLayout *buttonlayout = 0;
     QGraphicsGridLayout *gridlayout = new QGraphicsGridLayout;
 
-    gridlayout->setContentsMargins(128, 32, 32, 32);
+    ll->setContentsMargins(128, 32, 32, 32);
 
     //
     // Assume _currMediaItems is sorted

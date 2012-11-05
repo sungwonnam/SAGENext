@@ -19,7 +19,7 @@ class SN_MediaItem : public SN_PixmapButton
 	Q_OBJECT
 
 public:
-    SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, QGraphicsItem *parent=0);
+    SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, const QSize& thumbsize, QGraphicsItem *parent=0);
 
     inline SAGENext::MEDIA_TYPE mediaType() {return _mediaType;}
 
@@ -115,6 +115,8 @@ private:
     SN_PixmapButton* _leftBtn;
 
     SN_PixmapButton* _rightBtn;
+
+    QSize _thumbSize;
 
     /*!
       How many columns in the grid layout for the thumbnail view
