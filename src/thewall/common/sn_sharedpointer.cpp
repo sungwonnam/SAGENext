@@ -209,7 +209,6 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 		// set hover flag for the item
 		// otherwise unset hover flag
 		//
-		/*
 		QList<QGraphicsItem *> collidingapps = _scene->collidingItems(this);
 		SN_BaseWidget *firstUnderPointer = 0;
 		for (int i=collidingapps.size()-1; i>=0; i--) {
@@ -222,11 +221,12 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 //			qDebug() << "shared pointer collides with basewidget" << firstUnderPointer;
 			break;
 		}
-		*/
 
 		/* get the topmost item on the cursor's position */
+        /*
 		QGraphicsItem *topmost = _scene->itemAt(_scenePos);
-		SN_BaseWidget *topmost_bw = dynamic_cast<SN_BaseWidget *>(topmost); // QGraphicsItem is polymorphic class so dynamic cast from Base to Derived is ok
+		SN_BaseWidget *firstUnderPointer = dynamic_cast<SN_BaseWidget *>(topmost); // QGraphicsItem is polymorphic class so dynamic cast from Base to Derived is ok
+*/
 
 		/* For each SN_BaseWidget that registered for hovering */
 		foreach(SN_BaseWidget *bw, _scene->hoverAcceptingApps) {
@@ -235,7 +235,7 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 				continue;
 			}
 	
-			if (bw == topmost_bw/* && bw->contains(bw->mapFromScene(_scenePos))*/ ) {
+			if (bw == firstUnderPointer/* && bw->contains(bw->mapFromScene(_scenePos))*/ ) {
 				bw->handlePointerHover(this, bw->mapFromScene(_scenePos), true);
 			}
 			else {
