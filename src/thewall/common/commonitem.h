@@ -128,6 +128,8 @@ signals:
     void valueChanged(int value);
 };
 
+
+
 class SN_ProxyPushButton : public SN_ProxyGUIBase {
     Q_OBJECT
 public:
@@ -152,6 +154,33 @@ protected:
 
 
 
+/*!
+  This is used to allow users to feed string data to a LineEdit item
+  */
+class SN_ProxyLineEdit : public SN_ProxyGUIBase
+{
+	Q_OBJECT
+public:
+    SN_ProxyLineEdit(QGraphicsItem *parent=0, const QString &placeholdertext =QString());
+
+    /*!
+     * \brief setText
+     * \param text
+     */
+    void setText(const QString &text, bool emitSignal = true);
+
+    inline void click(const QPoint &) {_lineedit.selectAll();}
+
+protected:
+    QLineEdit _lineedit;
+
+signals:
+	void pressed();
+	void textChanged(QString);
+
+public slots:
+    inline void selectAll() {_lineedit.selectAll();}
+};
 
 
 
@@ -201,46 +230,6 @@ private:
 	SN_SimpleTextItem *_textItem;
 };
 
-
-
-
-
-
-
-class SN_PolygonArrowPointer;
-
-/*!
-  This is used to allow users to feed string data to a LineEdit item
-  */
-class SN_LineEdit : public QGraphicsWidget
-{
-	Q_OBJECT
-public:
-	SN_LineEdit(QGraphicsItem *parent=0);
-	SN_LineEdit(const SN_LineEdit &);
-	~SN_LineEdit() {}
-
-	QLineEdit *_lineedit;
-	QGraphicsProxyWidget *_proxywidget;
-
-	SN_PolygonArrowPointer *_pointer;
-
-	void setText(const QString &text);
-
-protected:
-	void mousePressEvent(QGraphicsSceneMouseEvent *event);
-
-
-signals:
-	void pressed();
-
-	void textChanged(QString);
-
-public slots:
-	void setThePointer(SN_PolygonArrowPointer *p);
-};
-
-//Q_DECLARE_METATYPE(SN_LineEdit)
 
 
 #endif // COMMONITEM_H

@@ -55,35 +55,12 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	QFont f;
 	f.setPointSize( setting->value("gui/fontpointsize", 32).toInt() );
 
-
-	/********
-	// URL box with QLineEdit widget
-	urlbox = new QLineEdit("http://");
-	urlbox->setFont(f);
-	QObject::connect(urlbox, SIGNAL(returnPressed()), this, SLOT(setUrlFromLineEdit()));
-
-	// Corresponding proxy widget for the URL box
-	urlboxproxy = new QGraphicsProxyWidget; // this is bad for graphics perfomance. But it's the only way
-	//proxyWidget->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
-
-	// urlboxproxy takes ownership of urlbox
-	urlboxproxy->setWidget(urlbox); // widget(urlbox) must be top-level widget whose parent is 0
-	urlboxproxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred, QSizePolicy::LineEdit);
-	**********/
-
-
-
-
 	/* URL box with custom lineeidt widget to be able to receive text string from uiclient */
-	_customurlbox = new SN_LineEdit(this);
-	_customurlbox->_lineedit->setText("http://");
-	_customurlbox->_lineedit->setFont(f);
-	_customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed, QSizePolicy::LineEdit);
-    _customurlbox->setMinimumHeight(128);
+	_customurlbox = new SN_ProxyLineEdit(this);
+//	_customurlbox->setText("http://");
+	_customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum, QSizePolicy::LineEdit);
+    _customurlbox->setMinimumHeight(64);
 	QObject::connect(_customurlbox, SIGNAL(textChanged(QString)), this, SLOT(setUrl(QString)));
-
-
-
 
 
 
@@ -262,11 +239,11 @@ bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 //		}
 //	}
 
-	else if (watched == _customurlbox->_proxywidget) {
+	else if (watched == _customurlbox) {
 		if (event->type() == QEvent::GraphicsSceneMousePress || event->type() == QEvent::GraphicsSceneMouseRelease) {
 			SN_BaseWidget::setTopmost();
 
-			_customurlbox->_lineedit->selectAll();
+			_customurlbox->selectAll();
 		}
 	}
 
@@ -477,14 +454,7 @@ void SN_WebWidget::setUrl(const QString &u) {
 	}
 }
 
-void SN_WebWidget::setUrlFromLineEdit() {
-//	setUrl(urlbox->text());
-}
-
 void SN_WebWidget::urlChanged(const QUrl &url) {
-//	urlbox->setText( url.toString());
-	_customurlbox->_lineedit->setText(url.toString());
+    if (_customurlbox)
+        _customurlbox->setText(url.toString(), false);
 }
-
-
-

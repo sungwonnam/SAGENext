@@ -963,9 +963,9 @@ bool SN_PolygonArrowPointer::setAppUnderPointer(const QPointF &scenePos) {
 void SN_PolygonArrowPointer::injectStringToItem(const QString &str) {
 	if (_graphicsWidget) {
 		qDebug() << "SN_PolygonArrowPointer::injectStringToItem()" << str;
-		qDebug() << "And the current gui item is a type of" << _graphicsWidget->metaObject()->className();
+//		qDebug() << "And the current gui item is a type of" << _graphicsWidget->metaObject()->className();
 
-		SN_LineEdit *sle = dynamic_cast<SN_LineEdit *>(_graphicsWidget);
+		SN_ProxyLineEdit *sle = dynamic_cast<SN_ProxyLineEdit *>(_graphicsWidget);
 		if(sle)
             sle->setText(str); // this will trigger textChanged() signal
 	}

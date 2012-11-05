@@ -6,13 +6,11 @@
 //#include <QWebPage>
 
 class QGraphicsWebView;
-//class QLineEdit;
-class SN_LineEdit;
 class QGraphicsLinearLayout;
 class QWebPage;
 class QWebFrame;
 class QGraphicsProxyWidget;
-
+class SN_ProxyLineEdit;
 
 /**
   Use the netscape plugin wrapper to convert libflashplugin.so to enable youtube video
@@ -89,8 +87,7 @@ protected:
 private:
 	QGraphicsLinearLayout *linearLayout;
 	QGraphicsWebView *gwebview;
-//	QLineEdit *urlbox;
-	SN_LineEdit *_customurlbox;
+	SN_ProxyLineEdit *_customurlbox;
 	QGraphicsProxyWidget *urlboxproxy;
 
 
@@ -104,38 +101,19 @@ public slots:
       */
 	void setUrl(const QString &url);
 
-	void setUrlFromLineEdit();
-
-	void urlChanged(const QUrl &url);
+    /*!
+     * \brief
+     * \param
+     *
+     * setText() emits textChanged() signal
+     * textChanged() -> setUrl()
+     * setUrl() emits urlChanged()
+     * urlChanged() -> this function
+     */
+    void urlChanged(const QUrl &url);
 
 	void pageLoaded();
 };
 
-
-
-
-
-
-
-/**
-  what if user clicked a html link on the page ????????????????????????????????????
-  **/
-/*
-class QWebPage;
-
-class WebPageThread : public QThread {
-                Q_OBJECT
-public:
-        WebPageThread(WebWidget *ww, QObject *parent=0);
-        ~WebPageThread();
-
-private:
-        QWebPage *webPage;
-        WebWidget *view;
-
-private slots:
-        void newUrl();
-};
-*/
 
 #endif // WEBWIDGET_H
