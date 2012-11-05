@@ -178,11 +178,6 @@ void SN_MediaBrowser::_createRootIcons() {
 void SN_MediaBrowser::resizeEvent(QGraphicsSceneResizeEvent *event) {
     _goBackToRootWindowBtn->setPos(0, size().height() - _goBackToRootWindowBtn->size().height());
     _closeButton->setPos(_goBackToRootWindowBtn->geometry().x(), _goBackToRootWindowBtn->geometry().y() - _closeButton->size().height());
-
-    // recalculate the number of items displayed
-//    event->newSize();
-
-//    _settings->value("gui/mediathumbnailwidth", 256).toInt();
 }
 
 /*
@@ -540,6 +535,9 @@ void SN_MediaBrowser::updateThumbnailPanel() {
         }
 //        qDebug() << "updateThumbnail() : " << gridlayout->count();
     }
+    else {
+        qDebug() << "SN_MediaBrowser::updateThumbnail() : nothing to display";
+    }
 
     //
     // cd..  button to go to parent directory
@@ -548,7 +546,8 @@ void SN_MediaBrowser::updateThumbnailPanel() {
     if (gridlayout->columnCount() == _numItemsHorizontal)
         gridlayout->addItem(_goBackToParentDirBtn, gridlayout->rowCount(), 0);
     else {
-        gridlayout->addItem(_goBackToParentDirBtn, gridlayout->rowCount()-1, gridlayout->columnCount());
+        int row = (gridlayout->rowCount()) ? gridlayout->rowCount() - 1 : 0;
+        gridlayout->addItem(_goBackToParentDirBtn, row, gridlayout->columnCount());
     }
 
     

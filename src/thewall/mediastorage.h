@@ -51,16 +51,19 @@ public:
 private:
 	const QSettings *_settings;
 
+    QSize _thumbSize;
+
 //    QPixmap _createThumbnail(SAGENext::MEDIA_TYPE mtype, const QString &filename);
 
     /*!
       creates thumbnail of the media file
       */
-    QPixmap _readImage(const QString &filename);
-    QPixmap _readPDF(const QString &filename);
-    QPixmap _readVideo(const QString &filename);
-    QPixmap _readPlugin(const QString &filename);
+    bool _readImage(const QString &filename, QPixmap &pixmap);
+    bool _readPDF(const QString &fpath, QPixmap &pixmap);
+    bool _readVideo(const QString &filename, QPixmap &pixmap);
+    bool _readPlugin(const QString &filename, QPixmap &pixmap);
 
+    QPixmap _createThumbnail(const QString & fpath, SAGENext::MEDIA_TYPE mtype);
 
 	/**
 	  Read media directory recursively and build initial media hash

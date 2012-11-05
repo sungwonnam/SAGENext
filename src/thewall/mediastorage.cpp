@@ -10,6 +10,7 @@ QMap<QString, MediaMetaData*> SN_MediaStorage::GlobalMediaList;
 SN_MediaStorage::SN_MediaStorage(const QSettings *s, QObject *parent)
     : QObject(parent)
     , _settings(s)
+    , _thumbSize(QSize(_settings->value("gui/mediathumbnailwidth", 128).toInt(), _settings->value("gui/mediathumbnailwidth", 128).toInt()))
 {
 	int nummedia = _initMediaList();
 	qWarning() << "SN_MediaStorage : initialized" << nummedia << "items";
@@ -47,29 +48,27 @@ int SN_MediaStorage::_initMediaList() {
             MediaMetaData *mediameta = 0;
             if (iter.filePath().contains(rxVideo)) {
                 mediameta = new MediaMetaData;
-                mediameta->pixmap = _readVideo(iter.filePath());
                 mediameta->type = SAGENext::MEDIA_TYPE_LOCAL_VIDEO;
             }
             else if (iter.filePath().contains(rxImage)) {
                 mediameta = new MediaMetaData;
-                mediameta->pixmap = _readImage(iter.filePath());
                 mediameta->type = SAGENext::MEDIA_TYPE_IMAGE;
             }
             else if (iter.filePath().contains(rxPdf)) {
                 mediameta = new MediaMetaData;
-                mediameta->pixmap = _readPDF(iter.filePath());
                 mediameta->type = SAGENext::MEDIA_TYPE_PDF;
             }
             else if (iter.filePath().contains(rxPlugin)) {
                 mediameta = new MediaMetaData;
-                mediameta->pixmap = _readPlugin(iter.filePath());
                 mediameta->type = SAGENext::MEDIA_TYPE_PLUGIN;
             }
             else {
                 // error
             }
 
+
             if (mediameta) {
+                mediameta->pixmap = _createThumbnail(iter.filePath(), mediameta->type);
                 SN_MediaStorage::GlobalMediaList.insert(iter.filePath(), mediameta);
             }
         }
@@ -79,7 +78,7 @@ int SN_MediaStorage::_initMediaList() {
 
             MediaMetaData *meta = new MediaMetaData;
             meta->type = SAGENext::MEDIA_TYPE_UNKNOWN;
-            meta->pixmap = QPixmap(":/resources/dir.png").scaledToWidth(_settings->value("gui/mediathumbnailwidth", 256).toInt());
+            meta->pixmap = QPixmap(":/resources/dir.png").scaledToWidth(_thumbSize.width());
             SN_MediaStorage::GlobalMediaList.insert(iter.filePath(), meta);
         }
     }
@@ -93,7 +92,6 @@ int SN_MediaStorage::_initMediaList() {
 }
 
 void SN_MediaStorage::addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &filepath) {
-
     //
     // Check if this media is already exist in the storage
     //
@@ -104,18 +102,7 @@ void SN_MediaStorage::addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &fil
 
     MediaMetaData* meta = new MediaMetaData;
     meta->type = mtype;
-    if (mtype == SAGENext::MEDIA_TYPE_IMAGE) {
-        meta->pixmap = _readImage(filepath);
-    }
-    else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
-        meta->pixmap = _readVideo(filepath);
-    }
-    else if (mtype == SAGENext::MEDIA_TYPE_PDF) {
-        meta->pixmap = _readPDF(filepath);
-    }
-    else {
-        return;
-    }
+    meta->pixmap = _createThumbnail(filepath, mtype);
 
     SN_MediaStorage::MediaListRWLock.lockForWrite();
     SN_MediaStorage::GlobalMediaList.insert(filepath, meta);
@@ -147,6 +134,9 @@ QMap<QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir)
         // if the item is in the dir
         if ( iter.key().startsWith(dir.path(), Qt::CaseSensitive) ) {
             qDebug() << "SN_MediaStorage::getMediaListInDir() : " << iter.key();
+            if (iter.value()->pixmap.isNull()) {
+                qDebug() << "\t Has no thumbnail";
+            }
             itemsInDir.insert(iter.key(), iter.value());
         }
     }
@@ -157,225 +147,143 @@ QMap<QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir)
 }
 
 
-/*
-QPixmap SN_MediaStorage::_createThumbnail(SAGENext::MEDIA_TYPE mtype, const QString &filename) {
 
-    if (mtype == SAGENext::MEDIA_TYPE_UNKNOWN) {
-        QRegExp rxVideo("\\.(avi|mov|mpg|mpeg|mp4|mkv|flv|wmv)$", Qt::CaseInsensitive, QRegExp::RegExp);
-        QRegExp rxImage("\\.(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
-        QRegExp rxPdf("\\.(pdf)$", Qt::CaseInsensitive, QRegExp::RegExp);
-        QRegExp rxPlugin;
-        rxPlugin.setCaseSensitivity(Qt::CaseInsensitive);
-        rxPlugin.setPatternSyntax(QRegExp::RegExp);
-    #if defined(Q_OS_LINUX)
-        rxPlugin.setPattern("\\.so$");
-    #elif defined(Q_OS_WIN32)
-        rxPlugin.setPattern("\\.dll$");
-    #elif defined(Q_OS_DARWIN)
-        rxPlugin.setPattern("\\.dylib$");
-    #endif
+QPixmap SN_MediaStorage::_createThumbnail(const QString &fpath, SAGENext::MEDIA_TYPE mtype) {
+    //
+    // Assume the file exists and valid
+    //
 
-        if (filename.contains(rxVideo)) {
-            return _readVideo(filename);
-        }
-        else if (filename.contains(rxImage)) {
-            return _readImage(filename);
-        }
-        else if (filename.contains(rxPdf)) {
-            return _readPDF(filename);
-        }
-        else if (filename.contains(rxPlugin)) {
-            // Assumes that the icon for the plugin is provided by the developer
-            // and is located where the binary is
-            // and the filename of the icon is binary name + png
-            // e.g.) libTestPlugin.so -> libTestPlugin.so.png
-            QPixmap pixmap(filename + ".png");
-            if (!pixmap.isNull()) {
-                if ( pixmap.width() != _settings->value("gui/mediathumbnailwidth", 256).toInt())
-                    return pixmap.scaledToWidth(_settings->value("gui/mediathumbnailwidth", 256).toInt());
-                else
-                    return pixmap;
-            }
-            else {
-                // default icon for plugin
-                pixmap = QPixmap(":/resources/plugin_200x200.png").scaledToWidth(_settings->value("gui/mediathumbnailwidth", 256).toInt());
-                return pixmap;
-            }
-        }
-        else {
-            // error
-        }
-    }
-    else if (mtype == SAGENext::MEDIA_TYPE_IMAGE) {
-        return _readImage(filename);
-    }
-    else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
-        return _readVideo(filename);
-    }
-    else if (mtype == SAGENext::MEDIA_TYPE_PDF) {
-        return _readPDF(filename);
-    }
-    return QPixmap();
-}
-*/
-
-
-
-
-
-QPixmap SN_MediaStorage::_readPlugin(const QString &filename) {
     QPixmap pixmap;
+    bool saveThumbnail = false;
 
-    if ( ! pixmap.load(filename + ".picon") ) {
-        pixmap.load(":/resources/plugin_200x200.png");
+    //
+    // check if there's a thumbnail for this file
+    //
+    QFileInfo fi(fpath);
+    QString thumbpath = fi.dir().absolutePath() + "/.thumb." + fi.fileName() + ".jpg";
+
+    if (pixmap.load(thumbpath)) {
+        qDebug() << "SN_MediaStorage::_createThumbnail() : loading existing thumbnail : " << thumbpath;
     }
 
-    if (!pixmap.isNull() && pixmap.width() != _settings->value("gui/mediathumbnailwidth", 256).toInt()) {
-        return pixmap.scaledToWidth(_settings->value("gui/mediathumbnailwidth", 256).toInt());
-    }
-    else
-        return pixmap;
-
-}
-
-
-QPixmap SN_MediaStorage::_readImage(const QString &filepath) {
-    // Extract the filename and directory path from the filepath
-    QString filename = filepath.right( filepath.length() - filepath.lastIndexOf('/') - 1 );
-    QString currentDirectory = filepath.left( filepath.lastIndexOf('/') + 1 );
-    //qDebug() << "SN_MediaStorage::_readImage() path : " << filepath;
-    //qDebug() << "SN_MediaStorage::_readImage() dir : " << currentDirectory;
-    //qDebug() << "SN_MediaStorage::_readImage() name : " << filename;
-
-    // Load existing thumbnail image
-    QImage image;
-    QPixmap existingThumb;
-    if (image.load(currentDirectory+".thumb."+filename)) {
-            qDebug() << "SN_MediaStorage::_readImage() loading thumbnail : " << currentDirectory+".thumb."+filename;
-            existingThumb.convertFromImage(image);
-            return existingThumb;
+    // Create one
+    else {
+        qDebug() << "SN_MediaStorage::_createThumbnail() : creating thumbnail for : " << thumbpath;
+        if (mtype == SAGENext::MEDIA_TYPE_PDF) {
+            saveThumbnail = _readPDF(fpath, pixmap);
+        }
+        else if (mtype == SAGENext::MEDIA_TYPE_IMAGE) {
+            saveThumbnail = _readImage(fpath, pixmap);
+        }
+        else if (mtype == SAGENext::MEDIA_TYPE_LOCAL_VIDEO) {
+            saveThumbnail = _readVideo(fpath, pixmap);
+        }
+        else if (mtype == SAGENext::MEDIA_TYPE_PLUGIN) {
+            saveThumbnail = _readPlugin(fpath, pixmap);
+        }
     }
 
-    // Create new thumbnail
-    QPixmap pixmap(filepath);
-
-    if ( ! pixmap.isNull() ) {
-        //
-        // for better drawing performance, thumbnail shouldn't be large
-        //
-        // Save thumbnail
-        qDebug() << "SN_MediaStorage::_readImage() saving thumbnail : " << currentDirectory+".thumb."+filename;
-
+    //
+    // Rescale it
+    //
+    if (!pixmap.isNull()  && pixmap.width() != _thumbSize.width()) {
         pixmap = pixmap.scaled(
-                    _settings->value("gui/mediathumbnailwidth", 256).toInt()
-                    ,_settings->value("gui/mediathumbnailwidth",256).toInt()
+                    _settings->value("gui/mediathumbnailwidth", 128).toInt()
+                    ,_settings->value("gui/mediathumbnailwidth",128).toInt()
                     ,Qt::IgnoreAspectRatio
                     ,Qt::FastTransformation);
-
-        if( !pixmap.save(currentDirectory+".thumb."+filename, 0, -1) )
-            qWarning("%s::%s() : Couldn't save the thumbnail to %s",metaObject()->className(), __FUNCTION__, qPrintable(currentDirectory+".thumb."+filename));
-
-        return pixmap;
     }
 
+
+    //
+    // Save to a file
+    //
+    if (!pixmap.isNull() && saveThumbnail) {
+        // Save thumbnail to current directory as a JPG
+        if( !pixmap.save(thumbpath, "JPG") )
+            qWarning("%s::%s() : Couldn't save the thumbnail to %s",metaObject()->className(), __FUNCTION__, qPrintable(thumbpath));
+    }
+
+    return pixmap;
+}
+
+bool SN_MediaStorage::_readPlugin(const QString &filename, QPixmap& pixmap) {
+    if ( ! pixmap.load(filename + ".picon") ) {
+        // load default icon image for a plugin
+        pixmap.load(":/resources/plugin_200x200.png");
+        return false;
+    }
     else {
-        qWarning("%s::%s() : Couldn't create the thumbnail for %s",metaObject()->className(), __FUNCTION__, qPrintable(filepath));
-        return pixmap;
+        return true;
     }
 }
 
-QPixmap SN_MediaStorage::_readPDF(const QString &filepath) {
-    // Extract the filename and directory path from the filepath
-    QString filename = filepath.right( filepath.length() - filepath.lastIndexOf('/') - 1 );
-    QString currentDirectory = filepath.left( filepath.lastIndexOf('/') + 1 );
 
-    qDebug() << "SN_MediaStorage::_readPDF() : " << filepath;
-
-    // Load existing thumbnail image
-    QImage image;
-    QPixmap existingThumb;
-    if (image.load(currentDirectory+".thumb."+filename+".jpg")) {
-            qDebug() << "SN_MediaStorage::_readPDF() loading thumbnail : " << currentDirectory+".thumb."+filename+".jpg";
-            existingThumb.convertFromImage(image);
-            return existingThumb;
+bool SN_MediaStorage::_readImage(const QString &filepath,  QPixmap& pixmap) {
+    // Create new thumbnail
+    if (!pixmap.load(filepath)) {
+        qWarning("%s::%s() : Couldn't create the thumbnail for %s",metaObject()->className(), __FUNCTION__, qPrintable(filepath));
+        return false;
     }
+    else {
+        return true;
+    }
+}
 
-    QPixmap pixmap;
+bool SN_MediaStorage::_readPDF(const QString &fpath, QPixmap& pixmap) {
+    Poppler::Document *_document = 0;
+    _document = Poppler::Document::load(fpath);
 
-    Poppler::Document *_document;
-    _document = Poppler::Document::load(filepath);
+    bool ret = false;
+
     if (!_document || _document->isLocked()) {
-        qCritical("%s::%s() : Couldn't open pdf file %s", metaObject()->className(), __FUNCTION__, qPrintable(filepath));
+        qCritical("%s::%s() : Couldn't open pdf file %s", metaObject()->className(), __FUNCTION__, qPrintable(fpath));
+        ret = false;
     } else {
         Poppler::Page *_currentPage = _document->page(0);
-        pixmap = QPixmap::fromImage(_currentPage->renderToImage(200,200));
+        pixmap = QPixmap::fromImage(_currentPage->renderToImage(200,200), Qt::AutoColor | Qt::OrderedDither);
+
+        if (!pixmap.isNull()) ret = true;
 
         _currentPage->~Page();
     }
-    _document->~Document();
 
-    pixmap = pixmap.scaled(
-                _settings->value("gui/mediathumbnailwidth", 256).toInt()
-                ,_settings->value("gui/mediathumbnailwidth",256).toInt()
-                ,Qt::IgnoreAspectRatio
-                ,Qt::FastTransformation);
+    if (_document) _document->~Document();
 
-    // Save thumbnail to current directory as a JPG
-    if( !pixmap.save(currentDirectory+".thumb."+filename+".jpg", "JPG", -1) )
-        qWarning("%s::%s() : Couldn't save the thumbnail to %s",metaObject()->className(), __FUNCTION__, qPrintable(currentDirectory+".thumb."+filename+".jpg"));
-
-    return pixmap;
-
+    return ret;
 }
 
-QPixmap SN_MediaStorage::_readVideo(const QString &filepath) {
-    // Extract the filename and directory path from the filepath
-    QString filename = filepath.right( filepath.length() - filepath.lastIndexOf('/') - 1 );
-    QString currentDirectory = filepath.left( filepath.lastIndexOf('/') + 1 );
-
-    qDebug() << "SN_MediaStorage::_readVideo() : " << filepath;
-
-    // Load existing thumbnail image
-    QImage image;
-    QPixmap existingThumb;
-    if (image.load(currentDirectory+".thumb."+filename+".jpg")) {
-            qDebug() << "SN_MediaStorage::_readVideo() loading thumbnail : " << currentDirectory+".thumb."+filename+".jpg";
-            existingThumb.convertFromImage(image);
-            return existingThumb;
-    }
-
-    // Generate video thumbnail
+bool SN_MediaStorage::_readVideo(const QString &filepath, QPixmap & pixmap) {
     QString program = "mplayer";
     QStringList arguments;
     // Create a jpeg quietly, no sound, getting a single frame (-frames 1) 5 seconds into the video (-ss 5)
     arguments << "-vo" << "jpeg" << "-quiet" << "-nosound" << "-frames" << "1" << "-ss" << "5" << filepath;
 
-    QProcess *myProcess = new QProcess();
-    myProcess->start(program, arguments);
-    while( myProcess->waitForFinished() ){
-//        qDebug() << "SN_MediaStorage::_readVideo() : Block Waiting for thumb generation for mov";
-    }
-
     // Apparently running the above command  will create an image called '00000001.jpg' in the build directory
     QFileInfo thumbLocation = QFileInfo("$${BUILD_DIR}");
-    QPixmap pixmap(thumbLocation.absolutePath() + "/00000001.jpg");
 
-    if( pixmap.isNull() ) {
-        qDebug() << "SN_MediaStorage::_readVideo() : failed to create thumbnail for" << filepath;
-        return pixmap;
-    }
+    //
+    // delete 00000001.jpg
+    //
+    QProcess::execute("rm -f " + thumbLocation.absolutePath() + "/00000001.jpg");
 
-    pixmap = pixmap.scaled(
-                _settings->value("gui/mediathumbnailwidth", 256).toInt()
-                ,_settings->value("gui/mediathumbnailwidth",256).toInt()
-                ,Qt::IgnoreAspectRatio
-                ,Qt::FastTransformation);
+    //
+    // run mplayer
+    //
+    QProcess::execute(program, arguments);
+//    QProcess* proc = new QProcess;
+//    proc->start(program, arguments, QIODevice::ReadOnly);
+//    if (proc->waitForFinished()) {
+        if (!pixmap.load(thumbLocation.absolutePath() + "/00000001.jpg")) {
+            qWarning("%s::%s() : Couldn't create the thumbnail for %s", metaObject()->className(), __FUNCTION__, qPrintable(filepath));
+//            delete proc;
+            return false;
+        }
+//    }
 
-    // Save thumbnail to current directory as a JPG
-    if( !pixmap.save(currentDirectory+".thumb."+filename+".jpg", "JPG", -1) )
-        qWarning("%s::%s() : Couldn't save the thumbnail to %s",metaObject()->className(), __FUNCTION__, qPrintable(currentDirectory+".thumb."+filename+".jpg"));
+//    delete proc;
 
-    return pixmap;
+    return true;
 }
 
 
