@@ -39,12 +39,12 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 	setContentsMargins(0,0,0,0);
 
 	// these png files are 499x499
-	_tileButton = new SN_PixmapButton(":/resources/tile_btn_over.jpg", _settings->value("gui/iconwidth").toDouble(), "", this);
-    _tileButton->setSecondaryPixmap(":/resources/tile_btn_cyan.jpg");
+	_tileButton = new SN_PixmapButton(":/scene/resources/tile_btn_over.jpg", _settings->value("gui/iconwidth").toDouble(), "", this);
+    _tileButton->setSecondaryPixmap(":/scene/resources/tile_btn_cyan.jpg");
 
 
-	_hButton = new SN_PixmapButton(":/resources/horizontal_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
-	_vButton = new SN_PixmapButton( ":/resources/vertical_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
+	_hButton = new SN_PixmapButton(":/scene/resources/horizontal_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
+	_vButton = new SN_PixmapButton( ":/scene/resources/vertical_divider_btn_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 
 	/*
 	  The signature of a signal must match the signature of the receiving slot. (In fact a slot may have a shorter signature than the signal it receives because it can ignore extra arguments.)
@@ -60,7 +60,7 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 //	_buttonGrp->addToGroup(_hButton);
 
 	if (parentWidget) {
-		_xButton = new SN_PixmapButton(":/resources/close_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
+		_xButton = new SN_PixmapButton(":/scene/resources/close_over.png", _settings->value("gui/iconwidth").toDouble(), "", this);
 		connect(_xButton, SIGNAL(clicked()), _parentLayoutWidget, SLOT(deleteChildPartitions()));
 //		connect(_xButton, SIGNAL(clicked()), this, SLOT(deleteMyself()));
 

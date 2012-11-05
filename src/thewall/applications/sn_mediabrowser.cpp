@@ -61,15 +61,15 @@ SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, con
     _thumbSize = QSize(_settings->value("gui/mediathumbnailwidth", 128).toInt(), _settings->value("gui/mediathumbnailwidth", 128).toInt());
 
 
-    _goBackToRootWindowBtn = new SN_PixmapButton(":/resources/mediaBrowserRoot.png", _thumbSize, QString(), this);
+    _goBackToRootWindowBtn = new SN_PixmapButton(":/mediabrowser/resources/mediaBrowserRoot.png", _thumbSize, QString(), this);
     _goBackToRootWindowBtn->hide();
     QObject::connect(_goBackToRootWindowBtn, SIGNAL(clicked()), this, SLOT(displayRootWindow()));
 
-    _closeButton = new SN_PixmapButton(":/resources/close_over.png", _thumbSize, QString(), this);
+    _closeButton = new SN_PixmapButton(":/scene/resources/close_over.png", _thumbSize, QString(), this);
     _closeButton->hide();
     QObject::connect(_closeButton, SIGNAL(clicked()), this, SLOT(close()));
 
-    _goBackToParentDirBtn = new SN_PixmapButton(":/resources/dotdotslash_128.png", _thumbSize, QString(), this);
+    _goBackToParentDirBtn = new SN_PixmapButton(":/mediabrowser/resources/dotdotslash_128.png", _thumbSize, QString(), this);
     _goBackToParentDirBtn->hide();
     QObject::connect(_goBackToParentDirBtn, SIGNAL(clicked()), this, SLOT(getParentDir()));
 
@@ -124,19 +124,19 @@ QGraphicsLinearLayout* SN_MediaBrowser::_getRootAppIconsLayout() {
 
 void SN_MediaBrowser::_createRootIcons() {
     // video
-    SN_PixmapButton *videobutton = new SN_PixmapButton(":/resources/video.png", _thumbSize, QString(), this);
+    SN_PixmapButton *videobutton = new SN_PixmapButton(":/mediabrowser/resources/video.png", _thumbSize, QString(), this);
     QObject::connect(videobutton, SIGNAL(clicked()), this, SLOT(videoIconClicked()));
 
     // image
-    SN_PixmapButton *imagebutton = new SN_PixmapButton(":/resources/image.png", _thumbSize, QString(), this);
+    SN_PixmapButton *imagebutton = new SN_PixmapButton(":/mediabrowser/resources/image.png", _thumbSize, QString(), this);
     QObject::connect(imagebutton, SIGNAL(clicked()), this, SLOT(imageIconClicked()));
 
     // pdf
-    SN_PixmapButton *pdfbutton = new SN_PixmapButton(":/resources/pdf.png", _thumbSize, QString(), this);
+    SN_PixmapButton *pdfbutton = new SN_PixmapButton(":/mediabrowser/resources/pdf.png", _thumbSize, QString(), this);
     QObject::connect(pdfbutton, SIGNAL(clicked()), this, SLOT(pdfIconClicked()));
 
     // plugins
-    SN_PixmapButton* plugin = new SN_PixmapButton(":/resources/dir_plugin_128.png", _thumbSize, QString(), this);
+    SN_PixmapButton* plugin = new SN_PixmapButton(":/mediabrowser/resources/dir_plugin_128.png", _thumbSize, QString(), this);
     QObject::connect(plugin, SIGNAL(clicked()), this, SLOT(pluginIconClicked()));
 
     _rootMediaIcons.push_back(videobutton);
@@ -152,18 +152,18 @@ void SN_MediaBrowser::_createRootIcons() {
 
     // But for now (for the SC12)
     // Attach them manually
-    SN_MediaItem* webbrowser = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu", QPixmap(":/resources/webkit_128x128.png"), _thumbSize, this);
+    SN_MediaItem* webbrowser = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu", QPixmap(":/mediabrowser/resources/webkit_128x128.png"), _thumbSize, this);
 
     // clicking an app icon will launch the application directly
     QObject::connect(webbrowser, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
 
     // do the same for
     // google maps, google docs, MandelBrot
-    SN_MediaItem* googlemap = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com", QPixmap(":/resources/googleMaps_128.png"), _thumbSize, this);
+    SN_MediaItem* googlemap = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com", QPixmap(":/mediabrowser/resources/googleMaps_128.png"), _thumbSize, this);
     QObject::connect(googlemap, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
 
 
-    SN_MediaItem* webgl = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://webglmol.sourceforge.jp/glmol/viewer.html", QPixmap(":/resources/Homo_sapiens_CD8_molecule_webgl_128.jpg"), _thumbSize,this);
+    SN_MediaItem* webgl = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://webglmol.sourceforge.jp/glmol/viewer.html", QPixmap(":/mediabrowser/resources/Homo_sapiens_CD8_molecule_webgl_128.jpg"), _thumbSize,this);
     QObject::connect(webgl, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
 
 

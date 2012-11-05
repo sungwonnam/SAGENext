@@ -49,7 +49,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 //	pi->setPos(sceneRect.width()/2, sceneRect.height()/2);
 
 
-    QPixmap evllogo(":/resources/evl-logo-sagenext.png");
+    QPixmap evllogo(":/scene/resources/evl-logo-sagenext.png");
     Q_ASSERT(!evllogo.isNull());
     QGraphicsPixmapItem *bg = new QGraphicsPixmapItem(evllogo.scaledToWidth(sceneRect.width()/2, Qt::SmoothTransformation));
     bg->setOpacity(0.2);
@@ -63,7 +63,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	/*
 	  Attach close button on the scene. if clicked twice, scene->deleteLater will be called
       */
-	QPixmap closeIcon(":/resources/x_circle_gray.png");
+	QPixmap closeIcon(":/scene/resources/x_circle_gray.png");
 //	QPixmap closeIcon(":/resources/powerbutton_black_64x64.png");
 //	PixmapCloseButtonOnScene *closeButton = new PixmapCloseButtonOnScene(closeIcon.scaledToWidth(sceneRect.width() * 0.02));
 	_closeButton = new SN_PixmapButton(closeIcon, _settings->value("gui/iconwidth").toDouble());
@@ -86,7 +86,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	//
 	// attach app remove button on the top
 	//
-	_appRemoveButton = new SN_PixmapButton(":/resources/default_button_up.png", QSize(512, 32), "Remove");
+	_appRemoveButton = new SN_PixmapButton(":/scene/resources/default_button_up.png", QSize(512, 32), "Remove");
 	_appRemoveButton->setFlag(QGraphicsItem::ItemIsMovable, false);
 	_appRemoveButton->setFlag(QGraphicsItem::ItemIsSelectable, false);
 	_appRemoveButton->setFlag(QGraphicsItem::ItemIsFocusable, false);

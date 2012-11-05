@@ -89,10 +89,10 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
 
     setContentsMargins(16, 40, 16, 16);
 
-    _startPixmap = QPixmap(":/resources/greenplay128.png");
-    _stopPixmap = QPixmap(":/resources/stopsign48.png").scaledToWidth(128);
-//    _cursorPixmap = QPixmap(":/resources/cursor_arrow_48x48.png");
-    _cursorPixmap = QPixmap(":/resources/blackarrow_upleft128.png");
+    _startPixmap = QPixmap(":/fittslawtest/resources/greenplay128.png");
+    _stopPixmap = QPixmap(":/fittslawtest/resources/stopsign48.png").scaledToWidth(128);
+//    _cursorPixmap = QPixmap(":/fittslawtest/resources/cursor_arrow_48x48.png");
+    _cursorPixmap = QPixmap(":/fittslawtest/resources/blackarrow_upleft128.png");
 
     _init();
 
@@ -543,7 +543,7 @@ bool SN_SageFittsLawTest::handlePointerClick(SN_PolygonArrowPointer *pointer, co
     // otherwise it's MISS
     //
     else {
-        setTargetCursorPixmap(":/resources/redarrow_missed_upleft128.png");
+        setTargetCursorPixmap(":/fittslawtest/resources/redarrow_missed_upleft128.png");
         QTimer::singleShot(500, this, SLOT(setTargetCursorPixmap()));
 
         _missCountPerTarget++;
