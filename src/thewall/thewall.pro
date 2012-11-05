@@ -1,7 +1,7 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-04-08T11:36:20
 # -------------------------------------------------
-QT += network opengl webkit
+QT += network opengl
 TARGET = sagenext
 TEMPLATE = app
 
@@ -16,15 +16,27 @@ TEMPLATE = app
 #INCLUDEPATH += $$WEBKITPATH/include/QtWebKit
 #LIBS += -L$$WEBKITPATH/lib -lQtWebKit
 
+QTWEBKIT = $$(QTWEBKIT_DIR)
+isEmpty(QTWEBKIT) {
+    QT += webkit
+}
+else {
+    message("Using a custom QtWebKit library: $$(QTWEBKIT)")
+    QT -= webkit
+
+    message("$$(QTWEBKIT_DIR)/include/QtWebKit")
+    INCLUDEPATH += $$(QTWEBKIT_DIR)/include/QtWebKit
+    message("-L$$(QTWEBKIT_DIR)/lib -lQtWebKit")
+    LIBS += -L$$(QTWEBKIT_DIR)/lib -lQtWebKit
+}
 
 
 #
 # NUMA lib
 #
 linux-g++|linux-g++-64 {
-        message("Linking Linux libnuma library")
-        #LIBS += -L/home/evl/snam5/Downloads/numactl-2.0.6 -lnuma
-        LIBS += -lnuma
+    message("Using Linux libnuma library")
+    LIBS += -lnuma
 }
 
 
@@ -60,8 +72,13 @@ unix {
     else {
 #        error("Package LibVNCServer doesn't exist !")
         LIBVNCSERVER_LIBS = $$system(libvncserver-config --libs)
-        message("libvncserver-config --libs =>" $$LIBVNCSERVER_LIBS)
-        LIBS += $${LIBVNCSERVER_LIBS}
+        isEmpty(LIBVNCSERVER_LIBS) {
+            error("Missing Package : LibVCNServer is required")
+        }
+        else {
+            message("libvncserver-config --libs =>" $$LIBVNCSERVER_LIBS)
+            LIBS += $${LIBVNCSERVER_LIBS}
+        }
     }
 
 
@@ -78,8 +95,7 @@ unix {
     	PKGCONFIG += poppler-qt4
     }
     else {
-        error("Package poppler-qt4 doesn't exist !")
-
+        error("Missing Package : poppler-qt4 is required")
     }
 } # end of unix{}
 
@@ -112,7 +128,7 @@ exists( $$QWT_HOME/lib/libqwt.so ) {
     DEFINES += USE_QWT
 }
 else {
-    warning("Package Qwt is not available")
+    warning("Missing Package : Qwt is not available, but continue")
 }
 
 
@@ -121,10 +137,9 @@ else {
 
 BUILD_DIR = _BUILD
 !exists($$BUILD_DIR) {
-        #message("Creating build directory")
-        system(mkdir $${BUILD_DIR})
+    #message("Creating build directory")
+    system(mkdir $${BUILD_DIR})
 }
-
 
 MOC_DIR = $$BUILD_DIR/_MOC
 OBJECTS_DIR = $$BUILD_DIR/_OBJ
