@@ -100,6 +100,8 @@ public:
 
 		inline SN_Priority * priorityData() {return _priorityData;}
 
+        inline bool isShowInfo() const {return _showInfo;}
+
 
         inline bool isSchedulable() const {return _isSchedulable;}
         inline void setSchedulable() {_isSchedulable = true;}
@@ -453,7 +455,7 @@ protected:
         /*!
           * timeout every 1 sec to update info of appInfo, perfMon, affInfo
           */
-        void timerEvent(QTimerEvent *);
+//        void timerEvent(QTimerEvent *);
 
         /*!
 		  setTransformOriginPoint() with center of the widget
@@ -521,6 +523,8 @@ private:
 
         /*!
           * startTimer() returns unique timerID.
+          * We dont' need this anymore.
+          * To display infoTextItem, enable resource monitor
           */
 //        int _timerID;
 
@@ -540,7 +544,8 @@ private:
 
 
         /*!
-          is schedulable widget ?
+         * If this is set, and the widget is launched by the SN_Launcher then
+         * the launcher will add this widget to the resourceMonitor
           */
         bool _isSchedulable;
 

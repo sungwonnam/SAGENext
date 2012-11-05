@@ -526,7 +526,8 @@ void SN_ResourceMonitor::refresh() {
         pm->updateDataWithCumulativeByteReceived(currentMsec);
 
 
-        bw->updateInfoTextItem();
+        if (bw->isShowInfo())
+            bw->updateInfoTextItem();
 
 
         //

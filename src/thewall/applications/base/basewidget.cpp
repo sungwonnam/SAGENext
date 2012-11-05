@@ -204,7 +204,6 @@ void SN_BaseWidget::init()
 
 
 	//! drawInfo() will show this item
-	// Note that infoTextItem is child item of BaseWidget
 	infoTextItem = new SN_SimpleTextItem(0, QColor(Qt::black), QColor(128, 128, 128, 164), this);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsMovable, false);
 	infoTextItem->setFlag(QGraphicsItem::ItemIsSelectable, false);
@@ -946,12 +945,12 @@ void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphi
 /**
   drawInfo() will start the timer
   */
-void SN_BaseWidget::timerEvent(QTimerEvent *) {
+//void SN_BaseWidget::timerEvent(QTimerEvent *) {
 //	qDebug("BaseWidget::%s()", __FUNCTION__);
 //	if (e->timerId() == _timerID) {
 //		updateInfoTextItem();
 //	}
-}
+//}
 
 
 void SN_BaseWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
@@ -989,13 +988,14 @@ void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 
 
 
+/*!
+ * \brief SN_BaseWidget::updateInfoTextItem() is called by the SN_ResourceMonitor if _showInfo is set
+ * Since the SN_ResourceMonitor only maintains a list of schedulableWidget, SN_PixmapWidget won't be able to display infoTextItem
+ */
 void SN_BaseWidget::updateInfoTextItem()
 {
 	if (!infoTextItem || !_showInfo) return;
 
-	QByteArray infotext(256, '\0');
-	QByteArray perftext(512, '\0');
-	QByteArray afftext(256, '\0');
 	QString text("");
 
 	//! let's show scene geometry of this widget
@@ -1003,7 +1003,8 @@ void SN_BaseWidget::updateInfoTextItem()
 	QRectF rect = geometry();
 
 	if (_appInfo) {
-		sprintf(infotext.data(), "Global App ID %llu\nNative WxHxbpp: %ux%ux%u (%u KB)\nCurr Geometry: (%.0f,%.0f)(%.0fx%.0f)\nCurr Scale: %.1f"
+        QByteArray infotext(256, '\0');
+		sprintf(infotext.data(), "Global App ID %llu\nNative: %ux%ux%u bpp (%u KB)\nCurr Geometry: (%.0f,%.0f)(%.0fx%.0f)\nCurr Scale: %.1f"
 		        /*qPrintable(appInfo->getFilename()),*/
 		        /* SizeRatio: %u %%\n */
 		        , _globalAppId
@@ -1017,7 +1018,10 @@ void SN_BaseWidget::updateInfoTextItem()
 		text.append( infotext );
 	}
 
+    /**
+
 	if ( _affInfo ) {
+    QByteArray afftext(256, '\0');
 		sprintf(afftext.data(), "\nrecv Thread\nRunning on CPU %d\nNUMA Node affinity %s\nMemory bind %s\nCPU affinity %s\n"
 		        , _affInfo->cpuOfMine(), _affInfo->getNodeMask(), _affInfo->getMemMask(), _affInfo->getCpuMask()
 		        );
@@ -1025,10 +1029,11 @@ void SN_BaseWidget::updateInfoTextItem()
 	}
 
 	if ( _perfMon ) {
-		sprintf(perftext.data(), "\nCurr/Avg Recv Lat : %.2f / %.2f ms \n Curr/Avg Upd Lat : %.2f / %.2f ms \n Curr/Avg Draw Lat : %.2f / %.2f ms \n Curr/Avg Recv FPS : %.2f / %.2f \n Curr/Avg Disp FPS : %.2f / %.2f \n Recv/Draw Count %llu/%llu \n Curr/ReqBW %.3f / %.3f Mbps \n CPU %.6f" /*\nVol/InVol Ctx Sw : %ld / %ld*/ /*maxrss %ld, pageReclaims %ld"*/
+    QByteArray perftext(512, '\0');
+		sprintf(perftext.data(), "\nCurr/Avg Recv Lat : %.2f / %.2f ms \n Curr/Avg Upd Lat : %.2f / %.2f ms \n Curr/Avg Draw Lat : %.2f / %.2f ms \n Curr/Avg Recv FPS : %.2f / %.2f \n Curr/Avg Disp FPS : %.2f / %.2f \n Recv/Draw Count %llu/%llu \n Curr/ReqBW %.3f / %.3f Mbps \n CPU %.6f"
 		        ,_perfMon->getCurrRecvLatency() * 1000.0 , _perfMon->getAvgRecvLatency() * 1000.0
 		       ,_perfMon->getCurrUpdateDelay() * 1000.0 , _perfMon->getAvgUpdateDelay() * 1000.0
-		        /*_perfMon->getCurrEqDelay() * 1000.0, _perfMon->getAvgEqDelay() * 1000.0,*/
+		        //_perfMon->getCurrEqDelay() * 1000.0, _perfMon->getAvgEqDelay() * 1000.0,
 		        ,_perfMon->getCurrDrawLatency() * 1000.0 , _perfMon->getAvgDrawLatency() * 1000.0
 
 		        ,_perfMon->getCurrEffectiveFps(), _perfMon->getAvgEffectiveFps()
@@ -1042,15 +1047,15 @@ void SN_BaseWidget::updateInfoTextItem()
 
 		        ,_perfMon->getCpuUsage() * 100.0
 //                , _perfMon->getEndNvcsw(), _perfMon->getEndNivcsw()
-		        /*perfMon->getEndMaxrss(), perfMon->getEndMinflt()*/
+		        //perfMon->getEndMaxrss(), perfMon->getEndMinflt()
 		        );
 		text.append(perftext);
 		//qDebug() << "BaseWidget::" << __FUNCTION__ <<  _globalAppId << _perfMon->ts_nextframe() *1000.0 << _perfMon->deadline_miseed() * 1000.0 << "ms";
 	}
+**/
 
 	if (infoTextItem) {
 		infoTextItem->setText(text);
-//		infoTextItem->update();
 	}
 }
 
