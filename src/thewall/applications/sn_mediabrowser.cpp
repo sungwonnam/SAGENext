@@ -447,7 +447,7 @@ void SN_MediaBrowser::displayRootWindow() {
     }
 
     QGraphicsLinearLayout* ll = new QGraphicsLinearLayout(Qt::Vertical);
-    ll->setSpacing(_settings->value("gui/mediathumbnailwidth", 256).toInt() / 2);
+    ll->setSpacing(_thumbSize.width() / 2);
     ll->addItem(_getRootMediaIconsLayout());
     ll->addItem(_getRootAppIconsLayout());
 

@@ -55,13 +55,13 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	QFont f;
 	f.setPointSize( setting->value("gui/fontpointsize", 32).toInt() );
 
+
 	/* URL box with custom lineeidt widget to be able to receive text string from uiclient */
 	_customurlbox = new SN_ProxyLineEdit(this);
 //	_customurlbox->setText("http://");
-	_customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum, QSizePolicy::LineEdit);
-    _customurlbox->setMinimumHeight(64);
+	_customurlbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed, QSizePolicy::LineEdit);
+    _customurlbox->setMinimumHeight(128);
 	QObject::connect(_customurlbox, SIGNAL(textChanged(QString)), this, SLOT(setUrl(QString)));
-
 
 
 	/* webkit related */

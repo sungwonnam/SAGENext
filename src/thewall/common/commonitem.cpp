@@ -195,9 +195,9 @@ void SN_PixmapButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *) {
 
 SN_ProxyScrollBar::SN_ProxyScrollBar(Qt::Orientation o, QGraphicsItem *parent)
     : SN_ProxyGUIBase(parent)
+    , _scrollbar(new QScrollBar(o))
 {
-    _scrollbar.setOrientation(o);
-    setWidget(&_scrollbar);
+    setWidget(_scrollbar);
 }
 void SN_ProxyScrollBar::drag(const QPointF &pos) {
     qreal handlePosNorm = -1;
@@ -205,25 +205,25 @@ void SN_ProxyScrollBar::drag(const QPointF &pos) {
     //
     // calculate scroll bar's handle position based on the pointer position on the scrollbar
     //
-    if (_scrollbar.orientation() == Qt::Horizontal) {
+    if (_scrollbar->orientation() == Qt::Horizontal) {
         handlePosNorm = pos.x() / boundingRect().width(); // 0 ~ 1
     }
-    else if (_scrollbar.orientation() == Qt::Vertical) {
+    else if (_scrollbar->orientation() == Qt::Vertical) {
         handlePosNorm = pos.y() / boundingRect().height(); // 0 ~ 1
     }
 
     if (handlePosNorm < 0) return;
 
     // scroll bar's maximum value calculated from 0
-    qreal scrollbar_max_from_zero = _scrollbar.maximum() - _scrollbar.minimum();
+    qreal scrollbar_max_from_zero = _scrollbar->maximum() - _scrollbar->minimum();
 
     // new value and new handle position
     int newpos = handlePosNorm * scrollbar_max_from_zero;
 
     // calculate back so that the value is correct in scroll bar's original range
-    newpos += _scrollbar.minimum();
+    newpos += _scrollbar->minimum();
 
-    _scrollbar.setValue(newpos); // this will change the sliderPosition !!
+    _scrollbar->setValue(newpos); // this will change the sliderPosition !!
 
     emit valueChanged(newpos);
 }
@@ -231,34 +231,62 @@ void SN_ProxyScrollBar::drag(const QPointF &pos) {
 
 
 
-
-
 SN_ProxyPushButton::SN_ProxyPushButton(QGraphicsItem *parent)
     : SN_ProxyGUIBase(parent)
+    , _button(new QPushButton)
 {
-    setWidget(&_button);
+    setWidget(_button);
 }
 
 SN_ProxyPushButton::SN_ProxyPushButton(const QString &text, QGraphicsItem *parent)
     : SN_ProxyGUIBase(parent)
+    , _button(new QPushButton(text))
 {
-    _button.setText(text);
-    setWidget(&_button);
+    setWidget(_button);
 }
 
 
 
-SN_ProxyRadioButton::SN_ProxyRadioButton(QGraphicsItem *parent) : SN_ProxyGUIBase(parent) {
-    setWidget(&_radiobtn);
+SN_ProxyRadioButton::SN_ProxyRadioButton(QGraphicsItem *parent)
+    : SN_ProxyGUIBase(parent)
+    , _radiobtn(new QRadioButton)
+{
+    setWidget(_radiobtn);
 }
 SN_ProxyRadioButton::SN_ProxyRadioButton(const QString &text, QGraphicsItem *parent)
     : SN_ProxyGUIBase(parent)
+    , _radiobtn(new QRadioButton(text))
 {
-    _radiobtn.setText(text);
-    setWidget(&_radiobtn);
+    setWidget(_radiobtn);
 }
 
 
+SN_ProxyLineEdit::SN_ProxyLineEdit(QGraphicsItem *parent, const QString &placeholdertext)
+    : SN_ProxyGUIBase(parent)
+    , _lineedit(new QLineEdit)
+{
+    setWidget(_lineedit);
+//	_lineedit.setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum, QSizePolicy::LineEdit);
+    _lineedit->setMinimumHeight(64);
+
+    if (!placeholdertext.isNull()) {
+        _lineedit->setPlaceholderText(placeholdertext);
+    }
+
+//	QGraphicsLinearLayout *ll = new QGraphicsLinearLayout;
+//	ll->addItem(_proxywidget);
+//	setLayout(ll);
+}
+
+SN_ProxyLineEdit::~SN_ProxyLineEdit() {
+}
+
+void SN_ProxyLineEdit::setText(const QString &text, bool emitSignal /* true */) {
+    _lineedit->setText(text);
+    if (emitSignal) {
+        emit textChanged(text);
+    }
+}
 
 
 
@@ -350,37 +378,4 @@ void SN_SimpleTextWidget::setText(const QString &text) {
 		resize(_textItem->boundingRect().size());
 	}
 }
-
-
-
-
-#include "sn_sharedpointer.h"
-
-
-SN_ProxyLineEdit::SN_ProxyLineEdit(QGraphicsItem *parent, const QString &placeholdertext)
-    : SN_ProxyGUIBase(parent)
-{
-    setWidget(&_lineedit);
-//	_lineedit.setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum, QSizePolicy::LineEdit);
-    _lineedit.setMinimumHeight(64);
-
-    if (!placeholdertext.isNull()) {
-        _lineedit.setPlaceholderText(placeholdertext);
-    }
-
-//	QGraphicsLinearLayout *ll = new QGraphicsLinearLayout;
-//	ll->addItem(_proxywidget);
-//	setLayout(ll);
-}
-
-void SN_ProxyLineEdit::setText(const QString &text, bool emitSignal /* true */) {
-    _lineedit.setText(text);
-    if (emitSignal) {
-        emit textChanged(text);
-    }
-}
-
-
-
-
 

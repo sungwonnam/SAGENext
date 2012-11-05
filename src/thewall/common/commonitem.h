@@ -115,14 +115,14 @@ class SN_ProxyScrollBar : public SN_ProxyGUIBase {
 public:
     SN_ProxyScrollBar(Qt::Orientation, QGraphicsItem *parent=0);
 
-    inline void setOrientation(Qt::Orientation o) {_scrollbar.setOrientation(o);}
-    inline void setRange(int min, int max) {_scrollbar.setRange(min,max);}
+    inline void setOrientation(Qt::Orientation o) {_scrollbar->setOrientation(o);}
+    inline void setRange(int min, int max) {_scrollbar->setRange(min,max);}
 
     inline void click(const QPoint &clickedpos = QPoint()) {drag(clickedpos);}
     void drag(const QPointF &pos);
 
 protected:
-    QScrollBar _scrollbar;
+    QScrollBar* _scrollbar;
 
 signals:
     void valueChanged(int value);
@@ -136,10 +136,10 @@ public:
     SN_ProxyPushButton(QGraphicsItem* parent=0);
     SN_ProxyPushButton(const QString& text, QGraphicsItem* parent=0);
 
-    inline void setDown(bool b) {_button.setDown(b);}
+    inline void setDown(bool b) {_button->setDown(b);}
 
 protected:
-    QPushButton _button;
+    QPushButton* _button;
 };
 
 class SN_ProxyRadioButton : public SN_ProxyGUIBase {
@@ -149,7 +149,7 @@ public:
     SN_ProxyRadioButton(const QString& text, QGraphicsItem* parent=0);
 
 protected:
-    QRadioButton _radiobtn;
+    QRadioButton* _radiobtn;
 };
 
 
@@ -162,6 +162,7 @@ class SN_ProxyLineEdit : public SN_ProxyGUIBase
 	Q_OBJECT
 public:
     SN_ProxyLineEdit(QGraphicsItem *parent=0, const QString &placeholdertext =QString());
+    ~SN_ProxyLineEdit();
 
     /*!
      * \brief setText
@@ -169,17 +170,17 @@ public:
      */
     void setText(const QString &text, bool emitSignal = true);
 
-    inline void click(const QPoint &) {_lineedit.selectAll();}
+    inline void click(const QPoint &) {_lineedit->selectAll();}
 
 protected:
-    QLineEdit _lineedit;
+    QLineEdit* _lineedit;
 
 signals:
 	void pressed();
 	void textChanged(QString);
 
 public slots:
-    inline void selectAll() {_lineedit.selectAll();}
+    inline void selectAll() {_lineedit->selectAll();}
 };
 
 
