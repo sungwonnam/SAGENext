@@ -159,18 +159,28 @@ void SN_PixmapButton::togglePixmap() {
 }
 
 void SN_PixmapButton::_attachLabel(const QString &labeltext, QGraphicsItem *parent) {
-	QGraphicsSimpleTextItem *t = new QGraphicsSimpleTextItem(labeltext, parent);
+	QGraphicsSimpleTextItem *textitem = new QGraphicsSimpleTextItem(labeltext, parent);
 //	t->setTransformOriginPoint(t->boundingRect().center());
 
 	QBrush brush(Qt::white);
-	t->setBrush(brush);
+	textitem->setBrush(brush);
 
 //	QFont f;
 //	f.setBold(true);
 //	t->setFont(f);
 
-	QPointF center_delat = boundingRect().center() - t->mapRectToParent(t->boundingRect()).center();
-	t->moveBy(center_delat.x(), center_delat.y());
+/*
+    qreal sizediff = 0;
+    if (textitem->boundingRect().width() > size().width()) {
+        sizediff = textitem->boundingRect().width() - size().width();
+    }
+    else if (textitem->boundingRect().height() > size().height()) {
+        sizediff = textitem->boundingRect().height() - size().height();
+    }
+    */
+
+	QPointF center_delat = boundingRect().center() - textitem->mapRectToParent(textitem->boundingRect()).center();
+	textitem->moveBy(center_delat.x(), center_delat.y());
 }
 
 void SN_PixmapButton::mousePressEvent(QGraphicsSceneMouseEvent *) {
@@ -300,7 +310,7 @@ void SN_ProxyLineEdit::setText(const QString &text, bool emitSignal /* true */) 
 /*!
   TextItem
   */
-SN_SimpleTextItem::SN_SimpleTextItem(int ps, const QColor &fontcolor, const QColor &bgcolor, QGraphicsItem *parent)
+SN_SimpleTextItem::SN_SimpleTextItem(int ps /* 0 */, const QColor &fontcolor /* black */, const QColor &bgcolor /* gray */, QGraphicsItem *parent /* 0 */)
 	: QGraphicsSimpleTextItem(parent)
     , _fontcolor(fontcolor)
     , _bgcolor(bgcolor)
@@ -342,7 +352,8 @@ void SN_SimpleTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem 
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
 
-	painter->fillRect(boundingRect(), QBrush(_bgcolor));
+    if (_bgcolor.isValid())
+        painter->fillRect(boundingRect(), QBrush(_bgcolor));
 
 	QGraphicsSimpleTextItem::paint(painter, option, widget);
 }
