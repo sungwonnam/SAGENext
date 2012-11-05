@@ -39,7 +39,7 @@ int SN_MediaStorage::_initMediaList() {
 #endif
 
 	int numread = 0;
-    QDirIterator iter(QDir::homePath() + "/.sagenext/media", QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator iter(QDir::homePath() + "/.sagenext/media", QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Files, QDirIterator::Subdirectories | QDirIterator::FollowSymlinks);
     while (iter.hasNext()) {
         iter.next();
         if(iter.fileInfo().isFile()) {
