@@ -106,7 +106,7 @@ void SN_PixmapWidget::callUpdate() {
 		_appInfo->setFrameSize(_imgWidth, _imgHeight, _imageTemp->depth());
 
 		if (_useOpenGL) {
-			const QImage &constRef = _imageTemp->mirrored().rgbSwapped(); // to avoid detach()
+			const QImage &constRef = _imageTemp->rgbSwapped(); // to avoid detach()
 			//_gltexture = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
 
 			if (glIsTexture(_textureid)) {
@@ -170,10 +170,10 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 		glBindTexture(GL_TEXTURE_2D, _textureid);
 
 		glBegin(GL_QUADS);
-		glTexCoord2f(0.0, 1.0); glVertex2f(0, 0);
-		glTexCoord2f(1.0, 1.0); glVertex2f(_imgWidth, 0);
-		glTexCoord2f(1.0, 0.0); glVertex2f(_imgWidth, _imgHeight);
-		glTexCoord2f(0.0, 0.0); glVertex2f(0, _imgHeight);
+		glTexCoord2f(0.0, 1.0); glVertex2f(0, _imgHeight);
+		glTexCoord2f(1.0, 1.0); glVertex2f(_imgWidth, _imgHeight);
+		glTexCoord2f(1.0, 0.0); glVertex2f(_imgWidth, 0);
+		glTexCoord2f(0.0, 0.0); glVertex2f(0, 0);
 		glEnd();
 
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -197,6 +197,12 @@ void SN_PixmapWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *o
 }
 
 
+/*!
+ * \brief SN_PixmapWidget::readImage
+ * \return
+ *
+ * reads the image from disk in a separate thread
+ */
 bool SN_PixmapWidget::readImage() {
 	Q_ASSERT(_imageTemp);
 

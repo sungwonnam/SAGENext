@@ -113,10 +113,21 @@ SN_PDFViewerOpenGLWidget::SN_PDFViewerOpenGLWidget(const QString filename, quint
 SN_PDFViewerOpenGLWidget::~SN_PDFViewerOpenGLWidget() {
 	if (_document) delete _document;
 //	qDebug("%s::%s()", metaObject()->className(), __FUNCTION__);
+
+    if (glIsTexture(_texid)) {
+		glDeleteTextures(1, &_texid);
+	}
+
+    if (_texture) {
+        free(_texture);
+        _texture = 0;
+    }
 }
 
 void SN_PDFViewerOpenGLWidget::_updateGLtexture() {
     // determine texture buf size
+
+    if (!_useOpenGL) return;
 
     if (glIsTexture(_texid)) {
 		glDeleteTextures(1, &_texid);
@@ -301,6 +312,11 @@ void SN_PDFViewerOpenGLWidget::paint(QPainter *painter, const QStyleOptionGraphi
             glEnd();
 
             painter->endNativePainting();
+        }
+    }
+    else {
+        for (int i=0; i<_multipageCount; i++) {
+            painter->drawImage(i * _pagewidth, 0, _pageImages.value(i));
         }
     }
 
