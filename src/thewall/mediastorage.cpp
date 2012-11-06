@@ -267,18 +267,13 @@ bool SN_MediaStorage::_readVideo(const QString &filepath, QPixmap & pixmap) {
 
 
     //
-    // delete 00000001.jpg
-    //
-    QProcess::execute("rm -f " + QDir::tempPath() + "/00000001.jpg");
-
-    //
     // run mplayer
     //
     QProcess::execute(program, arguments);
 //    QProcess* proc = new QProcess;
 //    proc->start(program, arguments, QIODevice::ReadOnly);
 //    if (proc->waitForFinished()) {
-        if (!pixmap.load(QDir::tempPath() + "/00000001.jpg")) {
+        if (!pixmap.load("00000001.jpg")) {
             qWarning("%s::%s() : Couldn't create the thumbnail for %s", metaObject()->className(), __FUNCTION__, qPrintable(filepath));
 //            delete proc;
             return false;
@@ -286,6 +281,11 @@ bool SN_MediaStorage::_readVideo(const QString &filepath, QPixmap & pixmap) {
 //    }
 
 //    delete proc;
+
+        //
+        // delete 00000001.jpg
+        //
+        QProcess::execute("rm -f 00000001.jpg");
 
     return true;
 }
