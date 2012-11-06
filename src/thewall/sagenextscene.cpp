@@ -35,21 +35,13 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	setItemIndexMethod(QGraphicsScene::NoIndex);
 
 
-	setBackgroundBrush(QColor(10,10,10));
-	/*
-	QGraphicsPixmapItem *pi = new QGraphicsPixmapItem(QPixmap(":/resources/evl-logo.png"));
-	pi->setFlag(QGraphicsItem::ItemIsMovable, false);
-	pi->setFlag(QGraphicsItem::ItemIsSelectable, false);
-	pi->setFlag(QGraphicsItem::ItemIsFocusable, false);
-	pi->setAcceptedMouseButtons(0); // Qt::NoButton
-	pi->setOpacity(0.1);
-	pi->setTransformOriginPoint(pi->boundingRect().width()/2, pi->boundingRect().height()/2); // origin to center
-	addItem(pi);
-	*/
-//	pi->setPos(sceneRect.width()/2, sceneRect.height()/2);
+    QColor db(QColor(Qt::darkBlue).darker(500));
+    db.setAlphaF(.99);
+	setBackgroundBrush(db);
 
 
-    QPixmap evllogo(":/scene/resources/evl-logo-sagenext.png");
+
+    QPixmap evllogo(":/scene/resources/evl-logo-sagenext-blur.png");
     Q_ASSERT(!evllogo.isNull());
     QGraphicsPixmapItem *bg = new QGraphicsPixmapItem(evllogo.scaledToWidth(sceneRect.width()/2, Qt::SmoothTransformation));
     bg->setOpacity(0.2);
@@ -76,7 +68,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 //	QGraphicsOpacityEffect *opacity = new QGraphicsOpacityEffect;
 //	opacity->setOpacity(0.2);
 //	closeButton->setGraphicsEffect(opacity);
-	_closeButton->setOpacity(0.2);
+	_closeButton->setOpacity(0.1);
 //	_closeButton->setPos(sceneRect.width() - _closeButton->boundingRect().width() - 5, 10); // top right corner
 	_closeButton->setPos(10, 10); // top left corner
 //	_closeButton->setScale(0.5);
