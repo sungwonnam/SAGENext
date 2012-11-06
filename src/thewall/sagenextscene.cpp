@@ -79,7 +79,7 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	//
 	// attach app remove button on the top
 	//
-	_appRemoveButton = new SN_PixmapButton(":/scene/resources/default_button_up.png", QSize(512, 32), "Remove");
+    _appRemoveButton = new SN_PixmapButton(":/scene/resources/default_button_up.png", QSize(512, _settings->value("gui/fontpointsize", 32).toInt()), "Remove");
 	_appRemoveButton->setFlag(QGraphicsItem::ItemIsMovable, false);
 	_appRemoveButton->setFlag(QGraphicsItem::ItemIsSelectable, false);
 	_appRemoveButton->setFlag(QGraphicsItem::ItemIsFocusable, false);

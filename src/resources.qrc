@@ -47,6 +47,14 @@
         <file>resources/webkit_128x128.png</file>
         <file>resources/arrow.png</file>
         <file>resources/pdffile_128.png</file>
+        <file>resources/icon_home_256.png</file>
+        <file>resources/icon_images_256.png</file>
+        <file>resources/icon_internet_256.png</file>
+        <file>resources/icon_maps_256.png</file>
+        <file>resources/icon_movies_256.png</file>
+        <file>resources/icon_pdf_256.png</file>
+        <file>resources/icon_plugin_256.png</file>
+        <file>resources/icon_webgl_256.png</file>
     </qresource>
     <qresource prefix="/fittslawtest">
         <file>resources/blackarrow_upleft128.png</file>

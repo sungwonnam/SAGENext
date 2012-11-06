@@ -73,6 +73,8 @@ private:
 	  */
 	int _priorityOverride;
 
+    QPixmap _selectiveRescale(const QPixmap &pixmap, const QSize &size);
+
 protected:
 	virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
 	virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);

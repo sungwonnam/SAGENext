@@ -80,7 +80,7 @@ protected:
      * If the thumbnail display panel is resized,
      * the number of thumbnails displayed is changed.
      */
-    void resizeEvent(QGraphicsSceneResizeEvent *event);
+//    void resizeEvent(QGraphicsSceneResizeEvent *event);
 
 private:
     /*!

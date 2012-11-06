@@ -44,17 +44,35 @@ SN_PixmapButton::SN_PixmapButton(const QString &res, const QSize &size, const QS
     , _mousePressFlag(false)
 {
 	QPixmap pixmap(res);
-    if ( size.isValid() && pixmap.size() != size)
-        _primary = new QGraphicsPixmapItem(pixmap.scaled(size), this);
-    else
-        _primary = new QGraphicsPixmapItem(pixmap, this);
-
+    _primary = new QGraphicsPixmapItem(_selectiveRescale(pixmap, size), this);
     _init();
-
      setLabel(label);
 }
 
-SN_PixmapButton::~SN_PixmapButton() {
+SN_PixmapButton::~SN_PixmapButton() {}
+
+QPixmap SN_PixmapButton::_selectiveRescale(const QPixmap &pixmap, const QSize &size) {
+
+    // both width and height is 0
+    if (size.isNull()) {
+        // do nothing
+        return pixmap;
+    }
+    else {
+        // either widht or height is 0
+        if (size.isEmpty()) {
+            if (size.width() > 0 && pixmap.width() != size.width())
+                return pixmap.scaledToWidth(size.width());
+
+            else if (size.height() > 0 && pixmap.height() != size.height())
+                return pixmap.scaledToHeight(size.height());
+        }
+        else {
+            if (size != pixmap.size())
+                return pixmap.scaled(size /*, Qt::KeepAspectRatio*/);
+        }
+    }
+    return pixmap;
 }
 
 void SN_PixmapButton::_init() {
@@ -87,11 +105,7 @@ void SN_PixmapButton::setPrimaryPixmap(const QString &resource, const QSize &siz
 }
 
 void SN_PixmapButton::setPrimaryPixmap(const QPixmap &pixmap, const QSize &size) {
-    if (size.isValid() && pixmap.size() != size)
-        _primary = new QGraphicsPixmapItem(pixmap.scaled(size), this);
-    else
-        _primary = new QGraphicsPixmapItem(pixmap, this);
-
+    _primary = new QGraphicsPixmapItem(_selectiveRescale(pixmap, size), this);
     _primary->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
     _primary->setAcceptedMouseButtons(0);
 

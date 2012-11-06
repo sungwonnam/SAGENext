@@ -58,25 +58,27 @@ SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, con
     setWidgetType(SN_BaseWidget::Widget_GUI);
 
     // Assumes square thumbnail
-    _thumbSize = QSize(_settings->value("gui/mediathumbnailwidth", 128).toInt(), _settings->value("gui/mediathumbnailwidth", 128).toInt());
+    _thumbSize = QSize(_settings->value("gui/mediathumbnailwidth", 128).toInt(), 0); // height is 0. So it's  an empty QSize
 
 
-    _goBackToRootWindowBtn = new SN_PixmapButton(":/mediabrowser/resources/mediaBrowserRoot.png", _thumbSize, QString(), this);
+    _goBackToRootWindowBtn = new SN_PixmapButton(":/mediabrowser/resources/icon_home_256.png", _thumbSize, QString(), this);
     _goBackToRootWindowBtn->hide();
     QObject::connect(_goBackToRootWindowBtn, SIGNAL(clicked()), this, SLOT(displayRootWindow()));
 
-    _closeButton = new SN_PixmapButton(":/scene/resources/close_over.png", _thumbSize, QString(), this);
+    /*
+    _closeButton = new SN_PixmapButton(":/mediabrowser/resources/icon_close.png", _thumbSize, QString(), this);
     _closeButton->hide();
     QObject::connect(_closeButton, SIGNAL(clicked()), this, SLOT(close()));
+    */
 
-    _goBackToParentDirBtn = new SN_PixmapButton(":/mediabrowser/resources/dotdotslash_128.png", _thumbSize, QString(), this);
+    _goBackToParentDirBtn = new SN_PixmapButton(":/resources/black_arrow_left_48x48.png", _thumbSize, QString(), this);
     _goBackToParentDirBtn->hide();
     QObject::connect(_goBackToParentDirBtn, SIGNAL(clicked()), this, SLOT(getParentDir()));
 
 
 
-    _leftBtn = new SN_PixmapButton(":/resources/arrow-left-64x64.png", _thumbSize / 2, QString(), this);
-    _rightBtn = new SN_PixmapButton(":/resources/arrow-right-64x64.png", _thumbSize / 2, QString(), this);
+    _leftBtn = new SN_PixmapButton(":/resources/arrow-left-64x64.png", _thumbSize, QString(), this);
+    _rightBtn = new SN_PixmapButton(":/resources/arrow-right-64x64.png", _thumbSize, QString(), this);
     QObject::connect(_leftBtn, SIGNAL(clicked()), this, SLOT(prevPage()));
     QObject::connect(_rightBtn, SIGNAL(clicked()), this, SLOT(nextPage()));
     _leftBtn->hide();
@@ -124,19 +126,19 @@ QGraphicsLinearLayout* SN_MediaBrowser::_getRootAppIconsLayout() {
 
 void SN_MediaBrowser::_createRootIcons() {
     // video
-    SN_PixmapButton *videobutton = new SN_PixmapButton(":/mediabrowser/resources/video.png", _thumbSize, QString(), this);
+    SN_PixmapButton *videobutton = new SN_PixmapButton(":/mediabrowser/resources/icon_movies_256.png", _thumbSize, QString(), this);
     QObject::connect(videobutton, SIGNAL(clicked()), this, SLOT(videoIconClicked()));
 
     // image
-    SN_PixmapButton *imagebutton = new SN_PixmapButton(":/mediabrowser/resources/image.png", _thumbSize, QString(), this);
+    SN_PixmapButton *imagebutton = new SN_PixmapButton(":/mediabrowser/resources/icon_images_256.png", _thumbSize, QString(), this);
     QObject::connect(imagebutton, SIGNAL(clicked()), this, SLOT(imageIconClicked()));
 
     // pdf
-    SN_PixmapButton *pdfbutton = new SN_PixmapButton(":/mediabrowser/resources/pdf.png", _thumbSize, QString(), this);
+    SN_PixmapButton *pdfbutton = new SN_PixmapButton(":/mediabrowser/resources/icon_pdf_256.png", _thumbSize, QString(), this);
     QObject::connect(pdfbutton, SIGNAL(clicked()), this, SLOT(pdfIconClicked()));
 
     // plugins
-    SN_PixmapButton* plugin = new SN_PixmapButton(":/mediabrowser/resources/dir_plugin_128.png", _thumbSize, QString(), this);
+    SN_PixmapButton* plugin = new SN_PixmapButton(":/mediabrowser/resources/icon_plugin_256.png", _thumbSize, QString(), this);
     QObject::connect(plugin, SIGNAL(clicked()), this, SLOT(pluginIconClicked()));
 
     _rootMediaIcons.push_back(videobutton);
@@ -152,18 +154,18 @@ void SN_MediaBrowser::_createRootIcons() {
 
     // But for now (for the SC12)
     // Attach them manually
-    SN_MediaItem* webbrowser = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu", QPixmap(":/mediabrowser/resources/webkit_128x128.png"), _thumbSize, this);
+    SN_MediaItem* webbrowser = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu", QPixmap(":/mediabrowser/resources/icon_internet_256.png"), _thumbSize, this);
 
     // clicking an app icon will launch the application directly
     QObject::connect(webbrowser, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
 
     // do the same for
     // google maps, google docs, MandelBrot
-    SN_MediaItem* googlemap = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com", QPixmap(":/mediabrowser/resources/googleMaps_128.png"), _thumbSize, this);
+    SN_MediaItem* googlemap = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com", QPixmap(":/mediabrowser/resources/icon_maps_256.png"), _thumbSize, this);
     QObject::connect(googlemap, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
 
 
-    SN_MediaItem* webgl = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://webglmol.sourceforge.jp/glmol/viewer.html", QPixmap(":/mediabrowser/resources/Homo_sapiens_CD8_molecule_webgl_128.jpg"), _thumbSize,this);
+    SN_MediaItem* webgl = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://webglmol.sourceforge.jp/glmol/viewer.html", QPixmap(":/mediabrowser/resources/icon_webgl_256.png"), _thumbSize,this);
     QObject::connect(webgl, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
 
 
@@ -175,10 +177,12 @@ void SN_MediaBrowser::_createRootIcons() {
     _rootAppIcons.push_back(webgl);
 }
 
-void SN_MediaBrowser::resizeEvent(QGraphicsSceneResizeEvent *event) {
-    _goBackToRootWindowBtn->setPos(0, size().height() - _goBackToRootWindowBtn->size().height());
-    _closeButton->setPos(_goBackToRootWindowBtn->geometry().x(), _goBackToRootWindowBtn->geometry().y() - _closeButton->size().height());
+/*
+void SN_MediaBrowser::resizeEvent(QGraphicsSceneResizeEvent *) {
+    _goBackToRootWindowBtn->setPos(32, size().height() - _goBackToRootWindowBtn->size().height()-32);
+    if (_closeButton) _closeButton->setPos(_goBackToRootWindowBtn->geometry().x(), _goBackToRootWindowBtn->geometry().y() - _closeButton->size().height());
 }
+*/
 
 /*
 bool SN_MediaBrowser::insertNewMediaToHash(const QString &key, QPixmap &pixmap) {
@@ -421,7 +425,7 @@ void SN_MediaBrowser::displayRootWindow() {
     _currMediaItems.clear();
 
     _goBackToRootWindowBtn->hide();
-    _closeButton->hide();
+    if (_closeButton) _closeButton->hide();
     _goBackToParentDirBtn->hide();
     _leftBtn->hide();
     _rightBtn->hide();
@@ -464,8 +468,7 @@ void SN_MediaBrowser::updateThumbnailPanel() {
     _isRootWindow = false;
     
     _goBackToRootWindowBtn->show();
-    _closeButton->show();
-
+    if (_closeButton) _closeButton->show();
 
     // unset the rootWindowLayout
     // This will delete the layout item the widget had set.
@@ -475,11 +478,14 @@ void SN_MediaBrowser::updateThumbnailPanel() {
     // keep recreating layout object
     // because displayRootWindow() called setLayout(0)
     //
-    QGraphicsLinearLayout* ll = new QGraphicsLinearLayout(Qt::Vertical);
+
+    // contains gridlayout and buttonlayout
+    QGraphicsLinearLayout* right = new QGraphicsLinearLayout(Qt::Vertical);
+
     QGraphicsLinearLayout *buttonlayout = 0;
     QGraphicsGridLayout *gridlayout = new QGraphicsGridLayout;
 
-    ll->setContentsMargins(128, 32, 32, 32);
+    right->addItem(gridlayout);
 
     //
     // Assume _currMediaItems is sorted
@@ -500,6 +506,9 @@ void SN_MediaBrowser::updateThumbnailPanel() {
             buttonlayout->addItem(_rightBtn);
             _leftBtn->show();
             _rightBtn->show();
+
+            right->addItem(buttonlayout);
+            right->setAlignment(buttonlayout, Qt::AlignCenter | Qt::AlignBottom);
         }
 
         QList<SN_MediaItem*>::iterator it = _currMediaItems.begin();
@@ -550,12 +559,14 @@ void SN_MediaBrowser::updateThumbnailPanel() {
         gridlayout->addItem(_goBackToParentDirBtn, row, gridlayout->columnCount());
     }
 
-    
-    ll->addItem(gridlayout);
-    if (buttonlayout)
-        ll->addItem(buttonlayout);
+    // contains _goBacktoRootWindow icon and right layout
+    QGraphicsLinearLayout* mainlayout = new QGraphicsLinearLayout(Qt::Horizontal);
+    mainlayout->setSpacing(16);
+    mainlayout->addItem(_goBackToRootWindowBtn);
+    mainlayout->setAlignment(_goBackToRootWindowBtn, Qt::AlignBottom);
+    mainlayout->addItem(right);
 
-    setLayout(ll);
+    setLayout(mainlayout);
     
     adjustSize();
 }

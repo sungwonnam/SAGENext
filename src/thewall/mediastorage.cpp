@@ -10,7 +10,7 @@ QMap<QString, MediaMetaData*> SN_MediaStorage::GlobalMediaList;
 SN_MediaStorage::SN_MediaStorage(const QSettings *s, QObject *parent)
     : QObject(parent)
     , _settings(s)
-    , _thumbSize(QSize(_settings->value("gui/mediathumbnailwidth", 128).toInt(), _settings->value("gui/mediathumbnailwidth", 128).toInt()))
+    , _thumbSize(QSize(_settings->value("gui/mediathumbnailwidth", 128).toInt(), 0))
 {
 	int nummedia = _initMediaList();
 	qWarning() << "SN_MediaStorage : initialized" << nummedia << "items";
@@ -189,11 +189,21 @@ QPixmap SN_MediaStorage::_createThumbnail(const QString &fpath, SAGENext::MEDIA_
     // Rescale it
     //
     if (!pixmap.isNull()  && pixmap.width() != _thumbSize.width()) {
+
         pixmap = pixmap.scaled(
                     _settings->value("gui/mediathumbnailwidth", 128).toInt()
                     ,_settings->value("gui/mediathumbnailwidth",128).toInt()
                     ,Qt::IgnoreAspectRatio
                     ,Qt::FastTransformation);
+
+        /*
+        if (pixmap.width() >= pixmap.height()  &&  pixmap.width() > _thumbSize.width()) {
+            pixmap = pixmap.scaledToWidth(_thumbSize.width());
+        }
+        else if (pixmap.width() < pixmap.height()  &&  pixmap.height() > _thumbSize.width()) {
+            pixmap = pixmap.scaledToHeight(_thumbSize.width());
+        }
+        */
     }
 
 
