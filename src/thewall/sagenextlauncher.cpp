@@ -769,6 +769,13 @@ void SN_Launcher::launchSavedSession(const QString &sessionfilename) {
 
 	SN_SimpleTextWidget *text = new SN_SimpleTextWidget(_settings->value("gui/fontpointsize",20).toInt() * 4, QColor(Qt::white), QColor(64, 64, 64, 128));
 	text->setText("Saved session\n" + sessionfilename + "\nhas loaded");
+
+    // resize text widget if it's too big
+    if (text->size().width() > _scene->width()) {
+        text->resize(_scene->width(), text->size().height());
+    }
+
+    // Animation (fade out effect)
 	QPropertyAnimation *anim = new QPropertyAnimation(text, "opacity", text);
 	anim->setStartValue(1.0);
 	anim->setEndValue(0.0);

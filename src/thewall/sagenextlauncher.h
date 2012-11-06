@@ -141,7 +141,7 @@ public slots:
           */
 	SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &scenepos = QPointF(30,30));
 
-	SN_BaseWidget * launch(void *vbw, const QPointF &scenepos = QPointF(30,30)) {
+	inline SN_BaseWidget * launch(void *vbw, const QPointF &scenepos = QPointF(30,30)) {
 		return launch(static_cast<SN_BaseWidget *>(vbw), scenepos);
 	}
 
