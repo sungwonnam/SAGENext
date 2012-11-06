@@ -157,9 +157,17 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 //            qDebug() << "SN_LayoutWidget::addItem() : adding bw on point" << pos;
             
             // resize if it's too big
-            if (bw->boundingRect().width() > boundingRect().width()) {
+            if (bw->boundingRect().width() * bw->scale() > boundingRect().width()) {
+//                qDebug() << "width" << bw->boundingRect();
                 if (bw->isWidget()) {
-                    bw->setScale(boundingRect().width() / bw->boundingRect().width());
+                    qreal newscale = boundingRect().width() / bw->boundingRect().width();
+                    qreal delta = newscale - bw->scale();
+
+                    bw->setScale(newscale);
+
+                    qreal dx = (bw->size().width() * -delta)/2.0;
+                    qreal dy = (bw->size().height() * -delta)/2.0;
+                    moveBy(dx,dy);
                 }
                 else if (bw->isWindow()) {
                     bw->resize(boundingRect().width(), bw->size().height());
@@ -167,9 +175,17 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
             }
 
             // do the same for the height
-            if (bw->boundingRect().height() > boundingRect().height()) {
+            if (bw->boundingRect().height() * bw->scale() > boundingRect().height()) {
+//                qDebug() << "height" << bw->boundingRect() << bw->size() << bw->geometry();
                 if (bw->isWidget()) {
-                    bw->setScale(boundingRect().height() / bw->boundingRect().height());
+                    qreal newscale = boundingRect().height() / bw->boundingRect().height();
+                    qreal delta = newscale - bw->scale();
+
+                    bw->setScale(newscale);
+
+                    qreal dx = (bw->size().width() * -delta)/2.0;
+                    qreal dy = (bw->size().height() * -delta)/2.0;
+                    moveBy(dx,dy);
                 }
                 else if (bw->isWindow()) {
                     bw->resize(bw->size().width(), boundingRect().height());
