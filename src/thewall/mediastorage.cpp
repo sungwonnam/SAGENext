@@ -91,22 +91,24 @@ int SN_MediaStorage::_initMediaList() {
 	return numread;
 }
 
-void SN_MediaStorage::addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &filepath) {
+void SN_MediaStorage::addNewMedia(int mtype, const QString &filepath) {
     //
     // Check if this media is already exist in the storage
     //
-    if ( SN_MediaStorage::GlobalMediaList.find(filepath) == SN_MediaStorage::GlobalMediaList.end()) {
+    if ( SN_MediaStorage::GlobalMediaList.find(filepath) != SN_MediaStorage::GlobalMediaList.end()) {
         qDebug() << "SN_MediaStorage::addNewMedia() : " << filepath << "already exist in the list";
         return;
     }
 
     MediaMetaData* meta = new MediaMetaData;
-    meta->type = mtype;
-    meta->pixmap = _createThumbnail(filepath, mtype);
+    meta->type = (SAGENext::MEDIA_TYPE)mtype;
+    meta->pixmap = _createThumbnail(filepath, (SAGENext::MEDIA_TYPE)mtype);
 
     SN_MediaStorage::MediaListRWLock.lockForWrite();
     SN_MediaStorage::GlobalMediaList.insert(filepath, meta);
     SN_MediaStorage::MediaListRWLock.unlock();
+
+    emit newMediaAdded();
 }
 
 

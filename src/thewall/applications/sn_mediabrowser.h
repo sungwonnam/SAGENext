@@ -177,7 +177,7 @@ public slots:
      * \param dirName
      *
      * Hide root icons,
-     * Display thumbnails of the media in the dir
+     * Display thumbnails of the media in the dir.
      * Show _goBackToRootWindowBtn
      */
     void updateThumbnailPanel();
@@ -194,7 +194,10 @@ public slots:
 
     /*!
      * \brief videoIconClicked
-     * A user clickec the video icon on the root window
+     * If a user clicks the video icon on the root window then
+     * populates media items from the media storage.
+     *
+     * _populateMediaItems() will call updateThumbnailPanel()
      */
     inline void videoIconClicked() {_populateMediaItems(QDir::homePath() + "/.sagenext/media/video");}
     inline void imageIconClicked() {_populateMediaItems(QDir::homePath() + "/.sagenext/media/image");}

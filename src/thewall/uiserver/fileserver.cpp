@@ -1,5 +1,6 @@
 #include "fileserver.h"
 #include "../sagenextlauncher.h"
+#include "../mediastorage.h"
 
 #include <QSettings>
 #include <QTcpSocket>
@@ -36,7 +37,7 @@ int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &f
 	// if it's just web url
 	//
 	if (mediatype == SAGENext::MEDIA_TYPE_WEBURL) {
-		emit fileReceived(mediatype, filename);
+		emit fileReceived((int)mediatype, filename);
 		return 0;
 	}
 
@@ -112,7 +113,7 @@ int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &f
 		return -1;
 	}
 
-	emit fileReceived(mediatype, file.fileName());
+	emit fileReceived((int)mediatype, file.fileName());
 
 	file.close();
 
@@ -202,12 +203,13 @@ void FileServerThread::run() {
 
 
 
-SN_FileServer::SN_FileServer(const QSettings *s, SN_Launcher *l, SN_UiServer *uiserver, QObject *parent)
+SN_FileServer::SN_FileServer(const QSettings *s, SN_Launcher *l, SN_UiServer *uiserver, SN_MediaStorage *ms, QObject *parent)
     : QTcpServer(parent)
     , _settings(s)
     , _fileServerPort(0)
     , _launcher(l)
     , _uiServer(uiserver)
+    , _mediaStorage(ms)
 {
 	_fileServerPort = _settings->value("general/fileserverport", 46000).toInt();
 
@@ -255,10 +257,21 @@ void SN_FileServer::incomingConnection(int handle) {
 
 
 	FileServerThread *thread = new FileServerThread(handle, uiclientid);
-	connect(thread, SIGNAL(finished()), this, SLOT(threadFinished()));
+	QObject::connect(thread, SIGNAL(finished()), this, SLOT(threadFinished()));
 
-	connect(thread, SIGNAL(fileReceived(int,QString)), _launcher, SLOT(launch(int,QString)));
+    //
+    // signal the launcher to launch the media
+    //
+	QObject::connect(thread, SIGNAL(fileReceived(int,QString)), _launcher, SLOT(launch(int,QString)));
 
+    //
+    // signal the media storage to store the media
+    //
+    QObject::connect(thread, SIGNAL(fileReceived(int,QString)), _mediaStorage, SLOT(addNewMedia(int,QString)));
+
+    //
+    // give the uiclient (sagenextPointer) the feedback
+    //
     QObject::connect(thread, SIGNAL(bytesWrittenToFile(qint32,QString,qint64)), this, SLOT(sendRecvProgress(qint32,QString,qint64)));
 
 	_uiFileServerThreadMap.insert(uiclientid, thread);

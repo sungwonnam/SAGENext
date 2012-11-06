@@ -33,10 +33,6 @@ public:
 
     static QReadWriteLock MediaListRWLock;
 
-    /*!
-      \brief This function add a media to the GlobalMediaList
-      */
-    void addNewMedia(SAGENext::MEDIA_TYPE mtype, const QString &filepath);
 
     /*!
      * \brief getMediaListInDir
@@ -73,8 +69,13 @@ private:
 signals:
     void newMediaAdded();
 
-    void mediaItemClicked(SAGENext::MEDIA_TYPE, const QString filepath);
+//    void mediaItemClicked(SAGENext::MEDIA_TYPE, const QString filepath);
 
+public slots:
+    /*!
+      \brief This function add a media to the GlobalMediaList
+      */
+    void addNewMedia(int mtype, const QString &filepath);
 };
 
 #endif // MEDIASTORAGE_H

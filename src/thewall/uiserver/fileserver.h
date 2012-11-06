@@ -10,6 +10,7 @@
 
 class QSettings;
 class SN_Launcher;
+class SN_MediaStorage;
 
 class FileServerThread : public QThread
 {
@@ -56,7 +57,7 @@ class SN_FileServer : public QTcpServer
 {
     Q_OBJECT
 public:
-    explicit SN_FileServer(const QSettings *s, SN_Launcher *l, SN_UiServer *uiserver, QObject *parent = 0);
+    explicit SN_FileServer(const QSettings *s, SN_Launcher *l, SN_UiServer *uiserver, SN_MediaStorage* ms, QObject *parent = 0);
 	~SN_FileServer();
 
 	inline int fileServerListenPort() const {return _fileServerPort;}
@@ -74,6 +75,8 @@ private:
 	SN_Launcher *_launcher;
 
     SN_UiServer *_uiServer;
+
+    SN_MediaStorage* _mediaStorage;
 
 signals:
 

@@ -921,7 +921,7 @@ void SN_LayoutWidget::loadSession(QDataStream &in, SN_Launcher *launcher) {
         case SAGENext::MEDIA_TYPE_PLUGIN : {
             in >> file;
             if (!bw) {
-                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE_PLUGIN" << gaid << file;
+                qDebug() << "SN_LayoutWidget::loadSession() : launching MEDIA_TYPE" << mtype << "globalappid" << gaid << file;
                 bw = launcher->launch(mtype, file, scenepos, gaid);
             }
             break;

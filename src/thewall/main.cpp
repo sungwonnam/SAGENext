@@ -484,7 +484,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	/**
 	  create the FileServer
 	 */
-	SN_FileServer *fileServer = new SN_FileServer(&s, launcher, uiserver);
+	SN_FileServer *fileServer = new SN_FileServer(&s, launcher, uiserver, mediaStorage);
 //	qDebug() << "FileServer is listening on" << fileServer->fileServerListenPort();
 
 

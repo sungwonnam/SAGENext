@@ -35,9 +35,10 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 	setItemIndexMethod(QGraphicsScene::NoIndex);
 
 
-    QColor db(QColor(Qt::darkBlue).darker(500));
-    db.setAlphaF(.99);
-	setBackgroundBrush(db);
+//    QColor db(QColor(Qt::darkBlue).darker(500));
+//    db.setAlphaF(.99);
+//	setBackgroundBrush(db);
+    setBackgroundBrush(QColor(10,10,10));
 
 
 

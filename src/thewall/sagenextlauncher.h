@@ -124,7 +124,7 @@ public slots:
 	SN_BaseWidget * launchSageApp(int mtype, const QString &filename, const QPointF &scenepos = QPointF(30,30), const QString &senderIP = "127.0.0.1", const QString &args = QString(), const QString &sageappname = QString(), quint64 gaid = 0);
 
         /**
-          This is general launch function
+          This is a general launch function
           */
 	SN_BaseWidget * launch(int mediatype, const QString &filename, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
@@ -134,6 +134,8 @@ public slots:
 	SN_BaseWidget * launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
         /**
+         *All the launch functions will eventually call this function.
+         *
           The widget is added to the scene in here and the _globalAppId is incremented by 1 in here as well.
           All the launch() will eventually call this function at the end.
           */
