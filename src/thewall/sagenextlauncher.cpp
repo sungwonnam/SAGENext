@@ -18,8 +18,9 @@
 
 #include "applications/sn_fittslawtest.h"
 #include "applications/sn_sagestreammplayer.h"
-#include "applications/pdfviewerwidget.h"
+//#include "applications/pdfviewerwidget.h"
 #include "applications/pixmapwidget.h"
+#include "applications/sn_pdfvieweropenglwidget.h"
 #include "applications/vncwidget.h"
 #include "applications/webwidget.h"
 #include "applications/sn_checker.h"
@@ -514,7 +515,8 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 		// Args needed : filename
 		//
 	case SAGENext::MEDIA_TYPE_PDF: {
-		SN_PDFViewerWidget *pdfviewer = new SN_PDFViewerWidget(filename, GID, _settings, 0, Qt::Widget);
+//		SN_PDFViewerWidget *pdfviewer = new SN_PDFViewerWidget(filename, GID, _settings, 0, Qt::Widget);
+        SN_PDFViewerOpenGLWidget* pdfviewer = new SN_PDFViewerOpenGLWidget(filename, GID, _settings, 0, Qt::Widget);
 		w = pdfviewer;
 		break;
 	}
