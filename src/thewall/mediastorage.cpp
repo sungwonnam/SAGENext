@@ -160,7 +160,7 @@ QPixmap SN_MediaStorage::_createThumbnail(const QString &fpath, SAGENext::MEDIA_
     // check if there's a thumbnail for this file
     //
     QFileInfo fi(fpath);
-    QString thumbpath = fi.dir().absolutePath() + "/.thumb." + fi.fileName() + ".jpg";
+    QString thumbpath = QDir::homePath() + "/.sagenext/.thumbnails/.thumb." + fi.fileName() + ".jpg";
 
     if (pixmap.load(thumbpath)) {
         qDebug() << "SN_MediaStorage::_createThumbnail() : loading existing thumbnail : " << thumbpath;
@@ -260,12 +260,16 @@ bool SN_MediaStorage::_readVideo(const QString &filepath, QPixmap & pixmap) {
     arguments << "-vo" << "jpeg" << "-quiet" << "-nosound" << "-frames" << "1" << "-ss" << "5" << filepath;
 
     // Apparently running the above command  will create an image called '00000001.jpg' in the build directory
-    QFileInfo thumbLocation = QFileInfo("$${BUILD_DIR}");
+//    QFileInfo thumbLocation = QFileInfo("$${BUILD_DIR}");
+    //
+    // This is because QApplicatin's current directory is happen to be the same as $${BUILD_DIR} defined in thewall.pro -- Sungwon
+    //
+
 
     //
     // delete 00000001.jpg
     //
-    QProcess::execute("rm -f " + thumbLocation.absolutePath() + "/00000001.jpg");
+    QProcess::execute("rm -f " + QDir::tempPath() + "/00000001.jpg");
 
     //
     // run mplayer
@@ -274,7 +278,7 @@ bool SN_MediaStorage::_readVideo(const QString &filepath, QPixmap & pixmap) {
 //    QProcess* proc = new QProcess;
 //    proc->start(program, arguments, QIODevice::ReadOnly);
 //    if (proc->waitForFinished()) {
-        if (!pixmap.load(thumbLocation.absolutePath() + "/00000001.jpg")) {
+        if (!pixmap.load(QDir::tempPath() + "/00000001.jpg")) {
             qWarning("%s::%s() : Couldn't create the thumbnail for %s", metaObject()->className(), __FUNCTION__, qPrintable(filepath));
 //            delete proc;
             return false;

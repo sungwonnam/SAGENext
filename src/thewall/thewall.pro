@@ -148,7 +148,8 @@ UI_DIR = $$BUILD_DIR/_UI
 
 
 # Use parenthesis to read from environment variable
-MEDIA_ROOT_DIR = $$(HOME)/.sagenext/media
+SAGENEXT_USER_DIR = $$(HOME)/.sagenext
+MEDIA_ROOT_DIR = $$SAGENEXT_USER_DIR/media
 message("Your media root directory : $$MEDIA_ROOT_DIR")
 
 IMAGE_DIR = $$MEDIA_ROOT_DIR/image
@@ -163,6 +164,8 @@ PLUGIN_DIR = $$MEDIA_ROOT_DIR/plugins
     system(mkdir $$VIDEO_DIR)
     system(mkdir $$PLUGIN_DIR)
 }
+
+
 !exists($$IMAGE_DIR) {
     system(mkdir $$IMAGE_DIR)
 }
@@ -176,11 +179,16 @@ PLUGIN_DIR = $$MEDIA_ROOT_DIR/plugins
     system(mkdir $$PLUGIN_DIR)
 }
 
-SESSIONS_DIR = $$(HOME)/.sagenext/sessions
+SESSIONS_DIR = $$SAGENEXT_USER_DIR/sessions
 !exists($$SESSIONS_DIR) {
     system(mkdir $$SESSIONS_DIR)
 }
 
+THUMBNAIL_DIR = $$SAGENEXT_USER_DIR/.thumbnails
+message("Thumbnail dir is $${THUMBNAIL_DIR}")
+!exists($$THUMBNAIL_DIR) {
+    system(mkdir $$THUMBNAIL_DIR)
+}
 
 
 
