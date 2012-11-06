@@ -155,6 +155,27 @@ void SN_LayoutWidget::addItem(SN_BaseWidget *bw, const QPointF &pos /* = 30,30*/
 		}
 		else {
 //            qDebug() << "SN_LayoutWidget::addItem() : adding bw on point" << pos;
+            
+            // resize if it's too big
+            if (bw->boundingRect().width() > boundingRect().width()) {
+                if (bw->isWidget()) {
+                    bw->setScale(boundingRect().width() / bw->boundingRect().width());
+                }
+                else if (bw->isWindow()) {
+                    bw->resize(boundingRect().width(), bw->size().height());
+                }
+            }
+
+            // do the same for the height
+            if (bw->boundingRect().height() > boundingRect().height()) {
+                if (bw->isWidget()) {
+                    bw->setScale(boundingRect().height() / bw->boundingRect().height());
+                }
+                else if (bw->isWindow()) {
+                    bw->resize(bw->size().width(), boundingRect().height());
+                }
+            }
+            
 			bw->setPos(pos);
 		}
 	}
