@@ -165,7 +165,7 @@ void FileServerThread::run() {
 		SAGENext::MEDIA_TYPE mediatype;
 		char filename[256];
 		qint64 filesize;
-		::sscanf(header, "%d %d %s %lld", &mode, &mediatype, filename, &filesize);
+		::sscanf(header, "%d %d %s %lld", &mode, (int*)&mediatype, filename, &filesize);
 
 
 
