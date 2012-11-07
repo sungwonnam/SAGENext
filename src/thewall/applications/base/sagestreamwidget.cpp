@@ -1091,7 +1091,8 @@ void SN_SageStreamWidget::m_initOpenGL() {
     glTexParameterf(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     // internal format 2 -> the number of color components in the texture
-    glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0 /*static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits()*/);
+    Q_ASSERT(_appInfo);
+    glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0 /*static_cast<QImage *>(doubleBuffer->getFrontBuffer())->bits()*/);
 //		glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, _pixelFormat, size().width(), size().height(), 0, _pixelFormat, GL_UNSIGNED_BYTE, (void *)0);
 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
