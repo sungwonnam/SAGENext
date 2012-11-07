@@ -446,15 +446,25 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
 {
 	ui->setupUi(this);
 
-	ui->iconWidth->setText(_settings->value("gui/iconwidth", 128).toString());
+    /*!
+     * The pixel width of icons on the scene (buttons int the SN_LayoutWidget)
+     */
+	ui->iconWidth->setText(_settings->value("gui/iconwidth", 32).toString());
 
 	ui->fontSizeLineEdit->setInputMask("900"); // 3 ascii digit. first digit is required
 	ui->fontSizeLineEdit->setText(_settings->value("gui/fontpointsize", 20).toString());
+
 	ui->pointerFontSizeLineEdit->setInputMask("900");
+    /*!
+     * The size of the font used for shared pointers (SN_PolygonArrowPointer)
+     */
 	ui->pointerFontSizeLineEdit->setText(_settings->value("gui/pointerfontsize", 20).toString());
 
 	ui->framemargin->setText(_settings->value("gui/framemargin", 8).toString());
 
+    /*!
+     * Pixel width of a media thumbnail
+     */
 	ui->thumbnailsize->setText(_settings->value("gui/mediathumbnailwidth", 64).toString());
 }
 void GuiSettingDialog::accept() {
@@ -464,6 +474,13 @@ void GuiSettingDialog::accept() {
 	/* window frame margins */
 	_settings->setValue("gui/framemargin", ui->framemargin->text().toInt());
 	_settings->setValue("gui/mediathumbnailwidth", ui->thumbnailsize->text().toInt());
+
+    /*!
+     * put this manually here temporarily
+     * It would be better to increase # thumanails when user resize the media browser
+     */
+//    _settings->setValue("gui/numthumbnailx", 8);
+//    _settings->setValue("gui/numthumbnaily", 4);
 }
 GuiSettingDialog::~GuiSettingDialog() {delete ui;}
 

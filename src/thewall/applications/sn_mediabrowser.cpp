@@ -50,8 +50,8 @@ SN_MediaBrowser::SN_MediaBrowser(SN_Launcher *launcher, quint64 globalappid, con
     , _goBackToParentDirBtn(0)
     , _leftBtn(0)
     , _rightBtn(0)
-    , _numItemsHorizontal(3)
-    , _numItemsVertical(3)
+    , _numItemsHorizontal(s->value("gui/numthumbnailx", 8).toInt())
+    , _numItemsVertical(s->value("gui/numthumbnaily", 4).toInt())
     , _currPage(0)
     , _isRootWindow(true)
 {

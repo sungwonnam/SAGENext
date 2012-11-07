@@ -42,9 +42,9 @@ SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *p
 
 
 
-    QPixmap evllogo(":/scene/resources/evl-logo-sagenext-blur.png");
-    Q_ASSERT(!evllogo.isNull());
-    QGraphicsPixmapItem *bg = new QGraphicsPixmapItem(evllogo.scaledToWidth(sceneRect.width()/2, Qt::SmoothTransformation));
+    QPixmap sagenextlogo(":/scene/resources/sagenext_logo.png");
+    Q_ASSERT(!sagenextlogo.isNull());
+    QGraphicsPixmapItem *bg = new QGraphicsPixmapItem(sagenextlogo.scaledToWidth(sceneRect.width()/2, Qt::SmoothTransformation));
     bg->setOpacity(0.2);
     bg->setFlag(QGraphicsItem::ItemIsMovable, false);
     bg->setFlag(QGraphicsItem::ItemIsSelectable, false);
