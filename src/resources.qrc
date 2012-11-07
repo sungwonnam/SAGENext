@@ -20,9 +20,7 @@
         <file>resources/plus_64x64.png</file>
         <file>resources/media-pause-128x128.png</file>
         <file>resources/group_data_128.png</file>
-        <file>resources/google_128.png</file>
         <file>resources/black_arrow_left_48x48.png</file>
-        <file>resources/mandelbrot_128.jpg</file>
     </qresource>
     <qresource prefix="/scene">
         <file>resources/x_circle_gray.png</file>
@@ -37,25 +35,20 @@
         <file>resources/sagenext_logo.png</file>
     </qresource>
     <qresource prefix="/mediabrowser">
-        <file>resources/Homo_sapiens_CD8_molecule_webgl_128.jpg</file>
-        <file>resources/dir_plugin_128.png</file>
         <file>resources/dotdotslash_128.png</file>
-        <file>resources/googleMaps_128.png</file>
         <file>resources/image.png</file>
-        <file>resources/mediaBrowserRoot.png</file>
         <file>resources/pdf.png</file>
         <file>resources/video.png</file>
-        <file>resources/webkit_128x128.png</file>
         <file>resources/arrow.png</file>
         <file>resources/pdffile_128.png</file>
         <file>resources/icon_home_256.png</file>
         <file>resources/icon_images_256.png</file>
-        <file>resources/icon_internet_256.png</file>
         <file>resources/icon_maps_256.png</file>
         <file>resources/icon_movies_256.png</file>
         <file>resources/icon_pdf_256.png</file>
         <file>resources/icon_plugin_256.png</file>
         <file>resources/icon_webgl_256.png</file>
+        <file>resources/icon_internet2_256.png</file>
     </qresource>
     <qresource prefix="/fittslawtest">
         <file>resources/blackarrow_upleft128.png</file>

@@ -139,7 +139,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	setLayout(linearLayout);
 
 
-	resize(1280, 1024);
+	resize(1920, 1200);
 			
 	/* This means nothing. Because wheel event won't be handled by BaseGraphicsWidget, and this widget redefines resizeEvent */
 	//	setNativeSize(810,650); // w/o frame

@@ -4,10 +4,6 @@
 #include "../common/commonitem.h"
 
 
-//QReadWriteLock SN_MediaBrowser::mediaHashRWLock;
-//QHash<QString,QPixmap> SN_MediaBrowser::mediaHash;
-
-
 SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, const QSize &thumbsize, QGraphicsItem *parent)
     : SN_PixmapButton(parent)
     , _mediaType(mtype)
@@ -30,6 +26,9 @@ SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, 
     _medianameDisplay->setText(f.fileName());
     _medianameDisplay->setX(parent->x());
     */
+}
+void SN_MediaItem::click() {
+	emit clicked(_mediaType, _filename, mapToScene(boundingRect().topLeft()).toPoint());
 }
 
 
@@ -154,19 +153,19 @@ void SN_MediaBrowser::_createRootIcons() {
 
     // But for now (for the SC12)
     // Attach them manually
-    SN_MediaItem* webbrowser = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu", QPixmap(":/mediabrowser/resources/icon_internet_256.png"), _thumbSize, this);
+    SN_MediaItem* webbrowser = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://www.evl.uic.edu", QPixmap(":/mediabrowser/resources/icon_internet2_256.png"), _thumbSize, this);
 
     // clicking an app icon will launch the application directly
-    QObject::connect(webbrowser, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+    QObject::connect(webbrowser, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString,QPoint)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString,QPoint)));
 
     // do the same for
     // google maps, google docs, MandelBrot
     SN_MediaItem* googlemap = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://maps.google.com", QPixmap(":/mediabrowser/resources/icon_maps_256.png"), _thumbSize, this);
-    QObject::connect(googlemap, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+    QObject::connect(googlemap, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString,QPoint)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString,QPoint)));
 
 
     SN_MediaItem* webgl = new SN_MediaItem(SAGENext::MEDIA_TYPE_WEBURL, "http://webglmol.sourceforge.jp/glmol/viewer.html", QPixmap(":/mediabrowser/resources/icon_webgl_256.png"), _thumbSize,this);
-    QObject::connect(webgl, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+    QObject::connect(webgl, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString,QPoint)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString,QPoint)));
 
 
 //    SN_MediaItem* mandelbrot = new SN_MediaItem(SAGENext::MEDIA_TYPE_PLUGIN, QDir::homePath()+"/.sagenext/media/plugins/libMandelbrotExamplePlugin.so", QPixmap(":/resources/mandelbrot_128.jpg"),this);
@@ -184,129 +183,6 @@ void SN_MediaBrowser::resizeEvent(QGraphicsSceneResizeEvent *) {
 }
 */
 
-/*
-bool SN_MediaBrowser::insertNewMediaToHash(const QString &key, QPixmap &pixmap) {
-    if (_mediaStorage) {
-        return insertNewMediaToHash(key, pixmap);
-    }
-    return false;
-}
-*/
-
-
-/*
-void SN_MediaBrowser::attachItems() {
-    attachItemsInCurrDirectory();
-    // detach all media items
-    foreach (QGraphicsItem *item, childItems()) {
-        // cast item both as folder and a media item
-        SN_MediaItem *mitem = dynamic_cast<SN_MediaItem *>(item);
-
-        if (mitem) {
-            delete mitem;
-        }
-    }
-
-    QHashIterator<QString, QPixmap> i(_currItemsDisplayed);
-    int itemCount = 0;
-    while (i.hasNext()) {
-        i.next();
-        qDebug() << i.key();
-        QPixmap pm = SN_MediaBrowser::mediaHash.value(i.key());
-        // TODO: Change logic to change it so it changes dir when a folder is clicked vs. thumbnail clicked
-        QFileInfo p(i.key());
-        if(p.isFile()) {
-            SN_MediaItem *item = new SN_MediaItem(i.key(), pm, this);
-
-            if ( ! QObject::connect(item, SIGNAL(thumbnailClicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString))) ) {
-                qCritical("\n%s::%s() : signal thumbnailClicked is not connected to the slot launchMedia\n", metaObject()->className(), __FUNCTION__);
-            }
-
-            // TODO: The xPos of each thumbnail is hardcoded...MUST CHANGE THIS
-            if(item->getMediaType() == SAGENext::MEDIA_TYPE_IMAGE) {
-                itemCount++;
-                item->moveBy(_settings->value("gui/mediathumbnailwidth",256).toInt() * itemCount, 0);
-            }
-            else if (item->getMediaType() == SAGENext::MEDIA_TYPE_PDF) {
-                itemCount++;
-                item->moveBy(_settings->value("gui/mediathumbnailwidth",256).toInt() * itemCount, 0);
-            }
-            else if(item->getMediaType() == SAGENext::MEDIA_TYPE_PLUGIN) {
-                itemCount++;
-                item->moveBy(_settings->value("gui/mediathumbnailwidth",256).toInt() * itemCount, 0);
-            }
-            else if(item->getMediaType() == SAGENext::MEDIA_TYPE_LOCAL_VIDEO){
-                itemCount++;
-                item->moveBy(_settings->value("gui/mediathumbnailwidth",256).toInt() * itemCount, 0);
-            }
-        }
-        else if(p.isDir()) {
-            FolderItem *item = new FolderItem(i.key(), pm, this);
-
-            if ( ! QObject::connect(item, SIGNAL(folderClicked(QString)), this, SLOT(changeDirectory(QString))) ) {
-                qCritical("\n%s::%s() : signal thumbnailClicked is not connected to the slot launchMedia\n", metaObject()->className(), __FUNCTION__);
-            }
-            // Logic here for folder count
-            itemCount++;
-            item->moveBy(pm.size().width() * itemCount,0);
-        }
-    }
-    */
-
-/*
-    SN_MediaBrowser::mediaHashRWLock.lockForRead();
-    mediaHash = _mediaStorage->getMediaHashForRead();
-    QHashIterator<QString, QPixmap> i(mediaHash);
-    int itemCount = 0;
-    int itemCount = 0;
-    int itemCount = 0;
-    int itemCount = 0;
-    while (i.hasNext()) {
-        i.next();
-        QPixmap pm = SN_MediaBrowser::mediaHash.value(i.key());
-
-        MediaItem *item = new MediaItem(i.key(), pm, this);
-
-        if ( ! QObject::connect(item, SIGNAL(thumbnailClicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString))) ) {
-            qCritical("\n%s::%s() : signal thumbnailClicked is not connected to the slot launchMedia\n", metaObject()->className(), __FUNCTION__);
-        }
-
-        // TODO: The xPos of each thumbnail is hardcoded...MUST CHANGE THIS
-        if(item->getMediaType() == SAGENext::MEDIA_TYPE_IMAGE) {
-            itemCount++;
-            item->moveBy(_settings->value("gui/mediathumbnailwidth",256).toInt() * itemCount, 0);
-        }
-        else if (item->getMediaType() == SAGENext::MEDIA_TYPE_PDF) {
-            itemCount++;
-            item->moveBy(_settings->value("gui/mediathumbnailwidth",256).toInt() * itemCount, 64);
-        }
-        else if(item->getMediaType() == SAGENext::MEDIA_TYPE_PLUGIN) {
-            itemCount++;
-            item->moveBy(_settings->value("gui/mediathumbnailwidth",256).toInt() * itemCount, 128);
-        }
-        else {
-            itemCount++;
-            item->moveBy(_settings->value("gui/mediathumbnailwidth",256).toInt() * itemCount, 192);
-        }
-    }
-
-//    foreach (QFileInfo fileinfo, _currentDirectory.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDot)) {
-
-//        if (fileinfo.isDir()) {
-//            // directory icon
-//        }
-//        else if (fileinfo.isFile()) {
-//            QPixmap pm = MediaBrowser::mediaHash.value(fileinfo.absoluteFilePath());
-//            MediaItem *item = new MediaItem(fileinfo.absoluteFilePath(), pm.scaled(256, 256), this);
-////            item->moveBy(x, y);
-//        }
-
-//    }
-
-    SN_MediaBrowser::mediaHashRWLock.unlock();
-*/
-
-//}
 
 /*!
   Slot called when MediaStorage has new media.
@@ -317,7 +193,7 @@ void SN_MediaBrowser::mediaStorageHasNewMedia(){
     qDebug() << "MediaBrowser has been informed of changes to MediaStorage";
 }
 
-void SN_MediaBrowser::launchMedia(SAGENext::MEDIA_TYPE mtype, const QString &filename) {
+void SN_MediaBrowser::launchMedia(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPoint &scenepos) {
     Q_ASSERT(_launcher);
 
     //
@@ -337,7 +213,7 @@ void SN_MediaBrowser::launchMedia(SAGENext::MEDIA_TYPE mtype, const QString &fil
     // Where the widget should be opened ?
     //
     qDebug() << "SN_MediaBrowser::launchMedia() : " << filename;
-    _launcher->launch(mtype, filename /* , scenePos */);
+    _launcher->launch(mtype, filename, scenepos);
 }
 
 void SN_MediaBrowser::_populateMediaItems(const QDir &dir) {
@@ -388,7 +264,7 @@ void SN_MediaBrowser::_populateMediaItems(const QDir &dir) {
                 mitem->setLabel(dir.dirName());
             }
 
-            QObject::connect(mitem, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString)));
+            QObject::connect(mitem, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString,QPoint)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString,QPoint)));
 
             _currMediaItems.push_back(mitem);
         }

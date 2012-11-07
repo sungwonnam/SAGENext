@@ -26,7 +26,7 @@ public:
     inline QString absFilePath() const {return _filename;}
 
 
-    inline void click() {emit clicked(_mediaType, _filename);}
+    void click();
 
 private:
 	SAGENext::MEDIA_TYPE _mediaType;
@@ -43,7 +43,7 @@ signals:
      * \brief clicked
      * \param filename can be a filepath to the media or plugin
      */
-    void clicked(SAGENext::MEDIA_TYPE mtype, const QString &filename);
+    void clicked(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPoint &scenepos);
 
 };
 
@@ -170,7 +170,7 @@ private:
 public slots:
     void mediaStorageHasNewMedia();
 
-	void launchMedia(SAGENext::MEDIA_TYPE, const QString &filename);
+	void launchMedia(SAGENext::MEDIA_TYPE, const QString &filename, const QPoint &scenepos);
 
     /*!
      * \brief changeDirectory
