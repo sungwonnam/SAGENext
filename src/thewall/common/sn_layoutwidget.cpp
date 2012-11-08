@@ -4,6 +4,7 @@
 
 #include "common/commonitem.h"
 #include "applications/base/basewidget.h"
+#include "../applications/sn_mediabrowser.h"
 #include "applications/base/appinfo.h"
 #include "sagenextlauncher.h"
 #include "sagenextscene.h"
@@ -643,6 +644,8 @@ void SN_LayoutWidget::doTile() {
 	foreach(QGraphicsItem *item, childItems()) {
 		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 		SN_BaseWidget *bw = static_cast<SN_BaseWidget *>(item);
+SN_MediaBrowser *mb = dynamic_cast<SN_MediaBrowser*>(bw);
+if (mb) continue;
 
         //
         //
@@ -726,6 +729,8 @@ void SN_LayoutWidget::doTile() {
 		if (item->type() < QGraphicsItem::UserType + BASEWIDGET_USER) continue;
 
 		SN_BaseWidget * bw = static_cast<SN_BaseWidget *>(item);
+SN_MediaBrowser *mb = dynamic_cast<SN_MediaBrowser*>(bw);
+if (mb) continue;
 
 		if (col == numItemH) {
 			col = 0; // reset col index
