@@ -357,7 +357,7 @@ public slots:
       */
     void scheduleDummyUpdate();
 
-    inline void setTargetCursorPixmap(const QString &res = ":/resources/blackarrow_upleft128.png") {
+    inline void setTargetCursorPixmap(const QString &res = ":/fittslawtest/resources/blackarrow_upleft128.png") {
         _cursor->setPixmap(res);
     }
 

@@ -8,11 +8,9 @@
 
 SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent /*0*/, Qt::WindowFlags wFlags/* Qt::Window */)
     : SN_BaseWidget(gaid, setting, parent, wFlags)
-    , linearLayout(0)
-    , gwebview(0)
-//    , urlbox(0)
+    , _gwebview(0)
     , _customurlbox(0)
-    , urlboxproxy(0)
+    , _webinspector(0)
 {
 
 	qDebug() << "SN_WebWidget() : QtWebKit version" << QTWEBKIT_VERSION_STR;
@@ -67,6 +65,15 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 	/* webkit related */
 	QWebSettings *ws = QWebSettings::globalSettings();
 
+    if (_settings->value("misc/webdebugconsole", false).toBool()) {
+        qDebug() << "SN_WebWidget::SN_WebWidget() : creating web debug console";
+
+        ws->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
+
+        _webinspector = new QWebInspector;
+        _webinspector->show();
+    }
+
 	/*
 	  **
 	  I recommend using Java plugin from the Java SE @ oracle
@@ -102,21 +109,21 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
       gwebview needs to be able to receive mouse events because users want to click links on web pages
       That's why webwidget filter childs' event instead of stacking children behind the parent
      */
-    gwebview = new QGraphicsWebView; // it is now the top most item unless ItemStacksBehindParent is true
+    _gwebview = new QGraphicsWebView; // it is now the top most item unless ItemStacksBehindParent is true
 //	gwebview->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
 //	gwebview->installSceneEventFilter(this);
 //	webPage = gwebview->page();
 //	gwebview->setCacheMode(QGraphicsItem::ItemCoordinateCache);
 
 
-	gwebview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Frame);
-	QObject::connect(gwebview, SIGNAL(urlChanged(QUrl)), this, SLOT(urlChanged(QUrl)));
+	_gwebview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Frame);
+	QObject::connect(_gwebview, SIGNAL(urlChanged(QUrl)), this, SLOT(urlChanged(QUrl)));
 
 
 
     SN_PixmapButton* backHistoryButton = new SN_PixmapButton(":/resources/black_arrow_left_48x48", 128, QString(), this);
-    backHistoryButton->addAction(gwebview->pageAction(QWebPage::Back));
-    connect(backHistoryButton, SIGNAL(clicked()), gwebview->pageAction(QWebPage::Back), SLOT(trigger()));
+    backHistoryButton->addAction(_gwebview->pageAction(QWebPage::Back));
+    connect(backHistoryButton, SIGNAL(clicked()), _gwebview->pageAction(QWebPage::Back), SLOT(trigger()));
 
 
     QGraphicsLinearLayout* toplayout = new QGraphicsLinearLayout(Qt::Horizontal);
@@ -124,7 +131,7 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
     toplayout->addItem(_customurlbox);
 
 
-	linearLayout = new QGraphicsLinearLayout(Qt::Vertical, this);
+	QGraphicsLinearLayout* linearLayout = new QGraphicsLinearLayout(Qt::Vertical, this);
 	linearLayout->setSpacing(4);
 	linearLayout->setContentsMargins(20,20,20,40);
 
@@ -133,13 +140,13 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 //	linearLayout->addItem(urlboxproxy);
 	linearLayout->addItem(toplayout);
 
-	linearLayout->addItem(gwebview);
+	linearLayout->addItem(_gwebview);
 
 	// Any existing layout is deleted before the new layuout is assigned, and this widget will take ownership of the layout
 	setLayout(linearLayout);
 
 
-	resize(1920, 1200);
+	resize(1600, 1200);
 			
 	/* This means nothing. Because wheel event won't be handled by BaseGraphicsWidget, and this widget redefines resizeEvent */
 	//	setNativeSize(810,650); // w/o frame
@@ -147,15 +154,18 @@ SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphi
 
 
 SN_WebWidget::~SN_WebWidget() {
+    if (_webinspector) {
+        delete _webinspector;
+    }
 
-    if (gwebview) {
-        gwebview->stop();
-        gwebview->close();
+    if (_gwebview) {
+        _gwebview->stop();
+        _gwebview->close();
 
         //
         // without this, it will crash on exit
         //
-        delete gwebview;
+        delete _gwebview;
     }
 }
 
@@ -171,7 +181,7 @@ bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 	// I'll only filter events delivered to the gwebview
 	// So this won't be executed if the gwebview is set to be stacked behind the parent
 	//
-	if (watched == gwebview ) {
+	if (watched == _gwebview ) {
 		//	qDebug("WebWidget::%s() : gwebview is going to receive event %d", __FUNCTION__, event->type());
 
 		if ( event->type() == QEvent::GraphicsSceneContextMenu) {
@@ -256,7 +266,7 @@ void SN_WebWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPo
     // pointer button pressed on the content region
     // so it's going to be mouse interaction with web page
     //
-    if (gwebview && gwebview->geometry().contains(point)) {
+    if (_gwebview && _gwebview->geometry().contains(point)) {
         _isMoving = false;
         _isResizing = false;
     }
@@ -317,7 +327,7 @@ void SN_WebWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
 		  This is because OS doesn't allow multiple mouse pointers (even though OS supports multiple mouse devices connected to the system, there is only one mouse pointer)
 
 		  ************/
-		if (scene()->mouseGrabberItem() != gwebview) {
+		if (scene()->mouseGrabberItem() != _gwebview) {
 			QMouseEvent press(QEvent::MouseButtonPress, view->mapFromScene(scenePos), button, button | Qt::NoButton, Qt::NoModifier);
 			if ( ! QApplication::sendEvent(view->viewport(), &press)) {
 				qDebug() << "SN_WebWidget::handlePointerDrag() : failed to send press event";
@@ -380,7 +390,7 @@ void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *p, const QPointF
 //			qDebug() << "Released, mouse grabber is" << scene()->mouseGrabberItem();
 		}
 
-		gwebview->ungrabMouse();
+		_gwebview->ungrabMouse();
 	}
 
     else if (_isResizing) {
@@ -407,15 +417,6 @@ void SN_WebWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 */
 
 
-void SN_WebWidget::pageLoaded() {
-	//	gwebview->setContent( gwebview->page()->mainFrame()->toHtml().toAscii() );
-
-	gwebview->setPage( webPage );
-	qDebug() << gwebview->page()->mainFrame()->toHtml().toAscii();
-
-	update(); // schedule paint()
-}
-
 void SN_WebWidget::setUrl(const QString &u) {
 	QUrl url;
 
@@ -435,13 +436,14 @@ void SN_WebWidget::setUrl(const QString &u) {
 	if (!url.isEmpty() && url.isValid()) {
 
 		appInfo()->setWebUrl( url );
-		//	gwebview->setUrl(url);
-		gwebview->load(url);
+		_gwebview->load(url);
 
 //        qDebug() << gwebview->page()->pluginFactory();
 
-		_appInfo->setWebUrl(url);
 
+        if (_webinspector) {
+            _webinspector->setPage(_gwebview->page());
+        }
 
 		/**
           QObject: Cannot create children for a parent that is in a different thread.

@@ -6,10 +6,8 @@
 //#include <QWebPage>
 
 class QGraphicsWebView;
-class QGraphicsLinearLayout;
-class QWebPage;
-class QWebFrame;
 class QGraphicsProxyWidget;
+class QWebInspector;
 class SN_ProxyLineEdit;
 
 /**
@@ -46,10 +44,20 @@ public:
 		  */
 	void handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPointF &point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton button, Qt::KeyboardModifier modifier);
 
-
 	void handlePointerRelease(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn);
 
+
+
 protected:
+    QGraphicsWebView *_gwebview;
+
+	SN_ProxyLineEdit *_customurlbox;
+
+    /*!
+     * \brief _webinspector shows debug console
+     */
+    QWebInspector* _webinspector;
+
 //	void paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *) {/* do nothing */}
 
         /*!
@@ -76,28 +84,11 @@ protected:
 		// use BaseWidget's implementation
 //        void paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
-        /**
-          * When this widget is being resized, gwebview should be resized accordingly
-          */
-//	void resizeEvent(QGraphicsSceneResizeEvent *event);
-//	void keyPressEvent(QKeyEvent *event);
-//	void keyReleaseEvent(QKeyEvent *event);
 
-
-private:
-	QGraphicsLinearLayout *linearLayout;
-	QGraphicsWebView *gwebview;
-	SN_ProxyLineEdit *_customurlbox;
-	QGraphicsProxyWidget *urlboxproxy;
-
-
-	QWebPage *webPage;
-	QWebFrame *webFrame;
-	//QFutureWatcher<void> futureWatcher;
 
 public slots:
 	/**
-      sets new web URL and triggers webpage loading
+      This function sets new web URL and triggers webpage loading.
       */
 	void setUrl(const QString &url);
 
@@ -111,8 +102,6 @@ public slots:
      * urlChanged() -> this function
      */
     void urlChanged(const QUrl &url);
-
-	void pageLoaded();
 };
 
 
