@@ -28,29 +28,16 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Priority
     , _refreshCount(0)
 {
 	ui->setupUi(this);
-//	setAttribute(Qt::WA_DeleteOnClose);
-//	pidList.clear();
-
-//	if (schedcontrol) {
-//		if (schedcontrol->isRunning()) {
-//			ui->scheduleButton->setText("Stop Scheduling");
-//			isScheduleEnabled = true;
-//		}
-//		else {
-//			ui->scheduleButton->setText("Run Scheduling");
-//			isScheduleEnabled = false;
-//		}
-//	}
 
     /*
-      On the bottom left
+      CPU data n the bottom left
       */
+    /***
 	buildPerCpuHLayouts();
     ui->hlayout_CPU_appPerf->setStretch(0, 0); // per CPU b/w on the left
     ui->hlayout_CPU_appPerf->setStretch(1, 2); // per app perf data
+    ***/
 
-
-//	ui->vLayoutOnTheLeft->addStretch();
 
 
 	/**
@@ -66,10 +53,10 @@ ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_Priority
 	/**
 	  per widget performance data table on the bottom right.
 	 **/
-	ui->perAppPerfTable->setColumnCount(7); // app id,  priority, cpu usage, curr recv FPS, curr quality, desired quality
+	ui->perAppPerfTable->setColumnCount(13); // app id,  priority, Pvisual, Pinteract, Ptemp, Rcur, Ropt, demanded quality
 	ui->perAppPerfTable->setRowCount(0);
 	QStringList headers;
-    headers << "Id" << "Priority" << "CurBW" << "ReqBW" << "O.Q._Rq" << "D.Q." << "CurFPS";
+    headers << "Id" << "P" << "Wv" << "Wi" << "Wt" << "Pv" << "Pi" << "Pt" << "Rcur" << "Ropt" << "Qcur" << "Qsched" << "CurFPS";
 	ui->perAppPerfTable->setHorizontalHeaderLabels(headers);
     ui->tablePlotVLayoutOnTheRight->setStretchFactor(ui->perAppPerfTable, 3);
 
@@ -258,6 +245,7 @@ void ResourceMonitorWidget::refreshCPUdata() {
 		lb->setNum(procnode->getCpuUsage());
 	}
 	*/
+    if (! ui->vLayoutOnTheLeft || ! ui->vLayoutOnTheLeft->count()) return;
 
 	const QList<SN_SimpleProcNode *> &proclist = _rMonitor->getSimpleProcList();
 	QList<SN_SimpleProcNode *>::const_iterator it;
@@ -399,9 +387,24 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
         case 6:
             item->setData(Qt::DisplayRole, "");
             break;
-//			case 7:
-//				item->setData(Qt::DisplayRole, rw->failToSchedule);
-//				break;
+        case 7:
+            item->setData(Qt::DisplayRole, "");
+            break;
+        case 8:
+            item->setData(Qt::DisplayRole, "");
+            break;
+        case 9:
+            item->setData(Qt::DisplayRole, "");
+            break;
+        case 10:
+            item->setData(Qt::DisplayRole, "");
+            break;
+        case 11:
+            item->setData(Qt::DisplayRole, "");
+            break;
+        case 12:
+            item->setData(Qt::DisplayRole, "");
+            break;
         default:
             break;
         }
@@ -427,18 +430,40 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
 			case 0:
 				item->setData(Qt::DisplayRole, rw->globalAppId());
 				break;
-			case 1:
+
+			case 1: // P
 				item->setData(Qt::DisplayRole, rw->priority());
 				break;
-			case 2:
+
+            case 2: // Wv
+                item->setData(Qt::DisplayRole, rw->priorityData()->Wvisual());
+				break;
+            case 3: // Wi
+                item->setData(Qt::DisplayRole, rw->priorityData()->Winteract());
+				break;
+            case 4: // Wt
+                item->setData(Qt::DisplayRole, rw->priorityData()->Wtemp());
+				break;
+
+            case 5: // Pvisual
+				item->setData(Qt::DisplayRole, rw->priorityData()->Pvisual());
+				break;
+            case 6: // Pinteract
+				item->setData(Qt::DisplayRole, rw->priorityData()->Pinteract());
+				break;
+            case 7: // Ptemp
+                item->setData(Qt::DisplayRole, rw->priorityData()->Ptemp());
+				break;
+
+			case 8: // Rcur
 				item->setData(Qt::DisplayRole, rw->perfMon()->getCurrBW_Mbps());
 				break;
-			case 3:
+			case 9: // Ropt
 				item->setData(Qt::DisplayRole, rw->perfMon()->getRequiredBW_Mbps());
 //                item->setData(Qt::DisplayRole, rw->perfMon()->getAvgRecvFps());
-
 				break;
-			case 4:
+
+			case 10: // Qcur
 				item->setData(Qt::DisplayRole, rw->observedQuality_Rq());
 				/*
                 if ( rw->observedQuality_Rq() > rw->demandedQuality() ) {
@@ -446,15 +471,15 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
                 }
 				*/
 				break;
-			case 5:
+			case 11: // Qsched
 				item->setData(Qt::DisplayRole, rw->demandedQuality());
 				break;
-			case 6:
+
+
+			case 12:
 				item->setData(Qt::DisplayRole, rw->perfMon()->getCurrEffectiveFps());
 				break;
-//			case 7:
-//				item->setData(Qt::DisplayRole, rw->failToSchedule);
-//				break;
+
 			default:
 				break;
 			}
@@ -575,6 +600,11 @@ void ResourceMonitorWidget::populatePerfDataPerPriorityRank() {
 }
 
 void ResourceMonitorWidget::buildPerCpuHLayouts() {
+
+    /*
+     * fills the cpu data in the ui->vLayoutOnTheLeft in the ui->hlayout_CPU_appPerf
+     */
+
 //	QVector<SN_ProcessorNode *> *pv = rMonitor->getProcVec();
 	QList<SN_SimpleProcNode *> plist = _rMonitor->getSimpleProcList();
 //	int numproc = pv->size();

@@ -28,6 +28,21 @@ public:
 
     inline qreal priority() const {return _priority;}
 
+    inline qreal Pvisual() const {return _Pvisual;}
+    inline qreal Pinteract() const {return _Pinteract;}
+    inline qreal Ptemp() const {return _Ptemp;}
+    inline void setPtemp(qreal v) {_Ptemp = v;}
+
+    inline void setWeights(qreal wv, qreal wi, qreal wt) {
+        qreal total = wv + wi + wt;
+        _weight_visual = wv/total;
+        _weight_interact = wi/total;
+        _weight_temp = wt/total;
+    }
+    inline qreal Wvisual() const {return _weight_visual;}
+    inline qreal Winteract() const {return _weight_interact;}
+    inline qreal Wtemp() const {return _weight_temp;}
+
 	/*!
 	  Increment the _intrCounter
 	  */
@@ -38,10 +53,17 @@ public:
 	  */
 	qreal ipm() const;
 
-	qreal computePriority(qint64 currTimeEpoch = 0);
+	qreal computePriority(quint64 sum_EVS, quint64 sum_intr);
 
 
 	inline int priorityQuantized() const;
+
+    /*!
+      For The Pinteract
+      */
+    void countIntrIncrements();
+
+    inline quint64 intrIncrements() const {return _intrIncrements;}
 
 protected:
 	/*!
@@ -55,6 +77,9 @@ protected:
 
     qreal _Ptemp;
 
+    qreal _weight_visual;
+    qreal _weight_interact;
+    qreal _weight_temp;
 
 	/*!
 	  When is the last time(msec since epoch) it is interacted
@@ -77,6 +102,8 @@ protected:
 	quint64 _intrCounter;
 
     quint64 _intrCounterPrev;
+
+    quint64 _intrIncrements;
 
 	/*!
 	  A list of (msec since epoch, the type of interaction) tuple
@@ -108,12 +135,9 @@ private:
       The Pvisual.
 	  _evr_to_win and _evr_to_wall are also computed here
 	  */
-	void m_computePvisual(void);
+	void m_computePvisual(quint64 sumevs);
 
-    /*!
-      The Pinteract
-      */
-    void m_computePinteract();
+
 	
 signals:
 	

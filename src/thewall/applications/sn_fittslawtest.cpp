@@ -96,6 +96,10 @@ SN_SageFittsLawTest::SN_SageFittsLawTest(const quint64 globalappid, const QSetti
 
     _init();
 
+    if (_priorityData) {
+        _priorityData->setWeights(3,7,0);
+    }
+
 //    qDebug() << "SN_SageFittsLawTest() : # rounds per user is" << SN_SageFittsLawTest::_NUM_ROUND_PER_USER;
 }
 
