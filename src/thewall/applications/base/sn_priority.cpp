@@ -15,7 +15,7 @@ SN_Priority::SN_Priority(SN_BaseWidget *w, QObject *parent)
     , _widget(w)
     , _priorityGrid(0)
 
-    , _evr_to_win(0)
+    , _evr_to_win(0.0)
     , _evr_to_wall(0)
     , _ipm(0)
 {
@@ -105,10 +105,13 @@ void SN_Priority::m_computePvisual(void) {
 	for (it=rectsInRegion.constBegin(); it!=rectsInRegion.constEnd(); it++) {
 		const QRect &r = (*it);
 		_evrsize += (r.width() * r.height()); // quint64 : unsigned long long int
+
 	}
 
 	QSizeF effectiveSize = _widget->size() * _widget->scale();
 	quint64 winsize = effectiveSize.width() * effectiveSize.height(); // quint64 : unsigned long long int
+    if (winsize <= 0) return;
+
 
 //	qDebug() << _widget->size() << _widget->scale();
 
@@ -124,8 +127,10 @@ void SN_Priority::m_computePvisual(void) {
 	}
     */
 
-    _evr_to_win = _evrsize / winsize;
-    _Pvisual = _evrsize * _evr_to_win;
+    _evr_to_win = (qreal)_evrsize / (qreal)winsize;
+    _Pvisual = (qreal)_evrsize * _evr_to_win;
+
+//    qDebug() << "\t" << _widget->globalAppId() << "EVS: " << _evr_to_win << "Pvisual: " << _Pvisual;
 }
 
 void SN_Priority::m_computePinteract() {

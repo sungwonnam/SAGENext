@@ -499,7 +499,7 @@ void SN_ResourceMonitor::refresh() {
 
 	_widgetListRWlock.lockForRead();
 
-    qreal current_TR_observed_Mbps = 0.0;
+    qreal current_TR_observed_Mbps = 0.0; // the sum of Rcur
 
     _TR_estimated_Mbps = 0.0;
 

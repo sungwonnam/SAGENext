@@ -95,7 +95,7 @@ private:
 	  Ratio of effective visible region to the window size
 	  This tells how much the application is revealing its content
 	  */
-	int _evr_to_win;
+	qreal _evr_to_win;
 
 	/*!
 	  This tells how much the application window covering the wall

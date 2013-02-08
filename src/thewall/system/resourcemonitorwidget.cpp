@@ -377,7 +377,7 @@ void ResourceMonitorWidget::refreshPerAppPerfData() {
         }
         switch(i) {
         case 0:
-            item->setData(Qt::DisplayRole, "noop");
+            item->setData(Qt::DisplayRole, "TR obsv|effec");
             break;
         case 1:
             item->setData(Qt::DisplayRole, _rMonitor->current_TR_observed_Mbps());
