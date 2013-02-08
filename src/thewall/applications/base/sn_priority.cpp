@@ -113,7 +113,7 @@ void SN_Priority::m_computePvisual(quint64 sumevs) {
     _evr_to_win = (qreal)_evrsize / (qreal)winsize;
     _Pvisual = _evr_to_win * (qreal)_evrsize / (qreal)sumevs;
 
-    qDebug() << "\t" << _widget->globalAppId() << "EVS: " << _evrsize << "EVS ratio" << (qreal)_evrsize/(qreal)sumevs << "Pvisual: " << _Pvisual;
+//    qDebug() << "\t" << _widget->globalAppId() << "EVS: " << _evrsize << "EVS ratio" << (qreal)_evrsize/(qreal)sumevs << "Pvisual: " << _Pvisual;
 }
 
 void SN_Priority::countIntrIncrements() {
