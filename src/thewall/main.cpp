@@ -365,8 +365,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		SN_PriorityGrid *pgrid = 0;
 		if (s.value("system/prioritygrid").toBool()) {
 
-            int num_row = s.value("system/prioritygrid_numrow", 3).toInt();
-            int num_col = s.value("system/prioritygrid_numcol", 4).toInt();
+            int num_row = s.value("system/prioritygridrow", 3).toInt();
+            int num_col = s.value("system/prioritygridcol", 4).toInt();
 			//
 			// enable priorityGrid
 			//
