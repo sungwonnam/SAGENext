@@ -23,6 +23,8 @@ class SN_ResourceMonitor;
 class SN_SchedulerControl;
 class SN_MediaStorage;
 
+class SageVis;
+
 class SN_Launcher : public QObject
 {
 	Q_OBJECT
@@ -100,6 +102,8 @@ private:
 
 
     quint64 _getUpdatedGlobalAppId(quint64 gaid = 0);
+
+    SageVis* sageVis;
 
 
 public slots:

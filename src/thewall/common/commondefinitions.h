@@ -50,7 +50,13 @@ enum MEDIA_TYPE { MEDIA_TYPE_UNKNOWN = 100
 	              , MEDIA_TYPE_WEBURL
 	              , MEDIA_TYPE_PDF
 	              , MEDIA_TYPE_SAGE_STREAM
+                  , MEDIA_TYPE_SAGE_VIS /* sage vis applications, launched in 'sagevis.h' */
                 };
+
+/* Type of SageVis Widgets */
+enum VIS_TYPE {  VIS_TYPE_EXPERIMENT_1
+                 , VIS_TYPE_EXPERIMENT_2
+};
 
 
 /* transfer file / stream pixel / stream file */

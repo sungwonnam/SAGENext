@@ -1,0 +1,15 @@
+#ifndef SAGEVIS_H
+#define SAGEVIS_H
+
+#include <QDebug>
+
+
+class SageVis
+{
+public:
+    SageVis();
+
+    void addVisWidget( );
+};
+
+#endif // SAGEVIS_H

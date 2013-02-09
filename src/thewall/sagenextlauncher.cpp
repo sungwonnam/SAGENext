@@ -28,6 +28,8 @@
 
 #include "applications/base/SN_plugininterface.h"
 
+#include "../sagenextvis/sagevis.h"
+
 
 /*
   this is for launchRatko..()
@@ -58,6 +60,7 @@ SN_Launcher::SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage
 
 	// start listening for sage message
 	_createFsManager();
+
 }
 
 SN_Launcher::~SN_Launcher() {
@@ -533,7 +536,7 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 		//
 	case SAGENext::MEDIA_TYPE_PLUGIN: {
 //		qDebug() << "MEDIA_TYPE_PLUGIN" << filename;
-		SN_PluginInterface *dpi = _pluginMap.value(filename);
+        SN_PluginInterface *dpi = _pluginMap.value(filename);
 		if (dpi) {
 			w = dpi->createInstance();
 
@@ -551,9 +554,62 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 		break;
 	}
 
-	} // end switch
+//    case SAGENext::MEDIA_TYPE_SAGE_VIS: {
+//        //should never happen- handle inside diff launch function
+//        break;
+//    }
+
+
+    } // end switch
 
 	return launch(w, scenepos);
+}
+
+SN_BaseWidget * SN_Launcher::launchVisWidget(int visWidgetType, const QString &plugin_filename, const QStringList &dataFiles, const QPointF &scenepos/* = QPointF(30,30)*/, quint64 gaid/* 0 */)
+{
+    //----INSTATIATE SAGE VIS----
+    if( !sageVis ) //if sagevis is not initialized, init here
+    {
+        sageVis = new SageVis;
+    }
+
+    //-----STUFF FROM lauch function above:  may not need it here...
+    ////////////////////////////////////////
+    //
+    // record event (WIDGET_NEW : 0)
+    //
+    if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
+        if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
+            char record[256];
+            sprintf(record, "%lld %d %d %s %d %d\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(plugin_filename), scenepos.toPoint().x(), scenepos.toPoint().y());
+            _scenarioFile->write(record);
+        }
+        else {
+            qDebug() << "SN_Launcher::launch() : can't write the launching event";
+        }
+    }
+
+    quint64 GID = _getUpdatedGlobalAppId(gaid);
+
+    SN_BaseWidget *w = 0;
+
+    SN_PluginInterface *dpi = _pluginMap.value(plugin_filename);
+    if (dpi) {
+        w = dpi->createInstance();
+
+//			qDebug() << "SN_Launcher launching a plugin" << w;
+        w->setSettings(_settings); // SN_Priority will be created in here if system/scheduler is set
+        w->setGlobalAppId(GID);
+        w->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_PLUGIN);
+        w->appInfo()->setFileInfo(plugin_filename);
+        w->appInfo()->setDataFiles(dataFiles);
+
+        sageVis->addVisWidget(w);
+    }
+    else {
+        qDebug() << "SN_Launcher::launch() : MEDIA_TYPE_PLUGIN : dpi is null";
+    }
+    return launch(w, scenepos);
 }
 
 SN_BaseWidget * SN_Launcher::launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate, const QPointF &scenepos /*= QPointF()*/, quint64 gaid /* 0 */) {

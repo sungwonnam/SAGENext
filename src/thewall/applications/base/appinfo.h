@@ -101,6 +101,12 @@ public:
 	inline void setNetworkUserBufferLength(int l) {_networkUserBufferLength=l;}
 	inline int networkUserBufferLength() const {return _networkUserBufferLength;}
 
+    /**
+     * SageVis apps data files info
+     */
+    inline void setDataFiles(const QStringList& df ) { dataFiles.append(df); }
+    inline QStringList getDataFiles() const { return dataFiles; }
+
 private:
 	quint64 _GID;
 	
@@ -175,6 +181,9 @@ private:
 	QString _vncUsername;
 
 	QString _vncPasswd;
+
+    QStringList dataFiles; //For vis apps
+
 
 };
 
