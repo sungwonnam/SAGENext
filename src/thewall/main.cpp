@@ -1,5 +1,4 @@
-#include <QtGui/QApplication>
-//#include <QGLWidget>
+#include <QApplication>
 
 //#include "settingdialog.h"
 #include "settingstackeddialog.h"
@@ -10,8 +9,6 @@
 
 #include "uiserver/uiserver.h"
 #include "uiserver/fileserver.h"
-
-//#include "common/sn_drawingwidget.h"
 
 #include "applications/base/affinityinfo.h"
 //#include "applications/sn_mediabrowser.h"
@@ -25,12 +22,11 @@
 #include "system/prioritygrid.h"
 
 #include <QGLWidget>
-#include <QGLFormat>
 #include <QGLPixelBuffer>
 
 #ifdef Q_OS_LINUX
 #include <numa.h>
-#include <GL/glu.h>
+//#include <GL/glu.h>
 #endif
 
 #ifdef Q_WS_X11
@@ -507,13 +503,11 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	// don't do this
 	//QGLFormat glFormat(QGL::DoubleBuffer | QGL::Rgba  | QGL::DepthBuffer | QGL::SampleBuffers);
 
-	QGLFormat glFormat;
-
 	if (s.value("graphics/isxinerama").toBool()) {
 		gvm = new SN_Viewport(scene, 0, launcher);
 
 		if ( s.value("graphics/openglviewport").toBool() ) {
-			gvm->setViewport(new QGLWidget(glFormat));
+			gvm->setViewport(new QGLWidget);
 //			gvm->setViewport(new QGLWidget);
 			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 

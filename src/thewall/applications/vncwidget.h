@@ -4,11 +4,12 @@
 #include "base/railawarewidget.h"
 #include "base/basewidget.h"
 
-
-
 #include <QHostAddress>
 #include <QtCore>
 
+#include <QtOpenGL>
+
+/*
 #if defined(Q_OS_LINUX)
 //#define GLEW_STATIC 1
 #define GL_GLEXT_PROTOTYPES
@@ -19,12 +20,13 @@
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
 #endif
+*/
 
 #include <rfb/rfbproto.h>
 #include <rfb/rfbclient.h>
 
 class QGLWidget;
-
+class QGLBuffer;
 
 /*!
   This class uses LibVNCServer library to receive
@@ -65,6 +67,8 @@ private:
 		  We're going to do doublebuffering with pbo
 		  */
 		GLuint _pboIds[2];
+
+        QGLBuffer *_pbobuf[2];
 
 		/*!
 		  true if the OpenGL system has PBO extension

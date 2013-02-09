@@ -29,6 +29,11 @@
 */
 
 #include <QGLPixelBuffer>
+#include <QGLBuffer>
+#include <QGLShaderProgram>
+#include <QGLContext>
+#include <QGLFunctions>
+
 #include <QHostAddress>
 
 
@@ -58,6 +63,7 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
     , _pbobufferready(0)
 
     , _useShader(false)
+    , _shaderProgram(0)
     , _blameXinerama(false)
 
 {
@@ -213,12 +219,11 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 	}
 
 	if (_usePbo) {
-//		_recvThreadEnd = true;
-//		_recvThreadFuture.cancel();
-//		_recvThreadWatcher.cancel();
-
-		glDeleteBuffersARB(2, _pboIds);
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+        for (int i=0; i<2; i++) {
+            _pbobuf[i]->destroy();
+            delete _pbobuf[i];
+        }
+        QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
 
 		if (_pbobufferready) {
 //			__bufferMapped = true;
@@ -234,6 +239,12 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
 		free(_pbobufferready);
 		free(_pbomutex);
 	}
+
+    if (_useShader) {
+        _shaderProgram->release();
+        _shaderProgram->removeAllShaders();
+        delete _shaderProgram;
+    }
 
 	// this causes other sagestreamwidget gets killed
 	// don't know why
@@ -386,7 +397,6 @@ void SN_SageStreamWidget::scheduleDummyUpdate() {
 
 
 void SN_SageStreamWidget::schedulePboUpdate() {
-
 	Q_ASSERT(_pbomutex);
 	Q_ASSERT(_pbobufferready);
 	Q_ASSERT(_appInfo);
@@ -402,19 +412,17 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	//
 	// flip array index
 	//
-	_pboBufIdx = (_pboBufIdx + 1) % 2;
-	int nextbufidx = (_pboBufIdx + 1) % 2;
-
-	GLenum error = glGetError();
+	int nextbufidx = _pboBufIdx ;
+	_pboBufIdx = 1 - _pboBufIdx ;
 
 	//
 	// unmap the previous buffer
 	//
 	if (!_isFirstFrame) {
+        _pbobuf[nextbufidx]->bind();
 //		qDebug() << "unmap buffer" << nextbufidx;
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
-		if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
-			qDebug() << "SN_SageStreamWidget::schedulePboUpdate() : glUnmapBufferARB() failed";
+		if ( ! _pbobuf[nextbufidx]->unmap() ) {
+			qDebug() << "SN_SageStreamWidget::schedulePboUpdate() : GLBuffer::unmap() failed";
 		}
 	}
 
@@ -432,7 +440,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	//
 //	qDebug() << "update texture" << nextbufidx;
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, _textureid);
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
+    _pbobuf[nextbufidx]->bind();
 	glTexSubImage2D(/*GL_TEXTURE_2D */GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, _appInfo->nativeSize().width(), _appInfo->nativeSize().height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
 
 	//
@@ -453,17 +461,10 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	// map the other buffer
 	//
 //	qDebug() << "map" << _pboBufIdx;
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
-	error = glGetError();
-	if(error != GL_NO_ERROR) qCritical("glBindBufferARB() error code 0x%x\n", error);
+    _pbobuf[_pboBufIdx]->bind();
+    _pbobuf[_pboBufIdx]->allocate(_appInfo->frameSizeInByte());
 
-	glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-	error = glGetError();
-	if(error != GL_NO_ERROR) qCritical("glBufferDataARB() error code 0x%x\n", error);
-
-	void *ptr = glMapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY_ARB);
-	error = glGetError();
-	if(error != GL_NO_ERROR) qCritical("glMapBufferARB() error code 0x%x\n", error);
+	void *ptr = _pbobuf[_pboBufIdx]->map(QGLBuffer::WriteOnly);
 
 	//if (ptr) {
 		_pbobufarray[_pboBufIdx] = ptr;
@@ -496,7 +497,7 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	// reset GL state
 	//
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+    QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
 
 //	_perfMon->updateUpdateDelay();
 	
@@ -642,11 +643,29 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 		//
 		painter->beginNativePainting();
 
-		if (_useShader) {
+		if (_useShader && _shaderProgram) {
+            // glUseProgram
+            if ( ! _shaderProgram->bind() )
+//                qDebug() << "shader prog bind failed";
+			glActiveTexture(GL_TEXTURE0);
+            
+            // glGetUniformLocation(_shaderProgram->programId(), "yuvtex");
+            int h = _shaderProgram->uniformLocation("yuvtex");
+            if (h != -1) {
+                QGLFunctions glfunc(QGLContext::currentContext());
+			    glfunc.glUniform1i(h, 0);  // Bind yuvtex to texture unit 0 
+            }
+            else {
+                qDebug() << "SN_SageStreamWidget::paint() : invalid uniform locaiton";
+            }
+
+
+            /*
 			glUseProgramObjectARB(_shaderProgHandle);
 			glActiveTexture(GL_TEXTURE0);
 			int h=glGetUniformLocationARB(_shaderProgHandle,"yuvtex");
-			glUniform1iARB(h,0);  /* Bind yuvtex to texture unit 0 */
+			glUniform1iARB(h,0);  // Bind yuvtex to texture unit 0 
+            */
 		}
 
 		glDisable(GL_TEXTURE_2D);
@@ -672,7 +691,10 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 
 		glEnd();
 
-		if (_useShader) glUseProgramObjectARB(0);
+		if (_useShader) {
+            //glUseProgramObjectARB(0);
+            _shaderProgram->release();
+        }
 
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
@@ -1060,22 +1082,58 @@ void SN_SageStreamWidget::m_initOpenGL() {
     glGenTextures(1, &_textureid);
 
     if (_useShader) {
-        GLchar *FragmentShaderSource;
-        GLchar *VertexShaderSource;
-
         char *sfn, *sd;
         sfn = (char*)malloc(256);
         memset(sfn, 0, 256);
         sd = getenv("SAGE_DIRECTORY");
         sprintf(sfn, "%s/bin/yuv", sd);
+        QString fnameprefix(sfn);
+
+        // current QGLContext must be valid
+        Q_ASSERT(QGLContext::currentContext()->isValid());
+        _shaderProgram = new QGLShaderProgram(QGLContext::currentContext());
+        Q_ASSERT(_shaderProgram);
+
+        if (!_shaderProgram->addShaderFromSourceFile(QGLShader::Vertex, fnameprefix + ".vert")) {
+            qDebug() << "compile vertext shader failed";
+            qDebug() << _shaderProgram->log() << "\n";
+        }
+
+
+        if (!_shaderProgram->addShaderFromSourceFile(QGLShader::Fragment, fnameprefix + ".frag")) {
+            qDebug() << "compile fragment shader failed";
+            qDebug() << _shaderProgram->log() << "\n";
+        }
+
+
+        if (! _shaderProgram->link() ) {
+            qDebug() << "_shaderProgram->link() failed";
+            qDebug() << _shaderProgram->log() << "\n";
+        }
+
+
+        // glUseProgram
+        if ( ! _shaderProgram->bind() ) {
+            qDebug() << "shader program bind failed";
+        }
+        _shaderProgram->release();
+
+
+        free(sfn);
+
+
+        /*
+        GLchar *FragmentShaderSource;
+        GLchar *VertexShaderSource;
 
         GLSLreadShaderSource(sfn, &VertexShaderSource, &FragmentShaderSource);
         _shaderProgHandle = GLSLinstallShaders(VertexShaderSource, FragmentShaderSource);
 
-        /* Finally, use the program. */
+        // Finally, use the program. 
         glUseProgramObjectARB(_shaderProgHandle);
         free(sfn);
         glUseProgramObjectARB(0);
+        */
     }
 
     glDisable(GL_TEXTURE_2D);
@@ -1107,16 +1165,14 @@ void SN_SageStreamWidget::m_initOpenGL() {
             qDebug() << "Failed to init PBO mutex !";
         }
 
-//			qDebug() << "SN_SageStreamWidget : OpenGL pbuffer extension is present. Using PBO doublebuffering";
-        glGenBuffersARB(2, _pboIds);
-
-        glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
-        glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-        glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
-        glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-        glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+        for(int i=0; i<2; i++) {
+            _pbobuf[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
+            _pbobuf[i]->create();
+            _pbobuf[i]->bind();
+            _pbobuf[i]->allocate(_appInfo->frameSizeInByte());
+            _pboIds[i] = _pbobuf[i]->bufferId();
+        }
+        QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
     }
 }
 
@@ -1125,6 +1181,7 @@ void SN_SageStreamWidget::m_initOpenGL() {
 
 
 
+/*
 
 
 int GLSLprintlError(const char * file, int line)
@@ -1413,6 +1470,7 @@ GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment)
    return Prog;
 }
 
+*/
 
 
 
