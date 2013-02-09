@@ -2,7 +2,11 @@
 #define SAGENEXTVIEWPORT_H
 
 #include <QGraphicsView>
+#ifdef QT5
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
 
 class SN_Launcher;
 class SN_TheScene;

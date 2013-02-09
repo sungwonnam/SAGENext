@@ -10,7 +10,9 @@
 #include <QtGui>
 #include <QGLPixelBuffer>
 
-
+#ifdef QT5
+#include <QtConcurrent>
+#endif
 
 WorkerThread::WorkerThread(QObject *parent)
     : QThread(parent)
@@ -421,8 +423,10 @@ SN_CheckerGLPBO::~SN_CheckerGLPBO() {
 	free(_pbomutex);
 	free(_pbobufferready);
 
-	glDeleteBuffersARB(2, _pboIds);
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+    for (int i=0; i<2; i++) {
+        _pbobuf[i]->destroy();
+    }
+    QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
 
 	qDebug() << "~SN_CheckerGLPBO";
 }
@@ -488,21 +492,25 @@ void SN_CheckerGLPBO::doInit() {
 	_workerThread->setPboMutex(_pbomutex);
 	_workerThread->setPboCondition(_pbobufferready);
 
-	glGenBuffersARB(2, _pboIds);
-
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
-	glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
-	glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+    for(int i=0; i<2; i++) {
+        _pbobuf[i] = new QOpenGLBuffer(QOpenGLBuffer::PixelUnpackBuffer);
+        if (! _pbobuf[i]->create()) {
+            qDebug() << "failed to create pbobuf";
+        }
+        else {
+            _pbobuf[i]->setUsagePattern(QOpenGLBuffer::StreamDraw);
+            _pbobuf[i]->bind();
+            _pbobuf[i]->allocate(_appInfo->frameSizeInByte());
+            
+            _pboIds[i] = _pbobuf[i]->bufferId();
+        }
+    }
+    QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
 
 	//
 	// init worker with invalid buf ptr first
 	//
 //	_workerThread->setBufPtr((quint8 *)_pbobufarray[_pboBufIdx]); // now worker is ready to work
-
 
 
 	// run the thread
@@ -525,22 +533,18 @@ void SN_CheckerGLPBO::scheduleUpdate() {
 
 	_perfMon->getUpdtTimer().start();
 
-	//
 	// flip array index
-	//
-	_pboBufIdx = (_pboBufIdx + 1) % 2;
-	int nextbufidx = (_pboBufIdx + 1) % 2;
+	int nextbufidx = _pboBufIdx;
+    _pboBufIdx = 1 - _pboBufIdx;
 
-	GLenum error = glGetError();
 
 	//
 	// unmap previous buffer
 	//
 	if (!__firstFrame) {
-		//qDebug() << "unmap" << nextbufidx;
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
-		if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
-			qDebug() << "SN_Checker::schedulePboUpdate() : glUnmapBufferARB() failed";
+        _pbobuf[nextbufidx]->bind();
+        if ( ! _pbobuf[nextbufidx]->unmap() ) {
+			qDebug() << "SN_Checker::schedulePboUpdate() : glUnmapBuffer() failed";
 		}
 	}
 	else {
@@ -550,9 +554,8 @@ void SN_CheckerGLPBO::scheduleUpdate() {
 	//
 	// update texture with the current pbo buffer (nextbufidx)
 	//
-	//	qDebug() << "update texture" << nextbufidx;
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, _textureid);
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
+    _pbobuf[nextbufidx]->bind();
 	glTexSubImage2D(/*GL_TEXTURE_2D */GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, _imgsize.width(), _imgsize.height(), _pixelFormat, GL_UNSIGNED_BYTE, 0);
 
 	//
@@ -565,17 +568,14 @@ void SN_CheckerGLPBO::scheduleUpdate() {
 	// map buffer for writing to (_pboBufIdx)
 	//
 	//	qDebug() << "map" << _pboBufIdx;
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
-	error = glGetError();
-	if(error != GL_NO_ERROR) qCritical("glBindBufferARB() error code 0x%x\n", error);
+    if ( ! _pbobuf[_pboBufIdx]->bind() ) {
+        qDebug() << "bind failed";
+    }
+    else {
+        _pbobuf[_pboBufIdx]->allocate(_appInfo->frameSizeInByte());
+    }
 
-	glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-	error = glGetError();
-	if(error != GL_NO_ERROR) qCritical("glBufferDataARB() error code 0x%x\n", error);
-
-	void *ptr = glMapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY_ARB);
-	error = glGetError();
-	if(error != GL_NO_ERROR) qCritical("glMapBufferARB() error code 0x%x\n", error);
+    void *ptr = _pbobuf[_pboBufIdx]->map(QOpenGLBuffer::WriteOnly);
 
 	if (ptr) {
 		_pbobufarray[_pboBufIdx] = ptr;
@@ -605,7 +605,7 @@ void SN_CheckerGLPBO::scheduleUpdate() {
 	// reset GL state
 	//
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
-	glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+    QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
 
 	_perfMon->updateUpdateDelay();
 }

@@ -1,7 +1,11 @@
 #ifndef COMMONITEM_H
 #define COMMONITEM_H
 
+#ifdef QT5
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
 
 /*!
   \brief A QGraphicsWidget type widget that shows pixmap and function as a button (emits signal when clicked).

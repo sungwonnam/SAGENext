@@ -1,7 +1,11 @@
 #ifndef SN_LAYOUTWIDGET_H
 #define SN_LAYOUTWIDGET_H
 
+#ifdef QT5
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
 #include "common/commondefinitions.h"
 
 class SN_LayoutWidget;

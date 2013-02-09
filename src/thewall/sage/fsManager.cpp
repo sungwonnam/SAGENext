@@ -121,7 +121,7 @@ void fsManager::registerApp(quint64 appid, const QString &msgStr, fsManagerMsgTh
   * This overrides default implementation and will no longer emits newConnection() signal.
   * This is a message thread for each application
   */
-void fsManager::incomingConnection(int sockfd) {
+void fsManager::incomingConnection(qintptr sockfd) {
 
     fsManagerMsgThread *thread = _createMsgThread(sockfd);
 

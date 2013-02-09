@@ -14,20 +14,20 @@
 #include "applications/base/appinfo.h"
 #include "applications/base/perfmonitor.h"
 #include "applications/base/affinityinfo.h"
-#include "applications/base/sagestreamwidget.h"
+//#include "applications/base/sagestreamwidget.h"
 
-#include "applications/sn_fittslawtest.h"
-#include "applications/sn_sagestreammplayer.h"
-//#include "applications/pdfviewerwidget.h"
+//#include "applications/sn_fittslawtest.h"
+//#include "applications/sn_sagestreammplayer.h"
 #include "applications/pixmapwidget.h"
-#include "applications/sn_pdfvieweropenglwidget.h"
-#include "applications/vncwidget.h"
-#include "applications/webwidget.h"
+//#include "applications/sn_pdfvieweropenglwidget.h"
+//#include "applications/vncwidget.h"
+//#include "applications/webwidget.h"
 #include "applications/sn_checker.h"
 #include "applications/sn_mediabrowser.h"
 
 #include "applications/base/SN_plugininterface.h"
 
+#include <QtConcurrent>
 
 /*
   this is for launchRatko..()
@@ -147,6 +147,7 @@ void SN_Launcher::_createFsManager() {
 }
 
 SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &mediafilepath, fsManagerMsgThread *fsmThread) {
+    /****
 	SN_SageStreamWidget *sw = 0;
 	QPointF pos;
 
@@ -178,10 +179,10 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &m
 
 		fsmThread->setGlobalAppId(GID);
 
-		/*
-		  for launchRatko..()
-          this is not used.
-		  */
+		//
+//		  for launchRatko..()
+//          this is not used.
+		  //
 		theLastLaunched = sw;
 	}
 
@@ -231,19 +232,19 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &m
         return 0;
     }
 
-	/*!
-	  Resource monitor & processor assignment
-	  */
+	//
+	  //Resource monitor & processor assignment
+	  //
 	if (sw && sw->affInfo() && _rMonitor)
 	{
 		// Below won't be necessary because BaseWidget::fadeOutClose() takes care widget removal from resource monitor
 		// It's moved to fadeOutClose() because removal has to be handled early
 		//connect(sageWidget->getAffInfoPtr(), SIGNAL(destroyed(QObject*)), resourceMonitor, SLOT(removeApp(QObject *)));
 
-		/*******
-		  SAGE specific !!
-		  This is used to send affinity info to sender (sail) so that sender can set proper affinity based on receivers affinity setting. This should be connected only when mplayer is run localy
-		  *********/
+		//
+//		  SAGE specific !!
+//		  This is used to send affinity info to sender (sail) so that sender can set proper affinity based on receivers affinity setting. This should be connected only when mplayer is run localy
+		  //
 		QObject::connect(sw->affInfo(), SIGNAL(streamerAffInfoChanged(AffinityInfo*, quint64)), fsmThread, SLOT(sendSailSetRailMsg(AffinityInfo*,quint64)));
 
 		// assign most underloaded processor
@@ -255,13 +256,15 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &m
 	}
 
 	return launch(sw, pos);
+    ***/
+    return 0;
 }
 
 
 
 
 SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, const QPointF &scenepos, const QString &senderIP, const QString &args, const QString &sageappname, quint64 gaid /* 0 */) {
-
+/*
 	SN_SageStreamWidget *sws = 0;
 
 	QString cmd;
@@ -334,12 +337,11 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 			return 0;
 		}
 
-		/**
-		  create sageWidget
-		  */
+//		  create sageWidget
 		sws = new SN_SageStreamMplayer(GID, _settings, _rMonitor);
         sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_LOCAL_VIDEO);
 		sws->appInfo()->setFileInfo(filename);
+        sws = 0;
 
 			//
 			// mplayer converts image frame to RGB24 using CPU
@@ -360,7 +362,6 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
         cmd = "mplayer";
         cmd.append(" "); cmd.append(arg);
 		cmd.append(" "); cmd.append(filename);
-
 		break;
 	}
 	}
@@ -372,9 +373,9 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 
 
 
-    /**
-      add the widget to the queue
-      */
+    //
+      //add the widget to the queue
+      //
 	_sageWidgetQueue.push_back(sws);
 	_sageWidgetPosQueue.push_back(scenepos);
 
@@ -424,6 +425,9 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
             return sws;
         }
     }
+    
+    */
+    return 0;
 }
 
 
@@ -503,10 +507,11 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 	// filename is used for web url string
 	//
 	case SAGENext::MEDIA_TYPE_WEBURL: {
-
+/*
 		SN_WebWidget *ww = new SN_WebWidget(GID, _settings, 0, Qt::Window);
 		w = ww;
 		ww->setUrl( filename );
+        */
 		break;
 	}
 
@@ -515,9 +520,11 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 		// Args needed : filename
 		//
 	case SAGENext::MEDIA_TYPE_PDF: {
+        /*
 //		SN_PDFViewerWidget *pdfviewer = new SN_PDFViewerWidget(filename, GID, _settings, 0, Qt::Widget);
         SN_PDFViewerOpenGLWidget* pdfviewer = new SN_PDFViewerOpenGLWidget(filename, GID, _settings, 0, Qt::Widget);
 		w = pdfviewer;
+        */
 		break;
 	}
 
@@ -558,9 +565,12 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 
 SN_BaseWidget * SN_Launcher::launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate, const QPointF &scenepos /*= QPointF()*/, quint64 gaid /* 0 */) {
 	//	qDebug() << "launch" << username << vncPasswd;
+    /*
     quint64 GID = _getUpdatedGlobalAppId(gaid);
 	SN_BaseWidget *w = new SN_VNCClientWidget(GID, vncServerIP, display, username, vncPasswd, framerate, _settings);
 	return launch(w, scenepos);
+    */
+    return 0;
 }
 
 /**
@@ -738,6 +748,7 @@ SN_BaseWidget * SN_Launcher::launchMediaBrowser(const QPointF &scenePos, quint32
 //    qDebug() << "SN_Launcher::launchMediaBrowser() : User " << uiclientid << username << ", dblClicked on" << scenePos;
 
     Q_UNUSED(defaultDir);
+    Q_UNUSED(uiclientid);
 
     // It might be useful to keep uiclientid and pointername (username) in the SN_MediaBrowser.
     SN_MediaBrowser *mbrowser = new SN_MediaBrowser(this, _getUpdatedGlobalAppId(0), _settings, _mediaStorage, 0, Qt::Window);

@@ -243,7 +243,7 @@ SN_FileServer::~SN_FileServer() {
 	qDebug() << "~FileServer";
 }
 
-void SN_FileServer::incomingConnection(int handle) {
+void SN_FileServer::incomingConnection(qintptr handle) {
 
 	// receive uiclientid from the client
 	quint32 uiclientid = 0;

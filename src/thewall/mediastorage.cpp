@@ -2,7 +2,7 @@
 
 #include "applications/sn_mediabrowser.h"
 
-#include <poppler-qt4.h>
+//#include <poppler-qt4.h>
 
 QReadWriteLock SN_MediaStorage::MediaListRWLock;
 QMap<QString, MediaMetaData*> SN_MediaStorage::GlobalMediaList;
@@ -243,6 +243,7 @@ bool SN_MediaStorage::_readImage(const QString &filepath,  QPixmap& pixmap) {
 }
 
 bool SN_MediaStorage::_readPDF(const QString &fpath, QPixmap& pixmap) {
+    /*
     Poppler::Document *_document = 0;
     _document = Poppler::Document::load(fpath);
 
@@ -263,6 +264,8 @@ bool SN_MediaStorage::_readPDF(const QString &fpath, QPixmap& pixmap) {
     if (_document) _document->~Document();
 
     return ret;
+    */
+    return false;
 }
 
 bool SN_MediaStorage::_readVideo(const QString &filepath, QPixmap & pixmap) {

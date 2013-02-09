@@ -2,6 +2,8 @@
 #include "common/commondefinitions.h"
 #include "applications/base/basewidget.h"
 
+#include <QGraphicsScene>
+
 SN_PriorityGrid::SN_PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject *parent)
     : QObject(parent)
     , _dimx(0)

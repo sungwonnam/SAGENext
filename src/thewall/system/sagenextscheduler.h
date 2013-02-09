@@ -1,14 +1,15 @@
 #ifndef SAGENEXTSCHEDULER_H
 #define SAGENEXTSCHEDULER_H
 
+#ifdef QT5
+#include <QtWidgets>
+#else
 #include <QtGui>
 #include <QObject>
-//#include <QFutureWatcher>
-//#include <QList>
+#endif
+
 #include <QThread>
-
 #include <QTimer>
-
 #include <QReadWriteLock>
 
 class QEvent;

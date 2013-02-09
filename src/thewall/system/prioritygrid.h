@@ -3,6 +3,7 @@
 
 #include <QtGui>
 
+class QGraphicsScene;
 
 /*!
   Rectangle represents region of interest.

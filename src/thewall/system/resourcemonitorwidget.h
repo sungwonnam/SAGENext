@@ -1,7 +1,11 @@
 #ifndef RESOURCEMONITORWIDGET_H
 #define RESOURCEMONITORWIDGET_H
 
+#ifdef QT5
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
 
 #ifdef USE_QWT
 #include <qwt_plot.h>

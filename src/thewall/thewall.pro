@@ -5,6 +5,11 @@ QT += network opengl
 TARGET = sagenext
 TEMPLATE = app
 
+greaterThan(QT_MAJOR_VERSION, 4) {
+message("Qt 5 detected: $$QT_VERSION")
+QT += gui widgets concurrent
+DEFINES += QT5
+}
 
 #CONFIG += thread
 #CONFIG += copy_dir_files
@@ -19,6 +24,9 @@ TEMPLATE = app
 QTWEBKIT = $$(QTWEBKIT_DIR)
 isEmpty(QTWEBKIT) {
     QT += webkit
+greaterThan(QT_MAJOR_VERSION, 4) {
+QT += webkitwidgets
+}
 }
 else {
     message("Using a custom QtWebKit library: $$(QTWEBKIT)")
@@ -50,7 +58,7 @@ unix {
 #
 # OpenGL libs
 #
-    LIBS += -lGL -lGLU -lrt
+ #   LIBS += -lGL -lGLU -lrt
 
 
 #
@@ -95,7 +103,7 @@ unix {
     	PKGCONFIG += poppler-qt4
     }
     else {
-        error("Missing Package : poppler-qt4 is required")
+        #error("Missing Package : poppler-qt4 is required")
     }
 } # end of unix{}
 
@@ -242,22 +250,20 @@ applications/base/perfmonitor.cpp \
 applications/base/appinfo.cpp \
 applications/base/basewidget.cpp \
 applications/base/railawarewidget.cpp \
-applications/base/sagestreamwidget.cpp \
-applications/base/sagepixelreceiver.cpp \
+#applications/base/sagestreamwidget.cpp \
+#applications/base/sagepixelreceiver.cpp \
 applications/base/affinityinfo.cpp \
 applications/base/affinitycontroldialog.cpp \
 applications/base/sn_priority.cpp \
 #
 applications/sn_checker.cpp \
-#applications/sn_pboexample.cpp \
-applications/sn_sagestreammplayer.cpp \
-applications/sn_fittslawtest.cpp \
-applications/webwidget.cpp \
+#applications/sn_sagestreammplayer.cpp \
+#applications/sn_fittslawtest.cpp \
+#applications/webwidget.cpp \
 applications/pixmapwidget.cpp \
-applications/sn_mediabrowser.cpp \
-applications/vncwidget.cpp \
-#applications/pdfviewerwidget.cpp \
-applications/sn_pdfvieweropenglwidget.cpp
+applications/sn_mediabrowser.cpp
+#applications/vncwidget.cpp \
+#applications/sn_pdfvieweropenglwidget.cpp
 
 
 HEADERS += \
@@ -292,19 +298,18 @@ applications/base/affinityinfo.h \
 applications/base/affinitycontroldialog.h \
 applications/base/basewidget.h \
 applications/base/railawarewidget.h \
-applications/base/sagestreamwidget.h \
-applications/base/sagepixelreceiver.h \
+#applications/base/sagestreamwidget.h \
+#applications/base/sagepixelreceiver.h \
 applications/base/sn_priority.h \
 #
-applications/webwidget.h \
+#applications/webwidget.h \
 applications/pixmapwidget.h \
-applications/vncwidget.h \
+#applications/vncwidget.h \
 applications/sn_mediabrowser.h \
-applications/sn_checker.h \
-applications/sn_sagestreammplayer.h \
-applications/sn_fittslawtest.h \
-#applications/pdfviewerwidget.h \
-applications/sn_pdfvieweropenglwidget.h
+applications/sn_checker.h
+#applications/sn_sagestreammplayer.h \
+#applications/sn_fittslawtest.h \
+#applications/sn_pdfvieweropenglwidget.h
 
 
 

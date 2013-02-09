@@ -65,7 +65,7 @@ SN_UiServer::~SN_UiServer() {
     qDebug("SN_UiServer::%s()", __FUNCTION__);
 }
 
-void SN_UiServer::incomingConnection(int sockfd) {
+void SN_UiServer::incomingConnection(qintptr sockfd) {
 
     ++_uiClientId;
 

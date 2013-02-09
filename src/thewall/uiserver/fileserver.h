@@ -63,7 +63,7 @@ public:
 	inline int fileServerListenPort() const {return _fileServerPort;}
 
 protected:
-	void incomingConnection(int handle);
+	void incomingConnection(qintptr handle);
 
 private:
 	const QSettings *_settings;

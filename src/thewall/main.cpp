@@ -1,5 +1,9 @@
+#ifdef QT5
+#include <QApplication>
+#include <QtWidgets>
+#else
 #include <QtGui/QApplication>
-//#include <QGLWidget>
+#endif
 
 //#include "settingdialog.h"
 #include "settingstackeddialog.h"
@@ -11,11 +15,10 @@
 #include "uiserver/uiserver.h"
 #include "uiserver/fileserver.h"
 
-//#include "common/sn_drawingwidget.h"
 
 #include "applications/base/affinityinfo.h"
 //#include "applications/sn_mediabrowser.h"
-//#include "applications/sn_checker.h"
+#include "applications/sn_checker.h"
 //#include "applications/sn_pboexample.h"
 //#include "applications/vncwidget.h"
 
@@ -25,12 +28,13 @@
 #include "system/prioritygrid.h"
 
 #include <QGLWidget>
-#include <QGLFormat>
 #include <QGLPixelBuffer>
 
 #ifdef Q_OS_LINUX
 #include <numa.h>
+#ifndef QT5
 #include <GL/glu.h>
+#endif
 #endif
 
 #ifdef Q_WS_X11
@@ -507,14 +511,11 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	// don't do this
 	//QGLFormat glFormat(QGL::DoubleBuffer | QGL::Rgba  | QGL::DepthBuffer | QGL::SampleBuffers);
 
-	QGLFormat glFormat;
-
 	if (s.value("graphics/isxinerama").toBool()) {
 		gvm = new SN_Viewport(scene, 0, launcher);
 
 		if ( s.value("graphics/openglviewport").toBool() ) {
-			gvm->setViewport(new QGLWidget(glFormat));
-//			gvm->setViewport(new QGLWidget);
+			gvm->setViewport(new QGLWidget);
 			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 
 			s.setValue("graphics/openglpbo", QGLPixelBuffer::hasOpenGLPbuffers());
@@ -597,12 +598,8 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
     //    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "file:///home/snam5/Downloads/CholeraVis_Khairi/index.html"); // doesn't work
 
 
-
-
-
 //	launcher->launchScenario( QDir::homePath() + "/.sagenext/test.scenario" );
-//	launcher->launch(new SN_CheckerGL_Old(true, QSize(1920,1080), 24, 0, &s, resourceMonitor));
-//	launcher->launch(new SN_CheckerGLPBO(GL_RGB, QSize(1920,1080), 24, 0, &s, resourceMonitor));
+	launcher->launch(new SN_CheckerGLPBO(GL_RGB, QSize(320,200), 24, 0, &s, resourceMonitor));
 
 
 

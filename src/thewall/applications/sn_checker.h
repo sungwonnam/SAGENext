@@ -8,11 +8,15 @@
 #include <QFuture>
 #include <QFutureWatcher>
 
+#ifdef QT5
+#include <QOpenGLBuffer>
+#else
 #if defined(Q_OS_LINUX)
 #define GL_GLEXT_PROTOTYPES
 #include <GL/glu.h>
 #elif defined(Q_OS_MACX)
 #include <OpenGL.h>
+#endif
 #endif
 
 #include <sys/resource.h>
@@ -173,6 +177,8 @@ private:
 	  PBO buffer id
 	  */
 	GLuint _pboIds[2];
+    
+    QOpenGLBuffer *_pbobuf[2];
 
 	/*!
 	  The mapped double buffer for mapped pbo

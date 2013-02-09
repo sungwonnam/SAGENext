@@ -14,6 +14,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+#ifdef QT5
+#include <QtConcurrent>
+#endif
 
 SN_PixmapWidget::SN_PixmapWidget(QString filename, const quint64 id, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wFlags)
 
