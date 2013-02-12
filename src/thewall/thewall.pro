@@ -49,6 +49,8 @@ unix {
 # or
 # Add LIBVNCSERVER_INSTALL_PATH/lib/pkgconfig in your PKG_CONFIG_PATH environment variable
 #
+# If you're to compile libvncserver, then don't forget to include GCrypt support
+# ./configure --with-gcrypt
     packagesExist(libvncclient) {
         message("Linking LibVNCServer lib")
     	PKGCONFIG += libvncclient

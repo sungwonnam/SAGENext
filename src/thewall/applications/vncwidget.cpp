@@ -138,6 +138,7 @@ int SN_VNCClientWidget::m_initVNC() {
 
 	_vncclient->FinishedFrameBufferUpdate = SN_VNCClientWidget::frame_func;
 
+    /*
 	int margc = 5;
 	char *margv[5];
 	margv[0] = strdup("-encodings");
@@ -147,6 +148,13 @@ int SN_VNCClientWidget::m_initVNC() {
 	margv[4] = (char *)malloc(32);
 	memset(margv[4], 0, 32);
 	sprintf(margv[4], "%s:%d", qPrintable(_vncServerIpAddr), _displayNumber);
+    */
+    int margc = 2;
+    char *margv[2];
+    margv[0] = strdup("vnc");
+    margv[1] = (char *)malloc(256);
+	memset(margv[1], 0, 256);
+    sprintf(margv[1], "%s:%d", qPrintable(_vncServerIpAddr), _displayNumber);
 
 	if ( ! rfbInitClient(_vncclient, &margc, margv) ) {
 		qCritical() << "SN_VNCClientWidget::m_initVNC() : rfbInitClient() failed for" << SN_VNCClientWidget::username;
@@ -220,7 +228,7 @@ void SN_VNCClientWidget::initGL(bool usepbo) {
 	_pboIds[0] = -1;
 	_pboIds[1] = -1;
 
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+//	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	if (usepbo) {
 //		qDebug() << "VNCWidget : OpenGL pbuffer extension is present. Using PBO";
@@ -408,9 +416,9 @@ void SN_VNCClientWidget::scheduleUpdate() {
 	// update texture with the current pbo buffer (nextbufidx)
 	//
 	//	qDebug() << "update texture" << nextbufidx;
-	    glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, _texid);
+	    glBindTexture(GL_TEXTURE_2D /*GL_TEXTURE_RECTANGLE_ARB*/, _texid);
         _pbobuf[nextbufidx]->bind();
-	    glTexSubImage2D(/*GL_TEXTURE_2D */GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, _vncclient->width, _vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	    glTexSubImage2D(GL_TEXTURE_2D /*GL_TEXTURE_RECTANGLE_ARB*/, 0, 0, 0, _vncclient->width, _vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
 	//
 	// schedule paintEvent
@@ -444,7 +452,7 @@ void SN_VNCClientWidget::scheduleUpdate() {
 	//
 	// reset GL state
 	//
-	    glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
+	    glBindTexture(GL_TEXTURE_2D/*GL_TEXTURE_RECTANGLE_ARB*/, 0);
 
         QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
 
