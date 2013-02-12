@@ -28,7 +28,7 @@
 
 #include "applications/base/SN_plugininterface.h"
 
-#include "../sagenextvis/sagevis.h"
+#include "applications/sagenextvis/sagevis.h"
 
 
 /*

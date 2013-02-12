@@ -154,6 +154,8 @@ public slots:
 		  */
 	SN_BaseWidget * launch(const QStringList &fileList);
 
+        SN_BaseWidget* SN_Launcher::launchVisWidget(int, const QString&, const QStringList&, const QPointF&, quint64)
+
 
 	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
 
