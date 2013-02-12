@@ -8,15 +8,7 @@
 
 #include <QFutureWatcher>
 
-#ifdef QT5
-#include <QOpenGLFunctions>
-#else
-#if defined(Q_OS_LINUX)
-#include <GL/gl.h>
-#elif defined(Q_OS_MAC)
-#include <OpenGL/gl.h>
-#endif
-#endif
+#include <QtOpenGL>
 
 /*!
   This application read image files and display

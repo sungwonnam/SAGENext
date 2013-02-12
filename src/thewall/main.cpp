@@ -1,5 +1,4 @@
 #ifdef QT5
-#include <QApplication>
 #include <QtWidgets>
 #else
 #include <QtGui/QApplication>
@@ -14,7 +13,6 @@
 
 #include "uiserver/uiserver.h"
 #include "uiserver/fileserver.h"
-
 
 #include "applications/base/affinityinfo.h"
 //#include "applications/sn_mediabrowser.h"
@@ -32,9 +30,6 @@
 
 #ifdef Q_OS_LINUX
 #include <numa.h>
-#ifndef QT5
-#include <GL/glu.h>
-#endif
 #endif
 
 #ifdef Q_WS_X11

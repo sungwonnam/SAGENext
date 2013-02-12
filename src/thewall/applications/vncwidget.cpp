@@ -6,6 +6,7 @@
 
 #include <QtGui>
 #include <QGLPixelBuffer>
+#include <QGLBuffer>
 
 #include <signal.h>
 #include <sys/time.h>
@@ -137,6 +138,7 @@ int SN_VNCClientWidget::m_initVNC() {
 
 	_vncclient->FinishedFrameBufferUpdate = SN_VNCClientWidget::frame_func;
 
+    /*
 	int margc = 5;
 	char *margv[5];
 	margv[0] = strdup("-encodings");
@@ -146,6 +148,13 @@ int SN_VNCClientWidget::m_initVNC() {
 	margv[4] = (char *)malloc(32);
 	memset(margv[4], 0, 32);
 	sprintf(margv[4], "%s:%d", qPrintable(_vncServerIpAddr), _displayNumber);
+    */
+    int margc = 2;
+    char *margv[2];
+    margv[0] = strdup("vnc");
+    margv[1] = (char *)malloc(256);
+	memset(margv[1], 0, 256);
+    sprintf(margv[1], "%s:%d", qPrintable(_vncServerIpAddr), _displayNumber);
 
 	if ( ! rfbInitClient(_vncclient, &margc, margv) ) {
 		qCritical() << "SN_VNCClientWidget::m_initVNC() : rfbInitClient() failed for" << SN_VNCClientWidget::username;
@@ -185,9 +194,11 @@ SN_VNCClientWidget::~SN_VNCClientWidget() {
 	}
 
 	if (_usePbo) {
-		glDeleteBuffersARB(2, _pboIds);
-
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+        for (int i=0; i<2; i++) {
+            _pbobuf[i]->destroy();
+            delete _pbobuf[i];
+        }
+        QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
 
 		if (_pbobufferready) {
 			__bufferMapped = true;
@@ -217,19 +228,19 @@ void SN_VNCClientWidget::initGL(bool usepbo) {
 	_pboIds[0] = -1;
 	_pboIds[1] = -1;
 
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+//	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	if (usepbo) {
 //		qDebug() << "VNCWidget : OpenGL pbuffer extension is present. Using PBO";
-		glGenBuffersARB(2, _pboIds);
 
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[0]);
-		glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[1]);
-		glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+        for(int i=0; i<2; i++) {
+            _pbobuf[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
+            _pbobuf[i]->create();
+            _pbobuf[i]->bind();
+            _pbobuf[i]->allocate(_appInfo->frameSizeInByte());
+            _pboIds[i] = _pbobuf[i]->bufferId();
+        }
+        QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
 
 		initPboMutex();
 	}
@@ -384,67 +395,67 @@ void SN_VNCClientWidget::scheduleUpdate() {
 		//
 		// flip the buffer
 		//
-		_pboBufIdx = (_pboBufIdx + 1) % 2;
-		int nextbufidx = (_pboBufIdx + 1) % 2;
+	    int nextbufidx = _pboBufIdx;
+	    _pboBufIdx = 1 - _pboBufIdx; 
 
+	    //
+	    // unmap previous buffer
+	    //
+	    if (!__firstFrame) {
+		    //qDebug() << "unmap" << nextbufidx;
+            _pbobuf[nextbufidx]->bind();
+		    if ( ! _pbobuf[nextbufidx]->unmap() ) {
+			    qDebug() << "SN_Checker::schedulePboUpdate() : glUnmapBufferARB() failed";
+		    }
+	    }
+	    else {
+		    __firstFrame = false;
+	    }
 
+	//
+	// update texture with the current pbo buffer (nextbufidx)
+	//
+	//	qDebug() << "update texture" << nextbufidx;
+	    glBindTexture(GL_TEXTURE_2D /*GL_TEXTURE_RECTANGLE_ARB*/, _texid);
+        _pbobuf[nextbufidx]->bind();
+	    glTexSubImage2D(GL_TEXTURE_2D /*GL_TEXTURE_RECTANGLE_ARB*/, 0, 0, 0, _vncclient->width, _vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+	//
+	// schedule paintEvent
+	//
+	    update();
+
+	//
+	// map buffer for writing to (_pboBufIdx)
+	//
+        _pbobuf[_pboBufIdx]->bind();
+        _pbobuf[_pboBufIdx]->allocate(_appInfo->frameSizeInByte());
+
+	    void *ptr = _pbobuf[_pboBufIdx]->map(QGLBuffer::WriteOnly);
+	    if (ptr) {
 		//
-		// unmap previous buffer
+		// signal thread
 		//
-		if (!__firstFrame) {
-//			qDebug() << "unmap buffer" << _pboBufIdx;
-			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
-			if ( ! glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB) ) {
-				qDebug() << "SN_Checker::schedulePboUpdate() : glUnmapBufferARB() failed";
-			}
-		}
-		else {
-			__firstFrame = false;
-		}
+		    pthread_mutex_lock(_pbomutex);
 
+		    __bufferMapped = true;
+            _mappedBufferPtr = (unsigned char*)ptr;
 
-		//
-		// map the other buffer
-		//
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[nextbufidx]);
-		glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_ARB, _appInfo->frameSizeInByte(), 0, GL_STREAM_DRAW_ARB);
-		GLubyte *ptr = (GLubyte *)glMapBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY_ARB);
-		if (ptr) {
-			//
-			// signal thread
-			//
-			pthread_mutex_lock(_pbomutex);
+		    pthread_cond_signal(_pbobufferready);
+		//qDebug() << QDateTime::currentMSecsSinceEpoch() << "signaled";
+		    pthread_mutex_unlock(_pbomutex);
+	    }
+	    else {
+		    qCritical() << "SN_VNCWidget::scheduleUpdate() : glMapBuffer failed()";
+	    }
 
-			__bufferMapped = true;
+	//
+	// reset GL state
+	//
+	    glBindTexture(GL_TEXTURE_2D/*GL_TEXTURE_RECTANGLE_ARB*/, 0);
 
-			_mappedBufferPtr = ptr;
+        QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
 
-//			qDebug() << "buffer" << nextbufidx << "mapped" << _mappedBufferPtr;
-			pthread_cond_signal(_pbobufferready);
-
-			pthread_mutex_unlock(_pbomutex);
-		}
-
-
-
-		//
-		// bind the texture
-		//
-		glBindTexture(GL_TEXTURE_2D, _texid);
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, _pboIds[_pboBufIdx]);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vncclient->width, _vncclient->height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-		update();
-
-
-
-		//
-		// reset OpenGL state
-		//
-		glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		return;
 	}
 	else {
 		if (!_image || _image->isNull()) {
