@@ -6,17 +6,17 @@ TARGET = sagenext
 TEMPLATE = app
 
 greaterThan(QT_MAJOR_VERSION, 4) {
-message("Qt 5 detected: $$QT_VERSION")
-QT += gui widgets concurrent
-DEFINES += QT5
+	message("Qt 5 detected: $$QT_VERSION")
+	QT	+= gui widgets concurrent
+	DEFINES += QT5
 }
 
 QTWEBKIT = $$(QTWEBKIT_DIR)
 isEmpty(QTWEBKIT) {
     QT += webkit
-greaterThan(QT_MAJOR_VERSION, 4) {
-QT += webkitwidgets
-}
+	greaterThan(QT_MAJOR_VERSION, 4) {
+		QT += webkitwidgets
+	}
 }
 else {
 #
@@ -45,12 +45,6 @@ linux-g++|linux-g++-64 {
 # unix includes linux-g++  linux-g++-64    macx  macx-g++  symbian ...
 unix {
     INCLUDEPATH += /usr/include
-
-#
-# OpenGL libs
-#
- #   LIBS += -lGL -lGLU -lrt
-
 
 #
 # Use pkg-config
@@ -95,7 +89,7 @@ unix {
     	PKGCONFIG += poppler-qt4
     }
     else {
-        #error("Missing Package : poppler-qt4 is required")
+        error("Missing Package : poppler-qt4 is required")
     }
 } # end of unix{}
 
