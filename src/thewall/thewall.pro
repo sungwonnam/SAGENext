@@ -6,21 +6,14 @@ TARGET = sagenext
 TEMPLATE = app
 
 
-#CONFIG += thread
-#CONFIG += copy_dir_files
-
-#
-# QtWebKit is built separately from WebKit source code using Tools/Scripts/build-webkit --qt --3d-canvas --3d-rendering --accelerated-2d-canvas
-#
-#WEBKITPATH = $$(HOME)/Downloads/WebKit_SVN/WebKitBuild/Release
-#INCLUDEPATH += $$WEBKITPATH/include/QtWebKit
-#LIBS += -L$$WEBKITPATH/lib -lQtWebKit
-
 QTWEBKIT = $$(QTWEBKIT_DIR)
 isEmpty(QTWEBKIT) {
     QT += webkit
 }
 else {
+#
+# QtWebKit is built separately from WebKit source code using Tools/Scripts/build-webkit --qt --3d-canvas --3d-rendering --accelerated-2d-canvas
+#
     message("Using a custom QtWebKit library: $$(QTWEBKIT)")
     QT -= webkit
 
@@ -40,24 +33,15 @@ linux-g++|linux-g++-64 {
 }
 
 
-
-
 # If unix (linux, mac)
 # unix includes linux-g++  linux-g++-64    macx  macx-g++  symbian ...
 unix {
     INCLUDEPATH += /usr/include
 
 #
-# OpenGL libs
-#
-    LIBS += -lGL -lGLU -lrt
-
-
-#
 # Use pkg-config
 #
     CONFIG += link_pkgconfig
-
 
 #
 # LibVNCServer
@@ -65,12 +49,14 @@ unix {
 # or
 # Add LIBVNCSERVER_INSTALL_PATH/lib/pkgconfig in your PKG_CONFIG_PATH environment variable
 #
+# If you're to compile libvncserver, then don't forget to include GCrypt support
+# ./configure --with-gcrypt
     packagesExist(libvncclient) {
         message("Linking LibVNCServer lib")
     	PKGCONFIG += libvncclient
     }
     else {
-#        error("Package LibVNCServer doesn't exist !")
+        error("Package LibVNCServer doesn't exist !")
         LIBVNCSERVER_LIBS = $$system(libvncserver-config --libs)
         isEmpty(LIBVNCSERVER_LIBS) {
             error("Missing Package : LibVCNServer is required")
@@ -98,20 +84,6 @@ unix {
         error("Missing Package : poppler-qt4 is required")
     }
 } # end of unix{}
-
-
-
-
-
-
-macx {
-#    LIBVNCSERVER = $$(HOME)/Dev/LibVNCServer
-#    message("Linking with LibVNC lib $$LIBVNCSERVER")
-#    INCLUDEPATH += $$LIBVNCSERVER/include
-#    LIBS += -L$$LIBVNCSERVER/lib -lvncclient
-}
-
-
 
 
 
@@ -223,7 +195,6 @@ common/commonitem.cpp \
 common/imagedoublebuffer.cpp \
 common/sn_layoutwidget.cpp \
 common/sn_sharedpointer.cpp \
-#common/sn_drawingwidget.cpp \
 #
 uiserver/uiserver.cpp \
 uiserver/uimsgthread.cpp \
@@ -249,7 +220,6 @@ applications/base/affinitycontroldialog.cpp \
 applications/base/sn_priority.cpp \
 #
 applications/sn_checker.cpp \
-#applications/sn_pboexample.cpp \
 applications/sn_sagestreammplayer.cpp \
 applications/sn_fittslawtest.cpp \
 applications/webwidget.cpp \

@@ -8,12 +8,15 @@
 #include <QFuture>
 #include <QFutureWatcher>
 
+/*
 #if defined(Q_OS_LINUX)
 #define GL_GLEXT_PROTOTYPES
 #include <GL/glu.h>
 #elif defined(Q_OS_MACX)
 #include <OpenGL.h>
 #endif
+*/
+#include <QtOpenGL>
 
 #include <sys/resource.h>
 
@@ -174,6 +177,8 @@ private:
 	  */
 	GLuint _pboIds[2];
 
+    QGLBuffer *_pbobuf[2];
+
 	/*!
 	  The mapped double buffer for mapped pbo
 	  */
@@ -209,130 +214,6 @@ public slots:
 	void scheduleUpdate();
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-  Similar to SN_SageStreamWidget
-  */
-class SN_CheckerGL_Old : public SN_RailawareWidget
-{
-	Q_OBJECT
-public:
-    explicit SN_CheckerGL_Old(bool usepbo, const QSize &imagesize, qreal framerate, const quint64 appid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent=0, Qt::WindowFlags wFlags = 0);
-	~SN_CheckerGL_Old();
-
-	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-
-protected:
-
-private:
-	bool _end;
-
-	/*!
-	  if !_useOpenGL
-	  */
-	QImage *_image;
-
-	GLuint _textureid;
-
-	/*!
-	  PBO buffer id
-	  */
-	GLuint _pboIds[2];
-
-	/*!
-	  The mapped double buffer for mapped pbo
-	  */
-	void * _pbobufarray[2];
-
-
-	bool _init;
-
-	/*!
-	  frame rate
-	  */
-	qreal _frate;
-
-	bool _usePbo;
-
-	GLenum _pixelFormat;
-
-	QFuture<void> _future;
-	QFutureWatcher<void> _fwatcher;
-
-	struct timeval lats;
-	struct timeval late;
-
-	struct rusage ru_start;
-	struct rusage ru_end;
-
-
-	bool __firstFrame;
-
-	/*!
-	  which buffer index is writable ?
-	  1 - _pboBufIdx is used to display on the screen.
-	  */
-	int _pboBufIdx;
-
-	/*!
-	  Is one of the buffer idx is ready to write?
-	  */
-	bool __bufferMapped;
-
-	bool _initPboMutex();
-	pthread_mutex_t *_pbomutex;
-	pthread_cond_t *_pbobufferready;
-
-
-	/*!
-	  Writes pixel data to the mapped buffer
-	  */
-	void _doRecvPixel();
-
-
-	unsigned char _red;
-	unsigned char _green;
-	unsigned char _blue;
-
-signals:
-	void frameReady();
-
-public slots:
-	/*!
-	  init pbo double buffer
-	  */
-	void _doInit();
-
-	/*!
-	  Worker thread calling _doRecvPixel()
-	  */
-	void recvPixel();
-
-	/*!
-	  swap double buffer.
-	  schedule repaint by calling update().
-	  map new buffer.
-	  signal thread
-	  */
-	void schedulePboUpdate();
-
-	void scheduleUpdate();
-
-	void endThread();
-};
 
 
 

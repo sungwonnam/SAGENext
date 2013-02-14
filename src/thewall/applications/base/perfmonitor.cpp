@@ -445,7 +445,7 @@ void PerfMonitor::addToCumulativeByteReceived(quint64 byte, qreal actualtime_sec
 
 qreal PerfMonitor::observedQuality_Rq() const {
     if ( _requiredBW_Mbps > 0) {
-        return _currEffectiveBW_Mbps / _requiredBW_Mbps;
+        return _currEffectiveBW_Mbps / _requiredBW_Mbps; // Qcur = Rcur / Ropt
     }
     else if (_requiredBW_Mbps == 0) {
         return 0;

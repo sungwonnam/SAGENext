@@ -547,6 +547,21 @@ void SN_ProportionalShareScheduler::doSchedule() {
     QList<SN_BaseWidget *>::const_iterator iter0;
 
 
+    qreal Sum_EVS = 0;
+    qreal Sum_Interact = 0;
+    for (iter0 = wlist->constBegin(); iter0 != wlist->constEnd(); iter0++ ) {
+        SN_BaseWidget *rw = (*iter0);
+		if (!rw || !rw->priorityData()) continue;
+
+        rw->computeEVS();  // prepare EVS for the Pvisual
+        Sum_EVS += rw->EVS();
+
+        rw->priorityData()->countIntrIncrements(); // interaction counts for Pinteract
+        Sum_Interact += rw->priorityData()->intrIncrements();
+    }
+
+
+
 	//
 	// Copy the list of schedulable widgets to local QMap container
 	// In QMap, items are always sorted by a key when iterating over QMap
@@ -563,15 +578,19 @@ void SN_ProportionalShareScheduler::doSchedule() {
         // get the priority offset from the previous priority grid first
         //
         if (_pGrid && _pGrid->isEnabled()) {
-            priority = 100.0f * _pGrid->getPriorityOffset(rw->sceneBoundingRect().toRect());
-//            qDebug() << "widget" << rw->globalAppId() << "Ptemp" << priority;
+            qreal ptemp = 100.0f * _pGrid->getPriorityOffset(rw->sceneBoundingRect().toRect());
+//            qDebug() << "widget" << rw->globalAppId() << "Ptemp" << ptemp;
+            rw->priorityData()->setPtemp(ptemp);
+
+            priority += (ptemp * rw->priorityData()->Wtemp());
         }
 
         /**************
           Compute priority. The priority value returned doesn't include Ptemp !!
           The Pvisual, interact value will be added to cells of the priority grid in this function.
           ***************/
-        priority += rw->priorityData()->computePriority(0); // Pvisual , Pinteract
+        priority += rw->priorityData()->computePriority(Sum_EVS, Sum_Interact); // Pvisual , Pinteract
+
 
         if (priority > 0) {
             SumPriority += priority;
@@ -964,7 +983,7 @@ void SN_SelfAdjustingScheduler::doSchedule() {
           **
           **
           **/
-        rw->priorityData()->computePriority(0);
+//        rw->priorityData()->computePriority(0);
 
 
         //
