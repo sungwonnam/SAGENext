@@ -7,7 +7,7 @@
 #include <QHostAddress>
 #include <QtCore>
 
-#include <QtOpenGL>
+
 
 /*
 #if defined(Q_OS_LINUX)
@@ -26,7 +26,13 @@
 #include <rfb/rfbclient.h>
 
 class QGLWidget;
+
+#ifdef QT5
+#include <QOpenGLBuffer>
+#else
+#include <QtOpenGL>
 class QGLBuffer;
+#endif
 
 /*!
   This class uses LibVNCServer library to receive
@@ -68,7 +74,11 @@ private:
 		  */
 		GLuint _pboIds[2];
 
+#ifdef QT5
+        QOpenGLBuffer *_pbobuf[2];
+#else
         QGLBuffer *_pbobuf[2];
+#endif
 
 		/*!
 		  true if the OpenGL system has PBO extension

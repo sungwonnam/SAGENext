@@ -3,21 +3,11 @@
 
 #include "railawarewidget.h"
 
-/*
-#if defined(Q_OS_LINUX)
-//#define GLEW_STATIC 1
-#define GL_GLEXT_PROTOTYPES
-//#include <GL/gl.h>
-#include <GL/glu.h>
-//#include <GL/glut.h>
-//#include <GL/glext.h>
-#elif defined(Q_OS_MAC)
-#define GL_GLEXT_PROTOTYPES
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
-#endif
-*/
+#ifdef QT5
+#include <QOpenGLBuffer>
+#else
 #include <QtOpenGL>
+#endif
 
 #include <fcntl.h>
 
@@ -28,24 +18,19 @@
 #include <QMutex>
 #include <QWaitCondition>
 
-/**
-  below is for when sage app streams YUV
-  */
-/**
-#define GLSLVertexShader   1
-#define GLSLFragmentShader 2
-int GLSLreadShaderSource(char *fileName, GLchar **vertexShader, GLchar **fragmentShader);
-GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment);
-**/
-
 
 class DoubleBuffer;
 class SN_SagePixelReceiver;
 class AffinityInfo;
 class QProcess;
 
+#ifdef QT5
+class QOpenGLShaderProgram;
+#else
 class QGLBuffer;
 class QGLShaderProgram;
+#endif
+
 
 class SN_SageStreamWidget : public SN_RailawareWidget
 {
@@ -157,7 +142,11 @@ protected:
 	  */
 	GLuint _pboIds[2];
 
+#ifdef QT5
+    QOpenGLBuffer *_pbobuf[2];
+#else
     QGLBuffer * _pbobuf[2];
+#endif
 
 	int _pboBufIdx;
 
@@ -241,9 +230,12 @@ protected:
 	  A shader program is used for the image with PIXFMT_YUV
 	  The shader program is located at $SAGE_DIRECTORY/bin/yuv.vert/frag
 	  */
-	GLhandleARB _shaderProgHandle;
 
+#ifdef QT5
+    QOpenGLShaderProgram *_shaderProgram;
+#else
     QGLShaderProgram *_shaderProgram;
+#endif
 
 
     /*!

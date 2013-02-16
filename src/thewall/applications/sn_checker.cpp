@@ -12,9 +12,10 @@
 
 #ifdef QT5
 #include <QtConcurrent>
-#endif
-
+#include <QOpenGLBuffer>
+#else
 #include <QGLBuffer>
+#endif
 
 
 WorkerThread::WorkerThread(QObject *parent)
@@ -428,14 +429,14 @@ SN_CheckerGLPBO::~SN_CheckerGLPBO() {
 
     for (int i=0; i<2; i++) {
         _pbobuf[i]->destroy();
-<<<<<<< HEAD
-    }
-    QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
-=======
+
+#ifdef QT5
+        QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
+#else
+        QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
+#endif
         delete _pbobuf[i];
     }
-    QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
->>>>>>> master
 
 	qDebug() << "~SN_CheckerGLPBO";
 }
@@ -502,35 +503,35 @@ void SN_CheckerGLPBO::doInit() {
 	_workerThread->setPboCondition(_pbobufferready);
 
     for(int i=0; i<2; i++) {
-<<<<<<< HEAD
+#ifdef QT5
         _pbobuf[i] = new QOpenGLBuffer(QOpenGLBuffer::PixelUnpackBuffer);
+        _pbobuf[i]->setUsagePattern(QOpenGLBuffer::StreamDraw);
+#else
+        _pbobuf[i] = new QOGLBuffer(QGLBuffer::PixelUnpackBuffer);
+        _pbobuf[i]->setUsagePattern(QGLBuffer::StreamDraw);
+#endif
         if (! _pbobuf[i]->create()) {
             qDebug() << "failed to create pbobuf";
         }
         else {
-            _pbobuf[i]->setUsagePattern(QOpenGLBuffer::StreamDraw);
             _pbobuf[i]->bind();
             _pbobuf[i]->allocate(_appInfo->frameSizeInByte());
             
             _pboIds[i] = _pbobuf[i]->bufferId();
         }
     }
+#ifdef QT5
     QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
+#else
+    QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
+#endif
+
 
 	//
 	// init worker with invalid buf ptr first
 	//
 //	_workerThread->setBufPtr((quint8 *)_pbobufarray[_pboBufIdx]); // now worker is ready to work
 
-=======
-        _pbobuf[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
-        _pbobuf[i]->create();
-        _pbobuf[i]->bind();
-        _pbobuf[i]->allocate(_appInfo->frameSizeInByte());
-        _pboIds[i] = _pbobuf[i]->bufferId();
-    }
-    QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
->>>>>>> master
 
 	// run the thread
 	_workerThread->start();
@@ -552,30 +553,17 @@ void SN_CheckerGLPBO::scheduleUpdate() {
 	_perfMon->getUpdtTimer().start();
 
 	// flip array index
-<<<<<<< HEAD
-	int nextbufidx = _pboBufIdx;
-    _pboBufIdx = 1 - _pboBufIdx;
-
-=======
-	//
 	int nextbufidx = _pboBufIdx;
 	_pboBufIdx = 1 - _pboBufIdx; 
->>>>>>> master
 
 	//
 	// unmap previous buffer
 	//
 	if (!__firstFrame) {
-<<<<<<< HEAD
         _pbobuf[nextbufidx]->bind();
         if ( ! _pbobuf[nextbufidx]->unmap() ) {
 			qDebug() << "SN_Checker::schedulePboUpdate() : glUnmapBuffer() failed";
-=======
-		//qDebug() << "unmap" << nextbufidx;
-        _pbobuf[nextbufidx]->bind();
-		if ( ! _pbobuf[nextbufidx]->unmap() ) {
-			qDebug() << "SN_Checker::schedulePboUpdate() : glUnmapBufferARB() failed";
->>>>>>> master
+
 		}
 	}
 	else {
@@ -599,21 +587,17 @@ void SN_CheckerGLPBO::scheduleUpdate() {
 	// map buffer for writing to (_pboBufIdx)
 	//
 	//	qDebug() << "map" << _pboBufIdx;
-<<<<<<< HEAD
     if ( ! _pbobuf[_pboBufIdx]->bind() ) {
         qDebug() << "bind failed";
     }
     else {
         _pbobuf[_pboBufIdx]->allocate(_appInfo->frameSizeInByte());
     }
-
+#ifdef QT5
     void *ptr = _pbobuf[_pboBufIdx]->map(QOpenGLBuffer::WriteOnly);
-=======
-    _pbobuf[_pboBufIdx]->bind();
-    _pbobuf[_pboBufIdx]->allocate(_appInfo->frameSizeInByte());
->>>>>>> master
-
+#else
 	void *ptr = _pbobuf[_pboBufIdx]->map(QGLBuffer::WriteOnly);
+#endif
 	if (ptr) {
 		_pbobufarray[_pboBufIdx] = ptr;
 
@@ -642,12 +626,11 @@ void SN_CheckerGLPBO::scheduleUpdate() {
 	// reset GL state
 	//
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
-<<<<<<< HEAD
+#ifdef QT5
     QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
-=======
-
+#else
     QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
->>>>>>> master
+#endif
 
 	_perfMon->updateUpdateDelay();
 }

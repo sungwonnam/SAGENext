@@ -173,7 +173,7 @@ void AffinityInfo::applyNewParameters() {
 	else {
 		struct bitmask *mask = 0;
 		if ( !readyNodeMaskStr.isNull()  &&  !readyNodeMaskStr.isEmpty() ) {
-			mask = numa_parse_nodestring(readyNodeMaskStr.toAscii().data());
+			mask = numa_parse_nodestring(readyNodeMaskStr.toLatin1().data());
 			if ( mask ) {
 				if ( mask == numa_no_nodes_ptr ) {
 					qDebug() << "numa_no_nodes_ptr";
@@ -195,7 +195,7 @@ void AffinityInfo::applyNewParameters() {
 		mask = 0;
 
 		if ( !readyMemMaskStr.isNull() && !readyMemMaskStr.isEmpty() ) {
-			mask = numa_parse_nodestring(readyMemMaskStr.toAscii().data());
+			mask = numa_parse_nodestring(readyMemMaskStr.toLatin1().data());
 			if ( mask ) {
 				if ( mask == numa_no_nodes_ptr ) {
 					qDebug() << "numa_no_nodes_ptr";
@@ -215,7 +215,7 @@ void AffinityInfo::applyNewParameters() {
 
 
 		if ( !readyCpuMaskStr.isNull() && !readyCpuMaskStr.isEmpty()) {
-			mask = numa_parse_cpustring(readyCpuMaskStr.toAscii().data());
+			mask = numa_parse_cpustring(readyCpuMaskStr.toLatin1().data());
 			if ( mask ) {
 				if ( mask == numa_no_nodes_ptr ) {
 					qDebug() << "numa_no_nodes_ptr";

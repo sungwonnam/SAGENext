@@ -221,8 +221,8 @@ applications/base/perfmonitor.cpp \
 applications/base/appinfo.cpp \
 applications/base/basewidget.cpp \
 applications/base/railawarewidget.cpp \
-#applications/base/sagestreamwidget.cpp \
-#applications/base/sagepixelreceiver.cpp \
+applications/base/sagestreamwidget.cpp \
+applications/base/sagepixelreceiver.cpp \
 applications/base/affinityinfo.cpp \
 applications/base/affinitycontroldialog.cpp \
 applications/base/sn_priority.cpp \
@@ -231,11 +231,10 @@ applications/sn_checker.cpp \
 applications/sn_sagestreammplayer.cpp \
 applications/sn_fittslawtest.cpp \
 applications/webwidget.cpp \
->>>>>>> master
 applications/pixmapwidget.cpp \
-applications/sn_mediabrowser.cpp
-#applications/vncwidget.cpp \
-#applications/sn_pdfvieweropenglwidget.cpp
+applications/sn_mediabrowser.cpp \
+applications/vncwidget.cpp \
+applications/sn_pdfvieweropenglwidget.cpp
 
 
 HEADERS += \
@@ -270,18 +269,18 @@ applications/base/affinityinfo.h \
 applications/base/affinitycontroldialog.h \
 applications/base/basewidget.h \
 applications/base/railawarewidget.h \
-#applications/base/sagestreamwidget.h \
-#applications/base/sagepixelreceiver.h \
+applications/base/sagestreamwidget.h \
+applications/base/sagepixelreceiver.h \
 applications/base/sn_priority.h \
 #
-#applications/webwidget.h \
+applications/webwidget.h \
 applications/pixmapwidget.h \
-#applications/vncwidget.h \
+applications/vncwidget.h \
 applications/sn_mediabrowser.h \
-applications/sn_checker.h
-#applications/sn_sagestreammplayer.h \
-#applications/sn_fittslawtest.h \
-#applications/sn_pdfvieweropenglwidget.h
+applications/sn_checker.h \
+applications/sn_sagestreammplayer.h \
+applications/sn_fittslawtest.h \
+applications/sn_pdfvieweropenglwidget.h
 
 
 

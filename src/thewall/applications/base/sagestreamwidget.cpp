@@ -29,10 +29,18 @@
 */
 
 #include <QGLPixelBuffer>
+
+#ifdef QT5
+#include <QtConcurrent>
+#include <QOpenGLShaderProgram>
+
+#else
+
 #include <QGLBuffer>
 #include <QGLShaderProgram>
 #include <QGLContext>
 #include <QGLFunctions>
+#endif
 
 #include <QHostAddress>
 
@@ -223,7 +231,12 @@ SN_SageStreamWidget::~SN_SageStreamWidget()
             _pbobuf[i]->destroy();
             delete _pbobuf[i];
         }
+#ifdef QT5
+        QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
+#else
         QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
+#endif
+
 
 		if (_pbobufferready) {
 //			__bufferMapped = true;
@@ -464,7 +477,11 @@ void SN_SageStreamWidget::schedulePboUpdate() {
     _pbobuf[_pboBufIdx]->bind();
     _pbobuf[_pboBufIdx]->allocate(_appInfo->frameSizeInByte());
 
-	void *ptr = _pbobuf[_pboBufIdx]->map(QGLBuffer::WriteOnly);
+#ifdef QT5
+	void *ptr = _pbobuf[_pboBufIdx]->map(QOpenGLBuffer::WriteOnly);
+#else
+    void *ptr = _pbobuf[_pboBufIdx]->map(QGLBuffer::WriteOnly);
+#endif
 
 	//if (ptr) {
 		_pbobufarray[_pboBufIdx] = ptr;
@@ -497,7 +514,11 @@ void SN_SageStreamWidget::schedulePboUpdate() {
 	// reset GL state
 	//
 	glBindTexture(/*GL_TEXTURE_2D*/GL_TEXTURE_RECTANGLE_ARB, 0);
+#ifdef QT5
+    QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
+#else
     QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
+#endif
 
 //	_perfMon->updateUpdateDelay();
 	
@@ -652,7 +673,11 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
             // glGetUniformLocation(_shaderProgram->programId(), "yuvtex");
             int h = _shaderProgram->uniformLocation("yuvtex");
             if (h != -1) {
+#ifdef QT5
+                QOpenGLFunctions glfunc(QOpenGLContext::currentContext());
+#else
                 QGLFunctions glfunc(QGLContext::currentContext());
+#endif
 			    glfunc.glUniform1i(h, 0);  // Bind yuvtex to texture unit 0 
             }
             else {
@@ -1090,8 +1115,26 @@ void SN_SageStreamWidget::m_initOpenGL() {
         QString fnameprefix(sfn);
 
         // current QGLContext must be valid
+#ifdef QT5
+        Q_ASSERT(QOpenGLContext::currentContext()->isValid());
+        _shaderProgram = new QOpenGLShaderProgram(QOpenGLContext::currentContext());
+
+        Q_ASSERT(_shaderProgram);
+
+        if (!_shaderProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, fnameprefix + ".vert")) {
+            qDebug() << "compile vertext shader failed";
+            qDebug() << _shaderProgram->log() << "\n";
+        }
+
+
+        if (!_shaderProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, fnameprefix + ".frag")) {
+            qDebug() << "compile fragment shader failed";
+            qDebug() << _shaderProgram->log() << "\n";
+        }
+#else
         Q_ASSERT(QGLContext::currentContext()->isValid());
         _shaderProgram = new QGLShaderProgram(QGLContext::currentContext());
+
         Q_ASSERT(_shaderProgram);
 
         if (!_shaderProgram->addShaderFromSourceFile(QGLShader::Vertex, fnameprefix + ".vert")) {
@@ -1104,6 +1147,7 @@ void SN_SageStreamWidget::m_initOpenGL() {
             qDebug() << "compile fragment shader failed";
             qDebug() << _shaderProgram->log() << "\n";
         }
+#endif
 
 
         if (! _shaderProgram->link() ) {
@@ -1166,13 +1210,22 @@ void SN_SageStreamWidget::m_initOpenGL() {
         }
 
         for(int i=0; i<2; i++) {
+#ifdef QT5
+            _pbobuf[i] = new QOpenGLBuffer(QOpenGLBuffer::PixelUnpackBuffer);
+#else
             _pbobuf[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
+#endif
             _pbobuf[i]->create();
             _pbobuf[i]->bind();
             _pbobuf[i]->allocate(_appInfo->frameSizeInByte());
             _pboIds[i] = _pbobuf[i]->bufferId();
         }
+#ifdef QT5
+        QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
+#else
         QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
+#endif
+
     }
 }
 

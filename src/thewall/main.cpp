@@ -48,6 +48,8 @@ void setViewAttr(SN_Viewport *view, const QSettings &s);
 
 int main(int argc, char *argv[])
 {
+
+
 #ifdef Q_WS_X11
 	/********
 The GL libraries that ship with recent versions of Windows and Mac OS X are thread-safe,

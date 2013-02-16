@@ -4,9 +4,15 @@
 #include "base/appinfo.h"
 #include "../common/commonitem.h"
 
-#include <QtGui>
 #include <QGLPixelBuffer>
+
+#ifdef QT5
+#include <QtConcurrent>
+#include <QOpenGLBuffer>
+#else
+#include <QtGui>
 #include <QGLBuffer>
+#endif
 
 #include <signal.h>
 #include <sys/time.h>
@@ -198,7 +204,12 @@ SN_VNCClientWidget::~SN_VNCClientWidget() {
             _pbobuf[i]->destroy();
             delete _pbobuf[i];
         }
+#ifdef QT5
+        QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
+#else
         QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
+#endif
+
 
 		if (_pbobufferready) {
 			__bufferMapped = true;
@@ -234,13 +245,23 @@ void SN_VNCClientWidget::initGL(bool usepbo) {
 //		qDebug() << "VNCWidget : OpenGL pbuffer extension is present. Using PBO";
 
         for(int i=0; i<2; i++) {
+#ifdef QT5
+            _pbobuf[i] = new QOpenGLBuffer(QOpenGLBuffer::PixelUnpackBuffer);
+#else
             _pbobuf[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
+#endif
+
             _pbobuf[i]->create();
             _pbobuf[i]->bind();
             _pbobuf[i]->allocate(_appInfo->frameSizeInByte());
             _pboIds[i] = _pbobuf[i]->bufferId();
         }
+#ifdef QT5
+        QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
+#else
         QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
+#endif
+
 
 		initPboMutex();
 	}
@@ -431,7 +452,11 @@ void SN_VNCClientWidget::scheduleUpdate() {
         _pbobuf[_pboBufIdx]->bind();
         _pbobuf[_pboBufIdx]->allocate(_appInfo->frameSizeInByte());
 
+#ifdef QT5
+        void *ptr = _pbobuf[_pboBufIdx]->map(QOpenGLBuffer::WriteOnly);
+#else
 	    void *ptr = _pbobuf[_pboBufIdx]->map(QGLBuffer::WriteOnly);
+#endif
 	    if (ptr) {
 		//
 		// signal thread
@@ -454,7 +479,11 @@ void SN_VNCClientWidget::scheduleUpdate() {
 	//
 	    glBindTexture(GL_TEXTURE_2D/*GL_TEXTURE_RECTANGLE_ARB*/, 0);
 
+#ifdef QT5
+        QOpenGLBuffer::release(QOpenGLBuffer::PixelUnpackBuffer);
+#else
         QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
+#endif
 
 	}
 	else {

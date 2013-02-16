@@ -1,8 +1,15 @@
 #include "webwidget.h"
 #include "base/appinfo.h"
 
-#include <QtGui>
 #include <QtWebKit>
+
+#ifdef QT5
+#include <QtWidgets>
+#include <QtWebKitWidgets>
+#else
+#include <QtGui>
+#endif
+
 //#include <QWebPage>
 #include "../common/commonitem.h"
 

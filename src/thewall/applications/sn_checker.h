@@ -173,7 +173,11 @@ private:
 	  */
 	GLuint _pboIds[2];
     
+#ifdef QT5
     QOpenGLBuffer *_pbobuf[2];
+#else
+    QGLBuffer *_pbobuf[2];
+#endif
 
 	/*!
 	  The mapped double buffer for mapped pbo
