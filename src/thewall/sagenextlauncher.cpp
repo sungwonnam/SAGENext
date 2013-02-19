@@ -562,20 +562,17 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
         }
         else if (component.status() == QDeclarativeComponent::Ready) {
 
-
             qDebug() << "instantiating " << QUrl::fromLocalFile(filename);
             QGraphicsObject* gobj = qobject_cast<QGraphicsObject *>(component.create());
 
-
-
             if (gobj) {
-
-                w = new SN_BaseWidget(GID, _settings, 0, Qt::Window);
+                w = new SN_BaseWidget(GID, _settings, 0, Qt::Widget);
                 w->resize(gobj->boundingRect().size());
                 gobj->setParentItem(w);
             }
             else {
-                qDebug() << "Failed to create QDeclarativeItem";
+                qDebug() << "Failed to create a QDeclarativeItem";
+                qDebug() << component.errorString();
             }
         }
 
