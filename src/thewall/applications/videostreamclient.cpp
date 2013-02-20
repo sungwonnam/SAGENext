@@ -1,5 +1,6 @@
 #include "videostreamclient.h"
-
+//#include "googletalkpresence.h"
+#include "gvideopresence.h"
 #include <qxmpp/QXmppClient.h>
 #include <qxmpp/QXmppRosterManager.h>
 #include <qxmpp/QXmppCallManager.h>
@@ -8,12 +9,13 @@
 #include <qxmpp/QXmppLogger.h>
 #include <qxmpp/QXmppDiscoveryManager.h>
 #include <qxmpp/QXmppUtils.h>
+#include <QHostAddress>
 
 VideoStreamClient::VideoStreamClient() :
     QObject(), _isConnected(false)
 {
-    _callmanager = new QXmppCallManager();
-
+    _callmanager = new QXmppCallManager;
+    _callmanager->setStunServer(QHostAddress("stun.l.google.com"), 19302);
     _client.addExtension(_callmanager);
 
     QObject::connect(_callmanager,
@@ -26,6 +28,15 @@ VideoStreamClient::VideoStreamClient() :
                      this,
                      SLOT(callStarted(QXmppCall *)));
 
+
+    QXmppRosterManager* rst = _client.findExtension<QXmppRosterManager>();
+    if(rst){
+        QObject::connect(rst,
+                         SIGNAL(rosterReceived()),
+                         this,
+                         SLOT(rosterReceived()));
+    }
+
     _client.logger()->setLoggingType(QXmppLogger::StdoutLogging);
     _gtalkconfig.setPort(5222);
     _gtalkconfig.setDomain("gmail.com");
@@ -36,16 +47,13 @@ VideoStreamClient::VideoStreamClient() :
 void VideoStreamClient::connectToGTalk(const QString username, const QString password){
     _gtalkconfig.setUser(username);
     _gtalkconfig.setPassword(password);
-
-
     //p.setAvailableStatusType(QXmppPresence::Online);
     // EXPERIMENTAL: TRY AND SET THE GOOGLE CAPABILITY FOR VOICE + VIDEO
+    _client.connectToServer(_gtalkconfig, GVideoPresence());
+}
 
-    _client.connectToServer(_gtalkconfig);
-
-
-    _isConnected = _client.isConnected();
-    qDebug() << "connectToGTalk isAuthenticated" << _client.isAuthenticated();
+void VideoStreamClient::rosterReceived(){
+    _client.sendPacket(GVideoPresence());
 }
 
 void VideoStreamClient::callReceived(QXmppCall *call){
@@ -73,7 +81,7 @@ void VideoStreamClient::callConnected(){
 }
 
 void VideoStreamClient::videoModeChanged(QIODevice::OpenMode){
-
+    int i = 0;
 }
 
 VideoStreamClient::~VideoStreamClient(){

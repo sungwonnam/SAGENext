@@ -259,7 +259,9 @@ applications/sn_pdfvieweropenglwidget.cpp \
     applications/videostreamclient.cpp \
     applications/sn_googletalk.cpp \
     applications/sn_displaystreambase.cpp \
-    applications/sn_streamdisplay.cpp
+    applications/sn_streamdisplay.cpp \
+    applications/googletalkpresence.cpp \
+    applications/gvideopresence.cpp
 # applications/streamdrawthread.cpp
 
 
@@ -314,7 +316,9 @@ applications/sn_pdfvieweropenglwidget.h \
     applications/videostreamclient.h \
     applications/sn_googletalk.h \
     applications/sn_displaystreambase.h \
-    applications/sn_streamdisplay.h
+    applications/sn_streamdisplay.h \
+    applications/googletalkpresence.h \
+    applications/gvideopresence.h
 
 
 

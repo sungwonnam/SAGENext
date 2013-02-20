@@ -5,7 +5,6 @@
 #include <qxmpp/QXmppClient.h>
 #include <qxmpp/QXmppRosterManager.h>
 #include <qxmpp/QXmppCallManager.h>
-#include <qxmpp/QXmppPresence.h>
 #include <qxmpp/QXmppConfiguration.h>
 
 class VideoStreamClient : public QObject
@@ -22,6 +21,7 @@ public slots:
     void callStarted(QXmppCall* call);
     void callConnected();
     void videoModeChanged(QIODevice::OpenMode);
+    void rosterReceived();
 
 private:
 

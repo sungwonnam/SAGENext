@@ -22,7 +22,7 @@ SN_GoogleTalk::SN_GoogleTalk(const quint64 globalAppId, const QSettings *s, SN_R
     QObject::connect(_cameraBuffer, SIGNAL(haveNewImage(QImage*)), this, SLOT(haveNewImage(QImage*)));
 
     _client = new VideoStreamClient();
-    _client->connectToGTalk("siddharthhsathyam", "Saibaba9");
+    _client->connectToGTalk("siddharthhsathyam", "evltestgmailaccount");
 
     //_layout->addItem(_sendStream);
     //_layout->addItem(_recvStream);
