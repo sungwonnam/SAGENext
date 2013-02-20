@@ -24,6 +24,8 @@ class SN_SchedulerControl;
 class SN_MediaStorage;
 
 class SageVis;
+class VisBaseWidget;
+
 
 class SN_Launcher : public QObject
 {
@@ -154,7 +156,7 @@ public slots:
 		  */
 	SN_BaseWidget * launch(const QStringList &fileList);
 
-        SN_BaseWidget* SN_Launcher::launchVisWidget(int, const QString&, const QStringList&, const QPointF&, quint64)
+        SN_BaseWidget* launchVisWidget(int mediatype, const QString &filename, const QStringList& dataFiles, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
 
 	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());

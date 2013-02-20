@@ -4,13 +4,12 @@
 #include <QObject>
 #include <QDebug>
 
-#include "../sagenextvis/VisBaseClasses/visbasewidget.h"
-
+#include "applications/sagenextvis/VisBaseClasses/visbasewidget.h"
 #include "applications/base/SN_plugininterface.h"
 #include "applications/base/basewidget.h"
+//#include "applications/sagenextvis/VisBaseClasses/sagenextvisbasewidget.h"
 
-
-class VisTestWidget : public SN_BaseWidget, SN_PluginInterface
+class VisTestWidget : public VisBaseWidget, SN_PluginInterface
 {
     Q_OBJECT
 
@@ -22,7 +21,7 @@ class VisTestWidget : public SN_BaseWidget, SN_PluginInterface
     
 public:
 
-    explicit VisTestWidget(QObject *parent=0);
+    explicit VisTestWidget(QGraphicsItem* parent = 0);
     virtual ~VisTestWidget();
     
     /*!
@@ -35,6 +34,7 @@ public:
       Drawing function
       */
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
 };
 
 #endif // MAINWINDOW_H

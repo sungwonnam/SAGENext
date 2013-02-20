@@ -5,17 +5,19 @@
 #-------------------------------------------------
 include(../sagenextvis_pluginbase.pri) #this includes base classes for visualization
 
-QT       += core gui
+#QT       += core gui
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+#greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = VisTest
 #TEMPLATE = app  #defined in .pri file
 
 
 SOURCES += \
-    vistestwidget.cpp
+    vistestwidget.cpp #\
+    #applications/base/sagenextvis/VisBaseClasses/visbasewidget.cpp
+
 
 HEADERS  += \
-    vistestwidget.h
-
+    vistestwidget.h #\
+#applications/base/sagenextvis/VisBaseClasses/visbasewidget.h

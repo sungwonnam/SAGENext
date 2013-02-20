@@ -1,5 +1,7 @@
 #include "sagenextvisbasewidget.h"
 
-SageNextVisBaseWidget::SageNextVisBaseWidget()
+SageNextVisBaseWidget::SageNextVisBaseWidget( QGraphicsItem* parent ) 
+  : SN_BaseWidget( Qt::Window )
 {
+
 }

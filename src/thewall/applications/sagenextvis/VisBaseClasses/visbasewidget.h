@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QGraphicsWidget>
 #include <QGraphicsItem>
 #include <QDebug>
@@ -17,7 +18,7 @@
 #include <QPointer>
 #include <QList>
 
-#include "sagenextvisbasewidget.h"
+#include "applications/sagenextvis/VisBaseClasses/sagenextvisbasewidget.h"
 
 //Forward declarations to avoid circular dependencies
 class SageVis;
@@ -71,12 +72,19 @@ class LineConnectorElement;
   * or laying out elements in a particular way.  For now, however, I will leave this up to the specific widget until
   * I decide if it is possible to generalize these operations to include within the VisBaseWidget class.
 */
-class VisBaseWidget : public QGraphicsWidget
+class VisBaseWidget : public SageNextVisBaseWidget
 {
     Q_OBJECT
 
 public:
-    VisBaseWidget();
+    VisBaseWidget( QGraphicsItem *parent = 0 );
+
+    void addSageVisParent( SageVis* sageVis );
+    void addDataFiles( QStringList dataFiles );
+
+private:
+    SageVis* sageVisParent;
+    QStringList dataFiles;
 };
 
 #endif // VISBASEWIDGET_H

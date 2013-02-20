@@ -29,7 +29,7 @@
 #include "applications/base/SN_plugininterface.h"
 
 #include "applications/sagenextvis/sagevis.h"
-
+#include "applications/sagenextvis/VisBaseClasses/visbasewidget.h"
 
 /*
   this is for launchRatko..()
@@ -60,7 +60,6 @@ SN_Launcher::SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage
 
 	// start listening for sage message
 	_createFsManager();
-
 }
 
 SN_Launcher::~SN_Launcher() {
@@ -554,12 +553,6 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 		break;
 	}
 
-//    case SAGENext::MEDIA_TYPE_SAGE_VIS: {
-//        //should never happen- handle inside diff launch function
-//        break;
-//    }
-
-
     } // end switch
 
 	return launch(w, scenepos);
@@ -581,7 +574,7 @@ SN_BaseWidget * SN_Launcher::launchVisWidget(int visWidgetType, const QString &p
     if (_scenarioFile  &&  _settings->value("misc/record_launcher", false).toBool()) {
         if ( _scenarioFile->isOpen() && _scenarioFile->isWritable() ) {
             char record[256];
-            sprintf(record, "%lld %d %d %s %d %d\n",QDateTime::currentMSecsSinceEpoch(), 0, (int)type, qPrintable(plugin_filename), scenepos.toPoint().x(), scenepos.toPoint().y());
+            sprintf(record, "%lld %d %d %s %d %d\n",QDateTime::currentMSecsSinceEpoch(), 0, SAGENext::MEDIA_TYPE_SAGE_VIS, qPrintable(plugin_filename), scenepos.toPoint().x(), scenepos.toPoint().y());
             _scenarioFile->write(record);
         }
         else {
@@ -604,10 +597,20 @@ SN_BaseWidget * SN_Launcher::launchVisWidget(int visWidgetType, const QString &p
         w->appInfo()->setFileInfo(plugin_filename);
         w->appInfo()->setDataFiles(dataFiles);
 
-        sageVis->addVisWidget(w);
+        //cast to vis base widget, add to sagevis and add data files
+        VisBaseWidget* vbw = dynamic_cast< VisBaseWidget* > (w);
+        if( vbw )
+        {
+            vbw->addDataFiles( dataFiles );//add uploaded data to vis widget
+            sageVis->addVisWidget(vbw);//vis widget added, and sagevis parent object added to widget
+        }
+        else
+        {
+            qDebug() <<  "SN_Launcher::launchVisWidget() : Failed to cast to viswidget" << plugin_filename << endl;
+        }
     }
     else {
-        qDebug() << "SN_Launcher::launch() : MEDIA_TYPE_PLUGIN : dpi is null";
+        qDebug() << "SN_Launcher::launch() : MEDIA_TYPE_PLUGIN : dpi is null" << plugin_filename;
     }
     return launch(w, scenepos);
 }

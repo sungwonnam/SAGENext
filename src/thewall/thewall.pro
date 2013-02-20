@@ -228,10 +228,10 @@ applications/sn_mediabrowser.cpp \
 applications/vncwidget.cpp \
 #applications/pdfviewerwidget.cpp \
 applications/sn_pdfvieweropenglwidget.cpp \
-    applications/sagenextvis/sagevis.cpp \
-    applications/sagenextvis/VisBaseClasses/visbasewidget.cpp \
-    applications/sagenextvis/VisBaseClasses/sagenextvisbasewidget.cpp
-
+#SAGEVIS
+applications/sagenextvis/sagevis.cpp \
+applications/sagenextvis/VisBaseClasses/visbasewidget.cpp \
+applications/sagenextvis/VisBaseClasses/sagenextvisbasewidget.cpp 
 
 HEADERS += \
 sagenextscene.h \
@@ -278,9 +278,10 @@ applications/sn_sagestreammplayer.h \
 applications/sn_fittslawtest.h \
 #applications/pdfviewerwidget.h \
 applications/sn_pdfvieweropenglwidget.h \
-    applications/sagenextvis/sagevis.h \
-    applications/sagenextvis/VisBaseClasses/visbasewidget.h \
-    applications/sagenextvis/VisBaseClasses/sagenextvisbasewidget.h
+#SAGE VIS CLASSES
+applications/sagenextvis/sagevis.h \
+applications/sagenextvis/VisBaseClasses/visbasewidget.h \
+applications/sagenextvis/VisBaseClasses/sagenextvisbasewidget.h 
 
 
 

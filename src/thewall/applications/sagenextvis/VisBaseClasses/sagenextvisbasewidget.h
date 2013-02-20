@@ -3,8 +3,9 @@
 
 #include <QObject>
 #include <QDebug>
+#include <QGraphicsItem>
 
-#include "../base/basewidget.h"
+#include "../../base/basewidget.h"
 
 
 class SageNextVisBaseWidget : public SN_BaseWidget
@@ -13,11 +14,8 @@ class SageNextVisBaseWidget : public SN_BaseWidget
 
 public:
 
-    SageNextVisBaseWidget(Qt::WindowFlags wflags = Qt::Window);
-    SageNextVisBaseWidget(quint64 globalappid, const QSettings *s, QGraphicsItem *parent = 0, Qt::WindowFlags wflags = 0);
-
-
-
+    SageNextVisBaseWidget( QGraphicsItem* parent = 0);
+    
 };
 
 #endif // SAGENEXTVISBASEWIDGET_H

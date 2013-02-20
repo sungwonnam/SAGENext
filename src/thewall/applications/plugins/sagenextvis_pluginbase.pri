@@ -24,7 +24,9 @@ SOURCES += \
 ../../base/perfmonitor.cpp \
 ../../base/sn_priority.cpp \
 ../../../common/commonitem.cpp \
-../../sagenextvis/visbasewidget.cpp 
+../../sagenextvis/VisBaseClasses/visbasewidget.cpp \
+../../sagenextvis/VisBaseClasses/sagenextvisbasewidget.cpp \
+../../sagenextvis/sagevis.cpp
 
 
 
@@ -35,7 +37,9 @@ HEADERS  += \
 ../../base/perfmonitor.h \
 ../../base/sn_priority.h \
 ../../../common/commonitem.h \
-../../sagenextvis/visbasewidget.cpp 
+../../sagenextvis/VisBaseClasses/visbasewidget.h \
+../../sagenextvis/VisBaseClasses/sagenextvisbasewidget.h \
+../../sagenextvis/sagevis.h
 
 
 

@@ -598,10 +598,10 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 //	launcher->launch(new SN_CheckerGL_Old(true, QSize(1920,1080), 24, 0, &s, resourceMonitor));
 //	launcher->launch(new SN_CheckerGLPBO(GL_RGB, QSize(1920,1080), 24, 0, &s, resourceMonitor));
 
-
-
-
-
+	QStringList dataFiles; 
+    dataFiles << "/home/evl/jauri/.sagenext/media/visdata/all_Lactobacillus.gff";
+    dataFiles << "/home/evl/jauri/.sagenext/media/visdata/all_Lactobacillus.fasta";
+    launcher->launchVisWidget( SAGENext::MEDIA_TYPE_SAGE_VIS, "/home/evl/jauri/.sagenext/media/plugins/libVisTest.so", dataFiles, QPointF(30,30), 0);
 
 
 //	SN_DrawingTool *dt = new SN_DrawingTool(0, &s);
