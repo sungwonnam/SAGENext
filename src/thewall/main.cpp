@@ -596,7 +596,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 //  launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "http://processingjs.org/exhibition");
     //    launcher->launch(SAGENext::MEDIA_TYPE_WEBURL, "file:///home/snam5/Downloads/CholeraVis_Khairi/index.html"); // doesn't work
 
-
+    launcher->launch(10000, "asd");
 
 
 

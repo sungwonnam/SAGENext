@@ -1,9 +1,29 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-04-08T11:36:20
 # -------------------------------------------------
-QT += network opengl
 TARGET = sagenext
 TEMPLATE = app
+
+QT += network opengl
+
+# TODO: ADD CHECK FOR OPENCV and QTXMPP HERE
+
+#packagesExist(qxmpp) {
+#  message("Linking qxmpp")
+  LIBS += -L./qxmpp-src/src -lqxmpp
+#}
+#else {
+#   error("Missing Package : opencv is required")
+#}
+
+
+packagesExist(opencv) {
+  message("Linking opencv")
+  LIBS += -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_ml -lopencv_video -lopencv_features2d -lopencv_calib3d -lopencv_objdetect -lopencv_contrib -lopencv_legacy -lopencv_flann
+}
+else {
+   error("Missing Package : opencv is required")
+}
 
 
 #CONFIG += thread
@@ -98,10 +118,6 @@ unix {
         error("Missing Package : poppler-qt4 is required")
     }
 } # end of unix{}
-
-
-
-
 
 
 macx {
@@ -257,7 +273,15 @@ applications/pixmapwidget.cpp \
 applications/sn_mediabrowser.cpp \
 applications/vncwidget.cpp \
 #applications/pdfviewerwidget.cpp \
-applications/sn_pdfvieweropenglwidget.cpp
+applications/sn_pdfvieweropenglwidget.cpp \
+    applications/sn_videostream.cpp \
+    applications/capturethread.cpp \
+    applications/imagebuffer.cpp \
+    applications/videostreamclient.cpp \
+    applications/sn_googletalk.cpp \
+    applications/sn_displaystreambase.cpp \
+    applications/sn_streamdisplay.cpp
+# applications/streamdrawthread.cpp
 
 
 HEADERS += \
@@ -304,8 +328,14 @@ applications/sn_checker.h \
 applications/sn_sagestreammplayer.h \
 applications/sn_fittslawtest.h \
 #applications/pdfviewerwidget.h \
-applications/sn_pdfvieweropenglwidget.h
-
+applications/sn_pdfvieweropenglwidget.h \
+    applications/sn_videostream.h \
+    applications/capturethread.h \
+    applications/imagebuffer.h \
+    applications/videostreamclient.h \
+    applications/sn_googletalk.h \
+    applications/sn_displaystreambase.h \
+    applications/sn_streamdisplay.h
 
 
 

@@ -25,7 +25,7 @@
 #include "applications/webwidget.h"
 #include "applications/sn_checker.h"
 #include "applications/sn_mediabrowser.h"
-
+#include "applications/sn_googletalk.h"
 #include "applications/base/SN_plugininterface.h"
 
 
@@ -509,6 +509,12 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 		ww->setUrl( filename );
 		break;
 	}
+
+    case 10000: {
+        SN_GoogleTalk *vs = new SN_GoogleTalk(GID, _settings, _rMonitor);
+        w = vs;
+        break;
+    }
 
 		//
 		// poppler-qt4 library is needed for SN_PDFViewerWidget
