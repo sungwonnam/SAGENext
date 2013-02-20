@@ -111,6 +111,9 @@ SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 			ui->pGridCheckBox->setCheckState(Qt::Unchecked);
 		}
 
+        ui->pgrid_row_spinBox->setValue( _settings->value("system/prioritygridrow", 3).toInt());
+        ui->pgrid_col_spinBox->setValue( _settings->value("system/prioritygridcol", 4).toInt());
+
 
 		if (_settings->value("system/scheduler", false).toBool()) {
 			ui->schedulerCheckBox->setCheckState(Qt::Checked);
@@ -152,6 +155,19 @@ void SystemSettingDialog::on_rmonitorCheckBox_stateChanged(int state) {
     }
 }
 
+
+void SystemSettingDialog::on_pGridCheckBox_stateChanged(int state)
+{
+    if (state == Qt::Checked) {
+        ui->pgrid_col_spinBox->setEnabled(true);
+        ui->pgrid_row_spinBox->setEnabled(true);
+    }
+    else {
+        ui->pgrid_col_spinBox->setDisabled(true);
+        ui->pgrid_row_spinBox->setDisabled(true);
+    }
+}
+
 void SystemSettingDialog::accept() {
 	_settings->setValue("system/cpupernumanode", ui->numCpuPerNumaLineEdit->text().toInt());
 	_settings->setValue("system/threadpercpu", ui->numHWThreadLineEdit->text().toInt());
@@ -187,6 +203,9 @@ void SystemSettingDialog::accept() {
     // enable/disable priority grid for setting priority based on wall usage
     //
 	_settings->setValue("system/prioritygrid", ui->pGridCheckBox->isChecked());
+
+    _settings->setValue("system/prioritygridrow", ui->pgrid_row_spinBox->value());
+    _settings->setValue("system/prioritygridcol", ui->pgrid_col_spinBox->value());
 
     //
     // enable/disable scheduler
@@ -576,6 +595,7 @@ void SettingStackedDialog::on_buttonBox_rejected()
 {
 	::exit(1);
 }
+
 
 
 

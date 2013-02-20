@@ -175,12 +175,11 @@ public:
 
 
 
-        /*!
-          How much of my window is actually visible to a user.
-		  This is a function of my Z value and colliding widgets.
-          */
-        QRegion effectiveVisibleRegion() const;
 
+
+        void computeEVS();
+
+        quint64 EVS() const {return _EVS;}
 
 
 
@@ -445,6 +444,18 @@ protected:
           */
         QGraphicsRectItem *_resizeRectangle;
 
+
+        /*!
+         *EVS for Pvisual
+         */
+        quint64 _EVS;
+
+
+        /*!
+          How much of my window is actually visible to a user.
+		  This is a function of my Z value and colliding widgets.
+          */
+        QRegion effectiveVisibleRegion() const;
 
 
         /*!

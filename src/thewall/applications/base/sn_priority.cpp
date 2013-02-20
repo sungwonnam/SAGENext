@@ -8,6 +8,10 @@ SN_Priority::SN_Priority(SN_BaseWidget *w, QObject *parent)
     , _Pvisual(-1)
     , _Pinteract(-1)
     , _Ptemp(0)
+    , _weight_visual(1.0)
+    , _weight_interact(10.0)
+    , _weight_temp(0.0)
+
     , _timeLastIntr(0)
     , _timeFirstIntr(QDateTime::currentMSecsSinceEpoch())
     , _intrCounter(0)
@@ -15,22 +19,23 @@ SN_Priority::SN_Priority(SN_BaseWidget *w, QObject *parent)
     , _widget(w)
     , _priorityGrid(0)
 
-    , _evr_to_win(0)
+    , _evr_to_win(0.0)
     , _evr_to_wall(0)
     , _ipm(0)
 {
+    setWeights(1.0, 10.0, 0); // default values
 }
 
-qreal SN_Priority::computePriority(qint64 currTimeEpoch) {
-    Q_UNUSED(currTimeEpoch);
+qreal SN_Priority::computePriority(quint64 sum_EVS, quint64 sum_intr) {
 
-    //
-    // P visual and P interact
-    //
-	m_computePvisual();
-    m_computePinteract();
+    // Pvisual
+	m_computePvisual(sum_EVS);
 
-    _priority = _Pvisual + 100.0f * _Pinteract;
+    // Pinteract
+    if (!sum_intr) _Pinteract = 0;
+    else _Pinteract = (qreal)_intrIncrements / (qreal)sum_intr;
+
+    _priority = _weight_visual * _Pvisual + _weight_interact * _Pinteract;
 
     //
     // Update pGrid cell value with my Pvisual and Pinteract
@@ -93,42 +98,25 @@ void SN_Priority::setLastInteraction(SN_Priority::IntrType t /* = NOINTR */, qin
 }
 
 
-void SN_Priority::m_computePvisual(void) {
-
+void SN_Priority::m_computePvisual(quint64 sumevs) {
 	Q_ASSERT(_widget);
 
-	QRegion evr = _widget->effectiveVisibleRegion(); // evr is in scene coordinate
+    /**
+     *This assumes that _widget->computeEVS() was called before
+     */
+	_evrsize = _widget->EVS(); // no computation just read the value. O(1)
 
-	_evrsize = 0;
-	QVector<QRect>::const_iterator it;
-	QVector<QRect> rectsInRegion = evr.rects();
-	for (it=rectsInRegion.constBegin(); it!=rectsInRegion.constEnd(); it++) {
-		const QRect &r = (*it);
-		_evrsize += (r.width() * r.height()); // quint64 : unsigned long long int
-	}
+	QSizeF effectiveWinSize = _widget->size() * _widget->scale();
+	quint64 winsize = effectiveWinSize.width() * effectiveWinSize.height(); // quint64 : unsigned long long int
+    if (winsize <= 0) return;
 
-	QSizeF effectiveSize = _widget->size() * _widget->scale();
-	quint64 winsize = effectiveSize.width() * effectiveSize.height(); // quint64 : unsigned long long int
+    _evr_to_win = (qreal)_evrsize / (qreal)winsize;
+    _Pvisual = _evr_to_win * (qreal)_evrsize / (qreal)sumevs;
 
-//	qDebug() << _widget->size() << _widget->scale();
-
-	// ratio of EVR to window size (%)
-//	Q_ASSERT(winsize > 0);
-    /*
-	if (winsize > 0) {
-		_evr_to_win = (100 * _evrsize) / winsize; // quint16 : unsigned short
-	}
-
-	if (_widget->scene()) {
-		_evr_to_wall = (100 * _evrsize) / (_widget->scene()->width() * _widget->scene()->height()); // quint16 : unsigned short
-	}
-    */
-
-    _evr_to_win = _evrsize / winsize;
-    _Pvisual = _evrsize * _evr_to_win;
+//    qDebug() << "\t" << _widget->globalAppId() << "EVS: " << _evrsize << "EVS ratio" << (qreal)_evrsize/(qreal)sumevs << "Pvisual: " << _Pvisual;
 }
 
-void SN_Priority::m_computePinteract() {
-    _Pinteract = _intrCounter - _intrCounterPrev;
+void SN_Priority::countIntrIncrements() {
+    _intrIncrements = _intrCounter - _intrCounterPrev;
     _intrCounterPrev = _intrCounter;
 }

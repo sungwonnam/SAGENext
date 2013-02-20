@@ -29,6 +29,8 @@
 #include "applications/base/SN_plugininterface.h"
 
 
+#include <QtDeclarative>
+
 /*
   this is for launchRatko..()
 
@@ -557,6 +559,32 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 		break;
 	}
 
+    case SAGENext::MEDIA_TYPE_QML: {
+        QDeclarativeEngine *engine = new QDeclarativeEngine;
+        QDeclarativeComponent component(engine, QUrl::fromLocalFile(filename));
+
+        if (component.status() == QDeclarativeComponent::Error) {
+            qDebug() << component.errorString();
+        }
+        else if (component.status() == QDeclarativeComponent::Ready) {
+
+            qDebug() << "instantiating " << QUrl::fromLocalFile(filename);
+            QGraphicsObject* gobj = qobject_cast<QGraphicsObject *>(component.create());
+
+            if (gobj) {
+                w = new SN_BaseWidget(GID, _settings, 0, Qt::Widget);
+                w->resize(gobj->boundingRect().size());
+                gobj->setParentItem(w);
+            }
+            else {
+                qDebug() << "Failed to create a QDeclarativeItem";
+                qDebug() << component.errorString();
+            }
+        }
+
+        break;
+    }
+
 	} // end switch
 
 	return launch(w, scenepos);
@@ -609,6 +637,8 @@ SN_BaseWidget * SN_Launcher::launch(const QStringList &fileList) {
 	if ( fileList.empty() ) {
 		return 0;
 	}
+
+    QRegExp rxQml("\\.(qml)$", Qt::CaseInsensitive, QRegExp::RegExp);
 
 	QRegExp rxVideo("\\.(avi|mov|mpg|mpeg|mp4|mkv|flv|wmv)$", Qt::CaseInsensitive, QRegExp::RegExp);
 	QRegExp rxImage("\\.(bmp|svg|tif|tiff|png|jpg|bmp|gif|xpm|jpeg)$", Qt::CaseInsensitive, QRegExp::RegExp);
@@ -664,6 +694,10 @@ SN_BaseWidget * SN_Launcher::launch(const QStringList &fileList) {
 //			qDebug("%s::%s() : Loading a plugin %s", metaObject()->className(),__FUNCTION__, qPrintable(filename));
 			return launch((int)SAGENext::MEDIA_TYPE_PLUGIN, filename);
 		}
+
+        else if (filename.contains(rxQml)) {
+            return launch((int)SAGENext::MEDIA_TYPE_QML, filename);
+        }
 
 		/*!
 		  session

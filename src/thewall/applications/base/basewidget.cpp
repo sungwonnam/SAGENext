@@ -331,6 +331,18 @@ QRegion SN_BaseWidget::effectiveVisibleRegion() const {
 	return effectiveRegion;
 }
 
+void SN_BaseWidget::computeEVS()  {
+    quint64 _evrsize = 0;
+
+    const QRegion &reg = effectiveVisibleRegion();
+
+    foreach (const QRect &r, reg.rects()) {
+        _evrsize += (r.width() * r.height());
+    }
+    _EVS = _evrsize;
+//    qDebug() << _globalAppId << reg.rectCount() << "rects. EVS: " << _EVS;
+}
+
 
 /*!
   ctepoch : current time since epoch

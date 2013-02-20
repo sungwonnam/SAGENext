@@ -50,6 +50,7 @@ enum MEDIA_TYPE { MEDIA_TYPE_UNKNOWN = 100
 	              , MEDIA_TYPE_WEBURL
 	              , MEDIA_TYPE_PDF
 	              , MEDIA_TYPE_SAGE_STREAM
+                  , MEDIA_TYPE_QML
                 };
 
 

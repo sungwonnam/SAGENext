@@ -2,6 +2,7 @@
 #include "applications/base/perfmonitor.h"
 #include "applications/base/appinfo.h"
 #include "applications/base/sagepixelreceiver.h"
+#include "applications/base/sn_priority.h"
 
 SN_SageStreamMplayer::SN_SageStreamMplayer(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)
     : SN_SageStreamWidget(globalappid, s, rm, parent, wFlags)
@@ -27,6 +28,10 @@ SN_SageStreamMplayer::SN_SageStreamMplayer(const quint64 globalappid, const QSet
 	QObject::connect(_pauseButton, SIGNAL(clicked()), this, SLOT(pauseMplayer()));
 	QObject::connect(_playButton, SIGNAL(clicked()), this, SLOT(playMplayer()));
 	QObject::connect(_fforwardButton, SIGNAL(clicked()), this, SLOT(fforwardMplayer()));
+
+    if (_priorityData) {
+        _priorityData->setWeights(9, 1, 0);
+    }
 
 }
 

@@ -55,6 +55,7 @@ public slots:
 private slots:
 	void on_schedulerCheckBox_stateChanged(int arg1);
 	void on_rmonitorCheckBox_stateChanged(int arg1);
+    void on_pGridCheckBox_stateChanged(int state);
 };
 
 /**

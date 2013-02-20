@@ -3,6 +3,7 @@
 
 #include "railawarewidget.h"
 
+/*
 #if defined(Q_OS_LINUX)
 //#define GLEW_STATIC 1
 #define GL_GLEXT_PROTOTYPES
@@ -15,6 +16,8 @@
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
 #endif
+*/
+#include <QtOpenGL>
 
 #include <fcntl.h>
 
@@ -28,10 +31,12 @@
 /**
   below is for when sage app streams YUV
   */
+/**
 #define GLSLVertexShader   1
 #define GLSLFragmentShader 2
 int GLSLreadShaderSource(char *fileName, GLchar **vertexShader, GLchar **fragmentShader);
 GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment);
+**/
 
 
 class DoubleBuffer;
@@ -39,6 +44,8 @@ class SN_SagePixelReceiver;
 class AffinityInfo;
 class QProcess;
 
+class QGLBuffer;
+class QGLShaderProgram;
 
 class SN_SageStreamWidget : public SN_RailawareWidget
 {
@@ -150,6 +157,8 @@ protected:
 	  */
 	GLuint _pboIds[2];
 
+    QGLBuffer * _pbobuf[2];
+
 	int _pboBufIdx;
 
 	/*!
@@ -233,6 +242,8 @@ protected:
 	  The shader program is located at $SAGE_DIRECTORY/bin/yuv.vert/frag
 	  */
 	GLhandleARB _shaderProgHandle;
+
+    QGLShaderProgram *_shaderProgram;
 
 
     /*!

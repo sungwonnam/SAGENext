@@ -5,11 +5,14 @@
 
 #include <poppler-qt4.h>
 
+/*
 #if defined(Q_OS_LINUX)
 #include <GL/gl.h>
 #elif defined(Q_OS_MAC)
 #include <OpenGL/gl.h>
 #endif
+*/
+#include <QtOpenGL>
 
 class SN_PixmapButton;
 
