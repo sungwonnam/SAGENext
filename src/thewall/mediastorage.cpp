@@ -69,7 +69,13 @@ int SN_MediaStorage::_initMediaList() {
 
             if (mediameta) {
                 mediameta->pixmap = _createThumbnail(iter.filePath(), mediameta->type);
-                SN_MediaStorage::GlobalMediaList.insert(iter.filePath(), mediameta);
+
+				if (!mediameta->pixmap.isNull())
+                	SN_MediaStorage::GlobalMediaList.insert(iter.filePath(), mediameta);
+				else {
+					qDebug() << "SN_MediaStorage::_initMediaList() : skipped a media with null pixmap." << iter.filePath();
+					delete mediameta;
+				}
             }
         }
         // build a list of directories too
@@ -129,17 +135,21 @@ QMap<QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir)
     for (; iter!=SN_MediaStorage::GlobalMediaList.end(); iter++) {
 
         // skip the dir
-        if (iter.key() == dir.path()) {
-            continue;
-        }
+        //if (iter.key() == dir.path()) {
+            //continue;
+        //}
         
         // if the item is in the dir
-        if ( iter.key().startsWith(dir.path(), Qt::CaseSensitive) ) {
+		QFileInfo fi(iter.key());
+		if ( fi.absolutePath() == dir.absolutePath() ) {
+        //if ( iter.key().startsWith(dir.path(), Qt::CaseSensitive) ) {
             qDebug() << "SN_MediaStorage::getMediaListInDir() : " << iter.key();
             if (iter.value()->pixmap.isNull()) {
-                qDebug() << "\t Has no thumbnail";
+                qDebug() << "SN_MediaStorage::getMediaListInDir() : no thumbnail" << iter.key();
             }
-            itemsInDir.insert(iter.key(), iter.value());
+			else {
+            	itemsInDir.insert(iter.key(), iter.value());
+			}
         }
     }
 

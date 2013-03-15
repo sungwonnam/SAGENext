@@ -91,7 +91,7 @@ void SN_PixmapWidget::start() {
 }
 
 void SN_PixmapWidget::callUpdate() {
-	if ( futureWatcher->result() ) {
+	if ( futureWatcher->result()  &&  _imageTemp && !_imageTemp->isNull() && _imageTemp->constBits() && _imageTemp->byteCount()) {
 
 		// at this point, image is not null
 
@@ -108,6 +108,11 @@ void SN_PixmapWidget::callUpdate() {
 		if (_useOpenGL) {
 			const QImage &constRef = _imageTemp->rgbSwapped(); // to avoid detach()
 			//_gltexture = glContext->bindTexture(constRef, GL_TEXTURE_2D, QGLContext::InvertedYBindOption);
+
+			if (constRef.isNull()) {
+				qDebug() << "SN_PixmapWidget::callUpdate() : rgbSwapped() failed";
+				deleteLater();
+			}
 
 			if (glIsTexture(_textureid)) {
 				glDeleteTextures(1, &_textureid);

@@ -252,21 +252,26 @@ void SN_MediaBrowser::_populateMediaItems(const QDir &dir) {
 
         // for each item in the dir
         for (; iter!=itemsInCurrDir.end(); iter++) {
+
+			if ( iter.value()->pixmap.isNull()) continue;
+
             //
             // create new SN_MediaItem object
             //
             SN_MediaItem *mitem = new SN_MediaItem(iter.value()->type, iter.key(), iter.value()->pixmap, _thumbSize, this); // is a child of SN_MediaBrowser
-            mitem->hide();
+			if (mitem) {
+            	mitem->hide();
 
-            // if it's folder
-            if (iter.value()->type == SAGENext::MEDIA_TYPE_UNKNOWN) {
-                QDir dir = QDir(iter.key());
-                mitem->setLabel(dir.dirName());
-            }
+            	// if it's folder
+            	if (iter.value()->type == SAGENext::MEDIA_TYPE_UNKNOWN) {
+                	QDir dir = QDir(iter.key());
+                	mitem->setLabel(dir.dirName());
+            	}
 
-            QObject::connect(mitem, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString,QPoint)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString,QPoint)));
+            	QObject::connect(mitem, SIGNAL(clicked(SAGENext::MEDIA_TYPE,QString,QPoint)), this, SLOT(launchMedia(SAGENext::MEDIA_TYPE,QString,QPoint)));
 
-            _currMediaItems.push_back(mitem);
+            	_currMediaItems.push_back(mitem);
+			}
         }
 
 //        qDebug() << "SN_MediaBrowser::_populateMediaItems() : " << itemsInCurrDir.size() << "items in" << dir;
@@ -404,8 +409,9 @@ void SN_MediaBrowser::updateThumbnailPanel() {
         for (; it!=_currMediaItems.end(); it++) {
             mitem = (*it);
 //            qDebug() << "adding item at" << i << j;
+
             gridlayout->addItem(mitem, i, j);
-            mitem->show(); // Only this item should be visible
+            if (mitem) mitem->show(); // Only this item should be visible
 
             // finished adding items for this page
             if (gridlayout->count() == numItemsPerPages)
