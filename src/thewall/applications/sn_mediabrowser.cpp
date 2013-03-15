@@ -262,7 +262,7 @@ void SN_MediaBrowser::_populateMediaItems(const QDir &dir) {
 			if (mitem) {
             	mitem->hide();
 
-            	// if it's folder
+            	// if it's a folder
             	if (iter.value()->type == SAGENext::MEDIA_TYPE_UNKNOWN) {
                 	QDir dir = QDir(iter.key());
                 	mitem->setLabel(dir.dirName());
@@ -405,7 +405,7 @@ void SN_MediaBrowser::updateThumbnailPanel() {
             it += (_currPage * numItemsPerPages);
         }
 
-        SN_MediaItem *mitem= 0;
+        SN_MediaItem *mitem = 0;
         for (; it!=_currMediaItems.end(); it++) {
             mitem = (*it);
 //            qDebug() << "adding item at" << i << j;
@@ -470,6 +470,7 @@ void SN_MediaBrowser::nextPage() {
 void SN_MediaBrowser::getParentDir() {
     if (_currentDir.cdUp()) {
         _populateMediaItems(_currentDir);
+        _currPage = 0;
     }
 }
 

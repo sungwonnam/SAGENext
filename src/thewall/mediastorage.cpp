@@ -139,13 +139,13 @@ QMap<QString,MediaMetaData*> SN_MediaStorage::getMediaListInDir(const QDir &dir)
             //continue;
         //}
         
-        // if the item is in the dir
+        // if the item belongs to the dir
 		QFileInfo fi(iter.key());
 		if ( fi.absolutePath() == dir.absolutePath() ) {
         //if ( iter.key().startsWith(dir.path(), Qt::CaseSensitive) ) {
-            qDebug() << "SN_MediaStorage::getMediaListInDir() : " << iter.key();
+            qDebug() << "SN_MediaStorage::getMediaListInDir() : " << iter.key() << "exist in" << dir;
             if (iter.value()->pixmap.isNull()) {
-                qDebug() << "SN_MediaStorage::getMediaListInDir() : no thumbnail" << iter.key();
+                qDebug() << "SN_MediaStorage::getMediaListInDir() : no thumbnail for" << iter.key();
             }
 			else {
             	itemsInDir.insert(iter.key(), iter.value());
@@ -175,12 +175,12 @@ QPixmap SN_MediaStorage::_createThumbnail(const QString &fpath, SAGENext::MEDIA_
     QString thumbpath = QDir::homePath() + "/.sagenext/.thumbnails/.thumb." + fi.fileName() + ".jpg";
 
     if (pixmap.load(thumbpath)) {
-        qDebug() << "SN_MediaStorage::_createThumbnail() : loading existing thumbnail : " << thumbpath;
+//        qDebug() << "SN_MediaStorage::_createThumbnail() : loading existing thumbnail : " << thumbpath;
     }
 
     // Create one
     else {
-        qDebug() << "SN_MediaStorage::_createThumbnail() : creating thumbnail for : " << thumbpath;
+//        qDebug() << "SN_MediaStorage::_createThumbnail() : creating thumbnail for : " << fpath;
         if (mtype == SAGENext::MEDIA_TYPE_PDF) {
             saveThumbnail = _readPDF(fpath, pixmap);
         }
@@ -244,7 +244,7 @@ bool SN_MediaStorage::_readPlugin(const QString &filename, QPixmap& pixmap) {
 bool SN_MediaStorage::_readImage(const QString &filepath,  QPixmap& pixmap) {
     // Create new thumbnail
     if (!pixmap.load(filepath)) {
-        qWarning("%s::%s() : Couldn't create the thumbnail for %s",metaObject()->className(), __FUNCTION__, qPrintable(filepath));
+        qWarning("%s::%s() : Couldn't create a thumbnail for %s",metaObject()->className(), __FUNCTION__, qPrintable(filepath));
         return false;
     }
     else {
@@ -259,7 +259,7 @@ bool SN_MediaStorage::_readPDF(const QString &fpath, QPixmap& pixmap) {
     bool ret = false;
 
     if (!_document || _document->isLocked()) {
-        qCritical("%s::%s() : Couldn't open pdf file %s", metaObject()->className(), __FUNCTION__, qPrintable(fpath));
+        qCritical("%s::%s() : Couldn't open a pdf file %s", metaObject()->className(), __FUNCTION__, qPrintable(fpath));
         ret = false;
     } else {
         Poppler::Page *_currentPage = _document->page(0);
@@ -296,7 +296,7 @@ bool SN_MediaStorage::_readVideo(const QString &filepath, QPixmap & pixmap) {
 //    proc->start(program, arguments, QIODevice::ReadOnly);
 //    if (proc->waitForFinished()) {
         if (!pixmap.load("00000001.jpg")) {
-            qWarning("%s::%s() : Couldn't create the thumbnail for %s", metaObject()->className(), __FUNCTION__, qPrintable(filepath));
+            qWarning("%s::%s() : Couldn't create a thumbnail for %s", metaObject()->className(), __FUNCTION__, qPrintable(filepath));
 //            delete proc;
             return false;
         }
