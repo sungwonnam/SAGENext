@@ -185,33 +185,34 @@ SN_VNCClientWidget::~SN_VNCClientWidget() {
 
 	if (_vncclient) {
 		rfbClientCleanup(_vncclient); // _vncclient will be freed in this function
+
+		if (_useOpenGL && glIsTexture(_texid)) {
+			glDeleteTextures(1, &_texid);
+		}
+
+		if (_usePbo) {
+        	for (int i=0; i<2; i++) {
+            	_pbobuf[i]->destroy();
+            	delete _pbobuf[i];
+        	}
+        	QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
+
+			if (_pbobufferready) {
+				__bufferMapped = true;
+				pthread_cond_signal(_pbobufferready);
+			}
+			if (_pbomutex) {
+				pthread_mutex_unlock(_pbomutex);
+			//	pthread_mutex_destroy(_mutex);
+			}
+
+			free(_pbobufferready);
+			free(_pbomutex);
+		}
 	}
 
 	if (_image) delete _image;
 
-	if (_useOpenGL && glIsTexture(_texid)) {
-		glDeleteTextures(1, &_texid);
-	}
-
-	if (_usePbo) {
-        for (int i=0; i<2; i++) {
-            _pbobuf[i]->destroy();
-            delete _pbobuf[i];
-        }
-        QGLBuffer::release(QGLBuffer::PixelUnpackBuffer);
-
-		if (_pbobufferready) {
-			__bufferMapped = true;
-			pthread_cond_signal(_pbobufferready);
-		}
-		if (_pbomutex) {
-			pthread_mutex_unlock(_pbomutex);
-			//	pthread_mutex_destroy(_mutex);
-		}
-
-		free(_pbobufferready);
-		free(_pbomutex);
-	}
     qDebug() << "~SN_VNCClientWidget()";
 }
 
