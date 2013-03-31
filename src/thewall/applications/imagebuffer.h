@@ -22,6 +22,7 @@ class ImageBuffer : public QObject
 public:
     ImageBuffer(int size, bool dropFrame);
     void addFrame(const Mat& frame);
+    void addFrame(QImage img);
     void clearBuffer();
     QImage getFrame();
     int getSizeOfImageBuffer();

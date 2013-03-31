@@ -15,6 +15,33 @@ QImage ImageBuffer::convertMattoQImage(const Mat& frame){
     return (QImage(frame.data, frame.size().width, frame.size().height, frame.step, QImage::Format_RGB888).rgbSwapped());
 }
 
+void ImageBuffer::addFrame(QImage image) {
+    qDebug() << "addFrame(): ImageBuffer -> Adding Frame";
+    _clearBuffer1->acquire();
+    qDebug() << "addFrame(): ImageBuffer -> Aquired clearBuffer1";
+    if(_dropFrame) {
+        if(_numFrames < _bufferSize){
+            // Try and acquire semaphore to add frame
+            _imageQueueProtect.lock();
+            qDebug() << "addFrame(): ImageBuffer -> Aquired lockedImageQueueProtect";
+            _numFrames++;
+            _imageQueue.enqueue(image);
+            //qDebug() << "addFrame -> emitting haveNewImage signal";
+            emit haveNewImage(&image);
+            qDebug() << "addFrame(): ImageBuffer -> Added Frame...Num Frames: " << _numFrames;
+            _imageQueueProtect.unlock();
+            qDebug() << "addFrame(): ImageBuffer -> Unlock lockedImageQueueProtect";
+        }
+        else {
+            _clearBuffer1->release();
+            qDebug() << "addFrame(): ImageBuffer -> Release clearbuffer1";
+            clearBuffer();
+        }
+    }
+    _clearBuffer1->release();
+    qDebug() << "addFrame(): ImageBuffer -> Release clearbuffer1";
+}
+
 void ImageBuffer::addFrame(const Mat& frame) {
     qDebug() << "addFrame(): ImageBuffer -> Adding Frame";
     _clearBuffer1->acquire();

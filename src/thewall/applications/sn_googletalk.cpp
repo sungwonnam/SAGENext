@@ -12,17 +12,23 @@ SN_GoogleTalk::SN_GoogleTalk(const quint64 globalAppId, const QSettings *s, SN_R
     _layout = new QGraphicsLinearLayout(this);
 
     _cameraBuffer = new ImageBuffer(100000, true);
-    _sendStream = new SN_VideoStream(globalAppId, s, rm, parent, wFlags, _cameraBuffer);
+    //_sendStream = new SN_VideoStream(globalAppId, s, rm, parent, wFlags, _cameraBuffer);
 
     //_recvBuffer = new ImageBuffer(10000, true);
-    //_recvStream = new SN_StreamDisplay(globalAppId, s, rm, parent, wFlags, _recvBuffer);
+    _recvStream = new SN_StreamDisplay(globalAppId, s, rm, parent, wFlags, _recvBuffer);
 
 
-    QObject::connect(this, SIGNAL(drawImage(QImage*)), _sendStream,  SLOT(changeImage(QImage*)));
+    //QObject::connect(this, SIGNAL(drawImage(QImage*)), _sendStream,  SLOT(changeImage(QImage*)));
     QObject::connect(_cameraBuffer, SIGNAL(haveNewImage(QImage*)), this, SLOT(haveNewImage(QImage*)));
 
     _client = new VideoStreamClient();
-    _client->connectToGTalk("siddharthhsathyam", "evltestgmailaccount");
+
+    // yes I know this the worst practice EVER
+    _client->connectToGTalk("siddharthhsathyam", "eqsyhmkezcblxfek");
+
+    QObject::connect(_client, SIGNAL(callConnected()),_recvStream, SLOT(call_connected()));
+    QObject::connect(_client, SIGNAL(callStarted(QXmppCall*)), _recvStream, SLOT(callStd(QXmppCall*)));
+    QObject::connect(_client, SIGNAL(haveNewCall(QXmppCall*)), _recvStream, SLOT(callRecvd(QXmppCall*)));
 
     //_layout->addItem(_sendStream);
     //_layout->addItem(_recvStream);
@@ -43,5 +49,5 @@ void SN_GoogleTalk::haveNewImage(QImage* f){
 
 
 void SN_GoogleTalk::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget){
-    _sendStream->paint(painter, option, widget);
+    //_sendStream->paint(painter, option, widget);
 }

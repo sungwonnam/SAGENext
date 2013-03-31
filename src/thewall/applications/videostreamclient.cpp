@@ -1,5 +1,4 @@
 #include "videostreamclient.h"
-//#include "googletalkpresence.h"
 #include "gvideopresence.h"
 #include <qxmpp/QXmppClient.h>
 #include <qxmpp/QXmppRosterManager.h>
@@ -12,24 +11,27 @@
 #include <QHostAddress>
 
 VideoStreamClient::VideoStreamClient() :
-    QObject(), _isConnected(false)
+    QObject()
 {
+    _client = new QXmppClient(this);
+    _isConnected = false;
     _callmanager = new QXmppCallManager;
-    _callmanager->setStunServer(QHostAddress("stun.l.google.com"), 19302);
-    _client.addExtension(_callmanager);
+    _callmanager->setStunServer(QHostAddress("stun.l.google.com"),19302);
+    _client->addExtension(_callmanager);
 
     QObject::connect(_callmanager,
                      SIGNAL(callReceived(QXmppCall *)),
                      this,
-                     SLOT(callReceived(QXmppCall *)));
+                     SLOT(callRecvd(QXmppCall*)));
 
     QObject::connect(_callmanager,
                      SIGNAL(callStarted(QXmppCall *)),
                      this,
-                     SLOT(callStarted(QXmppCall *)));
+                     SLOT(callStd(QXmppCall *)));
 
 
-    QXmppRosterManager* rst = _client.findExtension<QXmppRosterManager>();
+    QXmppRosterManager* rst = _client->findExtension<QXmppRosterManager>();
+
     if(rst){
         QObject::connect(rst,
                          SIGNAL(rosterReceived()),
@@ -37,11 +39,10 @@ VideoStreamClient::VideoStreamClient() :
                          SLOT(rosterReceived()));
     }
 
-    _client.logger()->setLoggingType(QXmppLogger::StdoutLogging);
+    _client->logger()->setLoggingType(QXmppLogger::StdoutLogging);
     _gtalkconfig.setPort(5222);
     _gtalkconfig.setDomain("gmail.com");
     _gtalkconfig.setHost("talk.google.com");
-    _gtalkconfig.setStreamSecurityMode(_gtalkconfig.TLSRequired);
 }
 
 void VideoStreamClient::connectToGTalk(const QString username, const QString password){
@@ -49,41 +50,27 @@ void VideoStreamClient::connectToGTalk(const QString username, const QString pas
     _gtalkconfig.setPassword(password);
     //p.setAvailableStatusType(QXmppPresence::Online);
     // EXPERIMENTAL: TRY AND SET THE GOOGLE CAPABILITY FOR VOICE + VIDEO
-    _client.connectToServer(_gtalkconfig, GVideoPresence());
+    _client->connectToServer(_gtalkconfig);
 }
 
 void VideoStreamClient::rosterReceived(){
-    _client.sendPacket(GVideoPresence());
+    _client->sendPacket(GVideoPresence());
 }
 
-void VideoStreamClient::callReceived(QXmppCall *call){
-    _currCall = call;
-
-    QObject::connect(_currCall,
-                     SIGNAL(connected()),
-                     this,
-                     SLOT(callConnected()));
-
-
-    QObject::connect(_currCall, SIGNAL(videoModeChanged(QIODevice::OpenMode)), this, SLOT(videoModeChanged(QIODevice::OpenMode)));
-
-    call->accept();
+void VideoStreamClient::recieved_call_from_manager(QXmppCall *call){
+    emit haveNewCall(call);
 }
 
-void VideoStreamClient::callStarted(QXmppCall *call){
-    _currCall = call;
+void VideoStreamClient::call_Connected(){
+    emit callConnected();
 }
 
-void VideoStreamClient::callConnected(){
-    if (_currCall->direction() == QXmppCall::OutgoingDirection)
-            _currCall->startVideo();
+void VideoStreamClient::startNewCall(const QString user){
 
-}
-
-void VideoStreamClient::videoModeChanged(QIODevice::OpenMode){
-    int i = 0;
 }
 
 VideoStreamClient::~VideoStreamClient(){
     // delete stuff here
+    delete _callmanager;
+    delete _client;
 }

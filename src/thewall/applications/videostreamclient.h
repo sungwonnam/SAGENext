@@ -7,6 +7,7 @@
 #include <qxmpp/QXmppCallManager.h>
 #include <qxmpp/QXmppConfiguration.h>
 
+
 class VideoStreamClient : public QObject
 {
     Q_OBJECT
@@ -15,22 +16,22 @@ public:
     void connectToGTalk(const QString username, const QString password);
     ~VideoStreamClient();
 signals:
-
-public slots:
-    void callReceived(QXmppCall* call);
+    void haveNewCall(QXmppCall* call);
+    void callTerminated(QXmppCall* call);
     void callStarted(QXmppCall* call);
     void callConnected();
-    void videoModeChanged(QIODevice::OpenMode);
+
+public slots:
     void rosterReceived();
+    void startNewCall(const QString user);
+    void recieved_call_from_manager(QXmppCall* call);
+    void call_Connected();
 
 private:
 
     QXmppConfiguration _gtalkconfig;
-
     QXmppCallManager* _callmanager;
-    QXmppCall* _currCall;
-
-    QXmppClient _client;
+    QXmppClient* _client;
     QStringList _roster;
     bool _isConnected;
 
