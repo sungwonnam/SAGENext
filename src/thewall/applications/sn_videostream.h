@@ -8,6 +8,7 @@
 #define SN_VIDEOSTREAM_H
 #include "sn_displaystreambase.h"
 #include "capturethread.h"
+#include "sendthread.h"
 
 using namespace cv;
 

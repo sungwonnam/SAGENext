@@ -1,13 +1,17 @@
 #include "receivethread.h"
 
 ReceiveThread::ReceiveThread(QXmppRtpVideoChannel *chan, ImageBuffer *buf, QObject *parent)
-    :QThread(parent), recv_buffer(buf), recv_channel(chan)
+    :QThread(parent), recv_channel(chan), recv_buffer(buf)
 {
     recv_timer.setInterval(1);
     QObject::connect(&recv_timer, SIGNAL(timeout()), this, SLOT(readFrames()));
 }
 
 ReceiveThread::~ReceiveThread(){
+
+}
+
+void ReceiveThread::stopReceiveThread(){
 
 }
 

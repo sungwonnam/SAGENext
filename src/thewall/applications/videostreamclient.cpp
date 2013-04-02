@@ -22,12 +22,12 @@ VideoStreamClient::VideoStreamClient() :
     QObject::connect(_callmanager,
                      SIGNAL(callReceived(QXmppCall *)),
                      this,
-                     SLOT(callRecvd(QXmppCall*)));
+                     SLOT(received_call_from_manager(QXmppCall*)));
 
     QObject::connect(_callmanager,
                      SIGNAL(callStarted(QXmppCall *)),
                      this,
-                     SLOT(callStd(QXmppCall *)));
+                     SLOT(call_started(QXmppCall*)));
 
 
     QXmppRosterManager* rst = _client->findExtension<QXmppRosterManager>();
@@ -57,7 +57,7 @@ void VideoStreamClient::rosterReceived(){
     _client->sendPacket(GVideoPresence());
 }
 
-void VideoStreamClient::recieved_call_from_manager(QXmppCall *call){
+void VideoStreamClient::received_call_from_manager(QXmppCall *call){
     emit haveNewCall(call);
 }
 
@@ -67,6 +67,10 @@ void VideoStreamClient::call_Connected(){
 
 void VideoStreamClient::startNewCall(const QString user){
 
+}
+
+void VideoStreamClient::call_started(QXmppCall* call){
+    emit callStarted(call);
 }
 
 VideoStreamClient::~VideoStreamClient(){

@@ -24,8 +24,9 @@ signals:
 public slots:
     void rosterReceived();
     void startNewCall(const QString user);
-    void recieved_call_from_manager(QXmppCall* call);
+    void received_call_from_manager(QXmppCall* call);
     void call_Connected();
+    void call_started(QXmppCall* call);
 
 private:
 

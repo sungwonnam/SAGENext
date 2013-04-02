@@ -1,25 +1,31 @@
-#ifndef RECEIVETHREAD_H
-#define RECEIVETHREAD_H
+#ifndef SENDTHREAD_H
+#define SENDTHREAD_H
 
 #include <QThread>
-#include <qxmpp/QXmppRtpChannel.h>
-#include "imagebuffer.h"
 #include <QTimer>
+#include "imagebuffer.h"
+#include <qxmpp/QXmppRtpChannel.h>
 
-class ReceiveThread : public QThread
+class SendThread : public QThread
 {
     Q_OBJECT
 public:
-    ReceiveThread(QXmppRtpVideoChannel* chan, ImageBuffer* buf, QObject *parent = 0);
-    ~ReceiveThread();
+    SendThread(ImageBuffer* buffer, QXmppRtpVideoChannel* channel, QObject *parent = 0);
+    ~SendThread();
 
-    void stopReceiveThread();
+    void stopSendThread();
+    
+public slots:
+    void writeFrames();
+
 private:
-    QXmppRtpVideoChannel *recv_channel;
-    QImage QXmppVideoFrameToQImage(QXmppVideoFrame &frame);
-    QTimer recv_timer;
-    ImageBuffer* recv_buffer;
+    QXmppRtpVideoChannel* send_channel;
+    QXmppVideoFrame QImageToQXmppVideoFrame(QImage img);
+    QTimer send_timer;
+    ImageBuffer* send_buffer;
 
+    // TODO: Consolidate these methods that are used in the receive thread into something that we don't
+    // have to repeat
     // Methods for converting between RGB <=> YUV.
     // Taken from GitHub project about a QXmpp sample app
     // HypersayanX VOIP Test
@@ -34,11 +40,8 @@ private:
     qint32 yuv2g(quint8 y, quint8 u, quint8 v);
     qint32 yuv2b(quint8 y, quint8 u, quint8 v);
 
-public slots:
-    void readFrames();
-
-protected:
+ protected:
     void run();
 };
 
-#endif // RECEIVETHREAD_H
+#endif // SENDTHREAD_H
