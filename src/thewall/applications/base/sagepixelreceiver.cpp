@@ -127,10 +127,12 @@ void SN_SagePixelReceiver::run() {
 	/*
 	 * Initially store current affinity settings of this thread using NUMA API
 	 */
+#ifdef Q_OS_LINUX
 	if (_affInfo) {
 		_affInfo->figureOutCurrentAffinity();
 		_affInfo->setCpuOfMine( sched_getcpu() , _settings->value("system/sailaffinity", false).toBool());
 	}
+#endif
 
     //
 	// Actual time elapsed

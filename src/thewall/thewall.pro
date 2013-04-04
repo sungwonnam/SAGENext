@@ -1,7 +1,7 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-04-08T11:36:20
 # -------------------------------------------------
-QT += network opengl
+QT += network opengl declarative
 TARGET = sagenext
 TEMPLATE = app
 
