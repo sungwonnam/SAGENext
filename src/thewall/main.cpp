@@ -1,11 +1,3 @@
-#ifdef QT5
-#include <QtWidgets>
-#include <QApplication>
-#else
-#include <QtGui/QApplication>
-#endif
-
-//#include "settingdialog.h"
 #include "settingstackeddialog.h"
 #include "sagenextscene.h"
 #include "sagenextviewport.h"

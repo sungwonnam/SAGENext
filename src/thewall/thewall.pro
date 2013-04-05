@@ -8,6 +8,7 @@ TEMPLATE = app
 greaterThan(QT_MAJOR_VERSION, 4) {
 	message("Qt 5 detected: $$QT_VERSION")
 	QT	+= gui widgets concurrent
+    QT -= opengl
 	DEFINES += QT5
 }
 
@@ -48,7 +49,7 @@ linux-g++|linux-g++-64 {
 # If unix (linux, mac)
 # unix includes linux-g++  linux-g++-64    macx  macx-g++  symbian ...
 unix {
-    INCLUDEPATH += /usr/include
+    #INCLUDEPATH += /usr/include
 
 #
 # Use pkg-config
@@ -88,6 +89,10 @@ unix {
 # configure poppler with --enable-poppler-qt4  (you might need to compile/install openjpeg)
 # Add POPPLER_INSTALL_PATH/lib/pkgconfig in PKG_CONFIG_PATH
 #
+greaterThan(QT_MAJOR_VERSION, 4) {
+message("Qt5 can't be used with poppler-qt4. Disabling PDF widget")
+}
+else {
     packagesExist(poppler-qt4) {
         message("Linking poppler-qt4 lib")
     	PKGCONFIG += poppler-qt4
@@ -95,6 +100,7 @@ unix {
     else {
         error("Missing Package : poppler-qt4 is required")
     }
+}
 } # end of unix{}
 
 
@@ -104,16 +110,16 @@ unix {
 # Qwt
 # Use $$(..) to obtain contents of an environment variable
 #
-QWT_HOME = $$(HOME)/Dev/qwt-6.0.1
-exists( $$QWT_HOME/lib/libqwt.so ) {
-    message("Package Qwt is available")
-    INCLUDEPATH += $${QWT_HOME}/include
-	LIBS += -L$${QWT_HOME}/lib -lqwt
-    DEFINES += USE_QWT
-}
-else {
-    warning("Missing Package : Qwt is not available, but continue")
-}
+#QWT_HOME = $$(HOME)/Dev/qwt-6.0.1
+#exists( $$QWT_HOME/lib/libqwt.so ) {
+#    message("Package Qwt is available")
+#    INCLUDEPATH += $${QWT_HOME}/include
+#	LIBS += -L$${QWT_HOME}/lib -lqwt
+#    DEFINES += USE_QWT
+#}
+#else {
+#    warning("Missing Package : Qwt is not available, but continue")
+#}
 
 
 
@@ -177,7 +183,7 @@ message("Thumbnail dir is $${THUMBNAIL_DIR}")
 
 
 # where to put TARGET file
-DESTDIR = ../../
+#DESTDIR = ../../
 #CONFIG(debug, debug|release):DESTDIR += debug
 #CONFIG(release, debug|release):DESTDIR += release
 
@@ -286,7 +292,10 @@ applications/sn_sagestreammplayer.h \
 applications/sn_fittslawtest.h \
 applications/sn_pdfvieweropenglwidget.h
 
-
+greaterThan(QT_MAJOR_VERSION, 4) {
+HEADERS -= applications/sn_pdfvieweropenglwidget.h
+SOURCES -= applications/sn_pdfvieweropenglwidget.cpp
+}
 
 
 

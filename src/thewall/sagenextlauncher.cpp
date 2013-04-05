@@ -14,14 +14,16 @@
 #include "applications/base/appinfo.h"
 #include "applications/base/perfmonitor.h"
 #include "applications/base/affinityinfo.h"
-//#include "applications/base/sagestreamwidget.h"
+#include "applications/base/sagestreamwidget.h"
 
-//#include "applications/sn_fittslawtest.h"
-//#include "applications/sn_sagestreammplayer.h"
+#include "applications/sn_fittslawtest.h"
+#include "applications/sn_sagestreammplayer.h"
 #include "applications/pixmapwidget.h"
-//#include "applications/sn_pdfvieweropenglwidget.h"
-//#include "applications/vncwidget.h"
-//#include "applications/webwidget.h"
+#ifndef QT5
+#include "applications/sn_pdfvieweropenglwidget.h"
+#endif
+#include "applications/vncwidget.h"
+#include "applications/webwidget.h"
 #include "applications/sn_checker.h"
 #include "applications/sn_mediabrowser.h"
 
@@ -152,7 +154,6 @@ void SN_Launcher::_createFsManager() {
 }
 
 SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &mediafilepath, fsManagerMsgThread *fsmThread) {
-    /****
 	SN_SageStreamWidget *sw = 0;
 	QPointF pos;
 
@@ -261,15 +262,12 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &m
 	}
 
 	return launch(sw, pos);
-    ***/
-    return 0;
 }
 
 
 
 
 SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, const QPointF &scenepos, const QString &senderIP, const QString &args, const QString &sageappname, quint64 gaid /* 0 */) {
-/*
 	SN_SageStreamWidget *sws = 0;
 
 	QString cmd;
@@ -431,7 +429,6 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
         }
     }
     
-    */
     return 0;
 }
 
@@ -512,11 +509,9 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 	// filename is used for web url string
 	//
 	case SAGENext::MEDIA_TYPE_WEBURL: {
-/*
 		SN_WebWidget *ww = new SN_WebWidget(GID, _settings, 0, Qt::Window);
 		w = ww;
 		ww->setUrl( filename );
-        */
 		break;
 	}
 
@@ -525,11 +520,11 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 		// Args needed : filename
 		//
 	case SAGENext::MEDIA_TYPE_PDF: {
-        /*
+#ifndef QT5
 //		SN_PDFViewerWidget *pdfviewer = new SN_PDFViewerWidget(filename, GID, _settings, 0, Qt::Widget);
         SN_PDFViewerOpenGLWidget* pdfviewer = new SN_PDFViewerOpenGLWidget(filename, GID, _settings, 0, Qt::Widget);
 		w = pdfviewer;
-        */
+#endif
 		break;
 	}
 
@@ -596,12 +591,9 @@ SN_BaseWidget * SN_Launcher::launch(int type, const QString &filename, const QPo
 
 SN_BaseWidget * SN_Launcher::launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate, const QPointF &scenepos /*= QPointF()*/, quint64 gaid /* 0 */) {
 	//	qDebug() << "launch" << username << vncPasswd;
-    /*
     quint64 GID = _getUpdatedGlobalAppId(gaid);
 	SN_BaseWidget *w = new SN_VNCClientWidget(GID, vncServerIP, display, username, vncPasswd, framerate, _settings);
 	return launch(w, scenepos);
-    */
-    return 0;
 }
 
 /**
