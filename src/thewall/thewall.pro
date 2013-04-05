@@ -12,6 +12,7 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 }
 
 QTWEBKIT = $$(QTWEBKIT_DIR)
+# if user hasn't defined his own QtWebKit module then use Qt's built-in QtWebKit module
 isEmpty(QTWEBKIT) {
     QT += webkit
 	greaterThan(QT_MAJOR_VERSION, 4) {
@@ -20,10 +21,13 @@ isEmpty(QTWEBKIT) {
 }
 else {
 #
-# QtWebKit is built separately from WebKit source code using Tools/Scripts/build-webkit --qt --3d-canvas --3d-rendering --accelerated-2d-canvas
+# QtWebKit can be built separately from the WebKit source code using
+# Tools/Scripts/build-webkit --qt --3d-canvas --3d-rendering --accelerated-2d-canvas // QtWebKit-2.2
+# Tools/Scripts/build-webkit --qt --wegbgl --3d-rendering --accelerated-2d-canvas // QtWebKit-2.3
 #
     message("Using a custom QtWebKit library: $$(QTWEBKIT)")
     QT -= webkit
+	greaterThan(QT_MAJOR_VERSION, 4) : QT -= webkitwidgets
 
     message("$$(QTWEBKIT_DIR)/include/QtWebKit")
     INCLUDEPATH += $$(QTWEBKIT_DIR)/include/QtWebKit

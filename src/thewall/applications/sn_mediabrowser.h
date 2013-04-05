@@ -5,8 +5,12 @@
 #include "../common/commondefinitions.h"
 #include "../common/commonitem.h"
 
+#ifdef QT5
+#include <QtWidgets>
+#else
 #include <QtGui>
 #include <QtCore>
+#endif
 
 class SN_Launcher;
 class SN_MediaStorage;

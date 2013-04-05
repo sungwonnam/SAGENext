@@ -8,7 +8,11 @@
 
 #include <QFutureWatcher>
 
+#ifdef QT5
+#include <QOpenGLBuffer>
+#else
 #include <QtOpenGL>
+#endif
 
 /*!
   This application read image files and display

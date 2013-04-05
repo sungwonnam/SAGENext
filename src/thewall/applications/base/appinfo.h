@@ -3,7 +3,11 @@
 
 #include "../../common/commondefinitions.h"
 
+#ifdef QT5
+#include <QtWidgets>
+#else
 #include <QtCore>
+#endif
 
 /**
   * AppInfo class maintains app specific information

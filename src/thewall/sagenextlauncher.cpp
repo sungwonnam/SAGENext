@@ -31,6 +31,9 @@
 
 #include <QtDeclarative>
 
+
+#include <unistd.h>
+
 /*
   this is for launchRatko..()
 

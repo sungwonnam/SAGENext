@@ -7,13 +7,13 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include <QtGui>
 #include <QGLPixelBuffer>
 
 #ifdef QT5
 #include <QtConcurrent>
 #include <QOpenGLBuffer>
 #else
+#include <QtGui>
 #include <QGLBuffer>
 #endif
 

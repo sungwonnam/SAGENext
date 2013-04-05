@@ -3,7 +3,13 @@
 
 #include "basewidget.h"
 
+#ifdef QT5
+//#include <QtWidgets>
+#else
 #include <QtGlobal>
+#endif
+
+#undef max
 #include <QtCore>
 
 

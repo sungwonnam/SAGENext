@@ -1,5 +1,6 @@
 #ifdef QT5
 #include <QtWidgets>
+#include <QApplication>
 #else
 #include <QtGui/QApplication>
 #endif
@@ -14,9 +15,9 @@
 #include "uiserver/uiserver.h"
 #include "uiserver/fileserver.h"
 
-#include "applications/base/affinityinfo.h"
+//#include "applications/base/affinityinfo.h"
 //#include "applications/sn_mediabrowser.h"
-#include "applications/sn_checker.h"
+//#include "applications/sn_checker.h"
 //#include "applications/sn_pboexample.h"
 //#include "applications/vncwidget.h"
 
@@ -49,20 +50,17 @@ void setViewAttr(SN_Viewport *view, const QSettings &s);
 int main(int argc, char *argv[])
 {
 
-
 #ifdef Q_WS_X11
-	/********
-The GL libraries that ship with recent versions of Windows and Mac OS X are thread-safe,
-but under Unix/X11 this might not always be the case, so you should check this.
+//The GL libraries that ship with recent versions of Windows and Mac OS X are thread-safe,
+//but under Unix/X11 this might not always be the case, so you should check this.
 
-An additional problem under X11 is that Xlib (and therefore GLX) is not inherently thread-safe;
-doing Xlib calls in two different threads simultaneously will usually result in a crash.
-The GLX functions that the QGL module calls (e.g. for switching GL contexts, or for doing a buffer swap)
-also make Xlib calls which means that these calls must be protected in some way under X11.
-The simple solution is to call XInitThreads() before creating the QApplication object in your program.
-XInitThreads() must be the first Xlib call made in an application for it to work reliably.
-This will in effect make Xlib thread-safe.
-****************/
+//An additional problem under X11 is that Xlib (and therefore GLX) is not inherently thread-safe;
+//doing Xlib calls in two different threads simultaneously will usually result in a crash.
+//The GLX functions that the QGL module calls (e.g. for switching GL contexts, or for doing a buffer swap)
+//also make Xlib calls which means that these calls must be protected in some way under X11.
+//The simple solution is to call XInitThreads() before creating the QApplication object in your program.
+//XInitThreads() must be the first Xlib call made in an application for it to work reliably.
+//This will in effect make Xlib thread-safe.
 	//XInitThreads(); // to ensure Xlib thread-safeness
 	QCoreApplication::setAttribute(Qt::AA_X11InitThreads);
 
@@ -315,6 +313,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
           set system arch. related parameters
           These values are provided by a user
           */
+    /*
 	bool ok = false;
 	int tmp = -1;
 	tmp = s.value("system/numnumanodes").toInt(&ok);
@@ -331,6 +330,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 	tmp = s.value("system/numcpus").toInt(&ok);
 	AffinityInfo::Num_Cpus = ok ? tmp : -1;
+    */
 
 
 
@@ -596,7 +596,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 
 //	launcher->launchScenario( QDir::homePath() + "/.sagenext/test.scenario" );
-	launcher->launch(new SN_CheckerGLPBO(GL_RGB, QSize(320,200), 24, 0, &s, resourceMonitor));
+//	launcher->launch(new SN_CheckerGLPBO(GL_RGB, QSize(320,200), 24, 0, &s, resourceMonitor));
 
 
 

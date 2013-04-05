@@ -9,7 +9,10 @@
 
 //#include "../../system/resourcemonitor.h"
 
+#ifdef QT5
+#else
 #include <QtGui>
+#endif
 
 #if QT_VERSION < 0x040700
 #include <sys/time.h>
@@ -718,9 +721,13 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 	// The application window shouldn't be too small
 	if ( tick < 0  &&  (currentScale <= 0.05 || currentArea <= 400)) return;
 
+    /**
+      this will scale the widget based on its native size.
+      if the widget is large then scaling step will be large
+      */
 	qreal delta = (qreal)tick * factor;
-
 	currentScale += delta;
+
 
 	// Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees,
 	//the child's total transformation will be 180 degrees.

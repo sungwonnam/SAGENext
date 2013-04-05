@@ -4,32 +4,22 @@
 #include "base/railawarewidget.h"
 #include "base/basewidget.h"
 
-#include <QHostAddress>
-#include <QtCore>
-
-
-
-/*
-#if defined(Q_OS_LINUX)
-//#define GLEW_STATIC 1
-#define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glext.h>
-#elif defined(Q_OS_MAC)
-#define GL_GLEXT_PROTOTYPES
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
-#endif
-*/
 
 #include <rfb/rfbproto.h>
 #include <rfb/rfbclient.h>
 
 class QGLWidget;
 
+#include <QHostAddress>
+
+
 #ifdef QT5
+//#include <QtWidgets>
+#undef max
+#include <QtConcurrent>
 #include <QOpenGLBuffer>
 #else
+#include <QtCore>
 #include <QtOpenGL>
 class QGLBuffer;
 #endif

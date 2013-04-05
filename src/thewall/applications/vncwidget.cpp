@@ -648,32 +648,33 @@ void SN_VNCClientWidget::receivingThread() {
 
 void SN_VNCClientWidget::signal_handler(int signal)
 {
-	rfbClientLog("Cleaning up.\n");
+    Q_UNUSED(signal);
+    rfbClientLog("Cleaning up.\n");
 }
 
 rfbBool SN_VNCClientWidget::resize_func(rfbClient* client)
 {
-        static rfbBool first = TRUE;
-        if(!first) {
-                rfbClientLog("I don't know yet how to change resolutions!\n");
-                exit(1);
-        }
-        signal(SIGINT,signal_handler);
+    static rfbBool first = TRUE;
+    if(!first) {
+        rfbClientLog("I don't know yet how to change resolutions!\n");
+        exit(1);
+    }
+    signal(SIGINT,signal_handler);
 
-        int width=client->width;
-        int height=client->height;
-        int depth=client->format.bitsPerPixel;
+    int width=client->width;
+    int height=client->height;
+    int depth=client->format.bitsPerPixel;
 
-//	depth = depth / 8; // Byte
+    //	depth = depth / 8; // Byte
 
-        client->updateRect.x = client->updateRect.y = 0;
-        client->updateRect.w = width; client->updateRect.h = height;
+    client->updateRect.x = client->updateRect.y = 0;
+    client->updateRect.w = width; client->updateRect.h = height;
 
-        client->frameBuffer = (uint8_t*)malloc(width*height*depth );
-        memset(client->frameBuffer, 0, width*height*depth);
+    client->frameBuffer = (uint8_t*)malloc(width*height*depth );
+    memset(client->frameBuffer, 0, width*height*depth);
 
-        rfbClientLog("Allocate %d bytes: %d x %d x %d\n", width*height*depth, width,height,depth);
-        return TRUE;
+    rfbClientLog("Allocate %d bytes: %d x %d x %d\n", width*height*depth, width,height,depth);
+    return TRUE;
 }
 
 
@@ -714,11 +715,11 @@ char * SN_VNCClientWidget::password_func(rfbClient *)
         return str;
 }
 
-void SN_VNCClientWidget::update_func(rfbClient* client,int x,int y,int w,int h)
+void SN_VNCClientWidget::update_func(rfbClient* client,int ,int ,int ,int )
 {
         rfbPixelFormat* pf=&client->format;
         int bpp=pf->bitsPerPixel/8;
-        int row_stride = client->width*bpp;
+//        int row_stride = client->width*bpp;
 
         SN_VNCClientWidget::got_data = TRUE;
 

@@ -1,7 +1,10 @@
 #ifndef SN_PRIORITY_H
 #define SN_PRIORITY_H
 
+#ifdef QT5
+#else
 #include <QtCore>
+#endif
 #include "basewidget.h"
 #include "../../system/prioritygrid.h"
 
