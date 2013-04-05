@@ -5,6 +5,8 @@
 
 #include "common/commondefinitions.h"
 
+#include <QFileDialog>
+
 SN_Viewport::SN_Viewport(SN_TheScene *s, int viewportId, SN_Launcher *l, QWidget *parent) :
     QGraphicsView(s, parent),
     _viewportID(viewportId),

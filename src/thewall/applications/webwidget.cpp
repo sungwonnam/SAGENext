@@ -381,6 +381,7 @@ void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *p, const QPointF
 		}
 		Q_ASSERT(view);
 
+        /*
 		QMouseEvent release(QEvent::MouseButtonRelease, view->mapFromScene(scenePos), btn, btn | Qt::NoButton, Qt::NoModifier);
 		if ( ! QApplication::sendEvent(view->viewport(), &release)) {
 			qDebug() << "SN_WebWidget::handlePointerRelease() failed";
@@ -389,8 +390,21 @@ void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *p, const QPointF
 			// Now I'm mouse grabber
 //			qDebug() << "Released, mouse grabber is" << scene()->mouseGrabberItem();
 		}
+        	_gwebview->ungrabMouse();
+        */
 
-		_gwebview->ungrabMouse();
+        QGraphicsSceneMouseEvent mrelease(QEvent::GraphicsSceneMouseRelease);
+        mrelease.setScenePos(scenePos);
+        mrelease.setPos(point);
+        mrelease.setScreenPos(view->viewport()->mapToGlobal( view->mapFromScene(scenePos) ));
+        mrelease.setButton(Qt::LeftButton);
+        mrelease.setButtons(Qt::LeftButton);
+
+        QGraphicsScene *scene = scene();
+        Q_ASSERT(scene);
+        qApp->sendEvent(scene, &mrelease);
+        scene->mouseGrabberItem()->ungrabMouse();
+
 	}
 
     else if (_isResizing) {

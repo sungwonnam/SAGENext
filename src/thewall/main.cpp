@@ -1,4 +1,3 @@
-#include <QApplication>
 
 //#include "settingdialog.h"
 #include "settingstackeddialog.h"

@@ -709,6 +709,9 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
             }
             QPointF clickedViewPos = view->mapFromScene( scenePos );
 
+            /*
+             * Note that below code block (mouse press and release) won't work with Qt version higher than 4.8.0
+             *
             QMouseEvent mpe(QEvent::MouseButtonPress, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
             QMouseEvent mre(QEvent::MouseButtonRelease, clickedViewPos.toPoint(), btn, btn | Qt::NoButton, modifier);
 
@@ -730,6 +733,38 @@ void SN_PolygonArrowPointer::pointerClick(const QPointF &scenePos, Qt::MouseButt
 
                 }
             }
+            */
+
+
+            /*
+             * Below will work with Qt 4.8.1 and higher
+             */
+            QGraphicsSceneMouseEvent mpress(QEvent::GraphicsSceneMousePress);
+            QGraphicsSceneMouseEvent mouseevent(QEvent::GraphicsSceneMouseRelease);
+
+            mpress.setScenePos(scenePos);
+            mpress.setPos(scenePos);
+            Q_ASSERT(view && view->viewport());
+            mpress.setScreenPos(view->viewport()->mapToGlobal(clickedViewPos.toPoint()));
+            mpress.setButton(Qt::LeftButton);
+            mpress.setButtons(Qt::LeftButton);
+
+            mouseevent.setScenePos(scenePos);
+            mouseevent.setPos(scenePos);
+            Q_ASSERT(view && view->viewport());
+            mouseevent.setScreenPos(view->viewport()->mapToGlobal(clickedViewPos.toPoint()));
+            mouseevent.setButton(Qt::LeftButton);
+            mouseevent.setButtons(Qt::LeftButton);
+
+            if ( ! qApp->sendEvent(_scene, &mpress) ) {
+                qDebug() << "SN_PolygonArrowPointer::pointerClick() : sendevent() press failed";
+            }
+            if ( ! qApp->sendEvent(_scene, &mouseevent) ) {
+                qDebug() << "SN_PolygonArrowPointer::pointerClick() : sendevent() release failed";
+            }
+
+            if (_scene->mouseGrabberItem())
+                _scene->mouseGrabberItem()->ungrabMouse();
         }
 	}
 
@@ -776,6 +811,9 @@ void SN_PolygonArrowPointer::pointerDoubleClick(const QPointF &scenePos, Qt::Mou
     if (gview) {
         QPoint posInViewport = gview->mapFromScene(scenePos);
 
+        /**
+         * below code block doesn't work with Qt version higher than 4.8.0
+
         QMouseEvent dblClickEvent(QEvent::MouseButtonDblClick, posInViewport, btn, btn | Qt::NoButton, modifier);
 		QMouseEvent release(QEvent::MouseButtonRelease, posInViewport, btn, btn | Qt::NoButton, modifier);
 
@@ -806,6 +844,26 @@ void SN_PolygonArrowPointer::pointerDoubleClick(const QPointF &scenePos, Qt::Mou
 
 			}
 		}
+
+        **/
+
+        /*
+         * Below will work with Qt 4.8.1 and higher
+         */
+        QGraphicsSceneMouseEvent devent(QEvent::GraphicsSceneMouseDoubleClick);
+        devent.setScenePos(scenePos);
+        devent.setPos(scenePos);
+        Q_ASSERT(gview && gview->viewport());
+        devent.setScreenPos(gview->viewport()->mapToGlobal(posInViewport));
+        devent.setButton(Qt::LeftButton);
+        devent.setButtons(Qt::LeftButton);
+
+        if ( ! qApp->sendEvent(_scene, &devent) ) {
+            qDebug() << "SN_PolygonArrowPointer::pointerDoubleClick() : sendevent() dblclick failed";
+        }
+
+        if (_scene->mouseGrabberItem())
+            _scene->mouseGrabberItem()->ungrabMouse();
     }
     else {
         qDebug("SN_PolygonArrowPointer::%s() : there is no viewport widget on %.1f, %.1f", __FUNCTION__, scenePos.x(), scenePos.y());
@@ -837,7 +895,8 @@ void SN_PolygonArrowPointer::pointerWheel(const QPointF &scenePos, int delta, Qt
 
         QPoint posInViewport = gview->mapFromScene(scenePos);
 
-		QWheelEvent we(posInViewport, /*gview->mapToGlobal(scenePos.toPoint()),*/ _delta, Qt::NoButton, Qt::NoModifier);
+        /***
+		QWheelEvent we(posInViewport,  _delta, Qt::NoButton, Qt::NoModifier);
 
         //
         // system mouse should be on the widget !!
@@ -850,6 +909,20 @@ void SN_PolygonArrowPointer::pointerWheel(const QPointF &scenePos, int delta, Qt
         else {
             //qDebug() << "PolygonArrow wheel event sent" << gview->mapFromScene(scenePos);
         }
+        ***/
+
+
+        QGraphicsSceneWheelEvent wheel(QEvent::GraphicsSceneWheel);
+        wheel.setScenePos(scenePos);
+        wheel.setPos(scenePos);
+        wheel.setScreenPos(gview->viewport()->mapToGlobal(posInViewport));
+        wheel.setDelta(_delta);
+        if ( ! qApp->sendEvent(_scene, &wheel) ) {
+            qDebug() << "SN_PolygonArrowPointer::pointerWheel() : sendevent() wheel failed";
+        }
+
+        if (_scene->mouseGrabberItem())
+            _scene->mouseGrabberItem()->ungrabMouse();
     }
 }
 

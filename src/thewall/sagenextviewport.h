@@ -2,8 +2,8 @@
 #define SAGENEXTVIEWPORT_H
 
 #include <QGraphicsView>
-#include <QtGui>
 
+class QFileDialog;
 class SN_Launcher;
 class SN_TheScene;
 

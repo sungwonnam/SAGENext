@@ -2,12 +2,8 @@
 #define SAGENEXTSCENE_H
 
 #include <QGraphicsScene>
-#include <QGraphicsWidget>
 
-#include <QGraphicsLineItem>
-//#include <QGraphicsLinearLayout>
-
-#include <QSettings>
+class QSettings;
 
 class SN_PixmapButton;
 //class SN_DrawingWidget;
@@ -148,6 +144,7 @@ public slots:
 };
 
 
+#include <QGraphicsWidget>
 
 class SN_MinimizeBar : public QGraphicsWidget
 {

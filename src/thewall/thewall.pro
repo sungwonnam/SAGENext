@@ -5,6 +5,8 @@ QT += network opengl declarative
 TARGET = sagenext
 TEMPLATE = app
 
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
 
 QTWEBKIT = $$(QTWEBKIT_DIR)
 isEmpty(QTWEBKIT) {
@@ -165,7 +167,7 @@ message("Thumbnail dir is $${THUMBNAIL_DIR}")
 
 
 # where to put TARGET file
-DESTDIR = ../../
+#DESTDIR += ../../
 #CONFIG(debug, debug|release):DESTDIR += debug
 #CONFIG(release, debug|release):DESTDIR += release
 
