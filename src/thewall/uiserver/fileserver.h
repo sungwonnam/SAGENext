@@ -63,7 +63,11 @@ public:
 	inline int fileServerListenPort() const {return _fileServerPort;}
 
 protected:
-	void incomingConnection(qintptr handle);
+#ifdef QT5
+	void incomingConnection(qintptr sockfd);
+#else
+    void incomingConnection(int sockfd);
+#endif
 
 private:
 	const QSettings *_settings;

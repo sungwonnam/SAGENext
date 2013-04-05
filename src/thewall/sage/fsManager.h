@@ -48,7 +48,11 @@ protected:
 	  * increment appID
 	  * insert this connection to clientMap
 	  */
+#ifdef QT5
 	void incomingConnection(qintptr sockfd);
+#else
+    void incomingConnection(int sockfd);
+#endif
 
 private:
 	const QSettings *_settings;

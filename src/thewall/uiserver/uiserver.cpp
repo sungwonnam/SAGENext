@@ -65,7 +65,11 @@ SN_UiServer::~SN_UiServer() {
     qDebug("SN_UiServer::%s()", __FUNCTION__);
 }
 
+#ifdef QT5
 void SN_UiServer::incomingConnection(qintptr sockfd) {
+#else
+void SN_UiServer::incomingConnection(int sockfd) {
+#endif
 
     ++_uiClientId;
 

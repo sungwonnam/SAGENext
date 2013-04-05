@@ -37,7 +37,11 @@ protected:
           * creates a ui msg thread for each connection
           * insert this connection to clientMap
           */
+#ifdef QT5
 	void incomingConnection(qintptr sockfd);
+#else
+    void incomingConnection(int sockfd);
+#endif
 
 private:
         //QHostAddress uiServerIP;

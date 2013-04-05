@@ -507,7 +507,7 @@ void SN_CheckerGLPBO::doInit() {
         _pbobuf[i] = new QOpenGLBuffer(QOpenGLBuffer::PixelUnpackBuffer);
         _pbobuf[i]->setUsagePattern(QOpenGLBuffer::StreamDraw);
 #else
-        _pbobuf[i] = new QOGLBuffer(QGLBuffer::PixelUnpackBuffer);
+        _pbobuf[i] = new QGLBuffer(QGLBuffer::PixelUnpackBuffer);
         _pbobuf[i]->setUsagePattern(QGLBuffer::StreamDraw);
 #endif
         if (! _pbobuf[i]->create()) {

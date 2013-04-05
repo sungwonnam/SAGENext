@@ -29,8 +29,9 @@
 
 #include "applications/base/SN_plugininterface.h"
 
+#ifdef QT5
 #include <QtConcurrent>
-
+#endif
 #include <QtDeclarative>
 
 

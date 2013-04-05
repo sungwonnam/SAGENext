@@ -251,6 +251,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                 return;
             }
 
+
             //
             // Trigger the SN_SageStreamWidget to blocking wait (::accept()) for the streamer
             //
@@ -325,6 +326,7 @@ void fsManagerMsgThread::parseMessage(OldSage::sageMessage &sageMsg) {
                     QThread::msleep(100);
                 }
             }
+//            qDebug() << "fsManagerMsgThread::parseMessage() : " << _sageWidget << "is now waiting for the streamer";
 
             /*****************************************************
              * send SAIL_CONNECT_TO_RCV to the streamer

@@ -4,6 +4,7 @@
 #include "base/appinfo.h"
 #include "../common/commonitem.h"
 
+#include <QtGlobal>
 
 SN_PDFViewerOpenGLWidget::SN_PDFViewerOpenGLWidget(const QString filename, quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)
 	: SN_BaseWidget(globalappid, s, parent, wflags)

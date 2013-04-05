@@ -243,7 +243,11 @@ SN_FileServer::~SN_FileServer() {
 	qDebug() << "~FileServer";
 }
 
+#ifdef QT5
 void SN_FileServer::incomingConnection(qintptr handle) {
+#else
+void SN_FileServer::incomingConnection(int handle) {
+#endif
 
 	// receive uiclientid from the client
 	quint32 uiclientid = 0;

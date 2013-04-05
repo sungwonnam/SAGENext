@@ -333,6 +333,8 @@ void SN_SageStreamWidget::doInitReceiver(quint64 sageappid, const QString &appna
 	//
 	// receives REG_MSG from sail
 	//
+    qDebug() << metaObject()->className() << "::" << __FUNCTION__ << ": fsmMsgThread signaled me. Run waitForPixelStreamerConnection() in a thread";
+    qDebug() << metaObject()->className() << QThread::currentThread();
 	_streamerConnected = QtConcurrent::run(this, &SN_SageStreamWidget::waitForPixelStreamerConnection, protocol, port, appname);
 	_initReceiverWatcher.setFuture(_streamerConnected);
 }
@@ -860,21 +862,21 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 
     // accept
     /** accept will BLOCK **/
-//	qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConn() : sageappid" << _sageAppId << "Before accept(). TCP port" << protocol+port << QTime::currentTime().toString("hh:mm:ss.zzz");
+//    qDebug() << "SN_SageStreamWidget::" << __FUNCTION__ << ": sageappid" << _sageAppId << "Before accept(). TCP port" << protocol+port << QTime::currentTime().toString("hh:mm:ss.zzz");
 
     memset(&clientAddr, 0, sizeof(clientAddr));
     int addrLen = sizeof(struct sockaddr_in);
 
     //
-    // The fsmMsgThread for this widget will blocing wait for this bool variable
+    // The fsmMsgThread for this widget will blocking wait for this bool variable
     // right before it sends SAIL_CONNECT_TO_RCV to the streamer.
     //
 	_readyForStreamer = true;
 
-    //qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : about to enter blocking waiting (accept()). GID" << _globalAppId;
+//    qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : about to enter blocking waiting (accept()). GID" << _globalAppId;
 
-    if ((streamsocket = accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
-        qCritical("SageStreamWidget::%s() : accept error", __FUNCTION__);
+    if ((streamsocket = ::accept(serversocket, (struct sockaddr *)&clientAddr, (socklen_t*)&addrLen)) == -1) {
+        qCritical("SN_SageStreamWidget::%s() : accept error", __FUNCTION__);
         perror("accept");
         return -1;
     }
@@ -907,19 +909,19 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 
 
     QByteArray regMsg(OldSage::REG_MSG_SIZE, '\0');
-    int read = recv(streamsocket, (void *)regMsg.data(), regMsg.size(), MSG_WAITALL);
+    int read = ::recv(streamsocket, (void *)regMsg.data(), regMsg.size(), MSG_WAITALL);
     if ( read == -1 ) {
-        qCritical("SageStreamWidget::%s() : error while reading regMsg. %s",__FUNCTION__, "");
+        qCritical("SN_SageStreamWidget::%s() : error while reading regMsg. %s",__FUNCTION__, "");
         return -1;
     }
     else if ( read == 0 ) {
-        qCritical("SageStreamWidget::%s() : sender disconnected, while reading regMsg",__FUNCTION__);
+        qCritical("SN_SageStreamWidget::%s() : sender disconnected, while reading regMsg",__FUNCTION__);
         return -1;
     }
 
     QString regMsgStr(regMsg);
     QStringList regMsgStrList = regMsgStr.split(" ", QString::SkipEmptyParts);
-//    qDebug("SageStreamWidget::%s() : recved regMsg, port %d, sageStreamer::connectToRcv() [%s]",  __FUNCTION__, protocol+port, regMsg.constData());
+//    qDebug("SN_SageStreamWidget::%s() : recved regMsg, port %d, sageStreamer::connectToRcv() [%s]",  __FUNCTION__, protocol+port, regMsg.constData());
     int framerate = regMsgStrList.at(1).toInt();
     int groupsize = regMsgStrList.at(3).toInt(); // this is going to be the network user buffer size
 
@@ -964,8 +966,6 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
     if(_affInfo)
 		_affInfo->setWidgetID(_sageAppId);
 
-//		qDebug("SageStreamWidget::%s() : sageappid %llu, groupsize %d, frameSize(SAIL) %d, frameSize(QImage) %d, expectedFps %.2f", __FUNCTION__, sageAppId, _appInfo->getNetworkUserBufferLength(), imageSize, _appInfo->getFrameBytecount(), _perfMon->getExpetctedFps());
-
     _appInfo->setExecutableName( appname );
 
     if ( appname == "checker" || appname == "fittslawtest") {
@@ -981,7 +981,7 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 //		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : CmdArgs :" << _appInfo->cmdArgsString();
 	}
 
-    emit streamerInitialized();
+//    emit streamerInitialized();
 
 //	qDebug() << "waitForStreamerConnection returning";
 	return streamsocket;
