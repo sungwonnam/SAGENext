@@ -716,11 +716,26 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 	qreal currentArea = currentVisibleSize.width() * currentVisibleSize.height();
 
 	// The application window shouldn't be too small
-	if ( tick < 0  &&  (currentScale <= 0.05 || currentArea <= 400)) return;
+	if ( tick > 0  &&  (currentScale <= 0.05 || currentArea <= 400)) return;
 
-	qreal delta = (qreal)tick * factor;
+//	qreal delta = (qreal)tick * factor;
+//    currentScale += delta;
 
-	currentScale += delta;
+    qreal delta;
+    qreal newscale;
+
+    int temp = _settings->value("gui/imgscalingamount", 32).toInt();
+    if (tick > 0) temp *= -1;
+    if (size().width() > size().height()) {
+        newscale = (currentVisibleSize.width() + temp) / size().width();
+    }
+    else {
+        newscale = (currentVisibleSize.height() + temp) / size().height();
+    }
+
+    delta = newscale - currentScale;
+//    qDebug() << currentScale << newscale << delta;
+    currentScale = newscale;
 
 	// Note : Item transformations accumulate from parent to child, so if both a parent and child item are rotated 90 degrees,
 	//the child's total transformation will be 180 degrees.
@@ -856,14 +871,29 @@ void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QP
                 rect.adjust(0, 0, pointerDeltaX, pointerDeltaY);
             }
             else {
-                qreal adjustment = 0.0;
+                int hchange = 0;
+                int wchange = 0;
+
+                wchange = point.x() - rect.width();
+                qreal scale = point.x() / rect.width();
+                int newheight = rect.height() * scale;
+                hchange = newheight - rect.height();
+                /*
                 if (size().width() < size().height()) {
-                    adjustment = pointerDeltaX / size().width();
+                    wchange = point.x() - rect.width();
+                    qreal scale = point.x() / rect.width();
+                    int newheight = rect.height() * scale;
+                    hchange = newheight - rect.height();
                 }
                 else {
-                    adjustment = pointerDeltaY / size().height();
+                    hchange = point.y() - rect.height();
+                    qreal scale = point.y() / rect.height();
+                    int newwidth = rect.width() * scale;
+                    wchange = newwidth - rect.width();
                 }
-                rect.adjust(0, 0, rect.width() * adjustment, rect.height() * adjustment);
+                */
+                rect.adjust(0, 0, wchange, hchange);
+
             }
             _resizeRectangle->setRect(rect);
         }
