@@ -138,6 +138,11 @@ private:
 
 		void initGL(bool usepbo);
 
+        /*!
+         * \brief set to true if initGL succeed
+         */
+        bool _isGLinitialized;
+
 
 		static rfbCredential * getCredential(struct _rfbClient *client, int credentialType);
 

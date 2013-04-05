@@ -38,7 +38,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
     , _pbobufferready(0)
 
     , _initVNCtext(new QGraphicsSimpleTextItem(this))
-
+    , _isGLinitialized(false)
 	, _textureUpdateWidget(0)
 {
 	setWidgetType(SN_BaseWidget::Widget_RealTime);
@@ -189,6 +189,9 @@ SN_VNCClientWidget::~SN_VNCClientWidget() {
 		if (_useOpenGL && glIsTexture(_texid)) {
 			glDeleteTextures(1, &_texid);
 		}
+    }
+
+    if (_isGLinitialized) {
 
 		if (_usePbo) {
         	for (int i=0; i<2; i++) {
@@ -253,6 +256,7 @@ void SN_VNCClientWidget::initGL(bool usepbo) {
         _textureUpdateWidget->hide();
 	}
 
+    _isGLinitialized = true;
 }
 
 void SN_VNCClientWidget::startImageRecvThread() {
@@ -618,7 +622,7 @@ void SN_VNCClientWidget::receivingThread() {
 
 
 
-void SN_VNCClientWidget::signal_handler(int signal)
+void SN_VNCClientWidget::signal_handler(int)
 {
 	rfbClientLog("Cleaning up.\n");
 }
@@ -671,30 +675,31 @@ void SN_VNCClientWidget::frame_func(rfbClient *)
 
 rfbBool SN_VNCClientWidget::position_func(rfbClient *, int x, int y)
 {
-        Q_UNUSED(x);
-        Q_UNUSED(y);
+    Q_UNUSED(x);
+    Q_UNUSED(y);
 
-        //rfbClientLog("Received a position for %d,%d\n",x,y);
-        return TRUE;
+    //rfbClientLog("Received a position for %d,%d\n",x,y);
+    return TRUE;
 }
 
 char * SN_VNCClientWidget::password_func(rfbClient *)
 {
-        char *str = (char*)malloc(64);
-        memset(str, 0, 64);
-        strncpy(str, qPrintable(SN_VNCClientWidget::vncpasswd), 64);
-        return str;
+    char *str = (char*)malloc(64);
+    memset(str, 0, 64);
+    strncpy(str, qPrintable(SN_VNCClientWidget::vncpasswd), 64);
+    return str;
 }
 
-void SN_VNCClientWidget::update_func(rfbClient* client,int x,int y,int w,int h)
+void SN_VNCClientWidget::update_func(rfbClient* client,int ,int ,int ,int )
 {
-        rfbPixelFormat* pf=&client->format;
-        int bpp=pf->bitsPerPixel/8;
-        int row_stride = client->width*bpp;
+    rfbPixelFormat* pf=&client->format;
+    int bpp=pf->bitsPerPixel/8;
+    int row_stride = client->width*bpp;
+    Q_UNUSED(row_stride);
 
-        SN_VNCClientWidget::got_data = TRUE;
+    SN_VNCClientWidget::got_data = TRUE;
 
-        //rfbClientLog("Received an update for %d,%d,%d,%d.\n",x,y,w,h);
+    //rfbClientLog("Received an update for %d,%d,%d,%d.\n",x,y,w,h);
 }
 
 bool SN_VNCClientWidget::initPboMutex() {
