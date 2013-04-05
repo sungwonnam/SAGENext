@@ -344,7 +344,6 @@ SN_BaseWidget * SN_Launcher::launchSageApp(int mtype, const QString &filename, c
 		sws = new SN_SageStreamMplayer(GID, _settings, _rMonitor);
         sws->appInfo()->setMediaType(SAGENext::MEDIA_TYPE_LOCAL_VIDEO);
 		sws->appInfo()->setFileInfo(filename);
-        sws = 0;
 
 			//
 			// mplayer converts image frame to RGB24 using CPU
