@@ -183,7 +183,7 @@ message("Thumbnail dir is $${THUMBNAIL_DIR}")
 
 
 # where to put TARGET file
-#DESTDIR = ../../
+#DESTDIR += ../../
 #CONFIG(debug, debug|release):DESTDIR += debug
 #CONFIG(release, debug|release):DESTDIR += release
 

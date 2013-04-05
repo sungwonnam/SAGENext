@@ -1,3 +1,4 @@
+//#include "settingdialog.h"
 #include "settingstackeddialog.h"
 #include "sagenextscene.h"
 #include "sagenextviewport.h"
@@ -7,7 +8,7 @@
 #include "uiserver/uiserver.h"
 #include "uiserver/fileserver.h"
 
-//#include "applications/base/affinityinfo.h"
+#include "applications/base/affinityinfo.h"
 //#include "applications/sn_mediabrowser.h"
 //#include "applications/sn_checker.h"
 //#include "applications/sn_pboexample.h"
@@ -305,7 +306,6 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
           set system arch. related parameters
           These values are provided by a user
           */
-    /*
 	bool ok = false;
 	int tmp = -1;
 	tmp = s.value("system/numnumanodes").toInt(&ok);
@@ -322,7 +322,6 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 
 	tmp = s.value("system/numcpus").toInt(&ok);
 	AffinityInfo::Num_Cpus = ok ? tmp : -1;
-    */
 
 
 

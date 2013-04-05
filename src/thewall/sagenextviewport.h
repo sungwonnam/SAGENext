@@ -3,11 +3,12 @@
 
 #include <QGraphicsView>
 #ifdef QT5
-#include <QtWidgets>
+//#include <QtWidgets>
 #else
 #include <QtGui>
 #endif
 
+class QFileDialog;
 class SN_Launcher;
 class SN_TheScene;
 

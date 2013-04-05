@@ -179,13 +179,15 @@ SN_WebWidget::~SN_WebWidget() {
 
 
 /**
-  Because what this function does is intercepting events delivered to its children, the events must be delivered to the children.
-  Therefore, this function won't work if childs are stacked behind the parent (WebWidget)
+  Because what this function does is intercepting events which are sent to its children, the events must be sent to the children first.
+  (By default, a children item or widget is stacked on top of its parent item or widget. And scene events are delivered to the topmost item/widget first.)
+
+   Therefore, this function won't work if childs are stacked behind the parent (WebWidget)
  */
 bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 
 	//
-	// I'll only filter events delivered to the gwebview
+	// I'll only filter events sent to the gwebview
 	// So this won't be executed if the gwebview is set to be stacked behind the parent
 	//
 	if (watched == _gwebview ) {
@@ -197,38 +199,18 @@ bool SN_WebWidget::sceneEventFilter(QGraphicsItem *watched, QEvent *event) {
 			SN_BaseWidget::contextMenuEvent(e);
 
 			//
-			// Don't forward this event to the gwebview. (meaning that SN_WebWidget is going to filter this event)
-			//
+			// Filter this event == Don't forward this event to the gwebview. (meaning that SN_WebWidget is going to filter this event)
 			// Right Click is used to toggle 'selection' of the application
 			//
 			return true;
 		}
-/*
-
-  I don't need below else if block as long as I'm not going to filter
-
-		else if (event->type() == QEvent::GraphicsSceneMousePress) {
-//			qDebug() << "gwebview received pressEvent";
-
-			//
-			// First, deliver this event to BaseWidget to keep the behaviors defined in the BaseWidget
-			//
-			SN_BaseWidget::mousePressEvent((QGraphicsSceneMouseEvent *)event);
-
-			//
-			// The press event should reach to gwebview otherwise no mouse click can be done on gwebview.
-			// So, return false to forward this event to the gwebview. (meaning that SN_WebWidget is not going to filter this event)
-			//
-			return false;
-		}
-		*/
 
 		else if (event->type() == QEvent::GraphicsSceneMouseDoubleClick) {
 //			qDebug() << "webwidget received doubleClick event";
 			SN_BaseWidget::mouseDoubleClickEvent((QGraphicsSceneMouseEvent *)event);
 
 			//
-			// gwebview will not handle doubleclick
+			// Filter this event. So, the gwebview will not receive doubleclick event.
 			// The WebWidget should handle this.
 			//
 			return true;
@@ -290,11 +272,12 @@ void SN_WebWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
 		// I need to generate system mouse move event and send it to QGraphicsView (viewport of me)
 		//
 
-		Q_ASSERT(scene());
+        QGraphicsScene *mscene = scene();
+		Q_ASSERT(mscene);
 		QGraphicsView *view = 0;
 		QPointF scenePos = mapToScene(point);
 
-		foreach(QGraphicsView *v, scene()->views()) {
+		foreach(QGraphicsView *v, mscene->views()) {
 			if (!v) continue;
 
 			// geometry of widget relative to its parent
@@ -313,28 +296,24 @@ void SN_WebWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
 
 
 		/*************************
-
-		  Note that intuitive way of implementing system mouse dragging would be
+		  Note that an intuitive way of emulating system mouse dragging would be
 		  1. reimplement SN_BaseWidget::handlePointerPress() to generate system mouse press event thereby gwebview is the mouseGrabber
 		  2. reimplement SN_BaseWidget::handlePointerDrag() to generate system mouse move event
 		  3. reimplement SN_BaseWidget::handlePointerRelease() to generate system mouse release event thereby gwebview ungrab mouse
 
-		  But doing #1 makes SN_PolygonArrowPointer::pointerClick() fails when user does 'mouse click' (PRESS followed by RELEASE).
-
-		  For instance,
-		  If #1 is implemented, and user executes 'mouse click' then mousePressEvent is fired (in SN_WebWidget::handlePointerPress()) upon receiving PRESS
-		  And the second mousePressEvent will be fired upon receiving following RELEASE (in SN_PolygonArrowPointer::pointerClick())
+		  But the #1 makes SN_PolygonArrowPointer::pointerClick() fails when user does 'mouse click' (PRESS followed by RELEASE).
+		  For example, if a user executes 'mouse click' then the mousePressEvent will be generated/fired in SN_WebWidget::handlePointerPress() upon receiving the PRESS message from the uiserver.
+		  And the second mousePressEvent (which is going to be a duplicate) will be fired (in SN_PolygonArrowPointer::pointerClick()) upon receiving following RELEASE from the uiserver.
 		  This second mousePressEvent will fail and pointerClick() will return unsuccessfully.
 
 		  So the workaround is either simply not reimplementing SN_BaseWidget::handlePointerPress() or not generating system mouse press in the function.
 		  This is why mousePressEvent has to be placed in here.
 
-
-		  ALSO, this won't work when more than two users are draggin on webwidget at the same time.
+		  ALSO, this won't work when more than two users are dragging on a webwidget at the same time.
 		  This is because OS doesn't allow multiple mouse pointers (even though OS supports multiple mouse devices connected to the system, there is only one mouse pointer)
-
 		  ************/
-		if (scene()->mouseGrabberItem() != _gwebview) {
+		if (mscene->mouseGrabberItem() != _gwebview) {
+            /*
 			QMouseEvent press(QEvent::MouseButtonPress, view->mapFromScene(scenePos), button, button | Qt::NoButton, Qt::NoModifier);
 			if ( ! QApplication::sendEvent(view->viewport(), &press)) {
 				qDebug() << "SN_WebWidget::handlePointerDrag() : failed to send press event";
@@ -343,19 +322,43 @@ void SN_WebWidget::handlePointerDrag(SN_PolygonArrowPointer *pointer, const QPoi
 				// Now I'm mouse grabber
 				qDebug() << "SN_WebWidget::handlePointerDrag() : Pressed, mouse grabber is" << scene()->mouseGrabberItem();
 			}
+            */
+            QGraphicsSceneMouseEvent press(QEvent::GraphicsSceneMousePress);
+            press.setPos(point);
+            press.setScenePos(scenePos);
+            press.setScreenPos(  view->viewport()->mapToGlobal(view->mapFromScene(scenePos))  );
+            press.setButton(button);
+            press.setButtons(button | Qt::NoButton);
+            if ( ! qApp->sendEvent(mscene, &press) ) {
+                qDebug() << metaObject()->className() << "::" << __FUNCTION__ << ": sendevent() failed : I'm not a mousegrabber and failed to become one";
+            }
 		}
 
+        /*
 		QMouseEvent moveEvent(QEvent::MouseMove, view->mapFromScene(scenePos), button, button | Qt::NoButton, modifier);
 
-		// sendEvent doesn't delete event object, so event should be created in stack space
-		// also sendEvent blocks
-
+		// sendEvent doesn't delete event object, so event should be created in stack space also sendEvent blocks
 		if ( ! QApplication::sendEvent(view->viewport(), &moveEvent) ) {
 			qDebug("SN_WebWidget::%s() : sendEvent MouseMove on (%.1f,%.1f) failed", __FUNCTION__, scenePos.x(), scenePos.y());
 		}
 		else {
 			//qDebug() << "SN_WebWidget::handlePointerDrag() : moveEvent sent";
 		}
+        */
+        QGraphicsSceneMouseEvent move(QEvent::GraphicsSceneMouseMove);
+        move.setPos(point);
+        move.setScenePos(scenePos);
+        move.setScreenPos(view->viewport()->mapToGlobal( view->mapFromScene(scenePos) ));
+
+        move.setButtonDownPos(button, point);
+        move.setButtonDownScenePos(button, scenePos);
+        move.setButtonDownScreenPos(button, view->viewport()->mapToGlobal( view->mapFromScene(scenePos) ));
+
+        move.setButton(button);
+        move.setButtons(button | Qt::NoButton);
+        if ( ! qApp->sendEvent(mscene, &move) ) {
+            qDebug() << metaObject()->className() << "::" << __FUNCTION__ << ": sendevent() failed : I'm not a mousegrabber and failed to become one";
+        }
 	}
 
 	else {
@@ -388,6 +391,7 @@ void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *p, const QPointF
 		}
 		Q_ASSERT(view);
 
+        /*
 		QMouseEvent release(QEvent::MouseButtonRelease, view->mapFromScene(scenePos), btn, btn | Qt::NoButton, Qt::NoModifier);
 		if ( ! QApplication::sendEvent(view->viewport(), &release)) {
 			qDebug() << "SN_WebWidget::handlePointerRelease() failed";
@@ -396,8 +400,22 @@ void SN_WebWidget::handlePointerRelease(SN_PolygonArrowPointer *p, const QPointF
 			// Now I'm mouse grabber
 //			qDebug() << "Released, mouse grabber is" << scene()->mouseGrabberItem();
 		}
+        	_gwebview->ungrabMouse();
+        */
 
-		_gwebview->ungrabMouse();
+        QGraphicsSceneMouseEvent mrelease(QEvent::GraphicsSceneMouseRelease);
+        mrelease.setScenePos(scenePos);
+        mrelease.setPos(point);
+        mrelease.setScreenPos(view->viewport()->mapToGlobal( view->mapFromScene(scenePos) ));
+        mrelease.setButton(Qt::LeftButton);
+        mrelease.setButtons(Qt::LeftButton);
+
+        QGraphicsScene *mscene = scene();
+        Q_ASSERT(mscene);
+        qApp->sendEvent(mscene, &mrelease);
+        if ( this == mscene->mouseGrabberItem() ) ungrabMouse();
+        if (_gwebview == mscene->mouseGrabberItem() ) _gwebview->ungrabMouse();
+
 	}
 
     else if (_isResizing) {
