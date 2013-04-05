@@ -469,8 +469,9 @@ void SN_MediaBrowser::nextPage() {
 
 void SN_MediaBrowser::getParentDir() {
     if (_currentDir.cdUp()) {
-        _populateMediaItems(_currentDir);
         _currPage = 0;
+        _populateMediaItems(_currentDir);
+
     }
 }
 
