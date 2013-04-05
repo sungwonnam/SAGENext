@@ -484,7 +484,9 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
     /*!
      * Pixel width of a media thumbnail
      */
-	ui->thumbnailsize->setText(_settings->value("gui/mediathumbnailwidth", 64).toString());
+	ui->thumbnailsize->setText(_settings->value("gui/mediathumbnailwidth", 128).toString());
+
+    ui->imgScalingAmount->setText(_settings->value("gui/imgscalingamount", 32).toString());
 }
 void GuiSettingDialog::accept() {
 	_settings->setValue("gui/iconwidth", ui->iconWidth->text().toInt());
@@ -493,6 +495,7 @@ void GuiSettingDialog::accept() {
 	/* window frame margins */
 	_settings->setValue("gui/framemargin", ui->framemargin->text().toInt());
 	_settings->setValue("gui/mediathumbnailwidth", ui->thumbnailsize->text().toInt());
+    _settings->setValue("gui/imgscalingamount", ui->imgScalingAmount->text().toInt());
 
     /*!
      * put this manually here temporarily
