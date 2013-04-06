@@ -143,7 +143,6 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	 */
 	QSettings s(configFile, QSettings::IniFormat);
 
-
 	if (!recordingname.isNull() && !recordingname.isEmpty()) {
 		s.setValue("misc/record_launcher", true);
 		s.setValue("misc/record_pointer", true);

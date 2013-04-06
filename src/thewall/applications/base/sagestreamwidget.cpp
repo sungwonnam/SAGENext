@@ -354,6 +354,8 @@ void SN_SageStreamWidget::startReceivingThread() {
         m_initOpenGL();
 	}
 
+    emit streamerInitialized();
+
     //
     // create the recv thread
     //
@@ -720,7 +722,7 @@ void SN_SageStreamWidget::paint(QPainter *painter, const QStyleOptionGraphicsIte
 
 		if (_useShader) {
             //glUseProgramObjectARB(0);
-            _shaderProgram->release();
+//            _shaderProgram->release();
         }
 
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
@@ -980,8 +982,6 @@ int SN_SageStreamWidget::waitForPixelStreamerConnection(int protocol, int port, 
 //		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : Execname(sageappname) :" << _appInfo->executableName();
 //		qDebug() << "SN_SageStreamWidget::waitForPixelStreamerConnection() : CmdArgs :" << _appInfo->cmdArgsString();
 	}
-
-//    emit streamerInitialized();
 
 //	qDebug() << "waitForStreamerConnection returning";
 	return streamsocket;

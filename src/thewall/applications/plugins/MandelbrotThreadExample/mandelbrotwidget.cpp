@@ -236,4 +236,6 @@ void MandelbrotExample::scroll(int deltaX, int deltaY)
 }
 //! [18]
 
+#ifndef QT5
 Q_EXPORT_PLUGIN2(MandelbrotExamplePlugin, MandelbrotExample)
+#endif

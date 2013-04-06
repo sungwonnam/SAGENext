@@ -1,5 +1,10 @@
 QT += core gui
 
+greaterThan(QT_MAJOR_VERSION, 4) {
+	QT	+= widgets concurrent
+	DEFINES += QT5
+}
+
 TEMPLATE = lib
 CONFIG += plugin
 DESTDIR = $$(HOME)/.sagenext/media/plugins

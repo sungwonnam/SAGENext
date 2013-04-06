@@ -182,9 +182,9 @@ void SimpleGUIExample::scrollbarmoved(int val) {
     _updateLabel(QColor(val,val,val));
 }
 
-
+#ifndef QT5
 Q_EXPORT_PLUGIN2(MouseClickExamplePlugin, SimpleGUIExample)
-
+#endif
 
 
 

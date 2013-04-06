@@ -5,6 +5,9 @@
 #include "applications/base/basewidget.h"
 
 #include <QtGui>
+#ifdef QT5
+#include <QtWidgets>
+#endif
 
 class SN_ProxyPushButton;
 class SN_ProxyScrollBar;

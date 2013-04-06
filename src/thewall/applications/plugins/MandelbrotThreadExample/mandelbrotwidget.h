@@ -10,10 +10,14 @@
 #include "mandelbrotrenderer.h"
 
 #include <QtGui>
+#ifdef QT5
+#include <QtWidgets>
+#endif
 
 class MandelbrotExample : public SN_BaseWidget, SN_PluginInterface
 {
     Q_OBJECT
+
     Q_INTERFACES(SN_PluginInterface)
 
 public:

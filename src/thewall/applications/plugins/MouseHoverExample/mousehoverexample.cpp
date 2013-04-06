@@ -166,5 +166,6 @@ void MouseHoverExample::handlePointerHover(SN_PolygonArrowPointer *pointer, cons
 }
 
 
-
+#ifndef QT5
 Q_EXPORT_PLUGIN2(MouseHoverExamplePlugin, MouseHoverExample)
+#endif

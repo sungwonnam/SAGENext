@@ -21,6 +21,11 @@ public:
 	virtual SN_BaseWidget * createInstance() = 0;
 };
 
+#ifdef QT5
+#define SN_PluginInterface_iid "edu.uic.evl.SAGENext.SNInterface/0.1"
+Q_DECLARE_INTERFACE(SN_PluginInterface, SN_PluginInterface_iid)
+#else
 Q_DECLARE_INTERFACE(SN_PluginInterface, "edu.uic.evl.Sungwon.SageNext.DummyInterface/0.1")
+#endif
 
 #endif // DUMMYPLUGININTERFACE_H
