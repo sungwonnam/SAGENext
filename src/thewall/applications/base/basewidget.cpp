@@ -36,7 +36,7 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
 	, _contextMenu(0)
 
     , _isMoving(false)
-    , _isResizing(false)
+    , _isResizing(0)
     , _resizeRectangle(new QGraphicsRectItem(this))
 
     , _showInfoAction(0)
@@ -82,7 +82,7 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
 	, _contextMenu(0)
 
     , _isMoving(false)
-    , _isResizing(false)
+    , _isResizing(0)
     , _resizeRectangle(new QGraphicsRectItem(this))
 
     , _showInfoAction(0)
@@ -764,9 +764,9 @@ void SN_BaseWidget::reScale(int tick, qreal factor)
 //    qDebug() <<"scale:" << scale() << "size" << size() << "boundingRect" << boundingRect() << "geometry" << geometry() << "sceneBoundingRect" << sceneBoundingRect();
 }
 
-QRectF SN_BaseWidget::resizeHandleRect() const
+void SN_BaseWidget::resizeHandleRect() 
 {
-	QSizeF size(128, 128);
+	QSize size(64, 64);
 
     if (boundingRect().width() <= size.width()) {
         size.rwidth() = boundingRect().width() / 2;
@@ -775,37 +775,60 @@ QRectF SN_BaseWidget::resizeHandleRect() const
         size.rheight() = boundingRect().height() / 2;
     }
 
-    //
-    // bottom right corner of the window
-    //
-	QPointF pos( boundingRect().right() - size.width(), boundingRect().bottom() - size.height());
-//	return mapRectToScene(QRectF(pos, size));
-	return QRectF(pos, size);
+    // NW - top left
+    _resizeHandle_NW = QRect(QPoint(0,0), size);
+    
+    // NE - top right
+    _resizeHandle_NE = QRect(QPoint(boundingRect().width() - size.width(), 0), size);
+
+    // SW - bottom left corner
+    _resizeHandle_SW = QRect(QPoint(0, boundingRect().bottom() - size.height()), size);
+    
+    // SE - bottom right corner of the window
+    _resizeHandle_SE = QRect(QPoint(boundingRect().right() - size.width(), boundingRect().bottom() - size.height()), size);
+    
 }
 
 
 
 void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QPointF &point, Qt::MouseButton btn) {
 	Q_UNUSED(pointer);
-	Q_UNUSED(point);
-	Q_UNUSED(btn);
 
 	setTopmost();
+    
 
     if (btn == Qt::LeftButton) {
-		if (resizeHandleRect().contains(point)) {
-            _isResizing = true;
-            _isMoving = false;
-
-            _resizeRectangle->setRect(boundingRect());
-            _resizeRectangle->show();
+        // recalculate resize handle rectangles position and size
+        resizeHandleRect();
+        
+        if ( _resizeHandle_NW.contains(point.toPoint())) {
+            _isResizing = 1;
+        }
+        else if (_resizeHandle_NE.contains(point.toPoint())) {
+            _isResizing = 2;
+        }
+        else if (_resizeHandle_SW.contains(point.toPoint())) {
+            _isResizing = 3;
+        }
+        else if (_resizeHandle_SE.contains(point.toPoint())) {
+            _isResizing = 4;
         }
         else {
-            _isResizing = false;
+            _isResizing = 0;
             _isMoving = true;
         }
         
-        if (_windowState == SN_BaseWidget::W_NORMAL) {
+        if (_isResizing > 0) {
+            _isMoving = false;
+            _resizeRectangle->setRect(boundingRect());
+            _resizeRectangle->show();
+        }
+        
+        
+        //
+        // Save the widget's current geometry
+        //
+        if (_windowState & (SN_BaseWidget::W_NORMAL | SN_BaseWidget::W_MAXIMIZED)) {
             _appInfo->setRecentPos(scenePos());
             _appInfo->setRecentSize(size());
             _appInfo->setRecentScale(scale());
@@ -821,6 +844,8 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
     _isMoving = false;
 
     if (_isResizing) {
+        
+        moveBy( _resizeRectangle->rect().x() , _resizeRectangle->rect().y());
 
         //
         // now resize
@@ -840,7 +865,7 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
 
     }
     _resizeRectangle->hide();
-    _isResizing = false;
+    _isResizing = 0;
 
     // base implementation does nothing
 }
@@ -862,42 +887,58 @@ void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QP
         // resize/rescale window
         //
         else if (_isResizing) {
-
-            //
-            // show and resize the _resizeRectangle
-            //
             QRectF rect = _resizeRectangle->rect();
+            
             if (isWindow()) {
                 rect.adjust(0, 0, pointerDeltaX, pointerDeltaY);
             }
             else {
-                int hchange = 0;
-                int wchange = 0;
-
-                wchange = point.x() - rect.width();
-                qreal scale = point.x() / rect.width();
-                int newheight = rect.height() * scale;
-                hchange = newheight - rect.height();
-                /*
-                if (size().width() < size().height()) {
-                    wchange = point.x() - rect.width();
-                    qreal scale = point.x() / rect.width();
-                    int newheight = rect.height() * scale;
-                    hchange = newheight - rect.height();
+                int hchange = 0; // horizontal delta
+                int wchange = 0; // vertical delta
+                
+                qreal scale = 1.0; // scale of resulting resize rectangle
+                
+                // NW or SW
+                if (_isResizing == 1 || _isResizing == 3) {
+                    // if pos < 0 then increasing
+                    // if pos > 0 then decreasing
+                    wchange =  -1 * point.x();
                 }
+                
+                // NE or SE
                 else {
-                    hchange = point.y() - rect.height();
-                    qreal scale = point.y() / rect.height();
-                    int newwidth = rect.width() * scale;
-                    wchange = newwidth - rect.width();
+                    wchange = point.x() - boundingRect().width();
                 }
-                */
-                rect.adjust(0, 0, wchange, hchange);
-
+                
+                scale = (wchange + boundingRect().width()) / boundingRect().width();
+                hchange = boundingRect().height() * (scale - 1);
+                
+                
+                // NW
+                if (_isResizing == 1) {
+                    rect.setTopLeft(QPointF(point.x(), -1 * hchange));
+                }
+                
+                // NE
+                else if (_isResizing == 2 ) {
+                    rect.setTopLeft(QPointF(0, -1 * hchange));
+                }
+                
+                // SW
+                else if (_isResizing == 3) {
+                    rect.setTopLeft(QPointF(point.x(), 0));
+                }
+                
+                // SE
+                else if (_isResizing == 4) {
+                    rect.setTopLeft(QPointF(0, 0));
+                }
+                
+                // maintain aspect ratio
+                rect.setSize(QSizeF(boundingRect().width() + wchange, boundingRect().height() + hchange));
             }
             _resizeRectangle->setRect(rect);
         }
-
 
         else {
             // do nothing in the base implementation

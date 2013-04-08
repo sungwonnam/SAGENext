@@ -78,7 +78,7 @@ private:
 	int _granularity;
 
 	/*!
-	  scheduler instance
+	  The pointer to the Scheduler object
 	  */
 	SN_AbstractScheduler *_scheduler;
 
@@ -96,6 +96,9 @@ private:
 
     QLabel *_lbl_schedStatus;
 
+    /*!
+      A thread object the scheduler object will be running
+      */
     QThread *_sched_thread;
 
 signals:

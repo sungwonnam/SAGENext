@@ -61,8 +61,16 @@ public:
 
 
 
-        enum Window_State { W_NORMAL, W_MINIMIZED, W_MAXIMIZED, W_HIDDEN, W_ICONIZED };
+        enum Window_State { 
+            W_NORMAL = 0x0,
+            W_MINIMIZED = 0x1,
+            W_MAXIMIZED = 0x2,
+            W_HIDDEN = 0x4,
+            W_ICONIZED = 0x8
+        };
+        Q_DECLARE_FLAGS(Window_States, Window_State)
         Window_State _windowState; /**< app wnidow state */
+        
         inline Window_State windowState() const {return _windowState;}
 		inline void setWindowState(Window_State ws) {_windowState = ws;}
 
@@ -138,7 +146,7 @@ public:
 
 		  To enable all four corners of the widget,use QRegion.
           */
-        virtual QRectF resizeHandleRect() const;
+        virtual void resizeHandleRect();
 
 
 
@@ -434,7 +442,7 @@ protected:
           If a pointer left button is pressed on the resizehandle, this flag is set
           and mouse dragging will resize/rescale window
           */
-        bool _isResizing;
+        int _isResizing;
 
 
         /*!
@@ -443,6 +451,14 @@ protected:
           Upon pointer releasing, window will be resized/rescaled based on the size of this rectangle
           */
         QGraphicsRectItem *_resizeRectangle;
+        
+        /*!
+          A resize handle at the top left corner of the window
+          */
+        QRect _resizeHandle_NW;
+        QRect _resizeHandle_NE;
+        QRect _resizeHandle_SW;
+        QRect _resizeHandle_SE;
 
 
         /*!
