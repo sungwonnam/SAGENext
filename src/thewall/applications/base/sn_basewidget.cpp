@@ -827,7 +827,7 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
         //
         // Save the widget's current geometry
         //
-        if (_windowState & SN_BaseWidget::W_NORMAL) {
+        if (_windowState == SN_BaseWidget::W_NORMAL || _windowState == SN_BaseWidget::W_MAXIMIZED) {
             _appInfo->setRecentPos(scenePos());
             _appInfo->setRecentSize(size());
             _appInfo->setRecentScale(scale());

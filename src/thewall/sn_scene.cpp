@@ -710,6 +710,9 @@ void SN_MinimizeBar::restoreWidget(SN_BaseWidget *widget) {
 
         if (widget == bw) {
             bw->setWindowState(SN_BaseWidget::W_NORMAL);
+
+//            qDebug() << metaObject()->className() << "::" << __FUNCTION__ << ": restoring a widget to " << bw->appInfo()->recentPos() << bw->appInfo()->recentSize() << bw->appInfo()->recentScale();
+
             bw->resize(bw->appInfo()->recentSize());
             bw->setScale(bw->appInfo()->recentScale());
 
