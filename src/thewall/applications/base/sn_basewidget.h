@@ -2,7 +2,7 @@
 #define BASEWIDGET_H
 
 #include <QGraphicsWidget>
-#include "../../common/commondefinitions.h"
+#include "common/sn_commondefinitions.h"
 
 class QSettings;
 
@@ -13,10 +13,10 @@ class QPropertyAnimation;
 class QParallelAnimationGroup;
 
 class SN_ResourceMonitor;
-class AppInfo;
-class PerfMonitor;
+class SN_AppInfo;
+class SN_PerfMonitor;
 class SN_Priority;
-class AffinityInfo;
+class SN_AffinityInfo;
 
 class SN_SimpleTextItem;
 class SN_PolygonArrowPointer;
@@ -100,11 +100,11 @@ public:
 
         inline quint64 globalAppId() const {return _globalAppId;}
 
-        inline AppInfo * appInfo() const {return _appInfo;}
+        inline SN_AppInfo * appInfo() const {return _appInfo;}
 
-        inline PerfMonitor * perfMon() const {return _perfMon;}
+        inline SN_PerfMonitor * perfMon() const {return _perfMon;}
 
-        inline AffinityInfo * affInfo() {return _affInfo;}
+        inline SN_AffinityInfo * affInfo() {return _affInfo;}
 
 		inline SN_Priority * priorityData() {return _priorityData;}
 
@@ -363,7 +363,7 @@ protected:
         /*!
          * Used to display app info overlay
          */
-        AppInfo *_appInfo; /**< app name, frame dimension, rect */
+        SN_AppInfo *_appInfo; /**< app name, frame dimension, rect */
 
 
         bool _showInfo; /**< flag to toggle show/hide info item */
@@ -379,13 +379,13 @@ protected:
         /*!
           PerfMonitor class is only meaningful with animation widget
           */
-        PerfMonitor *_perfMon;
+        SN_PerfMonitor *_perfMon;
 
 
         /*!
           Instantiated when RailawareWidget
           */
-        AffinityInfo *_affInfo;
+        SN_AffinityInfo *_affInfo;
 
 
 

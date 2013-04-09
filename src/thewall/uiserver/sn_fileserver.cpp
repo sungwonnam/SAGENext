@@ -1,6 +1,7 @@
-#include "fileserver.h"
-#include "../sagenextlauncher.h"
-#include "../mediastorage.h"
+#include "uiserver/sn_fileserver.h"
+#include "uiserver/sn_uiserver.h"
+#include "sn_sagenextlauncher.h"
+#include "sn_mediastorage.h"
 
 #include <QSettings>
 #include <QTcpSocket>
@@ -12,7 +13,7 @@
 #include <unistd.h>
 
 
-FileServerThread::FileServerThread(int sockfd, const quint32 uiclientid, QObject *parent)
+SN_FileServerThread::SN_FileServerThread(int sockfd, const quint32 uiclientid, QObject *parent)
     : QThread(parent)
     , _uiclientid(uiclientid)
     , _dataSock(sockfd)
@@ -20,19 +21,19 @@ FileServerThread::FileServerThread(int sockfd, const quint32 uiclientid, QObject
 {
 }
 
-FileServerThread::~FileServerThread() {
+SN_FileServerThread::~SN_FileServerThread() {
 	_end = true;
 	::close(_dataSock);
 //	qDebug() << "~FileServerThread" << _uiclientid;
 }
 
-void FileServerThread::endThread() {
+void SN_FileServerThread::endThread() {
 	_end = true;
 	::shutdown(_dataSock, SHUT_RDWR);
 	::close(_dataSock);
 }
 
-int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &filename, qint64 filesize) {
+int SN_FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &filename, qint64 filesize) {
 	//
 	// if it's just web url
 	//
@@ -120,7 +121,7 @@ int FileServerThread::_recvFile(SAGENext::MEDIA_TYPE mediatype, const QString &f
 	return 0;
 }
 
-int FileServerThread::_sendFile(const QString &filepath) {
+int SN_FileServerThread::_sendFile(const QString &filepath) {
 	QFile f(filepath);
 	if (! f.open(QIODevice::ReadOnly)) {
 		qDebug() << "FileServerThread::_sendFile() : couldn't open the file" << filepath;
@@ -142,7 +143,7 @@ int FileServerThread::_sendFile(const QString &filepath) {
 }
 
 
-void FileServerThread::run() {
+void SN_FileServerThread::run() {
 //	qDebug() << "FileServerThread is running for uiclient" << _uiclientid;
 
 	// always receive filename, filesize, media type first
@@ -226,7 +227,7 @@ SN_FileServer::~SN_FileServer() {
 	close(); // stop listening
 
 	qDebug() << "In ~FileServer(), deleting fileserver threads";
-	foreach(FileServerThread *thread, _uiFileServerThreadMap.values()) {
+	foreach(SN_FileServerThread *thread, _uiFileServerThreadMap.values()) {
 		if (thread) {
 			if (thread->isRunning()) {
 //				thread->exit();
@@ -256,7 +257,7 @@ void SN_FileServer::incomingConnection(int handle) {
 	qDebug("%s::%s() : The ui client %u has connected to FileServer", metaObject()->className(), __FUNCTION__, uiclientid);
 
 
-	FileServerThread *thread = new FileServerThread(handle, uiclientid);
+	SN_FileServerThread *thread = new SN_FileServerThread(handle, uiclientid);
 	QObject::connect(thread, SIGNAL(finished()), this, SLOT(threadFinished()));
 
     //
@@ -293,7 +294,7 @@ void SN_FileServer::sendRecvProgress(qint32 uiclientid, QString filename, qint64
 }
 
 void SN_FileServer::threadFinished() {
-	foreach(const FileServerThread *thread, _uiFileServerThreadMap.values()) {
+	foreach(const SN_FileServerThread *thread, _uiFileServerThreadMap.values()) {
 		if (thread) {
 			if(thread->isFinished()) {
 				_uiFileServerThreadMap.erase( _uiFileServerThreadMap.find( thread->uiclientid() ) );

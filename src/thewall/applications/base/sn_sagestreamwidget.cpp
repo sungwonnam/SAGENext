@@ -1,15 +1,15 @@
-#include "sagestreamwidget.h"
-#include "sagepixelreceiver.h"
+#include "applications/base/sn_sagestreamwidget.h"
+#include "applications/base/sn_sagepixelreceiver.h"
 
-#include "appinfo.h"
-#include "affinityinfo.h"
-#include "perfmonitor.h"
-#include "sn_priority.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_affinityinfo.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_priority.h"
 
-#include "../../sage/sagecommondefinitions.h"
-#include "../../common/commonitem.h"
-#include "../../common/imagedoublebuffer.h"
-#include "../../system/resourcemonitor.h"
+#include "sage/sagecommondefinitions.h"
+//#include "common/sn_commonitem.h"
+#include "common/sn_doublebuffer.h"
+#include "system/sn_resourcemonitor.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>

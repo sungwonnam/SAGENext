@@ -1,20 +1,18 @@
-#include "settingstackeddialog.h"
-#include "ui_settingstackeddialog.h"
+#include "settings/sn_settingstackeddialog.h"
+#include "ui_sn_settingstackeddialog.h"
 
-#include "ui_generalsettingdialog.h"
-#include "ui_systemsettingdialog.h"
-#include "ui_graphicssettingdialog.h"
-#include "ui_guisettingdialog.h"
-#include "ui_screenlayoutdialog.h"
+#include "ui_sn_generalsettingdialog.h"
+#include "ui_sn_systemsettingdialog.h"
+#include "ui_sn_graphicssettingdialog.h"
+#include "ui_sn_guisettingdialog.h"
+#include "ui_sn_screenlayoutdialog.h"
 
-#include <QSettings>
 #include <QtCore>
-#include <QMessageBox>
 
 
-GeneralSettingDialog::GeneralSettingDialog(QSettings *s, QWidget *parent)
+SN_GeneralSettingDialog::SN_GeneralSettingDialog(QSettings *s, QWidget *parent)
     : QDialog(parent)
-    , ui(new Ui::GeneralSettingDialog)
+    , ui(new Ui::SN_GeneralSettingDialog)
     , _settings(s)
 {
     ui->setupUi(this);
@@ -37,7 +35,7 @@ GeneralSettingDialog::GeneralSettingDialog(QSettings *s, QWidget *parent)
 	ui->offsety->setText(_settings->value("general/offsety",0).toString());
 }
 
-void GeneralSettingDialog::accept() {
+void SN_GeneralSettingDialog::accept() {
 	Q_ASSERT(_settings);
 	/* save(overwrite) settings using QSetting */
 //	_settings->setValue("general/wallname", ui->wallNameLineEdit->text());
@@ -69,7 +67,7 @@ void GeneralSettingDialog::accept() {
     _settings->setValue("general/mplayercmdargs", QString("-vo sage -ao pulse -loop 0 -sws 4 -framedrop -quiet"));
 }
 
-GeneralSettingDialog::~GeneralSettingDialog() { delete ui;}
+SN_GeneralSettingDialog::~SN_GeneralSettingDialog() { delete ui;}
 
 
 
@@ -77,9 +75,9 @@ GeneralSettingDialog::~GeneralSettingDialog() { delete ui;}
 
 
 /* System */
-SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
+SN_SystemSettingDialog::SN_SystemSettingDialog(QSettings *s, QWidget *parent)
 	: QDialog(parent)
-	, ui(new Ui::SystemSettingDialog)
+	, ui(new Ui::SN_SystemSettingDialog)
 	, _settings(s)
 {
 	ui->setupUi(this);
@@ -133,7 +131,7 @@ SystemSettingDialog::SystemSettingDialog(QSettings *s, QWidget *parent)
 	ui->schedFreqLineEdit->setText(_settings->value("system/scheduler_freq", 100).toString());
 }
 
-void SystemSettingDialog::on_schedulerCheckBox_stateChanged(int state) {
+void SN_SystemSettingDialog::on_schedulerCheckBox_stateChanged(int state) {
 	if (state == Qt::Checked) {
 		ui->rmonitorCheckBox->setChecked(true);
 //		ui->schedFreqLineEdit->setEnabled(true);
@@ -143,7 +141,7 @@ void SystemSettingDialog::on_schedulerCheckBox_stateChanged(int state) {
 	}
 }
 
-void SystemSettingDialog::on_rmonitorCheckBox_stateChanged(int state) {
+void SN_SystemSettingDialog::on_rmonitorCheckBox_stateChanged(int state) {
 	if (state == Qt::Unchecked) {
 		ui->pGridCheckBox->setCheckState(Qt::Unchecked);
 		ui->schedulerCheckBox->setCheckState(Qt::Unchecked);
@@ -156,7 +154,7 @@ void SystemSettingDialog::on_rmonitorCheckBox_stateChanged(int state) {
 }
 
 
-void SystemSettingDialog::on_pGridCheckBox_stateChanged(int state)
+void SN_SystemSettingDialog::on_pGridCheckBox_stateChanged(int state)
 {
     if (state == Qt::Checked) {
         ui->pgrid_col_spinBox->setEnabled(true);
@@ -168,7 +166,7 @@ void SystemSettingDialog::on_pGridCheckBox_stateChanged(int state)
     }
 }
 
-void SystemSettingDialog::accept() {
+void SN_SystemSettingDialog::accept() {
 	_settings->setValue("system/cpupernumanode", ui->numCpuPerNumaLineEdit->text().toInt());
 	_settings->setValue("system/threadpercpu", ui->numHWThreadLineEdit->text().toInt());
 	_settings->setValue("system/swthreadpercpu", ui->numSWThreadLineEdit->text().toInt());
@@ -246,16 +244,16 @@ void SystemSettingDialog::accept() {
     */
 }
 
-SystemSettingDialog::~SystemSettingDialog() {delete ui;}
+SN_SystemSettingDialog::~SN_SystemSettingDialog() {delete ui;}
 
 
 
 /*
   Graphics
 */
-GraphicsSettingDialog::GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent)
+SN_GraphicsSettingDialog::SN_GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent)
 	: QDialog(parent)
-	, ui(new Ui::GraphicsSettingDialog)
+	, ui(new Ui::SN_GraphicsSettingDialog)
 	, _settings(s)
     , _layoutMap(screenLayout)
     , _numScreens(0)
@@ -295,7 +293,7 @@ GraphicsSettingDialog::GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,i
 	}
 }
 
-void GraphicsSettingDialog::createLayoutGrid() {
+void SN_GraphicsSettingDialog::createLayoutGrid() {
 	bool ok = false;
 	int x = ui->dimx->text().toInt(&ok);
 	if (!ok) return;
@@ -312,11 +310,11 @@ void GraphicsSettingDialog::createLayoutGrid() {
 	//
 	// create Application Modal dialog with grid layout
 	//
-	ScreenLayoutDialog slDialog(_settings, x, y, _layoutMap, this);
+	SN_ScreenLayoutDialog slDialog(_settings, x, y, _layoutMap, this);
 	slDialog.exec(); // shows the dialog as a modal dialog
 }
 
-void GraphicsSettingDialog::accept() {
+void SN_GraphicsSettingDialog::accept() {
 	/* graphics system */
 //	settings->setValue("system/graphicssystem", ui->graphicssystemComboBox->currentText());
 
@@ -340,7 +338,7 @@ void GraphicsSettingDialog::accept() {
 }
 
 
-void GraphicsSettingDialog::on_openglviewportCheckBox_stateChanged(int)
+void SN_GraphicsSettingDialog::on_openglviewportCheckBox_stateChanged(int)
 {
 	if ( ui->openglviewportCheckBox->isChecked() ) {
 		_settings->setValue("graphics/openglviewport", true);
@@ -353,15 +351,15 @@ void GraphicsSettingDialog::on_openglviewportCheckBox_stateChanged(int)
 	}
 }
 
-GraphicsSettingDialog::~GraphicsSettingDialog() {delete ui;}
+SN_GraphicsSettingDialog::~SN_GraphicsSettingDialog() {delete ui;}
 
 
 
 
 
-ScreenLayoutDialog::ScreenLayoutDialog(QSettings *s, int dimx, int dimy, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent)
+SN_ScreenLayoutDialog::SN_ScreenLayoutDialog(QSettings *s, int dimx, int dimy, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent)
     : QDialog(parent)
-    , ui(new Ui::ScreenLayoutDialog)
+    , ui(new Ui::SN_ScreenLayoutDialog)
     , _settings(s)
     , _dimx(dimx)
     , _dimy(dimy)
@@ -396,7 +394,7 @@ ScreenLayoutDialog::ScreenLayoutDialog(QSettings *s, int dimx, int dimy, QMap<QP
 	adjustSize();
 }
 
-QFrame * ScreenLayoutDialog::createScreen(int row, int col) {
+QFrame * SN_ScreenLayoutDialog::createScreen(int row, int col) {
 	QFrame *frame = new QFrame(this);
 	frame->setLineWidth(3);
 	frame->setFrameStyle(QFrame::Box);
@@ -418,7 +416,7 @@ QFrame * ScreenLayoutDialog::createScreen(int row, int col) {
 
 	return frame;
 }
-void ScreenLayoutDialog::saveToSettings() {
+void SN_ScreenLayoutDialog::saveToSettings() {
 	// overwrite
 	QFile f(QDir::homePath() + "/.sagenext/screenlayout");
 	f.open(QIODevice::WriteOnly);
@@ -450,7 +448,7 @@ void ScreenLayoutDialog::saveToSettings() {
 	accept();
 }
 
-ScreenLayoutDialog::~ScreenLayoutDialog() {
+SN_ScreenLayoutDialog::~SN_ScreenLayoutDialog() {
 	delete ui;
 }
 
@@ -458,9 +456,9 @@ ScreenLayoutDialog::~ScreenLayoutDialog() {
 
 
 /* GUI */
-GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
+SN_GuiSettingDialog::SN_GuiSettingDialog(QSettings *s, QWidget *parent)
     : QDialog(parent)
-    , ui(new Ui::GuiSettingDialog)
+    , ui(new Ui::SN_GuiSettingDialog)
     , _settings(s)
 {
 	ui->setupUi(this);
@@ -488,7 +486,7 @@ GuiSettingDialog::GuiSettingDialog(QSettings *s, QWidget *parent)
 
     ui->imgScalingAmount->setText(_settings->value("gui/imgscalingamount", 32).toString());
 }
-void GuiSettingDialog::accept() {
+void SN_GuiSettingDialog::accept() {
 	_settings->setValue("gui/iconwidth", ui->iconWidth->text().toInt());
 	_settings->setValue("gui/fontpointsize", ui->fontSizeLineEdit->text().toInt());
 	_settings->setValue("gui/pointerfontsize", ui->pointerFontSizeLineEdit->text().toInt());
@@ -503,15 +501,16 @@ void GuiSettingDialog::accept() {
      */
 //    _settings->setValue("gui/numthumbnailx", 8);
 //    _settings->setValue("gui/numthumbnaily", 4);
+
 }
-GuiSettingDialog::~GuiSettingDialog() {delete ui;}
+SN_GuiSettingDialog::~SN_GuiSettingDialog() {delete ui;}
 
 
 
 
-SettingStackedDialog::SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent)
+SN_SettingStackedDialog::SN_SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent)
     : QDialog(parent)
-    , ui(new Ui::SettingStackedDialog)
+    , ui(new Ui::SN_SettingStackedDialog)
     , _settings(s)
 {
     ui->setupUi(this);
@@ -524,10 +523,10 @@ SettingStackedDialog::SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int
       stacked widget for each setting page
 	  Ownership of widget is passed on to the QStackedWidget
       */
-    ui->stackedWidget->addWidget(new GeneralSettingDialog(_settings));
-	ui->stackedWidget->addWidget(new GraphicsSettingDialog(_settings, screenLayout));
-	ui->stackedWidget->addWidget(new GuiSettingDialog(_settings));
-	ui->stackedWidget->addWidget(new SystemSettingDialog(_settings));
+    ui->stackedWidget->addWidget(new SN_GeneralSettingDialog(_settings));
+	ui->stackedWidget->addWidget(new SN_GraphicsSettingDialog(_settings, screenLayout));
+	ui->stackedWidget->addWidget(new SN_GuiSettingDialog(_settings));
+	ui->stackedWidget->addWidget(new SN_SystemSettingDialog(_settings));
     
     /*
       Fill listWidget
@@ -561,13 +560,13 @@ SettingStackedDialog::SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int
 	ui->listWidget->setCurrentRow(0); // will emit currentItemChanged which is connected to changeStackedWidget
 }
 
-SettingStackedDialog::~SettingStackedDialog()
+SN_SettingStackedDialog::~SN_SettingStackedDialog()
 {
 	ui->listWidget->clear(); // will delete all the items
     delete ui;
 }
 
-void SettingStackedDialog::changeStackedWidget(QListWidgetItem *current, QListWidgetItem *previous) {
+void SN_SettingStackedDialog::changeStackedWidget(QListWidgetItem *current, QListWidgetItem *previous) {
 //	QDialog *dialog = static_cast<QDialog *>(ui->stackedWidget->widget(ui->listWidget->row(previous)));
 //	dialog->accept();
 	
@@ -575,7 +574,7 @@ void SettingStackedDialog::changeStackedWidget(QListWidgetItem *current, QListWi
     ui->stackedWidget->setCurrentIndex(ui->listWidget->row(current));
 }
 
-void SettingStackedDialog::on_buttonBox_accepted()
+void SN_SettingStackedDialog::on_buttonBox_accepted()
 {
 	QDialog *dialog = 0;
 	for (int i=0; i<ui->stackedWidget->count(); ++i) {
@@ -590,11 +589,12 @@ void SettingStackedDialog::on_buttonBox_accepted()
 	_settings->setValue("network/sendwindow", 1048576);
 	_settings->setValue("network/mtu", 8800);
 
-
 //	_settings->setValue("misc/printperfdataattheend", false);
+
+    accept();
 }
 
-void SettingStackedDialog::on_buttonBox_rejected()
+void SN_SettingStackedDialog::on_buttonBox_rejected()
 {
 	::exit(1);
 }

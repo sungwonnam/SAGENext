@@ -7,13 +7,13 @@ class QSettings;
 class QFrame;
 
 namespace Ui {
-class GeneralSettingDialog;
-class SystemSettingDialog;
-class GraphicsSettingDialog;
-class ScreenLayoutDialog;
-class GuiSettingDialog;
+class SN_GeneralSettingDialog;
+class SN_SystemSettingDialog;
+class SN_GraphicsSettingDialog;
+class SN_ScreenLayoutDialog;
+class SN_GuiSettingDialog;
 
-class SettingStackedDialog;
+class SN_SettingStackedDialog;
 }
 
 /**
@@ -22,14 +22,14 @@ class SettingStackedDialog;
   wall width x height
   wall offset (x,y)
   */
-class GeneralSettingDialog : public QDialog {
+class SN_GeneralSettingDialog : public QDialog {
     Q_OBJECT
 public:
-	explicit GeneralSettingDialog(QSettings *s, QWidget *parent=0);
-	~GeneralSettingDialog();
+	explicit SN_GeneralSettingDialog(QSettings *s, QWidget *parent=0);
+	~SN_GeneralSettingDialog();
 	
 private:
-    Ui::GeneralSettingDialog *ui;
+    Ui::SN_GeneralSettingDialog *ui;
     QSettings *_settings;
 	
 public slots:
@@ -40,14 +40,14 @@ public slots:
   NUMA related stuff
   ResourceMonitor and Scheduler related stuff
   */
-class SystemSettingDialog : public QDialog {
+class SN_SystemSettingDialog : public QDialog {
     Q_OBJECT
 public:
-    explicit SystemSettingDialog(QSettings *s, QWidget *parent=0);
-    ~SystemSettingDialog();
+    explicit SN_SystemSettingDialog(QSettings *s, QWidget *parent=0);
+    ~SN_SystemSettingDialog();
 	
 private:
-    Ui::SystemSettingDialog *ui;
+    Ui::SN_SystemSettingDialog *ui;
     QSettings *_settings;
 	
 public slots:
@@ -63,14 +63,14 @@ private slots:
   Whether OpenGL widget as the viewport or not
   The view update modes
   */
-class GraphicsSettingDialog : public QDialog {
+class SN_GraphicsSettingDialog : public QDialog {
     Q_OBJECT
 public:
-    explicit GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent=0);
-    ~GraphicsSettingDialog();
+    explicit SN_GraphicsSettingDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent=0);
+    ~SN_GraphicsSettingDialog();
 	
 private:
-    Ui::GraphicsSettingDialog *ui;
+    Ui::SN_GraphicsSettingDialog *ui;
     QSettings *_settings;
 
 	QMap<QPair<int,int>,int> *_layoutMap;
@@ -85,13 +85,13 @@ private slots:
 	void on_openglviewportCheckBox_stateChanged(int arg1);
 };
 
-class ScreenLayoutDialog : public QDialog {
+class SN_ScreenLayoutDialog : public QDialog {
 	Q_OBJECT
 public:
-	explicit ScreenLayoutDialog(QSettings *s, int dimx, int dimy, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent=0);
-	~ScreenLayoutDialog();
+	explicit SN_ScreenLayoutDialog(QSettings *s, int dimx, int dimy, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent=0);
+	~SN_ScreenLayoutDialog();
 private:
-	Ui::ScreenLayoutDialog *ui;
+	Ui::SN_ScreenLayoutDialog *ui;
 	QSettings *_settings;
 	int _dimx;
 	int _dimy;
@@ -104,14 +104,14 @@ private slots:
 /**
   GUI related stuff
   */
-class GuiSettingDialog : public QDialog {
+class SN_GuiSettingDialog : public QDialog {
 	Q_OBJECT
 public:
-	explicit GuiSettingDialog(QSettings *s, QWidget *parent=0);
-	~GuiSettingDialog();
+	explicit SN_GuiSettingDialog(QSettings *s, QWidget *parent=0);
+	~SN_GuiSettingDialog();
 
 private:
-	Ui::GuiSettingDialog *ui;
+	Ui::SN_GuiSettingDialog *ui;
 	QSettings *_settings;
 
 
@@ -126,16 +126,16 @@ public slots:
 
 class QListWidgetItem;
 
-class SettingStackedDialog : public QDialog
+class SN_SettingStackedDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent = 0);
-    ~SettingStackedDialog();
+    explicit SN_SettingStackedDialog(QSettings *s, QMap<QPair<int,int>,int> *screenLayout, QWidget *parent = 0);
+    ~SN_SettingStackedDialog();
 
 private:
-    Ui::SettingStackedDialog *ui;
+    Ui::SN_SettingStackedDialog *ui;
     QSettings *_settings;
     
 private slots:

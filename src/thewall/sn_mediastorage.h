@@ -2,9 +2,9 @@
 #define MEDIASTORAGE_H
 
 #include <QtGui>
-#include <QtCore>
+//#include <QtCore>
 
-#include "common/commondefinitions.h"
+#include "common/sn_commondefinitions.h"
 
 typedef struct MediaMetaT {
     SAGENext::MEDIA_TYPE type;

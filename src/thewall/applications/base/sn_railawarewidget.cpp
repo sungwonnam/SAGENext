@@ -1,12 +1,13 @@
-#include "railawarewidget.h"
-#include "affinityinfo.h"
-#include "affinitycontroldialog.h"
-#include "appinfo.h"
-#include "perfmonitor.h"
+#include "applications/base/sn_railawarewidget.h"
+#include "applications/base/sn_affinityinfo.h"
+#include "applications/base/sn_affinitycontroldialog.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_perfmonitor.h"
 
-#include "../../system/resourcemonitor.h"
-#include "../../system/sagenextscheduler.h"
+#include "system/sn_resourcemonitor.h"
+#include "system/sn_scheduler.h"
 
+#include <QtGui>
 
 SN_RailawareWidget::SN_RailawareWidget()
     : affCtrlDialog(0)
@@ -75,7 +76,7 @@ SN_RailawareWidget::~SN_RailawareWidget()
 void SN_RailawareWidget::createAffInstances()
 {
 	if (!_affInfo)
-		_affInfo = new AffinityInfo(this);
+		_affInfo = new SN_AffinityInfo(this);
 
 	if (!_affCtrlAction) {
 		_affCtrlAction = new QAction("Affinity Control", this);
@@ -153,7 +154,7 @@ void SN_RailawareWidget::showAffCtrlDialog() {
 	Q_ASSERT(_settings);
 	Q_ASSERT(globalAppId() > 0);
 	/* will modify mask through affInfo pointer and sets the flag */
-	affCtrlDialog = new AffinityControlDialog(_globalAppId, _affInfo, _settings);
+	affCtrlDialog = new SN_AffinityControlDialog(_globalAppId, _affInfo, _settings);
 	affCtrlDialog->show();
 }
 

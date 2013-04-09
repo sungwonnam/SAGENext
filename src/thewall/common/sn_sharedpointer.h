@@ -4,11 +4,11 @@
 #include <QGraphicsPolygonItem>
 #include <QGraphicsWidget>
 
-#include "commondefinitions.h"
+//#include "common/sn_commondefinitions.h"
 
 class SN_BaseWidget;
 class SN_TheScene;
-class UiMsgThread;
+class SN_UiMsgThread;
 class SN_Launcher;
 
 class QSettings;
@@ -52,7 +52,7 @@ public:
 class SN_PolygonArrowPointer : public QGraphicsPolygonItem
 {
 public:
-	SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *, SN_TheScene *scene, SN_Launcher *l, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
+	SN_PolygonArrowPointer(const quint32 uicid, SN_UiMsgThread *msgthread, const QSettings *, SN_TheScene *scene, SN_Launcher *l, const QString &name = QString(), const QColor &c = QColor(Qt::red), QFile *scenarioFile=0, QGraphicsItem *parent=0);
 	~SN_PolygonArrowPointer();
 
 	void setPointerName(const QString &text);
@@ -157,7 +157,7 @@ protected:
 	/*!
 	  Pointer to my UiMsgThread
 	  */
-	UiMsgThread *_uimsgthread;
+	SN_UiMsgThread *_uimsgthread;
 
         /**
           * The unique ID of UI client to which this pointer belongs

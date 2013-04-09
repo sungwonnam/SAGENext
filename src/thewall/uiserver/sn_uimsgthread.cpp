@@ -1,5 +1,5 @@
-#include "uimsgthread.h"
-#include "uiserver.h"
+#include "uiserver/sn_uimsgthread.h"
+#include "uiserver/sn_uiserver.h"
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-UiMsgThread::UiMsgThread(const quint32 id, int sock, QObject *parent) :
+SN_UiMsgThread::SN_UiMsgThread(const quint32 id, int sock, QObject *parent) :
 	QThread(parent)
   , _uiClientId(id)
   , _end(false)
@@ -64,7 +64,7 @@ UiMsgThread::UiMsgThread(const quint32 id, int sock, QObject *parent) :
     */
 }
 
-UiMsgThread::~UiMsgThread() {
+SN_UiMsgThread::~SN_UiMsgThread() {
 	_end = true;
 	emit clientDisconnected(_uiClientId);
 
@@ -82,7 +82,7 @@ UiMsgThread::~UiMsgThread() {
 	qDebug("UiMsgThread::%s() : ui client %u exiting", __FUNCTION__, _uiClientId);
 }
 
-void UiMsgThread::sendMsg(const QByteArray &msgstr) {
+void SN_UiMsgThread::sendMsg(const QByteArray &msgstr) {
 	if (msgstr.size() != EXTUI_MSG_SIZE) {
 		qWarning("%s::%s() : You're about to send a message with its size %d", metaObject()->className(), __FUNCTION__, msgstr.size());
 	}
@@ -96,7 +96,7 @@ void UiMsgThread::sendMsg(const QByteArray &msgstr) {
 	}
 }
 
-void UiMsgThread::run() {
+void SN_UiMsgThread::run() {
 //	qDebug("UiMsgThread::%s() : ui client thread %u has started", __FUNCTION__, _uiClientId);
 
 	QByteArray msgStr(EXTUI_SMALL_MSG_SIZE, 0);
@@ -144,7 +144,7 @@ void UiMsgThread::run() {
 }
 
 
-void UiMsgThread::endThread() {
+void SN_UiMsgThread::endThread() {
 	::shutdown(_sockfd, SHUT_RDWR);
 	_end = true;
 }

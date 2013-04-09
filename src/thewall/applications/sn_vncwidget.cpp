@@ -1,16 +1,15 @@
-#include "vncwidget.h"
+#include "applications/sn_vncwidget.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_appinfo.h"
+//#include "common/sn_commonitem.h"
 
-#include "base/perfmonitor.h"
-#include "base/appinfo.h"
-#include "../common/commonitem.h"
-
-#include <QtGui>
+//#include <QtGui>
 #include <QGLPixelBuffer>
 #include <QGLBuffer>
 
 #include <signal.h>
-#include <sys/time.h>
-#include <sys/resource.h>
+//#include <sys/time.h>
+//#include <sys/resource.h>
 
 
 rfbBool SN_VNCClientWidget::got_data = FALSE;

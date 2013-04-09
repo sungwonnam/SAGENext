@@ -1,7 +1,7 @@
 #include "mousedragexample.h"
 
-#include <common/commonitem.h>
-#include <common/commondefinitions.h>
+#include <common/sn_commonitem.h>
+#include <common/sn_commondefinitions.h>
 
 TrackerItem::TrackerItem(qreal x, qreal y, qreal w, qreal h, const QBrush &brush, QGraphicsItem *parent)
 	: QGraphicsEllipseItem(x,y,w,h,parent)

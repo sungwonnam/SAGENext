@@ -1,28 +1,28 @@
-#include "sagenextlauncher.h"
-#include "sagenextscene.h"
-#include "mediastorage.h"
+#include "sn_sagenextlauncher.h"
+#include "sn_scene.h"
+#include "sn_mediastorage.h"
 
-#include "common/commonitem.h"
+//#include "common/sn_commonitem.h"
 #include "common/sn_sharedpointer.h"
 
 #include "sage/fsManager.h"
 #include "sage/fsmanagermsgthread.h"
 
-#include "system/resourcemonitor.h"
+#include "system/sn_resourcemonitor.h"
 
-#include "applications/base/basewidget.h"
-#include "applications/base/appinfo.h"
-#include "applications/base/perfmonitor.h"
-#include "applications/base/affinityinfo.h"
-#include "applications/base/sagestreamwidget.h"
+#include "applications/base/sn_basewidget.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_affinityinfo.h"
+#include "applications/base/sn_sagestreamwidget.h"
 
 #include "applications/sn_fittslawtest.h"
 #include "applications/sn_sagestreammplayer.h"
 //#include "applications/pdfviewerwidget.h"
-#include "applications/pixmapwidget.h"
+#include "applications/sn_pixmapwidget.h"
 #include "applications/sn_pdfvieweropenglwidget.h"
-#include "applications/vncwidget.h"
-#include "applications/webwidget.h"
+#include "applications/sn_vncwidget.h"
+#include "applications/sn_webwidget.h"
 #include "applications/sn_checker.h"
 #include "applications/sn_mediabrowser.h"
 
@@ -246,7 +246,7 @@ SN_BaseWidget * SN_Launcher::launch(const QString &sageappname, const QString &m
 		  SAGE specific !!
 		  This is used to send affinity info to sender (sail) so that sender can set proper affinity based on receivers affinity setting. This should be connected only when mplayer is run localy
 		  *********/
-		QObject::connect(sw->affInfo(), SIGNAL(streamerAffInfoChanged(AffinityInfo*, quint64)), fsmThread, SLOT(sendSailSetRailMsg(AffinityInfo*,quint64)));
+		QObject::connect(sw->affInfo(), SIGNAL(streamerAffInfoChanged(SN_AffinityInfo*, quint64)), fsmThread, SLOT(sendSailSetRailMsg(SN_AffinityInfo*,quint64)));
 
 		// assign most underloaded processor
 		//resourceMonitor->assignProcessor(sageWidget);
@@ -729,7 +729,7 @@ SN_BaseWidget * SN_Launcher::launch(const QStringList &fileList) {
 	return 0;
 }
 
-SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos /*= QPointF()*/) {
+SN_PolygonArrowPointer * SN_Launcher::launchPointer(quint32 uiclientid, SN_UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos /*= QPointF()*/) {
 
 	SN_PolygonArrowPointer *pointer = 0;
 

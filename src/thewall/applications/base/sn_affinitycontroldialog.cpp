@@ -1,12 +1,12 @@
-#include "affinitycontroldialog.h"
-#include "ui_affinitycontroldialog.h"
-#include "affinityinfo.h"
+#include "applications/base/sn_affinitycontroldialog.h"
+#include "applications/base/sn_affinityinfo.h"
+#include "ui_sn_affinitycontroldialog.h"
 
 #include <QSettings>
 
-AffinityControlDialog::AffinityControlDialog(const quint64 gid, AffinityInfo *ai, const QSettings *s, QWidget *parent)
+SN_AffinityControlDialog::SN_AffinityControlDialog(const quint64 gid, SN_AffinityInfo *ai, const QSettings *s, QWidget *parent)
     : QDialog(parent)
-    , ui(new Ui::AffinityControlDialog)
+    , ui(new Ui::SN_AffinityControlDialog)
     , settings(s)
     , globalAppId(gid)
 {
@@ -37,11 +37,11 @@ AffinityControlDialog::AffinityControlDialog(const quint64 gid, AffinityInfo *ai
 	updateInfo();
 }
 
-AffinityControlDialog::~AffinityControlDialog() {
+SN_AffinityControlDialog::~SN_AffinityControlDialog() {
 	if (ui) delete ui;
 }
 
-void AffinityControlDialog::updateInfo() {
+void SN_AffinityControlDialog::updateInfo() {
 //	ui->maincpuLabel->setText( QString::number(affInfo->getCpuOfMain()) );
 	ui->cpuOfMineLabel->setText(QString::number(affInfo->cpuOfMine()));
 	ui->nodeAffinityLabel->setText( QString(affInfo->getNodeMask()) );
@@ -51,7 +51,7 @@ void AffinityControlDialog::updateInfo() {
 	ui->streamerCpuMaskLabel->setText(QString(affInfo->getStreamerCpuMask()));
 }
 
-void AffinityControlDialog::on_applyButton_clicked()
+void SN_AffinityControlDialog::on_applyButton_clicked()
 {
 	// by default, line edit contains empty string
 	QString nodemask(ui->newNodeAffinity->text());
@@ -107,7 +107,7 @@ void AffinityControlDialog::on_applyButton_clicked()
 
 }
 
-void AffinityControlDialog::on_closeButton_clicked()
+void SN_AffinityControlDialog::on_closeButton_clicked()
 {
 	accept();
 }

@@ -1,11 +1,9 @@
-#include "sagenextviewport.h"
-#include "sagenextlauncher.h"
-#include "sagenextscene.h"
-#include "applications/base/basewidget.h"
+#include "sn_view.h"
+#include "sn_sagenextlauncher.h"
+#include "sn_scene.h"
+#include "applications/base/sn_basewidget.h"
 
-#include "common/commondefinitions.h"
-
-#include <QFileDialog>
+#include <QtGui>
 
 SN_Viewport::SN_Viewport(SN_TheScene *s, int viewportId, SN_Launcher *l, QWidget *parent) :
     QGraphicsView(s, parent),

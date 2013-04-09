@@ -2,7 +2,7 @@
 #define SN_LAYOUTWIDGET_H
 
 #include <QtGui>
-#include "common/commondefinitions.h"
+#include "common/sn_commondefinitions.h"
 
 class SN_LayoutWidget;
 class SN_Launcher;

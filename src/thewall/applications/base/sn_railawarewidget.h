@@ -1,10 +1,10 @@
 #ifndef RAILAWAREWIDGET_H
 #define RAILAWAREWIDGET_H
 
-#include "basewidget.h"
+#include "applications/base/sn_basewidget.h"
 
-class AffinityInfo;
-class AffinityControlDialog;
+class SN_AffinityInfo;
+class SN_AffinityControlDialog;
 
 class SN_SchedulerControl;
 
@@ -71,7 +71,7 @@ protected:
         /*!
           AffinityInfo class. Only railaware widget will instantiate this
           */
-	AffinityControlDialog *affCtrlDialog;
+	SN_AffinityControlDialog *affCtrlDialog;
 
         /**
           QAction that connects context menu's item to showAffCtrlDialog()

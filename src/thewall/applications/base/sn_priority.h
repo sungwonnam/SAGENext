@@ -1,10 +1,13 @@
 #ifndef SN_PRIORITY_H
 #define SN_PRIORITY_H
 
-#include <QtCore>
-#include "basewidget.h"
-#include "../../system/prioritygrid.h"
+//#include "applications/base/sn_basewidget.h"
+#include "system/sn_prioritygrid.h"
 
+#include <QtCore>
+
+
+class SN_BaseWidget;
 
 class SN_Priority : public QObject
 {

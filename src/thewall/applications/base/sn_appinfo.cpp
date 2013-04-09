@@ -1,7 +1,6 @@
-#include "appinfo.h"
-//#include "common/perfmonitor.h"
+#include "applications/base/sn_appinfo.h"
 
-AppInfo::AppInfo(quint64 gaid)
+SN_AppInfo::SN_AppInfo(quint64 gaid)
     : _GID(gaid)
 	, _fileinfo(QFileInfo())
 
@@ -16,7 +15,7 @@ AppInfo::AppInfo(quint64 gaid)
 {
 }
 
-AppInfo::AppInfo(quint64 gaid, int width, int height, int bpp)
+SN_AppInfo::SN_AppInfo(quint64 gaid, int width, int height, int bpp)
 	: _GID(gaid)
 	, _fileinfo(QFileInfo())
 	, _webUrl(QUrl())
@@ -30,7 +29,7 @@ AppInfo::AppInfo(quint64 gaid, int width, int height, int bpp)
 {
 }
 
-AppInfo::AppInfo(quint64 gaid, int width, int height, int bpp, QString file, QString srcip)
+SN_AppInfo::SN_AppInfo(quint64 gaid, int width, int height, int bpp, QString file, QString srcip)
 	: _GID(gaid)
     , _fileinfo(QFileInfo(file))
 	, _webUrl(QUrl()),
@@ -45,7 +44,7 @@ AppInfo::AppInfo(quint64 gaid, int width, int height, int bpp, QString file, QSt
 }
 
 
-void AppInfo::setFrameSize(int width, int height, int bpp) {
+void SN_AppInfo::setFrameSize(int width, int height, int bpp) {
 //	orgWidth = width;
 //	orgHeight = height;
 	_nativeSize.rwidth() = width;

@@ -2,13 +2,13 @@
 #define SAGENEXTLAUNCHER_H
 
 #include <QtCore>
-#include <QtGui>
+//#include <QtGui>
 
-#include "common/commondefinitions.h"
+#include "common/sn_commondefinitions.h"
 
 class QSettings;
 class SN_TheScene;
-class UiMsgThread;
+class SN_UiMsgThread;
 
 class QGraphicsItem;
 class SN_BaseWidget;
@@ -151,7 +151,7 @@ public slots:
 	SN_BaseWidget * launch(const QStringList &fileList);
 
 
-	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
+	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, SN_UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
 
     /*!
      * \brief launch SN_MediaBrowser when user double click on an empty space. This is invoked by SN_PolygonArrowPointer::pointerDoubleClick()

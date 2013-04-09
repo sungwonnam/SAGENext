@@ -1,8 +1,8 @@
 #ifndef SN_FITTSLAWTEST_H
 #define SN_FITTSLAWTEST_H
 
-#include "applications/base/sagestreamwidget.h"
-#include "applications/base/sagepixelreceiver.h"
+#include "applications/base/sn_sagestreamwidget.h"
+//#include "applications/base/sagepixelreceiver.h"
 
 class SN_FittsLawTestData;
 

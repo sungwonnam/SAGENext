@@ -1,7 +1,7 @@
 #ifndef SN_PDFVIEWEROPENGLWIDGET_H
 #define SN_PDFVIEWEROPENGLWIDGET_H
 
-#include "base/basewidget.h"
+#include "applications/base/sn_basewidget.h"
 
 #include <poppler-qt4.h>
 

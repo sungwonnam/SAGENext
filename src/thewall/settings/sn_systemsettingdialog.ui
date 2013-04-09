@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>SystemSettingDialog</class>
- <widget class="QDialog" name="SystemSettingDialog">
+ <class>SN_SystemSettingDialog</class>
+ <widget class="QDialog" name="SN_SystemSettingDialog">
   <property name="geometry">
    <rect>
     <x>0</x>

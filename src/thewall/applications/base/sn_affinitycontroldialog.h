@@ -3,28 +3,28 @@
 
 #include <QDialog>
 
-class AffinityInfo;
+class SN_AffinityInfo;
 class QSettings;
 
 namespace Ui {
-	class AffinityControlDialog;
+	class SN_AffinityControlDialog;
 }
 
-class AffinityControlDialog : public QDialog
+class SN_AffinityControlDialog : public QDialog
 {
 	Q_OBJECT
 public:
-	explicit AffinityControlDialog(const quint64 gappid, AffinityInfo *ai, const QSettings *s, QWidget *parent = 0);
-	~AffinityControlDialog();
+	explicit SN_AffinityControlDialog(const quint64 gappid, SN_AffinityInfo *ai, const QSettings *s, QWidget *parent = 0);
+	~SN_AffinityControlDialog();
 
 private:
-	Ui::AffinityControlDialog *ui;
+	Ui::SN_AffinityControlDialog *ui;
 	const QSettings *settings;
 
 	/**
 	  * app specific affinity info is stored at/modified from here
 	  */
-	AffinityInfo *affInfo;
+	SN_AffinityInfo *affInfo;
 
 	const quint64 globalAppId;
 

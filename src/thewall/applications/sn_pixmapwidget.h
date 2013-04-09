@@ -1,11 +1,9 @@
 #ifndef PIXMAPWIDGET_H
 #define PIXMAPWIDGET_H
 
-#include "base/basewidget.h"
+#include "applications/base/sn_basewidget.h"
 
-#include <QTcpServer>
-//#include <QRunnable>
-
+#include <QHostAddress>
 #include <QFutureWatcher>
 
 #include <QtOpenGL>

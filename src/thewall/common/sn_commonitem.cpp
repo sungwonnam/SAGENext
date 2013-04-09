@@ -1,4 +1,4 @@
-#include "commonitem.h"
+#include "common/sn_commonitem.h"
 
 SN_PixmapButton::SN_PixmapButton(const QString &res, qreal desiredWidth, const QString &label, QGraphicsItem *parent)
     : QGraphicsWidget(parent)

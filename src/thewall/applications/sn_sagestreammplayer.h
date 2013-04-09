@@ -1,8 +1,7 @@
 #ifndef SN_SAGESTREAMMPLAYER_H
 #define SN_SAGESTREAMMPLAYER_H
 
-#include "base/sagestreamwidget.h"
-
+#include "applications/base/sn_sagestreamwidget.h"
 
 class SN_PixmapButton;
 

@@ -1,13 +1,13 @@
-#include "sagepixelreceiver.h"
+#include "applications/base/sn_sagepixelreceiver.h"
+#include "applications/base/sn_sagestreamwidget.h"
+//#include "applications/base/railawarewidget.h"
 
-#include "sagestreamwidget.h"
-#include "railawarewidget.h"
-#include "appinfo.h"
-#include "perfmonitor.h"
-#include "affinityinfo.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_affinityinfo.h"
 
-#include "../../common/imagedoublebuffer.h"
-#include "../../sage/fsmanagermsgthread.h"
+#include "common/sn_doublebuffer.h"
+//#include "sage/fsmanagermsgthread.h"
 
 #include <QTcpSocket>
 #include <QUdpSocket>

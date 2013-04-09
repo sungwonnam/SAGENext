@@ -1,4 +1,4 @@
-#include "phononwidget.h"
+#include "applications/sn_phononwidget.h"
 
 
 PhononWidget::PhononWidget(QString filename, const quint64 aid, const QSettings *s, BaseGraphicsWidget *parent, Qt::WindowFlags wFlags)

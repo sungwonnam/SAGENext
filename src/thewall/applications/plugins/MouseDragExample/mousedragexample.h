@@ -3,7 +3,7 @@
 
 #include <QtGui>
 
-#include <applications/base/basewidget.h>
+#include <applications/base/sn_basewidget.h>
 #include <applications/base/SN_plugininterface.h>
 
 /**

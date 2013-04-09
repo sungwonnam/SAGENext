@@ -12,9 +12,9 @@ class QImage;
 //class QSemaphore;
 //class QMutex;
 class QAbstractSocket;
-class PerfMonitor;
-class AppInfo;
-class AffinityInfo;
+class SN_PerfMonitor;
+class SN_AppInfo;
+class SN_AffinityInfo;
 class QSettings;
 
 
@@ -70,9 +70,9 @@ private:
 	enum sageNwProtocol {SAGE_TCP, SAGE_UDP};
 
 
-	AppInfo *_appInfo;
-	PerfMonitor *_perfMon;
-	AffinityInfo *_affInfo;
+	SN_AppInfo *_appInfo;
+	SN_PerfMonitor *_perfMon;
+	SN_AffinityInfo *_affInfo;
 
 	bool _usePbo;
 

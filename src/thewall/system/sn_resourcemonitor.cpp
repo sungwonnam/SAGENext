@@ -1,18 +1,16 @@
-#include "resourcemonitor.h"
-#include "resourcemonitorwidget.h"
-#include "sagenextscheduler.h"
-#include "prioritygrid.h"
+#include "system/sn_resourcemonitor.h"
+#include "system/sn_resourcemonitorwidget.h"
+#include "system/sn_scheduler.h"
+#include "system/sn_prioritygrid.h"
 
-//#include "../graphicsviewmainwindow.h"
+#include "sn_scene.h"
 
-#include "../sagenextscene.h"
+//#include "common/sn_commonitem.h"
 
-#include "../common/commonitem.h"
-
-#include "../applications/base/affinityinfo.h"
-#include "../applications/base/perfmonitor.h"
-#include "../applications/base/railawarewidget.h"
-#include "../applications/base/sn_priority.h"
+#include "applications/base/sn_affinityinfo.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_railawarewidget.h"
+#include "applications/base/sn_priority.h"
 
 #include <QSettings>
 
@@ -99,7 +97,7 @@ bool SN_ProcessorNode::removeApp(SN_RailawareWidget *rw) {
 void SN_ProcessorNode::refresh() {
     /* iterator over appList and add cpuUsage, bandwidth */
     //	const AffinityInfo *aff = 0;
-    const PerfMonitor *perf = 0;
+    const SN_PerfMonitor *perf = 0;
     SN_RailawareWidget *rw = 0;
 
     // reset
@@ -146,7 +144,7 @@ int SN_ProcessorNode::prioritySum()  {
 
 void SN_ProcessorNode::printOverhead()  {
 //	const AffinityInfo *aff = 0;
-	const PerfMonitor *perf = 0;
+	const SN_PerfMonitor *perf = 0;
 	SN_RailawareWidget *widget = 0;
 
 	if (_appList->size() == 0) {
@@ -512,7 +510,7 @@ void SN_ResourceMonitor::refresh() {
 		SN_BaseWidget *bw = it.value();
 		Q_ASSERT(bw);
 
-		PerfMonitor *pm = bw->perfMon();
+		SN_PerfMonitor *pm = bw->perfMon();
 //		Q_ASSERT(pm);
         if (!pm) continue;
 
@@ -554,7 +552,7 @@ void SN_ResourceMonitor::refresh() {
 		//
 		// Assumes the _cpuOfMine is continusouly updated by worker thread (affInfo->setCpuOfMine())
 		//
-		AffinityInfo *ai = bw->affInfo();
+		SN_AffinityInfo *ai = bw->affInfo();
 //		Q_ASSERT(ai);
 
         if (ai && ai->cpuOfMine() >= 0 ) {

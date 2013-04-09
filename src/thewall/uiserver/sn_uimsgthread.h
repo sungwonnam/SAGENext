@@ -5,12 +5,12 @@
 //#include <QTcpSocket>
 #include <QHostAddress>
 
-class UiMsgThread : public QThread
+class SN_UiMsgThread : public QThread
 {
 	Q_OBJECT
 public:
-	explicit UiMsgThread(const quint32 uiclientid, int sock, QObject *parent = 0);
-	~UiMsgThread();
+	explicit SN_UiMsgThread(const quint32 uiclientid, int sock, QObject *parent = 0);
+	~SN_UiMsgThread();
 
 	QHostAddress peerAddress() const {return _peerAddress;}
 

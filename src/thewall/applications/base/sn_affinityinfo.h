@@ -22,14 +22,14 @@ class SN_RailawareWidget;
   * Any modification on readyXXXMask MUST wait on condition (wait until flag == false)
   * Because flag = true means the thread is currently applying new settings in readyXXXMask.
   */
-class AffinityInfo : public QObject
+class SN_AffinityInfo : public QObject
 {
         Q_OBJECT
         Q_PROPERTY(int cpuOfMine READ cpuOfMine WRITE setCpuOfMine)
         Q_ENUMS(MASK_TYPE)
 public:
-        AffinityInfo(SN_RailawareWidget *widget, QObject *parent=0);
-        ~AffinityInfo();
+        SN_AffinityInfo(SN_RailawareWidget *widget, QObject *parent=0);
+        ~SN_AffinityInfo();
 
         /*!
           Hardware info. These variables are static because it's a single machine
@@ -53,7 +53,7 @@ public:
         inline const char * getCpuMask() const {return cpuMask;}
         inline const char * getMemMask() const {return memMask;}
 
-        inline int getNumCpus() const {return AffinityInfo::Num_Cpus;}
+        inline int getNumCpus() const {return SN_AffinityInfo::Num_Cpus;}
         inline int cpuOfMain() const {return _cpuOfMain;}
         inline int cpuOfMine() const {return _cpuOfMine;}
 
@@ -235,7 +235,7 @@ signals:
           * This signal is connected to fsManager::sailSendSetRailMsg() signal by GraphicsViewMain::startSageApp()
           * And is emitted in setStreamerAffinity() which is invoked by AffinityControlDialog
           */
-        void streamerAffInfoChanged(AffinityInfo *, quint64 sageappid);
+        void streamerAffInfoChanged(SN_AffinityInfo *, quint64 sageappid);
 
 public slots:
 

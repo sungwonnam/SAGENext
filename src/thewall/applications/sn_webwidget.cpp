@@ -1,10 +1,10 @@
-#include "webwidget.h"
-#include "base/appinfo.h"
+#include "applications/sn_webwidget.h"
+#include "applications/base/sn_appinfo.h"
+#include "common/sn_commonitem.h"
 
 #include <QtGui>
 #include <QtWebKit>
 //#include <QWebPage>
-#include "../common/commonitem.h"
 
 SN_WebWidget::SN_WebWidget(const quint64 gaid, const QSettings *setting, QGraphicsItem *parent /*0*/, Qt::WindowFlags wFlags/* Qt::Window */)
     : SN_BaseWidget(gaid, setting, parent, wFlags)

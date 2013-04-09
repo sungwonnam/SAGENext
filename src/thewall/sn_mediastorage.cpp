@@ -1,4 +1,4 @@
-#include "mediastorage.h"
+#include "sn_mediastorage.h"
 
 #include "applications/sn_mediabrowser.h"
 

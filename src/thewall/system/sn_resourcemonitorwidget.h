@@ -71,7 +71,7 @@ typedef struct {
 
 
 namespace Ui {
-class ResourceMonitorWidget;
+	class SN_ResourceMonitorWidget;
 }
 
 class ResourceMonitorWidget : public QWidget
@@ -88,7 +88,7 @@ public:
     void setSchedCtrlFrame(QFrame *frame);
 
 private:
-	Ui::ResourceMonitorWidget *ui;
+	Ui::SN_ResourceMonitorWidget *ui;
 
     /*!
       keep refreshing data or not

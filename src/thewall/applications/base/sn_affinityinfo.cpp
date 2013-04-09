@@ -1,4 +1,5 @@
-#include "affinityinfo.h"
+#include "applications/base/sn_affinityinfo.h"
+
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -13,14 +14,14 @@
 #include <QDebug>
 
 /* initialize static member variables */
-int AffinityInfo::Num_Numa_Nodes = 0;
-int AffinityInfo::Cpu_Per_Numa_Node = 0;
-int AffinityInfo::HwThread_Per_Cpu = 0;
-int AffinityInfo::SwThread_Per_Cpu = 0;
-int AffinityInfo::Num_Cpus = 0;
+int SN_AffinityInfo::Num_Numa_Nodes = 0;
+int SN_AffinityInfo::Cpu_Per_Numa_Node = 0;
+int SN_AffinityInfo::HwThread_Per_Cpu = 0;
+int SN_AffinityInfo::SwThread_Per_Cpu = 0;
+int SN_AffinityInfo::Num_Cpus = 0;
 
 
-AffinityInfo::AffinityInfo(SN_RailawareWidget *p, QObject *parent)
+SN_AffinityInfo::SN_AffinityInfo(SN_RailawareWidget *p, QObject *parent)
     : QObject(parent)
     , _widgetPtr(p)
 {
@@ -36,35 +37,35 @@ AffinityInfo::AffinityInfo(SN_RailawareWidget *p, QObject *parent)
 
 //	nodeMask_.resize( numNumaNodes );
 
-	nodeMask = (char *)malloc(sizeof(char) *  AffinityInfo::Num_Numa_Nodes + 1);
-	cpuMask = (char *)malloc(sizeof(char) * AffinityInfo::Num_Cpus+1);
-	memMask = (char *)malloc(sizeof(char) * AffinityInfo::Num_Numa_Nodes +1);
-	memset(nodeMask, '1', AffinityInfo::Num_Numa_Nodes);
-	memset(cpuMask, '1', AffinityInfo::Num_Cpus);
-	memset(memMask, '1', AffinityInfo::Num_Numa_Nodes);
-	nodeMask[ AffinityInfo::Num_Numa_Nodes ] = '\0';
-	cpuMask[ AffinityInfo::Num_Cpus ] = '\0';
-	memMask[ AffinityInfo::Num_Numa_Nodes ] = '\0';
+	nodeMask = (char *)malloc(sizeof(char) *  SN_AffinityInfo::Num_Numa_Nodes + 1);
+	cpuMask = (char *)malloc(sizeof(char) * SN_AffinityInfo::Num_Cpus+1);
+	memMask = (char *)malloc(sizeof(char) * SN_AffinityInfo::Num_Numa_Nodes +1);
+	memset(nodeMask, '1', SN_AffinityInfo::Num_Numa_Nodes);
+	memset(cpuMask, '1', SN_AffinityInfo::Num_Cpus);
+	memset(memMask, '1', SN_AffinityInfo::Num_Numa_Nodes);
+	nodeMask[ SN_AffinityInfo::Num_Numa_Nodes ] = '\0';
+	cpuMask[ SN_AffinityInfo::Num_Cpus ] = '\0';
+	memMask[ SN_AffinityInfo::Num_Numa_Nodes ] = '\0';
 
-	readyNodeMask = (char *)malloc(sizeof(char) *  AffinityInfo::Num_Numa_Nodes+1);
-	readyCpuMask = (char *)malloc(sizeof(char) * AffinityInfo::Num_Cpus+1);
-	readyMemMask = (char *)malloc(sizeof(char) * AffinityInfo::Num_Numa_Nodes +1);
-	memset(readyNodeMask, '0', AffinityInfo::Num_Numa_Nodes);
-	memset(readyCpuMask, '0', AffinityInfo::Num_Cpus);
-	memset(readyMemMask, '0', AffinityInfo::Num_Numa_Nodes);
-	readyNodeMask[ AffinityInfo::Num_Numa_Nodes ] = '\0';
-	readyCpuMask[ AffinityInfo::Num_Cpus ] = '\0';
-	readyMemMask[ AffinityInfo::Num_Numa_Nodes ] = '\0';
+	readyNodeMask = (char *)malloc(sizeof(char) *  SN_AffinityInfo::Num_Numa_Nodes+1);
+	readyCpuMask = (char *)malloc(sizeof(char) * SN_AffinityInfo::Num_Cpus+1);
+	readyMemMask = (char *)malloc(sizeof(char) * SN_AffinityInfo::Num_Numa_Nodes +1);
+	memset(readyNodeMask, '0', SN_AffinityInfo::Num_Numa_Nodes);
+	memset(readyCpuMask, '0', SN_AffinityInfo::Num_Cpus);
+	memset(readyMemMask, '0', SN_AffinityInfo::Num_Numa_Nodes);
+	readyNodeMask[ SN_AffinityInfo::Num_Numa_Nodes ] = '\0';
+	readyCpuMask[ SN_AffinityInfo::Num_Cpus ] = '\0';
+	readyMemMask[ SN_AffinityInfo::Num_Numa_Nodes ] = '\0';
 
 
-	streamerCpuMask = (char *)malloc(sizeof(char) * AffinityInfo::Num_Cpus+1);
-	memset(streamerCpuMask, '1', AffinityInfo::Num_Cpus);
-	streamerCpuMask[ AffinityInfo::Num_Cpus ] = '\0';
+	streamerCpuMask = (char *)malloc(sizeof(char) * SN_AffinityInfo::Num_Cpus+1);
+	memset(streamerCpuMask, '1', SN_AffinityInfo::Num_Cpus);
+	streamerCpuMask[ SN_AffinityInfo::Num_Cpus ] = '\0';
 
 //	qDebug("%s::%s() : Instantiated. %d, %d ", metaObject()->className(), __FUNCTION__, AffinityInfo::Num_Numa_Nodes, AffinityInfo::Num_Cpus);
 }
 
-AffinityInfo::~AffinityInfo() {
+SN_AffinityInfo::~SN_AffinityInfo() {
 //	QObject::disconnect(this, 0, 0, 0);
 
 	assert(nodeMask && cpuMask && memMask);
@@ -77,7 +78,7 @@ AffinityInfo::~AffinityInfo() {
 	free(streamerCpuMask);
 }
 
-void AffinityInfo::setCpuOfMine(int c, bool applyToSender /*false*/) {
+void SN_AffinityInfo::setCpuOfMine(int c, bool applyToSender /*false*/) {
 	if ( _cpuOfMine != c) {
 		int oldvalue = _cpuOfMine;
 		_cpuOfMine = c;
@@ -96,8 +97,8 @@ void AffinityInfo::setCpuOfMine(int c, bool applyToSender /*false*/) {
 			if ( _cpuOfMine < 8 ) smt_sibling = _cpuOfMine + 8; // because Intel's SMT core id-ing policy
 			else smt_sibling = _cpuOfMine - 8;
 
-			char cpus[AffinityInfo::Num_Cpus]; // 16 cores
-			for (int i=0; i<AffinityInfo::Num_Cpus; i++) {
+			char cpus[SN_AffinityInfo::Num_Cpus]; // 16 cores
+			for (int i=0; i<SN_AffinityInfo::Num_Cpus; i++) {
 				cpus[i] = '0'; // reset
 			}
 			cpus[smt_sibling] = '1'; // set
@@ -108,7 +109,7 @@ void AffinityInfo::setCpuOfMine(int c, bool applyToSender /*false*/) {
 	}
 }
 
-void AffinityInfo::applyNewParameters() {
+void SN_AffinityInfo::applyNewParameters() {
 	/* apply changes in readyXXXmask */
 //	char *readyNodeMask;
 //	char *readyCpuMask;
@@ -120,7 +121,7 @@ void AffinityInfo::applyNewParameters() {
 		bool bitChanged = false;
 		struct bitmask *mask = numa_allocate_nodemask();
 		//	numa_bitmask_clearall(mask);
-		for ( int i=0; i<AffinityInfo::Num_Numa_Nodes; ++i ) {
+		for ( int i=0; i<SN_AffinityInfo::Num_Numa_Nodes; ++i ) {
 			if ( readyNodeMask[i] == '1' ) {
 				bitChanged = true;
 				numa_bitmask_setbit(mask, i);
@@ -152,7 +153,7 @@ void AffinityInfo::applyNewParameters() {
 
 
 		mask = numa_allocate_cpumask();
-		for ( int i=0; i<AffinityInfo::Num_Cpus; ++i) {
+		for ( int i=0; i<SN_AffinityInfo::Num_Cpus; ++i) {
 			if ( readyCpuMask[i] == '1' ) {
 				bitChanged = true;
 				numa_bitmask_setbit(mask, i);
@@ -258,7 +259,7 @@ void AffinityInfo::applyNewParameters() {
   * finds out affinity settings of CALLING thread
   * ,and fill the data structure
   */
-void AffinityInfo::figureOutCurrentAffinity() {
+void SN_AffinityInfo::figureOutCurrentAffinity() {
 #if defined(Q_OS_LINUX)
 	/* where the main() is running */
 	// this shouldn't be called here
@@ -270,7 +271,7 @@ void AffinityInfo::figureOutCurrentAffinity() {
 	/* find out on which node, memory is bound */
 //	QByteArray bitmask(numNumaNodes, '0');
 	struct bitmask *m1 = numa_get_membind();
-	for (int i=0; i<AffinityInfo::Num_Numa_Nodes; ++i ) {
+	for (int i=0; i<SN_AffinityInfo::Num_Numa_Nodes; ++i ) {
 		if ( numa_bitmask_isbitset(m1, i) ) {
 //			setBit(MEM_MASK, i); // set node i
 			memMask[i] = '1';
@@ -282,7 +283,7 @@ void AffinityInfo::figureOutCurrentAffinity() {
 
 	/* find out current node affinity */
 	struct bitmask *m2 = numa_get_run_node_mask();
-	for (int i=0; i<AffinityInfo::Num_Numa_Nodes; ++i ) {
+	for (int i=0; i<SN_AffinityInfo::Num_Numa_Nodes; ++i ) {
 		if ( numa_bitmask_isbitset(m2, i) ) {
 //			setBit(NODE_MASK, i);
 			nodeMask[i] = '1';
@@ -296,7 +297,7 @@ void AffinityInfo::figureOutCurrentAffinity() {
 	struct bitmask *tmp = numa_bitmask_alloc(512);
 	numa_bitmask_clearall(tmp);
 	numa_sched_getaffinity(0, tmp);
-	for (int i=0; i<AffinityInfo::Num_Cpus; ++i ) {
+	for (int i=0; i<SN_AffinityInfo::Num_Cpus; ++i ) {
 		if ( numa_bitmask_isbitset(tmp, i) ) {
 //			setBit(CPU_MASK, i);
 			cpuMask[i] = '1';
@@ -350,7 +351,7 @@ void AffinityInfo::setBit(int type, int which) {
 }
 */
 
-void AffinityInfo::setReadyBit(int type, int which) {
+void SN_AffinityInfo::setReadyBit(int type, int which) {
 	/* 1000 0000 : node or cpu 0
 	   1100 0000 : node or cpu 0 and 1
 	   */
@@ -363,15 +364,15 @@ void AffinityInfo::setReadyBit(int type, int which) {
 
 	switch (type) {
 	case NODE_MASK:
-		memset(readyNodeMask, '0', AffinityInfo::Num_Numa_Nodes);
+		memset(readyNodeMask, '0', SN_AffinityInfo::Num_Numa_Nodes);
 		readyNodeMask[which] = '1';
 		break;
 	case CPU_MASK:
-		memset(readyCpuMask, '0', AffinityInfo::Num_Cpus);
+		memset(readyCpuMask, '0', SN_AffinityInfo::Num_Cpus);
 		readyCpuMask[which] = '1';
 		break;
 	case MEM_MASK:
-		memset(readyMemMask, '0', AffinityInfo::Num_Numa_Nodes);
+		memset(readyMemMask, '0', SN_AffinityInfo::Num_Numa_Nodes);
 		readyMemMask[which] = '1';
 		break;
 	}
@@ -381,22 +382,22 @@ void AffinityInfo::setReadyBit(int type, int which) {
 	lock.unlock();
 }
 
-void AffinityInfo::setReadyBit(int type, const char * const str, int length) {
+void SN_AffinityInfo::setReadyBit(int type, const char * const str, int length) {
 	/* 1000 0000 : node or cpu 0
 	   1100 0000 : node or cpu 0 and 1
 	   */
 	char *mask = 0;
 	switch (type) {
 	case NODE_MASK:
-		assert(length == AffinityInfo::Num_Numa_Nodes);
+		assert(length == SN_AffinityInfo::Num_Numa_Nodes);
 		mask = readyNodeMask;
 		break;
 	case CPU_MASK:
-		assert(length == AffinityInfo::Num_Cpus);
+		assert(length == SN_AffinityInfo::Num_Cpus);
 		mask = readyCpuMask;
 		break;
 	case MEM_MASK:
-		assert(length == AffinityInfo::Num_Numa_Nodes);
+		assert(length == SN_AffinityInfo::Num_Numa_Nodes);
 		mask = readyMemMask;
 		break;
 	}
@@ -414,20 +415,20 @@ void AffinityInfo::setReadyBit(int type, const char * const str, int length) {
 }
 
 
-void AffinityInfo::setAllReadyBit() {
+void SN_AffinityInfo::setAllReadyBit() {
 	lock.lock();
 	while(flag == true) {
 		waitCond.wait(&lock);
 	}
-	memset(readyNodeMask, '1', AffinityInfo::Num_Numa_Nodes);
-	memset(readyMemMask, '1', AffinityInfo::Num_Numa_Nodes);
-	memset(readyCpuMask, '1', AffinityInfo::Num_Cpus);
+	memset(readyNodeMask, '1', SN_AffinityInfo::Num_Numa_Nodes);
+	memset(readyMemMask, '1', SN_AffinityInfo::Num_Numa_Nodes);
+	memset(readyCpuMask, '1', SN_AffinityInfo::Num_Cpus);
 	useBits = true;
 	flag = true;
 	lock.unlock();
 }
 
-void AffinityInfo::setReadyString(const QString &node, const QString &mem, const QString &cpu) {
+void SN_AffinityInfo::setReadyString(const QString &node, const QString &mem, const QString &cpu) {
 	lock.lock();
 	while(flag == true) {
 		waitCond.wait(&lock);
@@ -453,9 +454,9 @@ void AffinityInfo::setReadyString(const QString &node, const QString &mem, const
 //	qDebug("AffinityInfo::%s() : mask str [%s]", __FUNCTION__, qPrintable(maskStr));
 }
 
-void AffinityInfo::setSageStreamerAffinity(const char *str) {
+void SN_AffinityInfo::setSageStreamerAffinity(const char *str) {
 	//memset(streamerCpuMask, '0', numCpus);
-	memcpy(streamerCpuMask, str, AffinityInfo::Num_Cpus);
+	memcpy(streamerCpuMask, str, SN_AffinityInfo::Num_Cpus);
 
 	emit streamerAffInfoChanged(this, _widgetID);
 }

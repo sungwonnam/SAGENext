@@ -1,7 +1,7 @@
 #ifndef APPINFO_H
 #define APPINFO_H
 
-#include "../../common/commondefinitions.h"
+#include "common/sn_commondefinitions.h"
 
 #include <QtCore>
 
@@ -10,16 +10,16 @@
   * meida type, source (disk or network)
   * and real time performance data
   */
-class AppInfo
+class SN_AppInfo
 {
 public:
-	AppInfo(quint64 gaid);
+	SN_AppInfo(quint64 gaid);
 
 	/**
 	  * assumes filename is absolute path
 	  */
-	AppInfo(quint64 gaid, int width, int height, int bpp = 24);
-	AppInfo(quint64 gaid, int width, int height, int bpp, const QString filename, const QString srcip);
+	SN_AppInfo(quint64 gaid, int width, int height, int bpp = 24);
+	SN_AppInfo(quint64 gaid, int width, int height, int bpp, const QString filename, const QString srcip);
 
 	inline quint64 GID() const {return _GID;}
     inline void setGID(quint64 gaid) {_GID = gaid;}

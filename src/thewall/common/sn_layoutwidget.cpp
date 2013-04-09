@@ -1,13 +1,13 @@
 #include "common/sn_layoutwidget.h"
+#include "common/sn_commonitem.h"
+#include "applications/base/sn_basewidget.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/sn_mediabrowser.h"
+#include "sn_sagenextlauncher.h"
+#include "sn_scene.h"
 
 #include <unistd.h>
 
-#include "common/commonitem.h"
-#include "applications/base/basewidget.h"
-#include "../applications/sn_mediabrowser.h"
-#include "applications/base/appinfo.h"
-#include "sagenextlauncher.h"
-#include "sagenextscene.h"
 
 SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidget, SN_TheScene *scene, const QSettings *s, QGraphicsItem *parent)
     : QGraphicsWidget(parent)
@@ -813,7 +813,7 @@ void SN_LayoutWidget::saveSession(QDataStream &out) {
 			//
 			// item's pos() is saved. not the scenePos()
 			//
-            AppInfo *ai = bw->appInfo();
+            SN_AppInfo *ai = bw->appInfo();
 			out << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
 
 

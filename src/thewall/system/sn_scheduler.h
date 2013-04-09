@@ -1,25 +1,21 @@
 #ifndef SAGENEXTSCHEDULER_H
 #define SAGENEXTSCHEDULER_H
 
-#include <QtGui>
-#include <QObject>
-//#include <QFutureWatcher>
-//#include <QList>
-#include <QThread>
+//#include <QtGui>
+#include <QtCore>
 
-#include <QTimer>
-
-#include <QReadWriteLock>
-
+class QFrame;
+class QLabel;
 class QEvent;
-class SN_BaseWidget;
-class SN_RailawareWidget;
 class QGraphicsView;
 class QGraphicsScene;
+
 class SN_ResourceMonitor;
 class SN_ProcessorNode;
 class SN_AbstractScheduler;
 class SN_PriorityGrid;
+class SN_BaseWidget;
+class SN_RailawareWidget;
 
 /*!
   General key concepts in multimedia scheduling includes

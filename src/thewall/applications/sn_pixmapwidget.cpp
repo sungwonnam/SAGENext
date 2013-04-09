@@ -1,7 +1,7 @@
-#include "pixmapwidget.h"
-#include "base/appinfo.h"
-#include "base/perfmonitor.h"
-#include "../common/commonitem.h"
+#include "applications/sn_pixmapwidget.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_perfmonitor.h"
+//#include "common/sn_commonitem.h"
 
 //#include <sys/types.h>
 //#include <sys/socket.h>

@@ -5,8 +5,6 @@
 #include <QImage>
 #include <pthread.h>
 
-//class QPaintDevice;
-
 class DoubleBuffer
 {
 public:

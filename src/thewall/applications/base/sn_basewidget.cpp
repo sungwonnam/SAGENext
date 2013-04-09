@@ -1,11 +1,10 @@
-#include "basewidget.h"
+#include "applications/base/sn_basewidget.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_priority.h"
+#include "applications/base/sn_affinityinfo.h"
 
-#include "appinfo.h"
-#include "perfmonitor.h"
-#include "sn_priority.h"
-#include "affinityinfo.h"
-
-#include "../../common/commonitem.h"
+#include "common/sn_commonitem.h"
 
 //#include "../../system/resourcemonitor.h"
 
@@ -26,10 +25,10 @@ SN_BaseWidget::SN_BaseWidget(Qt::WindowFlags wflags)
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
-	, _appInfo(new AppInfo(0))
+	, _appInfo(new SN_AppInfo(0))
     , _showInfo(false)
     , _priorityData(0)
-	, _perfMon(new PerfMonitor(this))
+	, _perfMon(new SN_PerfMonitor(this))
 	, _affInfo(0)
 	, _rMonitor(0)
 	, _quality(1.0)
@@ -72,10 +71,10 @@ SN_BaseWidget::SN_BaseWidget(quint64 globalappid, const QSettings *s, QGraphicsI
     , _widgetType(SN_BaseWidget::Widget_Misc)
 
     , infoTextItem(0)
-	, _appInfo(new AppInfo(globalappid))
+	, _appInfo(new SN_AppInfo(globalappid))
     , _showInfo(false)
     , _priorityData(0)
-	, _perfMon(new PerfMonitor(this))
+	, _perfMon(new SN_PerfMonitor(this))
 	, _affInfo(0)
 	, _rMonitor(0)
 	, _quality(1.0)
@@ -828,7 +827,7 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
         //
         // Save the widget's current geometry
         //
-        if (_windowState & (SN_BaseWidget::W_NORMAL | SN_BaseWidget::W_MAXIMIZED)) {
+        if (_windowState & SN_BaseWidget::W_NORMAL) {
             _appInfo->setRecentPos(scenePos());
             _appInfo->setRecentSize(size());
             _appInfo->setRecentScale(scale());

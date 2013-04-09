@@ -1,20 +1,17 @@
-#include "sagenextscene.h"
+#include "sn_scene.h"
+#include "sn_sagenextlauncher.h"
+#include "common/sn_commonitem.h"
+#include "common/sn_layoutwidget.h"
+
+#include "applications/base/sn_basewidget.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_priority.h"
+
+#include "uiserver/sn_uiserver.h"
 
 #include <QtGui>
 
 #include <unistd.h>
-
-#include "sagenextlauncher.h"
-#include "common/commonitem.h"
-#include "common/sn_layoutwidget.h"
-//#include "common/sn_drawingwidget.h"
-
-#include "applications/base/basewidget.h"
-#include "applications/base/appinfo.h"
-#include "applications/base/sn_priority.h"
-
-#include "system/resourcemonitor.h"
-#include "uiserver/uiserver.h"
 
 SN_TheScene::SN_TheScene(const QRectF &sceneRect, const QSettings *s, QObject *parent)
     : QGraphicsScene(sceneRect, parent)
@@ -465,7 +462,7 @@ void SN_TheScene::saveSession() {
 
             out << bw->globalAppId();
 
-            AppInfo *ai = bw->appInfo();
+            SN_AppInfo *ai = bw->appInfo();
 //			bw->appInfo()->mediaType()
             out << (int)ai->mediaType() << bw->scenePos() << bw->size() << bw->scale();
 

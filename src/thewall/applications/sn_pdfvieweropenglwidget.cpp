@@ -1,8 +1,8 @@
-#include "sn_pdfvieweropenglwidget.h"
+#include "applications/sn_pdfvieweropenglwidget.h"
 
-#include "base/perfmonitor.h"
-#include "base/appinfo.h"
-#include "../common/commonitem.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_appinfo.h"
+#include "common/sn_commonitem.h"
 
 
 SN_PDFViewerOpenGLWidget::SN_PDFViewerOpenGLWidget(const QString filename, quint64 globalappid, const QSettings *s, QGraphicsItem *parent, Qt::WindowFlags wflags)

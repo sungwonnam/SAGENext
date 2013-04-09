@@ -1,13 +1,14 @@
 #ifndef WEBWIDGET_H
 #define WEBWIDGET_H
 
-#include "base/basewidget.h"
+#include "applications/base/sn_basewidget.h"
 #include <QFutureWatcher>
 //#include <QWebPage>
 
 class QGraphicsWebView;
 class QGraphicsProxyWidget;
 class QWebInspector;
+
 class SN_ProxyLineEdit;
 
 /**

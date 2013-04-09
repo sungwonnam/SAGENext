@@ -1,13 +1,13 @@
-#include "sagenextscheduler.h"
-#include "resourcemonitor.h"
-#include "resourcemonitorwidget.h"
-#include "prioritygrid.h"
+#include "system/sn_scheduler.h"
+#include "system/sn_resourcemonitor.h"
+#include "system/sn_resourcemonitorwidget.h"
+#include "system/sn_prioritygrid.h"
 
-#include "../applications/base/railawarewidget.h"
-#include "../applications/base/appinfo.h"
-#include "../applications/base/perfmonitor.h"
-#include "../applications/base/affinityinfo.h"
-#include "../applications/base/sn_priority.h"
+#include "applications/base/sn_railawarewidget.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_affinityinfo.h"
+#include "applications/base/sn_priority.h"
 
 #include <sys/time.h>
 #include <sched.h>
@@ -429,7 +429,7 @@ int SN_AbstractScheduler::configureRail(SN_RailawareWidget *rw, SN_ProcessorNode
 
 	/* this will trigger AffinityInfo::applyNewParameters() from SagePixelReceiver */
 	/* which will trigger ResourceMonitor::updateAffInfo() from AffinityInfo */
-	rw->affInfo()->setReadyBit(AffinityInfo::CPU_MASK, pn->getID());
+	rw->affInfo()->setReadyBit(SN_AffinityInfo::CPU_MASK, pn->getID());
 
 	return pn->getID();
 
@@ -449,10 +449,10 @@ int SN_AbstractScheduler::configureRail(SN_RailawareWidget *rw) {
 int SN_AbstractScheduler::configureRail() {
 
 	int GlobalMax = 0; // max aggregated priority value among processors
-	int MaxOnProc[AffinityInfo::Num_Cpus];
+	int MaxOnProc[SN_AffinityInfo::Num_Cpus];
 
 	// set initial values
-	for (int i=0; i<AffinityInfo::Num_Cpus; i++) {
+	for (int i=0; i<SN_AffinityInfo::Num_Cpus; i++) {
 		SN_ProcessorNode *p = rMonitor->getProcVec()->at(i);
 		MaxOnProc[ p->getID() ] = p->prioritySum();
 

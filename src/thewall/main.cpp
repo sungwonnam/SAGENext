@@ -1,24 +1,24 @@
 
 //#include "settingdialog.h"
-#include "settingstackeddialog.h"
-#include "sagenextscene.h"
-#include "sagenextviewport.h"
-#include "sagenextlauncher.h"
-#include "mediastorage.h"
+#include "settings/sn_settingstackeddialog.h"
+#include "sn_scene.h"
+#include "sn_view.h"
+#include "sn_sagenextlauncher.h"
+#include "sn_mediastorage.h"
 
-#include "uiserver/uiserver.h"
-#include "uiserver/fileserver.h"
+#include "uiserver/sn_uiserver.h"
+#include "uiserver/sn_fileserver.h"
 
-#include "applications/base/affinityinfo.h"
+#include "applications/base/sn_affinityinfo.h"
 //#include "applications/sn_mediabrowser.h"
 //#include "applications/sn_checker.h"
 //#include "applications/sn_pboexample.h"
 //#include "applications/vncwidget.h"
 
-#include "system/sagenextscheduler.h"
-#include "system/resourcemonitor.h"
-#include "system/resourcemonitorwidget.h"
-#include "system/prioritygrid.h"
+#include "system/sn_scheduler.h"
+#include "system/sn_resourcemonitor.h"
+#include "system/sn_resourcemonitorwidget.h"
+#include "system/sn_prioritygrid.h"
 
 #include <QGLWidget>
 #include <QGLPixelBuffer>
@@ -298,11 +298,12 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	// launch setting dialog if user didn't provide config file
 	//
 	if (popSettingsDialog) {
-		SettingStackedDialog sd(&s, &screenLayout);
+		SN_SettingStackedDialog sd(&s, &screenLayout);
 		sd.setWindowModality(Qt::ApplicationModal);
 		sd.adjustSize();
 		sd.exec();
 	}
+
 
 
         /**
@@ -312,19 +313,19 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 	bool ok = false;
 	int tmp = -1;
 	tmp = s.value("system/numnumanodes").toInt(&ok);
-	AffinityInfo::Num_Numa_Nodes = ok ? tmp : -1;
+	SN_AffinityInfo::Num_Numa_Nodes = ok ? tmp : -1;
 
 	tmp = s.value("system/cpupernumanode").toInt(&ok);
-	AffinityInfo::Cpu_Per_Numa_Node = ok ? tmp : -1;
+	SN_AffinityInfo::Cpu_Per_Numa_Node = ok ? tmp : -1;
 
 	tmp = s.value("system/threadpercpu").toInt(&ok);
-	AffinityInfo::HwThread_Per_Cpu = ok ? tmp : -1;
+	SN_AffinityInfo::HwThread_Per_Cpu = ok ? tmp : -1;
 
 	tmp = s.value("system/swthreadpercpu").toInt(&ok);
-	AffinityInfo::SwThread_Per_Cpu = ok ? tmp : -1;
+	SN_AffinityInfo::SwThread_Per_Cpu = ok ? tmp : -1;
 
 	tmp = s.value("system/numcpus").toInt(&ok);
-	AffinityInfo::Num_Cpus = ok ? tmp : -1;
+	SN_AffinityInfo::Num_Cpus = ok ? tmp : -1;
 
 
 

@@ -4,7 +4,7 @@
 #include <QtGui>
 
 #include "applications/base/SN_plugininterface.h"
-#include "applications/base/basewidget.h"
+#include "applications/base/sn_basewidget.h"
 
 
 /*!

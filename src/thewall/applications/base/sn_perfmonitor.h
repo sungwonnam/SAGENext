@@ -1,18 +1,19 @@
 #ifndef PERFMONITOR_H
 #define PERFMONITOR_H
 
-#include "basewidget.h"
+//#include "applications/base/sn_basewidget.h"
 
 #include <QtGlobal>
 #include <QtCore>
 
+class SN_BaseWidget;
 
-class PerfMonitor : public QObject
+class SN_PerfMonitor : public QObject
 {
 	Q_OBJECT
 
 public:
-	explicit PerfMonitor(QObject *parent=0);
+	explicit SN_PerfMonitor(QObject *parent=0);
 //	~PerfMonitor();
 
 	/*!

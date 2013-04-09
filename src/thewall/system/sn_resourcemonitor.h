@@ -4,10 +4,10 @@
 //#include "../common/commondefinitions.h"
 //#include "../common/commonitem.h"
 
-#include <QtGui>
+#include <QtCore>
 
 class QSettings;
-class AffinityInfo;
+class SN_AffinityInfo;
 class SN_TheScene;
 class SN_SimpleTextItem;
 class SN_BaseWidget;

@@ -1,7 +1,5 @@
-#include "imagedoublebuffer.h"
+#include "common/sn_doublebuffer.h"
 
-//#include <QGLBuffer>
-//#include <QGLContext>
 
 DoubleBuffer::DoubleBuffer()
 	: _doubleBuffer(0)

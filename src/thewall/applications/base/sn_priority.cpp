@@ -1,5 +1,6 @@
-#include "sn_priority.h"
-#include "../../system/resourcemonitor.h"
+#include "applications/base/sn_priority.h"
+#include "applications/base/sn_basewidget.h"
+#include "system/sn_resourcemonitor.h"
 #include <QGraphicsScene>
 
 SN_Priority::SN_Priority(SN_BaseWidget *w, QObject *parent)

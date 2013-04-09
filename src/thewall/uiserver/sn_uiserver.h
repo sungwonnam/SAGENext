@@ -2,17 +2,17 @@
 #define UISERVER_H
 
 
-#include "uimsgthread.h"
-#include "../common/commondefinitions.h"
+#include "uiserver/sn_uimsgthread.h"
+#include "common/sn_commondefinitions.h"
 //#include "../common/commonitem.h"
 
 #include <QTcpServer>
 
 
+class QSettings;
 
 class SN_TheScene;
 class SN_Launcher;
-class QSettings;
 class SN_PolygonArrowPointer;
 
 
@@ -57,7 +57,7 @@ private:
         /*!
           * uiclientid as a key and corresponding msg thread
           */
-	QMap<quint32, UiMsgThread *> _uiMsgThreadsMap;
+	QMap<quint32, SN_UiMsgThread *> _uiMsgThreadsMap;
 
 //	QMap<quint32, FileReceivingTcpServer *> uiFileRecvRunnableMap;
 
@@ -73,8 +73,6 @@ private:
 //        QMap<quint64, bool> appLayoutFlagMap;
 
 
-//	QGraphicsScene *scene;
-
         /**
           * This buffer is updated periodically by this->updateAppLayout() and broadcasted to ALL ext UI clients (RESPOND_APP_LAYOUT)
           */
@@ -84,7 +82,7 @@ private:
 
 	SN_Launcher *_launcher;
 
-	UiMsgThread * getUiMsgThread(quint32 uiclientid);
+	SN_UiMsgThread * getUiMsgThread(quint32 uiclientid);
 
 	SN_PolygonArrowPointer * getSharedPointer(quint32 uiclientid);
 

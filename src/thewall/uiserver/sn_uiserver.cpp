@@ -1,11 +1,10 @@
-#include "uiserver.h"
-#include "../sagenextscene.h"
-#include "../sagenextlauncher.h"
-#include "../applications/base/basewidget.h"
-#include "../common/sn_sharedpointer.h"
-
-#include "../applications/base/sn_priority.h"
-#include "../applications/base/appinfo.h"
+#include "uiserver/sn_uiserver.h"
+#include "sn_scene.h"
+#include "sn_sagenextlauncher.h"
+#include "common/sn_sharedpointer.h"
+#include "applications/base/sn_basewidget.h"
+#include "applications/base/sn_priority.h"
+#include "applications/base/sn_appinfo.h"
 
 #include <QGraphicsScene>
 #include <QGraphicsItem>
@@ -48,7 +47,7 @@ SN_UiServer::~SN_UiServer() {
 		delete pa;
 	}
 	
-	foreach (UiMsgThread *thr, _uiMsgThreadsMap) {
+	foreach (SN_UiMsgThread *thr, _uiMsgThreadsMap) {
 		thr->terminate();
 		thr->endThread();
 	}
@@ -86,7 +85,7 @@ void SN_UiServer::incomingConnection(int sockfd) {
     /**
       create a msg thread
       */
-    UiMsgThread *thread = new UiMsgThread(_uiClientId, sockfd, this);
+    SN_UiMsgThread *thread = new SN_UiMsgThread(_uiClientId, sockfd, this);
     _uiMsgThreadsMap.insert(_uiClientId, thread);
 
 	QByteArray initMsg(EXTUI_MSG_SIZE, 0);
@@ -128,7 +127,7 @@ void SN_UiServer::incomingConnection(int sockfd) {
 }
 
 int SN_UiServer::sendMsgToUiClient(quint32 uiclientid, const QByteArray &msg) {
-    UiMsgThread *msgThread = getUiMsgThread(uiclientid);
+    SN_UiMsgThread *msgThread = getUiMsgThread(uiclientid);
     if (!msgThread) {
         qDebug() << "SN_UiServer::sendMessageToUiClient() : there's no msgThread for uiclient" << uiclientid;
         return -1;
@@ -148,7 +147,7 @@ int SN_UiServer::sendMsgToUiClient(quint32 uiclientid, const QByteArray &msg) {
 
 void SN_UiServer::handleMessage(const QByteArray msg) {
 
-	UiMsgThread *msgThread = static_cast<UiMsgThread *>(sender());
+	SN_UiMsgThread *msgThread = static_cast<SN_UiMsgThread *>(sender());
 
     // "msgcode data"
     int code = 0;
@@ -806,10 +805,10 @@ void UiServer::updateAppLayout() {
 **/
 
 
-UiMsgThread * SN_UiServer::getUiMsgThread(quint32 uiclientid) {
-    QMap<quint32, UiMsgThread*>::iterator it = _uiMsgThreadsMap.find(uiclientid);
+SN_UiMsgThread * SN_UiServer::getUiMsgThread(quint32 uiclientid) {
+    QMap<quint32, SN_UiMsgThread*>::iterator it = _uiMsgThreadsMap.find(uiclientid);
     if ( it == _uiMsgThreadsMap.end()) return 0;
-    UiMsgThread *ret = it.value();
+    SN_UiMsgThread *ret = it.value();
     return ret;
 }
 

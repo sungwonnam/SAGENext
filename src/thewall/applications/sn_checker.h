@@ -1,34 +1,24 @@
 #ifndef SN_CHECKER_H
 #define SN_CHECKER_H
 
-#include "base/railawarewidget.h"
-#include "../system/resourcemonitor.h"
+#include "applications/base/sn_railawarewidget.h"
+//#include "system/sn_resourcemonitor.h"
 
-#include <QTimer>
-#include <QFuture>
-#include <QFutureWatcher>
-
-/*
-#if defined(Q_OS_LINUX)
-#define GL_GLEXT_PROTOTYPES
-#include <GL/glu.h>
-#elif defined(Q_OS_MACX)
-#include <OpenGL.h>
-#endif
-*/
+#include <QtCore>
 #include <QtOpenGL>
 
 #include <sys/resource.h>
+
 
 class WorkerThread : public QThread {
 	Q_OBJECT
 public:
 	WorkerThread(QObject *parent=0);
-	WorkerThread(AppInfo *ai, PerfMonitor *pm, qreal frate, QObject *parent=0) : QThread(parent), _appInfo(ai), _perfMon(pm), _framerate(frate) {}
+	WorkerThread(SN_AppInfo *ai, SN_PerfMonitor *pm, qreal frate, QObject *parent=0) : QThread(parent), _appInfo(ai), _perfMon(pm), _framerate(frate) {}
 
 	inline void setBufPtr(unsigned char *bufptr) {_bufptr = bufptr;}
-	inline void setAppInfo(AppInfo *ai) {_appInfo = ai;}
-	inline void setPerfMon(PerfMonitor *pm) {_perfMon = pm;}
+	inline void setAppInfo(SN_AppInfo *ai) {_appInfo = ai;}
+	inline void setPerfMon(SN_PerfMonitor *pm) {_perfMon = pm;}
 	inline void setFramerate(qreal f) {_framerate = f;}
 
 	inline void setNumpixel(int i) {_numpixel = i;}
@@ -50,9 +40,9 @@ private:
 	  */
 	unsigned char * _bufptr;
 
-	AppInfo *_appInfo;
+	SN_AppInfo *_appInfo;
 
-	PerfMonitor *_perfMon;
+	SN_PerfMonitor *_perfMon;
 
 	struct timeval lats;
 	struct timeval late;

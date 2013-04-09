@@ -4,20 +4,22 @@
 #include <QTcpServer>
 #include <QThread>
 
-#include "../common/commondefinitions.h"
+#include "common/sn_commondefinitions.h"
+//#include "uiserver/sn_uiserver.h"
 
-#include "uiserver.h"
 
 class QSettings;
+
 class SN_Launcher;
 class SN_MediaStorage;
+class SN_UiServer;
 
-class FileServerThread : public QThread
+class SN_FileServerThread : public QThread
 {
 	Q_OBJECT
 public:
-	explicit FileServerThread(int sockfd, const quint32 uiclientid, QObject *parent=0);
-	~FileServerThread();
+	explicit SN_FileServerThread(int sockfd, const quint32 uiclientid, QObject *parent=0);
+	~SN_FileServerThread();
 
 	inline quint32 uiclientid() const {return _uiclientid;}
 
@@ -68,7 +70,7 @@ protected:
 private:
 	const QSettings *_settings;
 
-	QMap<quint32, FileServerThread *> _uiFileServerThreadMap;
+	QMap<quint32, SN_FileServerThread *> _uiFileServerThreadMap;
 
 	int _fileServerPort;
 

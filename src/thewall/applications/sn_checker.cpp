@@ -1,8 +1,9 @@
-#include "sn_checker.h"
+#include "applications/sn_checker.h"
 
-#include "base/appinfo.h"
-#include "base/perfmonitor.h"
-#include "base/sn_priority.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_priority.h"
+#include "system/sn_resourcemonitor.h"
 
 #include <sys/time.h>
 #include <unistd.h>

@@ -1,10 +1,14 @@
 #include "sn_fittslawtest.h"
-#include "system/resourcemonitor.h"
+
+#include "system/sn_resourcemonitor.h"
+
 #include "common/sn_sharedpointer.h"
+#include "common/sn_doublebuffer.h"
+
+#include "applications/base/sn_sagepixelreceiver.h"
 #include "applications/base/sn_priority.h"
-#include "applications/base/perfmonitor.h"
-#include "applications/base/appinfo.h"
-#include "common/imagedoublebuffer.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_appinfo.h"
 
 int SN_FittsLawTestData::_NUM_SUBJECTS = 3;
 int SN_SageFittsLawTest::_NUM_TARGET_PER_ROUND = 20;

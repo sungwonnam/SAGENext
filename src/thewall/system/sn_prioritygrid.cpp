@@ -1,6 +1,6 @@
-#include "prioritygrid.h"
-#include "common/commondefinitions.h"
-#include "applications/base/basewidget.h"
+#include "system/sn_prioritygrid.h"
+//#include "common/sn_commondefinitions.h"
+#include "applications/base/sn_basewidget.h"
 
 SN_PriorityGrid::SN_PriorityGrid(const QSize &rectSize, QGraphicsScene *scene, QObject *parent)
     : QObject(parent)

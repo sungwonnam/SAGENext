@@ -1,17 +1,17 @@
-#include "resourcemonitorwidget.h"
+#include "system/sn_resourcemonitorwidget.h"
 
-#include "ui_resourcemonitorwidget.h"
+#include "ui_sn_resourcemonitorwidget.h"
 
-#include "resourcemonitor.h"
-#include "sagenextscheduler.h"
-#include "prioritygrid.h"
+#include "system/sn_resourcemonitor.h"
+#include "system/sn_scheduler.h"
+#include "system/sn_prioritygrid.h"
 
 
-#include "../applications/base/basewidget.h"
-#include "../applications/base/railawarewidget.h"
-//#include "../applications/sagestreamwidget.h"
-#include "../applications/base/perfmonitor.h"
-#include "../applications/base/sn_priority.h"
+#include "applications/base/sn_basewidget.h"
+#include "applications/base/sn_railawarewidget.h"
+//#include "applications/sn_sagestreamwidget.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_priority.h"
 
 #ifdef USE_QWT
 #include <qwt_text.h>
@@ -21,7 +21,7 @@
 
 ResourceMonitorWidget::ResourceMonitorWidget(SN_ResourceMonitor *rm, SN_PriorityGrid *pg, QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::ResourceMonitorWidget)
+    , ui(new Ui::SN_ResourceMonitorWidget)
     , _isRefreshEnabled(true)
     , _rMonitor(rm)
     , _pGrid(pg)

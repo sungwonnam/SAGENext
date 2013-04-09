@@ -1,6 +1,7 @@
-#include "perfmonitor.h"
-#include "appinfo.h"
-#include "system/sagenextscheduler.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_basewidget.h"
+#include "system/sn_scheduler.h"
 
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -8,7 +9,7 @@
 #include <stdio.h>
 
 
-PerfMonitor::PerfMonitor(QObject *parent)
+SN_PerfMonitor::SN_PerfMonitor(QObject *parent)
     : QObject(parent)
     , _widget(static_cast<SN_BaseWidget *>(parent))
 
@@ -98,12 +99,12 @@ PerfMonitor::PerfMonitor(QObject *parent)
 	}
 }
 
-void PerfMonitor::printData() const {
+void SN_PerfMonitor::printData() const {
 	// avgRecvLatency,  avgConvDelay,  avgDrawLatency,  avgRecvFps, avgDispFps
 //	qDebug() << "PerfMonitor::printData()" << avgRecvLatency << avgUpdateDelay << avgDrawLatency << _avgEffectiveFps << avgDispFps;
 }
 
-void PerfMonitor::_updateBWdata(qreal bwtemp) {
+void SN_PerfMonitor::_updateBWdata(qreal bwtemp) {
 
     ///
     // If app provided resource required (e.g. constant framerate streaming such as Sage app)
@@ -324,7 +325,7 @@ void PerfMonitor::_updateBWdata(qreal bwtemp) {
 //
 // Resource monitor 's refresh() calls this function
 //
-void PerfMonitor::updateDataWithCumulativeByteReceived(qint64 timestamp) {
+void SN_PerfMonitor::updateDataWithCumulativeByteReceived(qint64 timestamp) {
 
     if (_prevByteReceived > 0 ) {
         quint64 deltaByte = _cumulativeByteRecved - _prevByteReceived;
@@ -363,7 +364,7 @@ void PerfMonitor::updateDataWithCumulativeByteReceived(qint64 timestamp) {
 //
 // The widget updates this
 //
-void PerfMonitor::addToCumulativeByteReceived(quint64 byte, qreal actualtime_sec /* 0 */, qreal cputime_sec /* 0 */) {
+void SN_PerfMonitor::addToCumulativeByteReceived(quint64 byte, qreal actualtime_sec /* 0 */, qreal cputime_sec /* 0 */) {
 
      ++_recvFrameCount;
 
@@ -443,7 +444,7 @@ void PerfMonitor::addToCumulativeByteReceived(quint64 byte, qreal actualtime_sec
 
 
 
-qreal PerfMonitor::observedQuality_Rq() const {
+qreal SN_PerfMonitor::observedQuality_Rq() const {
     if ( _requiredBW_Mbps > 0) {
         return _currEffectiveBW_Mbps / _requiredBW_Mbps; // Qcur = Rcur / Ropt
     }
@@ -455,7 +456,7 @@ qreal PerfMonitor::observedQuality_Rq() const {
     }
 }
 
-qreal PerfMonitor::observedQuality_Dq() const {
+qreal SN_PerfMonitor::observedQuality_Dq() const {
     if (_widget) {
         qreal demandedBW = _widget->demandedQuality() * _requiredBW_Mbps;
         if (demandedBW > 0) {
@@ -475,7 +476,7 @@ qreal PerfMonitor::observedQuality_Dq() const {
 
 
 
-qreal PerfMonitor::setAdjustedFps(qreal f) {
+qreal SN_PerfMonitor::setAdjustedFps(qreal f) {
 	if ( f < 1 ) {
 		adjustedFps = 1;
 		return -1;
@@ -494,7 +495,7 @@ qreal PerfMonitor::setAdjustedFps(qreal f) {
 /*!
   The rate at which widget's update() event is dispatched
   */
-void PerfMonitor::updateDispFps() {
+void SN_PerfMonitor::updateDispFps() {
 	if ( dispTimer.isNull() ) {
 		dispTimer.start();
 	}
@@ -511,7 +512,7 @@ void PerfMonitor::updateDispFps() {
 /*!
   The time spent in paint()
   */
-qreal PerfMonitor::updateDrawLatency() {
+qreal SN_PerfMonitor::updateDrawLatency() {
 	if ( drawTimer.isNull() ) {
 		qWarning("PerfMonitor::%s() : drawTimer is null. Please start it first.", __FUNCTION__);
 		return -1.0;
@@ -538,7 +539,7 @@ qreal PerfMonitor::updateDrawLatency() {
 	return currDrawLatency;
 }
 
-qreal PerfMonitor::updateUpdateDelay() {
+qreal SN_PerfMonitor::updateUpdateDelay() {
 	if (updateTimer.isNull()) {
         qWarning("PerfMonitor::%s() : updateTimer is null. Please start it first.", __FUNCTION__);
 		return -1.0;
@@ -556,7 +557,7 @@ qreal PerfMonitor::updateUpdateDelay() {
 	return currUpdateDelay;
 }
 
-qreal PerfMonitor::updateEQDelay() {
+qreal SN_PerfMonitor::updateEQDelay() {
 	if (eqTimer.isNull()) {
         qWarning("PerfMonitor::%s() : eqTimer is null. Please start it first.", __FUNCTION__);
 		return -1.0;
@@ -572,7 +573,7 @@ qreal PerfMonitor::updateEQDelay() {
 	return currEqDelay;
 }
 
-void PerfMonitor::reset() {
+void SN_PerfMonitor::reset() {
 	_recvFrameCount = 0;
 	currRecvLatency =0.0;
 	avgRecvLatency = 1.0 / expectedFps; // set default
@@ -625,7 +626,7 @@ void PerfMonitor::reset() {
 }
 
 
-qreal PerfMonitor::getRequiredBW_Mbps(qreal percentage /* = 1.0 */) const {
+qreal SN_PerfMonitor::getRequiredBW_Mbps(qreal percentage /* = 1.0 */) const {
     if (percentage > 1) {
         return _requiredBW_Mbps;
     }

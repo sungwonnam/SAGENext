@@ -1,8 +1,8 @@
 #ifndef VNCWIDGET_H
 #define VNCWIDGET_H
 
-#include "base/railawarewidget.h"
-#include "base/basewidget.h"
+#include "applications/base/sn_railawarewidget.h"
+#include "applications/base/sn_basewidget.h"
 
 #include <QHostAddress>
 #include <QtCore>

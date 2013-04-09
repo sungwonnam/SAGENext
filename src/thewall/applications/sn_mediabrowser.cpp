@@ -1,7 +1,7 @@
-#include "sn_mediabrowser.h"
-#include "mediastorage.h"
-#include "../sagenextlauncher.h"
-#include "../common/commonitem.h"
+#include "applications/sn_mediabrowser.h"
+#include "sn_mediastorage.h"
+#include "sn_sagenextlauncher.h"
+#include "common/sn_commonitem.h"
 
 
 SN_MediaItem::SN_MediaItem(SAGENext::MEDIA_TYPE mtype, const QString &filename, const QPixmap &pixmap, const QSize &thumbsize, QGraphicsItem *parent)

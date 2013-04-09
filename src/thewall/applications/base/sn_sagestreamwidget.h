@@ -1,7 +1,9 @@
 #ifndef SAGESTREAMWIDGET_H
 #define SAGESTREAMWIDGET_H
 
-#include "railawarewidget.h"
+#include "applications/base/sn_railawarewidget.h"
+#include "sage/fsmanagermsgthread.h"
+#include "common/sn_commonitem.h"
 
 /*
 #if defined(Q_OS_LINUX)
@@ -18,15 +20,13 @@
 #endif
 */
 #include <QtOpenGL>
-
-#include <fcntl.h>
-
-#include "../../sage/fsmanagermsgthread.h"
-#include "../../common/commonitem.h"
-
 #include <QFutureWatcher>
 #include <QMutex>
 #include <QWaitCondition>
+
+#include <fcntl.h>
+
+
 
 /**
   below is for when sage app streams YUV
@@ -41,7 +41,7 @@ GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment);
 
 class DoubleBuffer;
 class SN_SagePixelReceiver;
-class AffinityInfo;
+class SN_AffinityInfo;
 class QProcess;
 
 class QGLBuffer;
