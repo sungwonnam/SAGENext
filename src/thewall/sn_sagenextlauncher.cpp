@@ -42,14 +42,13 @@
 SN_BaseWidget *theLastLaunched;
 
 
-SN_Launcher::SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage *mediaStorage, SN_ResourceMonitor *rm /*= 0*/, SN_SchedulerControl *sc /* = 0*/, QFile *scenarioFile, QObject *parent /*0*/)
+SN_Launcher::SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage *mediaStorage, SN_ResourceMonitor *rm /*= 0*/, QFile *scenarioFile, QObject *parent /*0*/)
 	: QObject(parent)
 	, _settings(s)
 	, _globalAppId(1)
 	, _scene(scene)
 	, _mediaStorage(mediaStorage)
 	, _rMonitor(rm)
-	, _schedCtrl(sc)
 	, _scenarioFile(scenarioFile)
 {
 	Q_ASSERT(_settings);

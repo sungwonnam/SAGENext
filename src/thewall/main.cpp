@@ -455,7 +455,7 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 		sprintf(buffer, "%lld\n", time);
 		recordingFile->write(buffer); // fill the first line
 	}
-	SN_Launcher *launcher = new SN_Launcher(&s, scene, mediaStorage, resourceMonitor, schedcontrol, recordingFile, scene); // scene is the parent
+	SN_Launcher *launcher = new SN_Launcher(&s, scene, mediaStorage, resourceMonitor, recordingFile, scene); // scene is the parent
 
 
 	/**

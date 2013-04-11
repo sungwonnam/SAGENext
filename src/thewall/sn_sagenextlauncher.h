@@ -27,7 +27,7 @@ class SN_Launcher : public QObject
 {
 	Q_OBJECT
 public:
-	explicit SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage *mediaStorage, SN_ResourceMonitor *rm = 0, SN_SchedulerControl *sc = 0, QFile *scenarioFile = 0, QObject *parent = 0);
+	explicit SN_Launcher(const QSettings *s, SN_TheScene *scene, SN_MediaStorage *mediaStorage, SN_ResourceMonitor *rm = 0, QFile *scenarioFile = 0, QObject *parent = 0);
 	~SN_Launcher();
 
 	/**
@@ -40,24 +40,35 @@ private:
 	const QSettings *_settings;
 
         /*!
-          * global
+          * global app id that will be assigned to a widget.
           */
 	quint64 _globalAppId;
 
-        /**
+        /*!
           The pointer to the scene
           */
 	SN_TheScene *_scene;
 
-        /**
+        /*!
           The pointer to the media storage
           */
 	SN_MediaStorage *_mediaStorage;
 
-        /**
-          fsServer::checkClient()
-          */
+    /*!
+     * \brief _fsm is a pointer to the SAGE's free space manager instance.
+     *
+     * Note that fsManager is implemented in SAGENext. What it does is
+     * waiting for a SAGE application's handshaking message.
+     *
+     * Refer fsServer::checkClient() of SAGE.
+     */
 	fsManager *_fsm;
+
+    /**
+      This is called once in the Constructor. It starts fsManager (QTcpServer)
+      */
+    void _createFsManager();
+
 
         /**
           Launcher creates sageWidget before firing SAIL application. So the sageWidget is waiting for actual SAIL connection to run.
@@ -75,14 +86,11 @@ private:
 
 	QList<QPointF> _sageWidgetPosQueue;
 
-		/**
-		  This is called once in the Constructor. It starts fsManager (QTcpServer)
-		  */
-	void _createFsManager();
 
+    /*!
+     * \brief _rMonitor is a pointer to the SN_ResourceMonitor instance
+     */
 	SN_ResourceMonitor *_rMonitor;
-
-	SN_SchedulerControl *_schedCtrl;
 
 		/**
 		  To record new widget/pointer starts.
@@ -99,6 +107,11 @@ private:
 	void _loadPlugins();
 
 
+    /*!
+     * \brief _getUpdatedGlobalAppId finds out next globalAppId for a widget
+     * \param gaid
+     * \return globa app id to be assigned to a new widget
+     */
     quint64 _getUpdatedGlobalAppId(quint64 gaid = 0);
 
 
@@ -133,12 +146,14 @@ public slots:
           */
 	SN_BaseWidget * launch(const QString &username, const QString &vncPasswd, int display, const QString &vncServerIP, int framerate = 10, const QPointF &scenepos = QPointF(30,30), quint64 gaid = 0);
 
-        /**
-         *All the launch functions will eventually call this function.
-         *
-          The widget is added to the scene in here and the _globalAppId is incremented by 1 in here as well.
-          All the launch() will eventually call this function at the end.
-          */
+    /*!
+     * \brief launches the widget.
+     *
+     * If the widget set isRegisterForHover then the widget is added to the scene's hoverAcceptingApps list.
+     *
+     * \param scenepos
+     * \return A pointer to the widget that has launched and added to the scene
+     */
 	SN_BaseWidget * launch(SN_BaseWidget *, const QPointF &scenepos = QPointF(30,30));
 
 	inline SN_BaseWidget * launch(void *vbw, const QPointF &scenepos = QPointF(30,30)) {
@@ -154,7 +169,10 @@ public slots:
 	SN_PolygonArrowPointer * launchPointer(quint32 uiclientid, SN_UiMsgThread *msgthread, const QString &name, const QColor &color, const QPointF &scenepos = QPointF());
 
     /*!
-     * \brief launch SN_MediaBrowser when user double click on an empty space. This is invoked by SN_PolygonArrowPointer::pointerDoubleClick()
+     * \brief launch SN_MediaBrowser when user double click on an empty space.
+     *
+     * This is invoked by SN_PolygonArrowPointer::pointerDoubleClick()
+     *
      * \param scenePos where user double clicked
      * \param uiclientid the unique user id
      * \param username the username set by user in his/her sagenextPointer

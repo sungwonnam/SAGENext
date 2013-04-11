@@ -673,7 +673,8 @@ SN_MinimizeBar::SN_MinimizeBar(const QSizeF size, SN_TheScene *scene, SN_LayoutW
     resize(size);
 }
 
-void SN_MinimizeBar::minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF position) {
+void SN_MinimizeBar::minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF &position) {
+    if (!widget) return;
 
     qreal scaleFactor = size().height() / widget->size().height();
 
@@ -683,6 +684,8 @@ void SN_MinimizeBar::minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF
     else {
         widget->setScale(scaleFactor);
     }
+
+
 
     //
     // widget is no longer a child of SN_LayoutWIdget

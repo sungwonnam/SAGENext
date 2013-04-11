@@ -5,20 +5,7 @@
 #include "sage/fsmanagermsgthread.h"
 #include "common/sn_commonitem.h"
 
-/*
-#if defined(Q_OS_LINUX)
-//#define GLEW_STATIC 1
-#define GL_GLEXT_PROTOTYPES
-//#include <GL/gl.h>
-#include <GL/glu.h>
-//#include <GL/glut.h>
-//#include <GL/glext.h>
-#elif defined(Q_OS_MAC)
-#define GL_GLEXT_PROTOTYPES
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
-#endif
-*/
+
 #include <QtOpenGL>
 #include <QFutureWatcher>
 #include <QMutex>
@@ -28,16 +15,6 @@
 
 
 
-/**
-  below is for when sage app streams YUV
-  */
-/**
-#define GLSLVertexShader   1
-#define GLSLFragmentShader 2
-int GLSLreadShaderSource(char *fileName, GLchar **vertexShader, GLchar **fragmentShader);
-GLuint GLSLinstallShaders(const GLchar *Vertex, const GLchar *Fragment);
-**/
-
 
 class DoubleBuffer;
 class SN_SagePixelReceiver;
@@ -46,6 +23,8 @@ class QProcess;
 
 class QGLBuffer;
 class QGLShaderProgram;
+
+
 
 class SN_SageStreamWidget : public SN_RailawareWidget
 {
@@ -59,7 +38,7 @@ public:
 	~SN_SageStreamWidget();
 
 	/*!
-	  pixel format enum from SAGE
+	  The pixel format enum variable from SAGE
 	  */
 	enum sagePixFmt {PIXFMT_NULL, PIXFMT_555, PIXFMT_555_INV, PIXFMT_565, PIXFMT_565_INV,
 		  PIXFMT_888, PIXFMT_888_INV, PIXFMT_8888, PIXFMT_8888_INV, PIXFMT_RLE, PIXFMT_LUV,
@@ -131,7 +110,7 @@ protected:
 	SN_SagePixelReceiver *_receiverThread;
 
 
-	/**
+	/*!
 	  In X11, QPixmap is stored at the X Server. So converting QImage to QPixmap involves converting plus copying data to Xserver, and this is expansive !!.
 	  However, drawing QPixmap is much cheaper.
 	  And we want to make the paint() as light as possible. So, use QPixmap for drawing if you're not using native OpenGL calls.
@@ -173,12 +152,12 @@ protected:
 	DoubleBuffer *doubleBuffer;
 
 
-	/**
+	/*!
 	  * pixel receiver socket on which this widget will listen in initialize()
 	  */
 	int serversocket;
 
-	/**
+	/*!
 	  * represent SAIL socket used to recv pixels by receiverThread
 	  * initialize() enables this
 	  */
@@ -187,7 +166,7 @@ protected:
 
 	int getPixelSize(sagePixFmt pixfmt);
 
-	/**
+	/*!
 	  * instantiate _image based on sagePixFmt
 	  */
 	int createImageBuffer(int resx, int resy, sagePixFmt pixelFormat);
@@ -221,10 +200,6 @@ protected:
 	  */
 	void * _pbobufarray[2];
 
-//	QFuture<void> _recvThreadFuture;
-//	QFutureWatcher<void> _recvThreadWatcher;
-//	void __recvThread();
-//	ssize_t __recvFrame(int sock, int bytecount, void *ptr);
 
 	bool _isFirstFrame;
 
@@ -238,11 +213,9 @@ protected:
 	bool _useShader;
 
 	/*!
-	  A shader program is used for the image with PIXFMT_YUV
-	  The shader program is located at $SAGE_DIRECTORY/bin/yuv.vert/frag
+	  \brief A shader program is used for the image with PIXFMT_YUV
+      The shader program is located at $SAGE_DIRECTORY/bin/yuv.vert/frag
 	  */
-	GLhandleARB _shaderProgHandle;
-
     QGLShaderProgram *_shaderProgram;
 
 

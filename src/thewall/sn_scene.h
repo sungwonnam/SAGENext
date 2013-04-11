@@ -161,7 +161,7 @@ public slots:
     /*!
       minimize and place the widget on the position which is in this widget's local coordinate
       */
-    void minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF position);
+    void minimizeAndPlaceWidget(SN_BaseWidget *widget, const QPointF &position);
 
     /*!
       Find the widget under the position
