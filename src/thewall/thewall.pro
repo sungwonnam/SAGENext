@@ -188,14 +188,14 @@ message("Thumbnail dir is $${THUMBNAIL_DIR}")
 #CONFIG(release, debug|release):DESTDIR += release
 
 FORMS += \
-        applications/base/affinitycontroldialog.ui \
-        system/resourcemonitorwidget.ui \
-    settingstackeddialog.ui \
-    generalsettingdialog.ui \
-    systemsettingdialog.ui \
-    graphicssettingdialog.ui \
-    guisettingdialog.ui \
-    screenlayoutdialog.ui
+    applications/base/sn_affinitycontroldialog.ui \
+    system/sn_resourcemonitorwidget.ui \
+    settings/sn_settingstackeddialog.ui \
+    settings/sn_generalsettingdialog.ui \
+    settings/sn_systemsettingdialog.ui \
+    settings/sn_graphicssettingdialog.ui \
+    settings/sn_guisettingdialog.ui \
+    settings/sn_screenlayoutdialog.ui
 
 
 RESOURCES += ../resources.qrc
@@ -203,123 +203,99 @@ RESOURCES += ../resources.qrc
 
 SOURCES += \
 main.cpp \
-mediastorage.cpp \
-sagenextscene.cpp \
-sagenextviewport.cpp \
-sagenextlauncher.cpp \
-settingstackeddialog.cpp \
+sn_mediastorage.cpp \
+sn_scene.cpp \
+sn_view.cpp \
+sn_sagenextlauncher.cpp \
+settings/sn_settingstackeddialog.cpp \
 #
-common/commonitem.cpp \
-common/imagedoublebuffer.cpp \
+common/sn_commonitem.cpp \
+common/sn_doublebuffer.cpp \
 common/sn_layoutwidget.cpp \
 common/sn_sharedpointer.cpp \
 #
-uiserver/uiserver.cpp \
-uiserver/uimsgthread.cpp \
-uiserver/fileserver.cpp \
+uiserver/sn_uiserver.cpp \
+uiserver/sn_uimsgthread.cpp \
+uiserver/sn_fileserver.cpp \
 #
-system/resourcemonitor.cpp \
-system/sagenextscheduler.cpp \
-system/resourcemonitorwidget.cpp \
-system/prioritygrid.cpp \
+system/sn_resourcemonitor.cpp \
+system/sn_scheduler.cpp \
+system/sn_resourcemonitorwidget.cpp \
+system/sn_prioritygrid.cpp \
 #
 sage/fsManager.cpp \
 sage/fsmanagermsgthread.cpp \
 sage/sageLegacy.cpp \
 #
-applications/base/perfmonitor.cpp \
-applications/base/appinfo.cpp \
-applications/base/basewidget.cpp \
-applications/base/railawarewidget.cpp \
-applications/base/sagestreamwidget.cpp \
-applications/base/sagepixelreceiver.cpp \
-applications/base/affinityinfo.cpp \
-applications/base/affinitycontroldialog.cpp \
+applications/base/sn_perfmonitor.cpp \
+applications/base/sn_appinfo.cpp \
+applications/base/sn_basewidget.cpp \
+applications/base/sn_railawarewidget.cpp \
+applications/base/sn_sagestreamwidget.cpp \
+applications/base/sn_sagepixelreceiver.cpp \
+applications/base/sn_affinityinfo.cpp \
+applications/base/sn_affinitycontroldialog.cpp \
 applications/base/sn_priority.cpp \
 #
 applications/sn_checker.cpp \
 applications/sn_sagestreammplayer.cpp \
 applications/sn_fittslawtest.cpp \
-applications/webwidget.cpp \
-applications/pixmapwidget.cpp \
+applications/sn_webwidget.cpp \
+applications/sn_pixmapwidget.cpp \
 applications/sn_mediabrowser.cpp \
-applications/vncwidget.cpp \
+applications/sn_vncwidget.cpp \
 applications/sn_pdfvieweropenglwidget.cpp
 
 
 HEADERS += \
-sagenextscene.h \
-sagenextviewport.h \
-sagenextlauncher.h \
-mediastorage.h \
-settingstackeddialog.h \
+sn_scene.h \
+sn_view.h \
+sn_sagenextlauncher.h \
+sn_mediastorage.h \
+settings/sn_settingstackeddialog.h \
 #
-common/commonitem.h \
-common/commondefinitions.h \
-common/imagedoublebuffer.h \
+common/sn_commonitem.h \
+common/sn_commondefinitions.h \
+common/sn_doublebuffer.h \
 common/sn_layoutwidget.h \
 common/sn_sharedpointer.h \
 #
-uiserver/uiserver.h \
-uiserver/uimsgthread.h \
-uiserver/fileserver.h \
+uiserver/sn_uiserver.h \
+uiserver/sn_uimsgthread.h \
+uiserver/sn_fileserver.h \
 #
-system/resourcemonitor.h \
-system/resourcemonitorwidget.h \
-system/sagenextscheduler.h \
-system/prioritygrid.h \
+system/sn_resourcemonitor.h \
+system/sn_resourcemonitorwidget.h \
+system/sn_scheduler.h \
+system/sn_prioritygrid.h \
 #
 sage/fsManager.h \
 sage/fsmanagermsgthread.h \
 sage/sagecommondefinitions.h \
 #
-applications/base/appinfo.h \
-applications/base/perfmonitor.h \
-applications/base/affinityinfo.h \
-applications/base/affinitycontroldialog.h \
-applications/base/basewidget.h \
-applications/base/railawarewidget.h \
-applications/base/sagestreamwidget.h \
-applications/base/sagepixelreceiver.h \
+applications/base/sn_appinfo.h \
+applications/base/sn_perfmonitor.h \
+applications/base/sn_affinityinfo.h \
+applications/base/sn_affinitycontroldialog.h \
+applications/base/sn_basewidget.h \
+applications/base/sn_railawarewidget.h \
+applications/base/sn_sagestreamwidget.h \
+applications/base/sn_sagepixelreceiver.h \
 applications/base/sn_priority.h \
 #
-applications/webwidget.h \
-applications/pixmapwidget.h \
-applications/vncwidget.h \
+applications/sn_webwidget.h \
+applications/sn_pixmapwidget.h \
+applications/sn_vncwidget.h \
 applications/sn_mediabrowser.h \
 applications/sn_checker.h \
 applications/sn_sagestreammplayer.h \
 applications/sn_fittslawtest.h \
 applications/sn_pdfvieweropenglwidget.h
 
+
 greaterThan(QT_MAJOR_VERSION, 4) {
 HEADERS -= applications/sn_pdfvieweropenglwidget.h
 SOURCES -= applications/sn_pdfvieweropenglwidget.cpp
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

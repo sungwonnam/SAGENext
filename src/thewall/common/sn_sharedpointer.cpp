@@ -1,12 +1,10 @@
-#include "sn_sharedpointer.h"
-#include "commonitem.h"
-#include "sn_layoutwidget.h"
-#include "../applications/base/basewidget.h"
-#include "../applications/base/sn_priority.h"
-#include "../sagenextscene.h"
-#include "../uiserver/uimsgthread.h"
-
-#include "../sagenextlauncher.h"
+#include "common/sn_sharedpointer.h"
+#include "common/sn_commonitem.h"
+#include "common/sn_commondefinitions.h"
+#include "common/sn_layoutwidget.h"
+#include "applications/base/sn_basewidget.h"
+#include "sn_scene.h"
+#include "sn_sagenextlauncher.h"
 
 #include <QGraphicsWebView>
 
@@ -32,7 +30,7 @@ SN_SelectionRectangle::SN_SelectionRectangle(QGraphicsItem *parent)
 
 
 
-SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, UiMsgThread *msgthread, const QSettings *s, SN_TheScene *scene, SN_Launcher *l, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
+SN_PolygonArrowPointer::SN_PolygonArrowPointer(const quint32 uicid, SN_UiMsgThread *msgthread, const QSettings *s, SN_TheScene *scene, SN_Launcher *l, const QString &name, const QColor &c, QFile *scenarioFile, QGraphicsItem *parent)
     : QGraphicsPolygonItem(parent)
     , _scene(scene)
     , _theLauncher(l)

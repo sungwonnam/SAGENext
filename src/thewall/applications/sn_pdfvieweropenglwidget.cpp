@@ -1,8 +1,8 @@
-#include "sn_pdfvieweropenglwidget.h"
+#include "applications/sn_pdfvieweropenglwidget.h"
 
-#include "base/perfmonitor.h"
-#include "base/appinfo.h"
-#include "../common/commonitem.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_appinfo.h"
+#include "common/sn_commonitem.h"
 
 #include <QtGlobal>
 

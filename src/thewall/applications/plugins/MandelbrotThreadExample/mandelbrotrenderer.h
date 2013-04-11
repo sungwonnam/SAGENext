@@ -1,7 +1,6 @@
 #ifndef MANDELBROTRENDERER_H
 #define MANDELBROTRENDERER_H
 
-#include <QThread>
 #include <QtCore>
 
 class MandelbrotRenderer : public QThread

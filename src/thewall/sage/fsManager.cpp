@@ -1,6 +1,6 @@
 #include "fsManager.h"
 #include "fsmanagermsgthread.h"
-#include "../sagenextlauncher.h"
+#include "sn_sagenextlauncher.h"
 
 #include <QSettings>
 
@@ -155,7 +155,7 @@ fsManagerMsgThread * fsManager::_createMsgThread(int sockfd) {
 //	connect(thread, SIGNAL(sailConnected(const quint64,QString, int, int, const QRect)), this, SIGNAL(sailConnected(quint64,QString,int,int,QRect)));
 
 	connect(this, SIGNAL(shutdownSail(quint64)), thread, SLOT(sendSailShutdownMsg(quint64)));
-	connect(this, SIGNAL(sailSendSetRailMsg(AffinityInfo*,quint64)), thread, SLOT(sendSailSetRailMsg(AffinityInfo*,quint64)));
+	connect(this, SIGNAL(sailSendSetRailMsg(SN_AffinityInfo*,quint64)), thread, SLOT(sendSailSetRailMsg(SN_AffinityInfo*,quint64)));
 
     return thread;
 }

@@ -6,7 +6,7 @@
 #include "sagecommondefinitions.h"
 
 class QSettings;
-class AffinityInfo;
+class SN_AffinityInfo;
 class SN_SageStreamWidget;
 
 /**
@@ -92,7 +92,7 @@ public slots:
 	void breakWhileLoop();
 	void sendSailShutdownMsg();
 	void sendSailShutdownMsg(quint64 sageappid);
-	void sendSailSetRailMsg(AffinityInfo*,quint64);
+	void sendSailSetRailMsg(SN_AffinityInfo*,quint64);
 	void sendSailMsg(OldSage::sageMessage &msg);
 	void sendSailMsg(int msgcode, const QString &msgdata);
 };

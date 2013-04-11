@@ -7,7 +7,7 @@
 
 class fsManagerMsgThread;
 class QSettings;
-class AffinityInfo;
+class SN_AffinityInfo;
 class SN_Launcher;
 
 /*
@@ -80,7 +80,7 @@ signals:
 	void sailConnected(const quint64 _sageAppId, QString appName, int protocol, int port, const QRect initRect);
 	void sailDisconnected(quint64);
 	void shutdownSail(quint64 sageappid);
-	void sailSendSetRailMsg(AffinityInfo *, quint64);
+	void sailSendSetRailMsg(SN_AffinityInfo *, quint64);
 	void sageAppConnectedToFSM(const QString &sageappname, const QString &mediafilepath, fsManagerMsgThread *);
 
 public slots:

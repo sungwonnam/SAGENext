@@ -6,7 +6,8 @@
 #else
 #include <QtGui>
 #endif
-#include "common/commondefinitions.h"
+#include "common/sn_commondefinitions.h"
+
 
 class SN_LayoutWidget;
 class SN_Launcher;

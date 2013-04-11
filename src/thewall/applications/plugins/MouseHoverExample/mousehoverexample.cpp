@@ -4,7 +4,7 @@
 // SAGENextPolygonArrow is defined in here
 //
 #include <common/sn_sharedpointer.h>
-#include <common/commondefinitions.h>
+#include <common/sn_commondefinitions.h>
 
 
 TrackerItem::TrackerItem(qreal x, qreal y, qreal w, qreal h, const QColor &c, QGraphicsItem *parent)

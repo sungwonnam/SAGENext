@@ -24,18 +24,18 @@ DEPENDPATH += ../../../
 
 
 SOURCES += \
-../../base/basewidget.cpp \
-../../base/appinfo.cpp \
-../../base/perfmonitor.cpp \
+../../base/sn_basewidget.cpp \
+../../base/sn_appinfo.cpp \
+../../base/sn_perfmonitor.cpp \
 ../../base/sn_priority.cpp \
-../../../common/commonitem.cpp
+../../../common/sn_commonitem.cpp
 
 
 HEADERS  += \
 ../../base/SN_plugininterface.h \
-../../base/basewidget.h \
-../../base/appinfo.h \
-../../base/perfmonitor.h \
+../../base/sn_basewidget.h \
+../../base/sn_appinfo.h \
+../../base/sn_perfmonitor.h \
 ../../base/sn_priority.h \
-../../../common/commonitem.h
+../../../common/sn_commonitem.h
 

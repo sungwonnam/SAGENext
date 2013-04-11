@@ -1,14 +1,14 @@
 #ifndef MEDIABROWSER_H
 #define MEDIABROWSER_H
 
-#include "base/basewidget.h"
-#include "../common/commondefinitions.h"
-#include "../common/commonitem.h"
+#include "applications/base/sn_basewidget.h"
+#include "common/sn_commondefinitions.h"
+#include "common/sn_commonitem.h"
 
 #ifdef QT5
 #include <QtWidgets>
 #else
-#include <QtGui>
+//#include <QtGui>
 #include <QtCore>
 #endif
 

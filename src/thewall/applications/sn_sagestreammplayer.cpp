@@ -1,7 +1,7 @@
-#include "sn_sagestreammplayer.h"
-#include "applications/base/perfmonitor.h"
-#include "applications/base/appinfo.h"
-#include "applications/base/sagepixelreceiver.h"
+#include "applications/sn_sagestreammplayer.h"
+#include "applications/base/sn_perfmonitor.h"
+#include "applications/base/sn_appinfo.h"
+#include "applications/base/sn_sagepixelreceiver.h"
 #include "applications/base/sn_priority.h"
 
 SN_SageStreamMplayer::SN_SageStreamMplayer(const quint64 globalappid, const QSettings *s, SN_ResourceMonitor *rm, QGraphicsItem *parent, Qt::WindowFlags wFlags)

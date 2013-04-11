@@ -1,9 +1,9 @@
-#include "fsmanagermsgthread.h"
+#include "sage/fsmanagermsgthread.h"
 //#include "sage/fsManager.h"
 //#include "sage/sageLegacy.h"
 
-#include "../applications/base/sagestreamwidget.h"
-#include "../applications/base/affinityinfo.h"
+#include "applications/base/sn_sagestreamwidget.h"
+#include "applications/base/sn_affinityinfo.h"
 
 #include <QStringList>
 #include <QSettings>
@@ -80,7 +80,7 @@ void fsManagerMsgThread::sendSailShutdownMsg(quint64 sageappid) {
     _end = true;
 }
 
-void fsManagerMsgThread::sendSailSetRailMsg(AffinityInfo *aff, quint64 sageappid) {
+void fsManagerMsgThread::sendSailSetRailMsg(SN_AffinityInfo *aff, quint64 sageappid) {
     if (!aff) return;
     if ( _sageAppId != sageappid) return;
 

@@ -1,5 +1,5 @@
 #include "simpleguiexample.h"
-#include "common/commonitem.h"
+#include "common/sn_commonitem.h"
 
 SimpleGUIExample::SimpleGUIExample()
     : SN_BaseWidget(Qt::Window)
