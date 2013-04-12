@@ -210,7 +210,7 @@ void SN_BaseWidget::init()
 	infoTextItem->hide();
 
 
-//    _resizeRectangle->setFlag(QGraphicsItem::ItemStacksBehindParent);
+    _resizeRectangle->setFlag(QGraphicsItem::ItemStacksBehindParent);
     _resizeRectangle->hide();
     _resizeRectangle->setFlag(QGraphicsItem::ItemIsMovable, false);
     _resizeRectangle->setFlag(QGraphicsItem::ItemIsSelectable, false);
@@ -795,10 +795,7 @@ void SN_BaseWidget::handlePointerPress(SN_PolygonArrowPointer *pointer, const QP
 
 	setTopmost();
     
-
     if (btn == Qt::LeftButton) {
-        // recalculate resize handle rectangles position and size
-        resizeHandleRect();
         
         if ( _resizeHandle_NW.contains(point.toPoint())) {
             _isResizing = 1;
@@ -844,29 +841,23 @@ void SN_BaseWidget::handlePointerRelease(SN_PolygonArrowPointer *pointer, const 
 
     if (_isResizing) {
         
-        moveBy( _resizeRectangle->rect().x() , _resizeRectangle->rect().y());
+        QRectF newRect = mapRectToParent( _resizeRectangle->rect() );
 
-        //
-        // now resize
-        //
-        if (isWindow()) {
-            resize( _resizeRectangle->rect().size() );
-        }
+        setPos(newRect.topLeft());
 
-        //
-        // rescale
-        //
+        if (isWindow()) resize( newRect.size() ); // resize if Qt::Window
         else {
             //qDebug() << _resizeRectangle->rect() << boundingRect() << size() << scale();
             qreal se = _resizeRectangle->rect().width() * scale() / boundingRect().width();
             setScale(se);
         }
 
+        _resizeRectangle->setRect(boundingRect());
     }
+#ifndef DEBUG
     _resizeRectangle->hide();
+#endif
     _isResizing = 0;
-
-    // base implementation does nothing
 }
 
 void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QPointF & point, qreal pointerDeltaX, qreal pointerDeltaY, Qt::MouseButton btn, Qt::KeyboardModifier) {
@@ -887,55 +878,63 @@ void SN_BaseWidget::handlePointerDrag(SN_PolygonArrowPointer * pointer, const QP
         //
         else if (_isResizing) {
             QRectF rect = _resizeRectangle->rect();
-            
-            if (isWindow()) {
-                rect.adjust(0, 0, pointerDeltaX, pointerDeltaY);
-            }
-            else {
-                int hchange = 0; // horizontal delta
-                int wchange = 0; // vertical delta
+
+                int hchange_keep_aspectratio = 0; // height delta for Qt::Widget
+                int hchange = 0; // height delta for Qt::Window
+                int wchange = 0; // width delta
                 
                 qreal scale = 1.0; // scale of resulting resize rectangle
                 
-                // NW or SW
+                // WEST
                 if (_isResizing == 1 || _isResizing == 3) {
-                    // if pos < 0 then increasing
-                    // if pos > 0 then decreasing
+                    // if point.x() < 0 then increasing width
+                    // if point.x() > 0 then decreasing width
                     wchange =  -1 * point.x();
                 }
-                
-                // NE or SE
+                // EAST
                 else {
                     wchange = point.x() - boundingRect().width();
                 }
-                
-                scale = (wchange + boundingRect().width()) / boundingRect().width();
-                hchange = boundingRect().height() * (scale - 1);
-                
-                
-                // NW
-                if (_isResizing == 1) {
-                    rect.setTopLeft(QPointF(point.x(), -1 * hchange));
+
+                // NORTH
+                if (_isResizing == 1 || _isResizing == 2 ) {
+                    hchange = -1 * point.y();
+                }
+                // SOUTH
+                else {
+                    hchange = point.y() - boundingRect().height();
                 }
                 
-                // NE
-                else if (_isResizing == 2 ) {
-                    rect.setTopLeft(QPointF(0, -1 * hchange));
-                }
+                scale = (wchange + boundingRect().width()) / boundingRect().width(); // to maintain aspect ratio if Qt::Widget
+                hchange_keep_aspectratio = boundingRect().height() * (scale - 1); // height change according to width change
                 
-                // SW
-                else if (_isResizing == 3) {
-                    rect.setTopLeft(QPointF(point.x(), 0));
+
+                // resizeRectangle top left pos changes as the user drag
+                if (_isResizing == 1) { // NW
+                    if (isWindow())
+                        rect.setTopLeft(point);
+                    else
+                        rect.setTopLeft(QPointF(point.x(), -1 * hchange_keep_aspectratio));
                 }
-                
-                // SE
-                else if (_isResizing == 4) {
-                    rect.setTopLeft(QPointF(0, 0));
+                else if (_isResizing == 2 ) { // NE
+                    if (isWindow())
+                        rect.setTopLeft(QPointF(0, point.y()));
+                    else
+                        rect.setTopLeft(QPointF(0, -1 * hchange_keep_aspectratio));
                 }
+                else if (_isResizing == 3) rect.setTopLeft(QPointF(point.x(), 0)); // SW
+                else if (_isResizing == 4) rect.setTopLeft(QPointF(0, 0)); // SE
                 
-                // maintain aspect ratio
-                rect.setSize(QSizeF(boundingRect().width() + wchange, boundingRect().height() + hchange));
-            }
+
+
+                if (! isWindow())
+                    // maintain aspect ratio if it's Qt::Widget
+                    rect.setSize(QSizeF(boundingRect().width() + wchange, boundingRect().height() + hchange_keep_aspectratio));
+
+                else
+                    rect.setSize(QSizeF(boundingRect().width() + wchange, boundingRect().height() + hchange));
+
+
             _resizeRectangle->setRect(rect);
         }
 
@@ -998,6 +997,14 @@ void SN_BaseWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, Q
 		_appInfo->setDrawingThreadCpu(sched_getcpu());
 #endif
 	}
+
+
+#ifdef DEBUG
+    painter->fillRect(_resizeHandle_NW, Qt::red);
+    painter->fillRect(_resizeHandle_NE, Qt::red);
+    painter->fillRect(_resizeHandle_SW, Qt::red);
+    painter->fillRect(_resizeHandle_SE, Qt::red);
+#endif
 }
 
 void SN_BaseWidget::paintWindowFrame(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
@@ -1066,6 +1073,13 @@ void SN_BaseWidget::wheelEvent(QGraphicsSceneWheelEvent *event) {
 	}
 
 	// reimplementation will accept the event
+}
+
+void SN_BaseWidget::resizeEvent(QGraphicsSceneResizeEvent *event) {
+    Q_UNUSED(event);
+    resizeHandleRect(); // recalculate four corners
+    if (_resizeRectangle) _resizeRectangle->setRect(boundingRect());
+    QGraphicsWidget::resizeEvent(event); // propagate event to the parent
 }
 
 

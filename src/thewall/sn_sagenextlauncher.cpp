@@ -18,7 +18,6 @@
 
 #include "applications/sn_fittslawtest.h"
 #include "applications/sn_sagestreammplayer.h"
-//#include "applications/pdfviewerwidget.h"
 #include "applications/sn_pixmapwidget.h"
 #include "applications/sn_pdfvieweropenglwidget.h"
 #include "applications/sn_vncwidget.h"
@@ -69,10 +68,19 @@ SN_Launcher::~SN_Launcher() {
 }
 
 void SN_Launcher::_loadPlugins() {
-
 	QDir pluginDir(QDir::homePath() + "/.sagenext/media/plugins");
 
 	foreach (QString filename, pluginDir.entryList(QDir::Files)) {
+#if defined(Q_OS_LINUX)
+        if (! filename.endsWith(".so", Qt::CaseInsensitive)) {
+#elif defined(Q_OS_MAC)
+        if (! filename.endsWith(".dylib", Qt::CaseInsensitive)) {
+#else
+#endif
+            qDebug() << metaObject()->className() << "::" << __FUNCTION__ << ": skipping " << filename;
+            continue;
+        }
+
 		QPluginLoader loader(pluginDir.absoluteFilePath(filename));
 		QObject *plugin = loader.instance();
 		if (plugin) {
@@ -81,7 +89,7 @@ void SN_Launcher::_loadPlugins() {
 				qCritical() << "qobject_cast<SN_PluginInterface *>(plugin) failed for" << filename;
 			}
 			else {
-				qDebug() << "SN_Launcher::loadPlugins() : " << filename << "has added";
+				qDebug() << "SN_Launcher::_loadPlugins() : " << filename << "has added";
 				_pluginMap.insert(pluginDir.absoluteFilePath(filename), dpi);
 			}
 		}
@@ -606,6 +614,9 @@ SN_BaseWidget * SN_Launcher::launch(SN_BaseWidget *w, const QPointF &scenepos) {
 			_scene->hoverAcceptingApps.push_back(w);
 		}
 		_scene->addItemOnTheLayout(w, scenepos);
+
+        // make sure the scene can be prepared for this
+        QObject::connect(w, SIGNAL(destroyed(QObject*)), _scene, SLOT(prepareWidgetRemoval(QObject*)));
 
 
         if ( w->isSchedulable() ) {

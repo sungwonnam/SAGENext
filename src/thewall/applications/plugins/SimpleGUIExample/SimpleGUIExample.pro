@@ -4,13 +4,12 @@
 #
 #-------------------------------------------------
 
-include(../pluginbase.pri)
 
-#
-# Upon build, the binary will be placed in ${HOME}/.sagenext/media/plugins/
-# Run the SAGENext and launch the plugin by choosing the binary in a file open dialog (Ctrl-O)
-#
 TARGET = MouseClickExamplePlugin
+
+# Note that this must not precedes TARGET
+# in order for QMAKE_POST_LINK can use TARGET variable
+include(../pluginbase.pri)
 
 SOURCES += \
 simpleguiexample.cpp

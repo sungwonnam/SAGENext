@@ -393,10 +393,10 @@ public:
          * \brief This function is used to handle pointer press and called in SN_PolygonArrowPointer::pointerPress()
          *
          * SN_PolygonArrowPointer::pointerPress() calls this function upon receiving mouse press from a user.
-         * Default implementation calls setTopmost() that sets this widget's z value the highest among all other widgets,
-         * and recalculates the widget's resize handle rectangles by calling the resizeHandleRect().
+         * Default implementation calls setTopmost() that sets this widget's z value the highest among all other widgets.
          * If the pointer is pressed on one of those rectangles then _isResizing is set to TRUE so that the widget can
-         * later be resized or rescaled properly when handlePointerRelease() is called.
+         * later be resized or rescaled properly when handlePointerRelease() is called. This means resizeHandleRect()
+         * must be called before this function is called to operate properly.
          *
          * Note that this is called when a user does mouse doubleclick because the sequence that triggers the dbl click
          * is mouse press -> mouse dbl click
@@ -637,41 +637,9 @@ protected:
 
 
         /*!
-          Derived class should implement paint()
-          */
-//	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) = 0;
-
-        /*!
           * timeout every 1 sec to update info of appInfo, perfMon, affInfo
           */
 //        void timerEvent(QTimerEvent *);
-
-        /*!
-		  setTransformOriginPoint() with center of the widget
-		  Because of this, your widget's transformationOrigin is center
-          */
-//        virtual void resizeEvent(QGraphicsSceneResizeEvent *event);
-
-        /*!
-          * Just changes z value and recency of interaction
-
-		  The default implementation makes this widget mouseGrabber (QGraphicsScene::mouseGrabberItem())
-		  Only the mouseGrabber item can receive move/release/doubleClick events.
-
-		  Reimplementing this makes the event->accept() which makes this widget the mousegrabber
-          */
-//        virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
-
-		/*!
-		  QGraphicsItem::mouseReleaseEvent() handles basic interactions such as selection and moving upon receiving this event.
-		  By reimplement this function with empty definition, those actions won't be enabled through console mouse.
-		  This makes moving this item with console mouse incorrect.
-
-		  This is intended. We focus on interactions through shared pointers.
-		  */
-//		virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
-
-//        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
 
         /*!
           * Triggers maximize/restore window
@@ -688,6 +656,14 @@ protected:
           * It calls reScale() incrementally for Qt::Widget.
           */
         virtual void wheelEvent(QGraphicsSceneWheelEvent *event);
+
+
+        /*!
+         * \brief Reimplementing this is to make sure to update resize handle rectangles.
+         * \param event is not used
+         * \sa resizeHandleRect()
+         */
+        virtual void resizeEvent(QGraphicsSceneResizeEvent *event);
 
 
 private:

@@ -31,7 +31,11 @@ SN_LayoutWidget::SN_LayoutWidget(const QString &pos, SN_LayoutWidget *parentWidg
 {
 //	setFlag(QGraphicsItem::ItemIsSelectable, false);
 	setFlag(QGraphicsItem::ItemIsMovable, false);
+
+#ifndef DEBUG
+    // paint() won't be called
 	setFlag(QGraphicsItem::ItemHasNoContents, true);// don't paint anything
+#endif
 
 	// pointer->setAppUnderPointer() will pass this item
 	setAcceptedMouseButtons(0);
@@ -235,7 +239,7 @@ void SN_LayoutWidget::reparentMyChildBasewidgets(SN_LayoutWidget *newParent) {
 
 void SN_LayoutWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 	QPen pen;
-	pen.setColor(QColor(Qt::white));
+	pen.setColor(QColor(Qt::yellow));
 	painter->setPen(pen);
 	painter->drawRect(boundingRect());
 }

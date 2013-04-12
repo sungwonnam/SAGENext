@@ -74,10 +74,12 @@ TrackerItem * MouseDragExample::getTrackerItemUnderPoint(const QPointF &point) {
 	QList<QGraphicsItem *> children = childItems();
 
 	for (int i=children.size()-1; i>=0; i--) {
-//		TrackerItem *tracker = static_cast<TrackerItem *>(children.at(i));
-		QGraphicsItem *item = children.at(i);
-		if(item && item->boundingRect().contains(item->mapFromParent(point)))
-			return static_cast<TrackerItem *>(item);
+        QGraphicsItem *item = children.at(i);
+
+        if (item->acceptedMouseButtons() == 0) continue;
+
+        if(item && item->boundingRect().contains(item->mapFromParent(point)))
+            return static_cast<TrackerItem *>(item);
 	}
 
 	return 0;
@@ -157,6 +159,8 @@ void MouseDragExample::handlePointerDrag(SN_PolygonArrowPointer * pointer, const
 
 void MouseDragExample::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
 	painter->fillRect(_marginleft, _margintop, size().width() - _marginleft - _marginright, size().height() - _margintop - _marginbottom, QBrush(QColor(200,200,200,128)));
+
+    SN_BaseWidget::paint(painter, 0, 0);
 }
 
 

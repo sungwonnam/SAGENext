@@ -141,6 +141,12 @@ public slots:
 	void saveSession();
 
 	void loadSession(QDataStream &in, SN_Launcher *launcher);
+
+    /*!
+     * \brief prepareWidgetRemoval makes sure any container in Scene doesn't have the widget anymore
+     * \param widget The widget that just emitted destroyed() signal
+     */
+    void prepareWidgetRemoval(QObject* widget);
 };
 
 

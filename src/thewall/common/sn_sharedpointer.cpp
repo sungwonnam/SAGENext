@@ -228,18 +228,18 @@ void SN_PolygonArrowPointer::pointerMove(const QPointF &_scenePos, Qt::MouseButt
 
 		/* For each SN_BaseWidget that registered for hovering */
 		foreach(SN_BaseWidget *bw, _scene->hoverAcceptingApps) {
-			if (!bw) {
-				_scene->hoverAcceptingApps.removeOne(bw);
-				continue;
+			if (bw) {
+                if (bw == firstUnderPointer/* && bw->contains(bw->mapFromScene(_scenePos))*/ ) {
+                    bw->handlePointerHover(this, bw->mapFromScene(_scenePos), true);
+                }
+                else {
+                    // Hover has left
+                    bw->handlePointerHover(this, QPointF(), false);
+                }
 			}
-	
-			if (bw == firstUnderPointer/* && bw->contains(bw->mapFromScene(_scenePos))*/ ) {
-				bw->handlePointerHover(this, bw->mapFromScene(_scenePos), true);
-			}
-			else {
-				// Hover has left
-				bw->handlePointerHover(this, QPointF(), false);
-			}
+            else {
+                _scene->hoverAcceptingApps.removeOne(bw);
+            }
 		}
 	}
 

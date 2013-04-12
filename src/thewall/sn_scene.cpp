@@ -408,6 +408,12 @@ qreal SN_TheScene::getRatioOverlapped() const {
 }
 
 
+void SN_TheScene::prepareWidgetRemoval(QObject *widget) {
+    SN_BaseWidget *bw = static_cast<SN_BaseWidget*>(widget);
+    if (bw) {
+        hoverAcceptingApps.removeAll(bw);
+    }
+}
 
 
 
