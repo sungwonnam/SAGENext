@@ -18,7 +18,6 @@ SN_UiMsgThread::SN_UiMsgThread(const quint32 id, int sock, QObject *parent) :
 //  , _udpSock(0)
 {
 	int optval = 1;
-	//socket.setSocketOption(QAbstractSocket::LowDelayOption, (const QVariant *)&optval);
 	if ( setsockopt(_sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, (socklen_t)sizeof(optval)) != 0 ) {
 		qWarning("%s() : setsockopt SO_REUSEADDR failed", __FUNCTION__);
 	}
@@ -29,38 +28,31 @@ SN_UiMsgThread::SN_UiMsgThread(const quint32 id, int sock, QObject *parent) :
 		qWarning("%s() : setsockopt TCP_NODELAY failed", __FUNCTION__);
 	}
 
-
 	struct sockaddr_in addr;
 	socklen_t len = sizeof(addr);
-	if ( getpeername(_sockfd, (struct sockaddr *)&addr, &len) != 0 ) {
+	if ( ::getpeername(_sockfd, (struct sockaddr *)&addr, &len) != 0 ) {
 		qCritical() << "UiMsgThread failed to get peer address";
 	}
 	else {
-		char str[INET_ADDRSTRLEN];
-		if ( inet_ntop(AF_INET, &(addr.sin_addr), str, INET_ADDRSTRLEN) ) {
-//			qDebug() << QString(str);
-			_peerAddress = QHostAddress(QString(str));
+        qDebug() << QHostAddress(addr.sin_addr.s_addr);
+        _peerAddress.setAddress(QHostAddress((struct sockaddr *)&addr).toIPv4Address());
+//		char str[INET_ADDRSTRLEN];
+        QByteArray str(INET_ADDRSTRLEN, 0);
+		if ( ::inet_ntop(AF_INET, (void *)&(addr.sin_addr), str.data(), INET_ADDRSTRLEN) ) {
+//			_peerAddress = QHostAddress(QString(str));
 		}
 		else {
 			perror("inet_ntop");
 		}
 	}
+    qDebug() << _peerAddress.toString();
 
     /*
-    _udpSock = ::socket(AF_INET, SOCK_DGRAM, 0);
-    if (_udpSock == -1) {
-        perror("UDP socket");
-    }
-    else {
-        struct sockaddr_in serveraddr;
-        bzero(&serveraddr, sizeof(struct sockaddr_in));
-        serveraddr.sin_family = AF_INET;
-        serveraddr.sin_port = 30003 + 10 + _uiClientId;
-        serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-        if ( -1 == ::bind(_udpSock, (struct sockaddr *)&serveraddr, sizeof(struct sockaddr_in)) ) {
-            perror("UDP bind");
-        }
-    }
+    _tcpSock.setSocketDescriptor(_sockfd);
+    _tcpSock.setSocketOption(QAbstractSocket::LowDelayOption, 1);
+    _tcpSock.setSocketOption(QAbstractSocket::KeepAliveOption, 1);
+    _peerAddress = _tcpSock.peerAddress();
+    qDebug() << __FUNCTION__ << _peerAddress;
     */
 }
 
@@ -88,6 +80,7 @@ void SN_UiMsgThread::sendMsg(const QByteArray &msgstr) {
 	}
 
 	ssize_t sent = ::send(_sockfd, msgstr.data(), msgstr.size(), 0);
+//    qint64 sent = _tcpSock.write(msgstr.data(), EXTUI_MSG_SIZE);
 	if ( sent <= 0 ) {
 		qCritical("UiMsgThread::%s() : send error", __FUNCTION__);
 	}
@@ -104,7 +97,16 @@ void SN_UiMsgThread::run() {
 
 	while(!_end) {
 		msgStr.fill(0);
-		if ( (read = recv(_sockfd, (void *)msgStr.data(), EXTUI_SMALL_MSG_SIZE, MSG_WAITALL)) == -1 ) {
+        read = recv(_sockfd, (void *)msgStr.data(), EXTUI_SMALL_MSG_SIZE, MSG_WAITALL);
+
+        /*
+        while (_tcpSock.bytesAvailable() < EXTUI_SMALL_MSG_SIZE) {
+            _tcpSock.waitForReadyRead(-1); // block forever
+        }
+        read = _tcpSock.read(msgStr.data(), EXTUI_SMALL_MSG_SIZE);
+        */
+
+		if ( read == -1 ) {
 			qCritical("UiMsgThread::%s() : socket error", __FUNCTION__);
             perror("recv");
 			break;
@@ -114,20 +116,6 @@ void SN_UiMsgThread::run() {
 			break;
 		}
 
-        //
-        // if srcaddr is null then connection is required
-        //
-        /*
-        if ( (read = recvfrom(_udpSock, (void *)msgStr.data(), EXTUI_SMALL_MSG_SIZE, 0, 0, 0)) == -1) {
-            qCritical("UiMsgThread::%s() : socket error", __FUNCTION__);
-			break;
-		}
-		else if ( read == 0 ) {
-			qDebug("UiMsgThread::%s() : socket disconnected", __FUNCTION__);
-			break;
-        }
-        */
-//		qDebug("UiMsgThread::%s() : received external UI msg [%s]", __FUNCTION__, msgStr.data());
 
 		//
 		 // multiple threads will emit this signal in parallel.

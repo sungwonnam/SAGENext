@@ -2,7 +2,7 @@
 #define UIMSGTHREAD_H
 
 #include <QThread>
-//#include <QTcpSocket>
+#include <QTcpSocket>
 #include <QHostAddress>
 
 class SN_UiMsgThread : public QThread
@@ -22,7 +22,7 @@ protected:
 private:
 	const quint32 _uiClientId;
 
-//	QTcpSocket _tcpSocket;
+	QTcpSocket _tcpSock;
 
 	QHostAddress _peerAddress;
 

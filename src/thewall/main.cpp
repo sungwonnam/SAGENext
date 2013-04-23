@@ -19,8 +19,12 @@
 #include "system/sn_resourcemonitorwidget.h"
 #include "system/sn_prioritygrid.h"
 
+#ifdef QT5
+#include <QtOpenGL/QGLWidget>
+#else
 #include <QGLWidget>
 #include <QGLPixelBuffer>
+#endif
 
 #ifdef Q_OS_LINUX
 #include <numa.h>
@@ -506,7 +510,11 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 			gvm->setViewport(new QGLWidget);
 			gvm->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 
+#ifdef QT5
+            s.setValue("graphics/openglpbo", true);
+#else
 			s.setValue("graphics/openglpbo", QGLPixelBuffer::hasOpenGLPbuffers());
+#endif
 
 			//
 			// with Xinerama, full screen won't work
@@ -537,7 +545,11 @@ Note that the pixel data in a pixmap is internal and is managed by the underlyin
 				gvm->setWindowState(Qt::WindowFullScreen);
 				qDebug() << "\t[using QGLWidget as the viewport widget]";
 
+#ifdef QT5
+            s.setValue("graphics/openglpbo", true);
+#else
 				s.setValue("graphics/openglpbo", QGLPixelBuffer::hasOpenGLPbuffers());
+#endif
 			}
 			//
 			// set sceneRect to be viewed for each viewport. Bezel size has to be applied to here

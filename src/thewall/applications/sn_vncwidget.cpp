@@ -54,6 +54,7 @@ SN_VNCClientWidget::SN_VNCClientWidget(quint64 globalappid, const QString sender
 	_appInfo->setVncUsername(SN_VNCClientWidget::username);
 	_appInfo->setVncPassword(SN_VNCClientWidget::vncpasswd);
 
+    qDebug() << __FUNCTION__ << senderIP ;
 
     //
     // initial size.
@@ -161,6 +162,8 @@ int SN_VNCClientWidget::m_initVNC() {
     margv[1] = (char *)malloc(256);
 	memset(margv[1], 0, 256);
     sprintf(margv[1], "%s:%d", qPrintable(_vncServerIpAddr), _displayNumber);
+
+    qDebug() << __FUNCTION__ << margv[0] << margv[1];
 
 	if ( ! rfbInitClient(_vncclient, &margc, margv) ) {
 		qCritical() << "SN_VNCClientWidget::m_initVNC() : rfbInitClient() failed for" << SN_VNCClientWidget::username;

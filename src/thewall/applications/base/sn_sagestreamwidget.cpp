@@ -28,14 +28,12 @@
     B = clip(( 298 * (Y-16) + 516 * (U-128)
 */
 
-#include <QGLPixelBuffer>
 
 #ifdef QT5
 #include <QtConcurrent>
 #include <QOpenGLShaderProgram>
-
 #else
-
+#include <QGLPixelBuffer>
 #include <QGLBuffer>
 #include <QGLShaderProgram>
 #include <QGLContext>
@@ -91,15 +89,8 @@ SN_SageStreamWidget::SN_SageStreamWidget(const quint64 globalappid, const QSetti
 		qCritical("SN_SageStreamWidget constructor : Failed to connect _initReceiverWatcher->finished() signal to this->startReceivingThread() slot");
 	}
 
-//	_usePbo = s->value("graphics/openglpbo", false).toBool();
-	if (_useOpenGL) {
-		if (QGLPixelBuffer::hasOpenGLPbuffers()) {
-			_usePbo = true;
-		}
-	}
-	else {
-		_usePbo = false;
-	}
+	_usePbo = s->value("graphics/openglpbo", false).toBool();
+
 
 	//
 	// Temporary

@@ -7,11 +7,12 @@ TEMPLATE = app
 
 greaterThan(QT_MAJOR_VERSION, 4) {
 	message("Qt 5 detected: $$QT_VERSION")
-	QT	+= gui widgets concurrent
+	QT	+= gui widgets concurrent webkit webkitwidgets
     QT -= opengl
 	DEFINES += QT5
 }
 
+!greaterThan(QT_MAJOR_VERSION, 4) {
 QTWEBKIT = $$(QTWEBKIT_DIR)
 # if user hasn't defined his own QtWebKit module then use Qt's built-in QtWebKit module
 isEmpty(QTWEBKIT) {
@@ -34,6 +35,7 @@ else {
     INCLUDEPATH += $$(QTWEBKIT_DIR)/include/QtWebKit
     message("-L$$(QTWEBKIT_DIR)/lib -lQtWebKit")
     LIBS += -L$$(QTWEBKIT_DIR)/lib -lQtWebKit
+}
 }
 
 
@@ -89,18 +91,18 @@ unix {
 # configure poppler with --enable-poppler-qt4  (you might need to compile/install openjpeg)
 # Add POPPLER_INSTALL_PATH/lib/pkgconfig in PKG_CONFIG_PATH
 #
-greaterThan(QT_MAJOR_VERSION, 4) {
-message("Qt5 can't be used with poppler-qt4. Disabling PDF widget")
-}
-else {
-    packagesExist(poppler-qt4) {
-        message("Linking poppler-qt4 lib")
-    	PKGCONFIG += poppler-qt4
+    greaterThan(QT_MAJOR_VERSION, 4) {
+        message("Qt5 can't be used with poppler-qt4. Disabling PDF widget")
     }
     else {
-        error("Missing Package : poppler-qt4 is required")
+        packagesExist(poppler-qt4) {
+            message("Linking poppler-qt4 lib")
+    	    PKGCONFIG += poppler-qt4
+        }
+        else {
+            error("Missing Package : poppler-qt4 is required")
+        }
     }
-}
 } # end of unix{}
 
 

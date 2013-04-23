@@ -420,6 +420,8 @@ void SN_UiServer::handleMessage(const QByteArray msg) {
             vncpassword.clear();
         }
 
+        qDebug() << __FUNCTION__ << msgThread->peerAddress().toString();
+
         // This isn't elegant way of invoking vnc widget. :(
         QMetaObject::invokeMethod(_launcher, "launch", Qt::QueuedConnection
                                   , Q_ARG(QString, vncusername)
