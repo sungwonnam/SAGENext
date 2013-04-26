@@ -10,10 +10,10 @@ class SN_ProxyPushButton;
 class SN_ProxyScrollBar;
 
 /*!
-  A simple SAGENext plugin example.
+  \brief A simple SAGENext plugin example.
 
-  This example shows three buttons and one label.
-  The buttons are used to change the color of the label panel
+  This example shows how to use SAGENext's GUI components
+  defined in src/common/sn_commonitem.h/cpp
   */
 class SimpleGUIExample : public SN_BaseWidget, SN_PluginInterface
 {
@@ -30,25 +30,27 @@ public:
 	virtual ~SimpleGUIExample();
 
     /*!
-      This interface must be reimplemented.
+      \brief A pure virtual function that must be reimplemented.
+      \return an instance of this class
+
       The SN_Launcher calls this function to create an instance of this plugin.
       */
 	SN_BaseWidget * createInstance();
 
-    /*!
-      You can reimplement QGraphicsItem::paint() to draw onto this widget.
-      */
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-
 private:
     /*!
-      Create the label and buttons
-      */
+     * \brief creates GUI components
+     *
+     * It is highly recommend to create GUI instances NOT in the constructor.
+     * Because an application instance of this class is created when the createInstance()
+     * is called. By not creating GUI components in the constructor you can avoid
+     * unnecessary memory usage.
+     */
     void _createGUIs();
 
     /*!
-      Example GUI components
-      */
+     * \brief _label simply displays a color
+     */
     QLabel *_label;
 
     /*!
@@ -56,31 +58,34 @@ private:
       */
     QColor _currentColor;
 
-//    QPushButton *_btn_R; /**< red (1,0,0) */
-//    QPushButton *_btn_M; /**< magenta (1,0,1) */
-//    QPushButton *_btn_Y; /**< yellow (1,1,0) */
-
-    SN_ProxyPushButton* _btn_R;
-    SN_ProxyPushButton* _btn_M;
-    SN_ProxyPushButton* _btn_Y;
+    SN_ProxyPushButton* _btn_R; /*!< SAGENext's button type to color the label red */
+    SN_ProxyPushButton* _btn_M; /*!< SAGENext's button type to color the label magenta */
+    SN_ProxyPushButton* _btn_Y; /*!< SAGENext's button type to color the label yellow */
 
     /*!
-     * \brief _scrollbar on the bottom of the widget
+     * \brief _scrollbar on the bottom of the widget that changes grayscale
      */
     SN_ProxyScrollBar* _scrollbar;
 
+    /*!
+     * \brief _updateLabel changes the color of the label
+     * \param QColor
+     */
     void _updateLabel(const QColor &c);
 
 private slots:
     /*!
-      changes the label color to red
-      */
+     * \brief buttonR changes the state of the buttons and update label's color
+     */
     void buttonR();
 
     void buttonM();
 
     void buttonY();
 
+    /*!
+     * \brief scrollbarmoved updates the label's color value
+     */
     void scrollbarmoved(int);
 };
 

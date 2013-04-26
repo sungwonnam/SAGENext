@@ -7,41 +7,45 @@ SimpleGUIExample::SimpleGUIExample()
     , _btn_R(0)
     , _btn_M(0)
     , _btn_Y(0)
+    , _scrollbar(0)
 {
 	//
-	// If a widget's size can be changed then set this flag
+	// If an application doesn't have specific native size
+    // and its native resolution can be changed then set this flag.
+    // When a user resizes, this application will change its resolution
+    // rather than scaling the window
 	//
 	setWindowFlags(Qt::Window);
 
     //
-	// window frame is not interactable by shared pointers
-	// so use contentsMargins for window frame
+	// The window frame is not interactable by shared pointers
+	// so use contentsMargins to make a window frame
 	//
 	setWindowFrameMargins(0, 0, 0, 0);
 
 	//getContentsMargins(&l, &r, &t, &b);
 	//qDebug() << "ImageWidgetPlugin content margins l, r, t, b" << l << r << t << b;
 
-	// Qt::Window might want to define mouse dragging. For that case, give more room to top margin so that window can be moved with shared pointers
+    // Give some room on top of the application window so that
+    // a user can move the window of this application using the shared pointer
 	setContentsMargins(8,28,8,8);
 }
 
 void SimpleGUIExample::_createGUIs() {
     //
-    // create the label displaying selected color
+    // create the label
     //
 	_label = new QLabel();
 	_label->setFrameStyle(QFrame::Box);
 	_label->setLineWidth(8);
 
 	//
-    // create a proxywidget for the label.
-    // A widget needs to have a corresponding proxywidget in Qt Graphics Framework.
+    // create a proxywidget for the label because QGraphicsView can't display
+    // QWidget type items. QGraphicsProxyWidget needs to be used to display a QWidget instance.
     //
 	QGraphicsProxyWidget *labelProxy = new QGraphicsProxyWidget(this, Qt::Widget);
 	labelProxy->setWidget(_label);
 	labelProxy->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding, QSizePolicy::Label);
-
 
     //
     // use layout widget to juxtapose items.
@@ -113,22 +117,6 @@ void SimpleGUIExample::_createGUIs() {
 }
 
 
-/*!
-  Reimplement my own paint function
-  */
-void SimpleGUIExample::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
-{
-    //
-    // The base implementation draws border around the widget when selected with a sagenextPointer
-    //
-	SN_BaseWidget::paint(painter, option, widget);
-
-	/*************
-	put your drawing code here if needed
-      ************/
-//	painter->fillRect(boundingRect(), _currentColor.darker());
-}
-
 SimpleGUIExample::~SimpleGUIExample() {
     //
     // Any child object of the widget (which is Q_OBJECT) will be deleted automatically
@@ -142,7 +130,7 @@ SN_BaseWidget * SimpleGUIExample::createInstance() {
     SimpleGUIExample *instance = new SimpleGUIExample;
 
     //
-    // Build child items
+    // Build child items (GUI components in this example)
     //
     instance->_createGUIs();
 
@@ -183,6 +171,7 @@ void SimpleGUIExample::scrollbarmoved(int val) {
 }
 
 
+// Don't forget to add this
 Q_EXPORT_PLUGIN2(MouseClickExamplePlugin, SimpleGUIExample)
 
 
